@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -170,4 +171,68 @@ func (h *PredictHandler) storeEventToVictoriaLogs(ctx context.Context, event mod
 	}
 
 	return h.logsService.StoreJSONEvent(ctx, logEntry, event.TenantID)
+}
+
+// countByRisk returns how many fractures fall into the given risk level.
+// It prefers the explicit Severity on the fracture; if empty, it derives
+// the level from Probability (>=0.90=high, >=0.70=medium, else low).
+func countByRisk(fractures []*models.SystemFracture, level string) int {
+	level = strings.ToLower(strings.TrimSpace(level))
+	if level == "" {
+		return 0
+	}
+	n := 0
+	for _, f := range fractures {
+		if f == nil {
+			continue
+		}
+		if deriveRiskLevel(f) == level {
+			n++
+		}
+	}
+	return n
+}
+
+func deriveRiskLevel(f *models.SystemFracture) string {
+	// 1) Use explicit severity if present
+	if s := strings.ToLower(strings.TrimSpace(f.Severity)); s != "" {
+		switch s {
+		case "critical", "high":
+			return "high"
+		case "medium", "moderate":
+			return "medium"
+		case "low":
+			return "low"
+		}
+	}
+	// 2) Fallback to probability thresholds
+	p := f.Probability
+	switch {
+	case p >= 0.90:
+		return "high"
+	case p >= 0.70:
+		return "medium"
+	default:
+		return "low"
+	}
+}
+
+// calculateAvgTimeToFailure returns the average TimeToFracture across all
+// fractures that have a positive duration.
+func calculateAvgTimeToFailure(fractures []*models.SystemFracture) time.Duration {
+	var sum time.Duration
+	var count int64
+	for _, f := range fractures {
+		if f == nil {
+			continue
+		}
+		if f.TimeToFracture > 0 {
+			sum += f.TimeToFracture
+			count++
+		}
+	}
+	if count == 0 {
+		return 0
+	}
+	return time.Duration(int64(sum) / count)
 }

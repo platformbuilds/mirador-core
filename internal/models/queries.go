@@ -2,6 +2,20 @@ package models
 
 import "time"
 
+// TimeRange represents an absolute time window used by RCA requests.
+type TimeRange struct {
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
+}
+
+// Duration is a convenience helper (optional).
+func (tr TimeRange) Duration() time.Duration {
+	if tr.End.Before(tr.Start) {
+		return 0
+	}
+	return tr.End.Sub(tr.Start)
+}
+
 // MetricsQL Models
 type MetricsQLQueryRequest struct {
 	Query    string `json:"query" binding:"required"`
@@ -38,18 +52,20 @@ type MetricsQLQueryResponse struct {
 }
 
 // LogsQL Models
+
 type LogsQLQueryRequest struct {
-	Query    string `json:"query" binding:"required"`
-	Limit    int    `json:"limit,omitempty"`
-	Start    string `json:"start,omitempty"`
-	End      string `json:"end,omitempty"`
-	TenantID string `json:"-"`
+	Query    string            `json:"query" form:"query"`
+	Start    int64             `json:"start" form:"start"` // epoch (sec/ms/ns ok; service normalizes)
+	End      int64             `json:"end" form:"end"`
+	Limit    int               `json:"limit" form:"limit"`
+	TenantID string            `json:"tenantId" form:"tenantId"`
+	Extra    map[string]string `json:"extra,omitempty" form:"-"` // passthrough flags (dedup, order, etc.)
 }
 
 type LogsQLQueryResult struct {
-	Logs   []map[string]interface{} `json:"logs"`
-	Fields []string                 `json:"fields"`
-	Stats  map[string]interface{}   `json:"stats,omitempty"`
+	Logs   []map[string]any `json:"logs,omitempty"`
+	Fields []string         `json:"fields,omitempty"`
+	Stats  map[string]any   `json:"stats,omitempty"`
 }
 
 type LogsQLResponse struct {
@@ -59,15 +75,15 @@ type LogsQLResponse struct {
 
 // VictoriaTraces Models
 type TraceSearchRequest struct {
-	Service      string    `json:"service,omitempty"`
-	Operation    string    `json:"operation,omitempty"`
-	Tags         string    `json:"tags,omitempty"`
-	MinDuration  string    `json:"minDuration,omitempty"`
-	MaxDuration  string    `json:"maxDuration,omitempty"`
-	Start        time.Time `json:"start"`
-	End          time.Time `json:"end"`
-	Limit        int       `json:"limit,omitempty"`
-	TenantID     string    `json:"-"`
+	Service     string    `json:"service,omitempty"`
+	Operation   string    `json:"operation,omitempty"`
+	Tags        string    `json:"tags,omitempty"`
+	MinDuration string    `json:"minDuration,omitempty"`
+	MaxDuration string    `json:"maxDuration,omitempty"`
+	Start       time.Time `json:"start"`
+	End         time.Time `json:"end"`
+	Limit       int       `json:"limit,omitempty"`
+	TenantID    string    `json:"-"`
 }
 
 type TraceSearchResult struct {
@@ -77,7 +93,7 @@ type TraceSearchResult struct {
 }
 
 type Trace struct {
-	TraceID   string                 `json:"traceID"`
+	TraceID   string                   `json:"traceID"`
 	Spans     []map[string]interface{} `json:"spans"`
 	Processes map[string]interface{}   `json:"processes"`
 }
