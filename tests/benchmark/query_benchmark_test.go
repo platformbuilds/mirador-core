@@ -2,11 +2,11 @@ package benchmark
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/mirador/core/internal/models"
-	"github.com/mirador/core/internal/services"
 	"github.com/mirador/core/pkg/logger"
 )
 
@@ -14,7 +14,7 @@ func BenchmarkMetricsQLQuery(b *testing.B) {
 	// Setup
 	logger := logger.New("error")
 	metricsService := setupTestVictoriaMetricsService(logger)
-	
+
 	query := models.MetricsQLQueryRequest{
 		Query:    "up",
 		Time:     time.Now().Format(time.RFC3339),
@@ -37,7 +37,7 @@ func BenchmarkMetricsQLQuery(b *testing.B) {
 func BenchmarkLogQLQuery(b *testing.B) {
 	logger := logger.New("error")
 	logsService := setupTestVictoriaLogsService(logger)
-	
+
 	query := models.LogsQLQueryRequest{
 		Query:    "_time:1h error",
 		Limit:    100,
@@ -57,10 +57,10 @@ func BenchmarkLogQLQuery(b *testing.B) {
 	})
 }
 
-func BenchmarkValleyClusterCache(b *testing.B) {
-	cache := setupTestValleyCluster()
+func BenchmarkValkeyClusterCache(b *testing.B) {
+	cache := setupTestValkeyCluster()
 	ctx := context.Background()
-	
+
 	testData := map[string]interface{}{
 		"key1": "value1",
 		"key2": 12345,

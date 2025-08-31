@@ -1,8 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,11 +15,11 @@ import (
 
 type TracesHandler struct {
 	tracesService *services.VictoriaTracesService
-	cache         cache.ValleyCluster
+	cache         cache.ValkeyCluster
 	logger        logger.Logger
 }
 
-func NewTracesHandler(tracesService *services.VictoriaTracesService, cache cache.ValleyCluster, logger logger.Logger) *TracesHandler {
+func NewTracesHandler(tracesService *services.VictoriaTracesService, cache cache.ValkeyCluster, logger logger.Logger) *TracesHandler {
 	return &TracesHandler{
 		tracesService: tracesService,
 		cache:         cache,
@@ -30,7 +31,7 @@ func NewTracesHandler(tracesService *services.VictoriaTracesService, cache cache
 func (h *TracesHandler) GetServices(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
-	// Check Valley cluster cache first
+	// Check Valkey cluster cache first
 	cacheKey := fmt.Sprintf("trace_services:%s", tenantID)
 	if cached, err := h.cache.Get(c.Request.Context(), cacheKey); err == nil {
 		var services []string
@@ -115,7 +116,7 @@ func (h *TracesHandler) SearchTraces(c *gin.Context) {
 	}
 
 	request.TenantID = c.GetString("tenant_id")
-	
+
 	traces, err := h.tracesService.SearchTraces(c.Request.Context(), &request)
 	if err != nil {
 		h.logger.Error("Trace search failed", "tenant", request.TenantID, "error", err)
@@ -133,9 +134,9 @@ func (h *TracesHandler) SearchTraces(c *gin.Context) {
 			"total":  traces.Total,
 		},
 		"metadata": gin.H{
-			"limit":         request.Limit,
-			"searchTime":    traces.SearchTime,
-			"tracesFound":   len(traces.Traces),
+			"limit":       request.Limit,
+			"searchTime":  traces.SearchTime,
+			"tracesFound": len(traces.Traces),
 		},
 	})
 }

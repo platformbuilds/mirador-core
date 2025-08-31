@@ -76,7 +76,7 @@ auth:
     secret: "" # Set via environment variable
     expiry_minutes: 1440 # 24 hours
 
-# Valley Cluster Caching
+# Valkey Cluster Caching
 cache:
   nodes:
     - "redis-cluster-0.redis-cluster:6379"

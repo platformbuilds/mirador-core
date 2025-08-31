@@ -118,10 +118,10 @@ func (c *Config) ValidateEndpoints() error {
 		return fmt.Errorf("invalid ALERT-ENGINE endpoint: %w", err)
 	}
 
-	// Validate Valley cluster nodes
+	// Validate Valkey cluster nodes
 	for _, node := range c.Cache.Nodes {
 		if err := ValidateRedisNode(node); err != nil {
-			return fmt.Errorf("invalid Valley cluster node %s: %w", node, err)
+			return fmt.Errorf("invalid Valkey cluster node %s: %w", node, err)
 		}
 	}
 

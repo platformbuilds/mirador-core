@@ -18,14 +18,14 @@ import (
 type PredictHandler struct {
 	predictClient *clients.PredictEngineClient
 	logsService   *services.VictoriaLogsService
-	cache         cache.ValleyCluster
+	cache         cache.ValkeyCluster
 	logger        logger.Logger
 }
 
 func NewPredictHandler(
 	predictClient *clients.PredictEngineClient,
 	logsService *services.VictoriaLogsService,
-	cache cache.ValleyCluster,
+	cache cache.ValkeyCluster,
 	logger logger.Logger,
 ) *PredictHandler {
 	return &PredictHandler{
@@ -146,7 +146,7 @@ func (h *PredictHandler) GetPredictedFractures(c *gin.Context) {
 		},
 	}
 
-	// Cache the response in Valley cluster
+	// Cache the response in Valkey cluster
 	h.cache.Set(c.Request.Context(), cacheKey, response, 5*time.Minute)
 
 	c.Header("X-Cache", "MISS")

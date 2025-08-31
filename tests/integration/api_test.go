@@ -1,5 +1,3 @@
-
-
 // ================================
 // tests/integration/api_test.go - Integration testing
 // ================================
@@ -8,19 +6,17 @@ package integration
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 	"github.com/mirador/core/internal/api"
 	"github.com/mirador/core/internal/config"
 	"github.com/mirador/core/pkg/logger"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type APITestSuite struct {
@@ -39,9 +35,9 @@ func (suite *APITestSuite) SetupSuite() {
 	}
 
 	logger := logger.New("error")
-	
+
 	// Mock dependencies for testing
-	mockCache := NewMockValleyCluster()
+	mockCache := NewMockValkeyCluster()
 	mockGRPCClients := NewMockGRPCClients()
 	mockVMServices := NewMockVMServices()
 
@@ -73,7 +69,7 @@ func (suite *APITestSuite) TestMetricsQLQuery() {
 	}
 
 	jsonData, _ := json.Marshal(queryRequest)
-	
+
 	req, _ := http.NewRequest("POST", suite.testServer.URL+"/api/v1/query", bytes.NewReader(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer test-session-token")
@@ -97,7 +93,7 @@ func (suite *APITestSuite) TestPredictFractureAnalysis() {
 	}
 
 	jsonData, _ := json.Marshal(analysisRequest)
-	
+
 	req, _ := http.NewRequest("POST", suite.testServer.URL+"/api/v1/predict/analyze", bytes.NewReader(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer test-session-token")
@@ -110,7 +106,7 @@ func (suite *APITestSuite) TestPredictFractureAnalysis() {
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "success", response["status"])
-	
+
 	data := response["data"].(map[string]interface{})
 	assert.NotNil(suite.T(), data["fractures"])
 	assert.NotNil(suite.T(), data["metadata"])
@@ -128,7 +124,7 @@ func (suite *APITestSuite) TestRCAInvestigation() {
 	}
 
 	jsonData, _ := json.Marshal(investigationRequest)
-	
+
 	req, _ := http.NewRequest("POST", suite.testServer.URL+"/api/v1/rca/investigate", bytes.NewReader(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer test-session-token")
@@ -141,7 +137,7 @@ func (suite *APITestSuite) TestRCAInvestigation() {
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "success", response["status"])
-	
+
 	correlation := response["data"].(map[string]interface{})["correlation"].(map[string]interface{})
 	assert.NotNil(suite.T(), correlation["root_cause"])
 	assert.NotNil(suite.T(), correlation["red_anchors"]) // Verify red anchors pattern

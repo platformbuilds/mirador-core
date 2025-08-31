@@ -8,11 +8,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/mirador/core/pkg/cache"
-	"github.com/mirador/core/pkg/logger"
 )
 
-// RateLimiter implements per-tenant rate limiting using Valley cluster
-func RateLimiter(valleyCache cache.ValleyCluster) gin.HandlerFunc {
+// RateLimiter implements per-tenant rate limiting using Valkey cluster
+func RateLimiter(valleyCache cache.ValkeyCluster) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tenantID := c.GetString("tenant_id")
 		if tenantID == "" {
@@ -26,7 +25,7 @@ func RateLimiter(valleyCache cache.ValleyCluster) gin.HandlerFunc {
 		// Get current request count
 		countBytes, err := valleyCache.Get(c.Request.Context(), key)
 		var currentCount int64 = 0
-		
+
 		if err == nil {
 			if count, err := strconv.ParseInt(string(countBytes), 10, 64); err == nil {
 				currentCount = count
@@ -39,10 +38,10 @@ func RateLimiter(valleyCache cache.ValleyCluster) gin.HandlerFunc {
 			c.Header("X-Rate-Limit-Limit", strconv.FormatInt(maxRequests, 10))
 			c.Header("X-Rate-Limit-Remaining", "0")
 			c.Header("X-Rate-Limit-Reset", strconv.FormatInt((window+1)*60, 10))
-			
+
 			c.JSON(http.StatusTooManyRequests, gin.H{
-				"status": "error",
-				"error":  "Rate limit exceeded",
+				"status":      "error",
+				"error":       "Rate limit exceeded",
 				"retry_after": 60,
 			})
 			c.Abort()

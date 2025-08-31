@@ -5,11 +5,13 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mirador/core/internal/metrics"
 	"github.com/mirador/core/internal/models"
 	"github.com/mirador/core/internal/services"
 	"github.com/mirador/core/internal/utils"
@@ -19,12 +21,12 @@ import (
 
 type LogsQLHandler struct {
 	logsService *services.VictoriaLogsService
-	cache       cache.ValleyCluster
+	cache       cache.ValkeyCluster
 	logger      logger.Logger
 	validator   *utils.QueryValidator
 }
 
-func NewLogsQLHandler(logsService *services.VictoriaLogsService, cache cache.ValleyCluster, logger logger.Logger) *LogsQLHandler {
+func NewLogsQLHandler(logsService *services.VictoriaLogsService, cache cache.ValkeyCluster, logger logger.Logger) *LogsQLHandler {
 	return &LogsQLHandler{
 		logsService: logsService,
 		cache:       cache,
@@ -67,7 +69,7 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 			"error", err,
 			"executionTime", executionTime,
 		)
-		
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
 			"error":  "LogsQL query execution failed",
@@ -81,9 +83,9 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data": gin.H{
-			"logs":     result.Logs,
-			"fields":   result.Fields,
-			"stats":    result.Stats,
+			"logs":   result.Logs,
+			"fields": result.Fields,
+			"stats":  result.Stats,
 		},
 		"metadata": gin.H{
 			"executionTime": executionTime.Milliseconds(),
@@ -129,7 +131,7 @@ func (h *LogsQLHandler) StoreEvent(c *gin.Context) {
 	}
 
 	tenantID := c.GetString("tenant_id")
-	
+
 	// Add metadata
 	event["_time"] = time.Now().Format(time.RFC3339)
 	event["tenant_id"] = tenantID
@@ -148,9 +150,9 @@ func (h *LogsQLHandler) StoreEvent(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"status": "success",
 		"data": gin.H{
-			"stored":     true,
-			"timestamp":  event["_time"],
-			"tenantId":   tenantID,
+			"stored":    true,
+			"timestamp": event["_time"],
+			"tenantId":  tenantID,
 		},
 	})
 }

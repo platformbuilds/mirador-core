@@ -11,11 +11,11 @@ import (
 )
 
 type ConfigHandler struct {
-	cache  cache.ValleyCluster
+	cache  cache.ValkeyCluster
 	logger logger.Logger
 }
 
-func NewConfigHandler(cache cache.ValleyCluster, logger logger.Logger) *ConfigHandler {
+func NewConfigHandler(cache cache.ValkeyCluster, logger logger.Logger) *ConfigHandler {
 	return &ConfigHandler{
 		cache:  cache,
 		logger: logger,
@@ -40,14 +40,14 @@ func (h *ConfigHandler) GetUserSettings(c *gin.Context) {
 	// Default settings if none exist
 	if session.Settings == nil {
 		session.Settings = map[string]interface{}{
-			"dashboard_layout":    "default",
-			"refresh_interval":    30,
-			"timezone":           "UTC",
-			"theme":              "light",
-			"notifications":      map[string]bool{
-				"email":       true,
-				"slack":       false,
-				"push":        true,
+			"dashboard_layout": "default",
+			"refresh_interval": 30,
+			"timezone":         "UTC",
+			"theme":            "light",
+			"notifications": map[string]bool{
+				"email": true,
+				"slack": false,
+				"push":  true,
 			},
 			"query_preferences": map[string]interface{}{
 				"default_time_range": "1h",
@@ -60,9 +60,9 @@ func (h *ConfigHandler) GetUserSettings(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data": gin.H{
-			"userId":   userID,
-			"tenantId": tenantID,
-			"settings": session.Settings,
+			"userId":      userID,
+			"tenantId":    tenantID,
+			"settings":    session.Settings,
 			"lastUpdated": session.LastActivity,
 		},
 	})
@@ -71,7 +71,7 @@ func (h *ConfigHandler) GetUserSettings(c *gin.Context) {
 // PUT /api/v1/config/user-settings - Update user-driven settings
 func (h *ConfigHandler) UpdateUserSettings(c *gin.Context) {
 	userID := c.GetString("user_id")
-	
+
 	var updateRequest map[string]interface{}
 	if err := c.ShouldBindJSON(&updateRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -102,7 +102,7 @@ func (h *ConfigHandler) UpdateUserSettings(c *gin.Context) {
 		session.Settings[key] = value
 	}
 
-	// Store updated session in Valley cluster
+	// Store updated session in Valkey cluster
 	if err := h.cache.SetSession(c.Request.Context(), session); err != nil {
 		h.logger.Error("Failed to update user settings", "userId", userID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -140,7 +140,7 @@ func (h *ConfigHandler) GetDataSources(c *gin.Context) {
 		},
 		{
 			ID:       "vl-logs",
-			Name:     "VictoriaLogs", 
+			Name:     "VictoriaLogs",
 			Type:     "logs",
 			URL:      "http://vl-select:9428",
 			Status:   "connected",

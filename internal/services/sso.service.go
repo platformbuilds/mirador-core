@@ -16,12 +16,12 @@ import (
 
 type SSOService struct {
 	config   config.AuthConfig
-	cache    cache.ValleyCluster
+	cache    cache.ValkeyCluster
 	logger   logger.Logger
 	ldapConn *ldap.Conn
 }
 
-func NewSSOService(cfg config.AuthConfig, cache cache.ValleyCluster, logger logger.Logger) (*SSOService, error) {
+func NewSSOService(cfg config.AuthConfig, cache cache.ValkeyCluster, logger logger.Logger) (*SSOService, error) {
 	service := &SSOService{
 		config: cfg,
 		cache:  cache,
@@ -61,7 +61,7 @@ func (s *SSOService) AuthenticateUser(ctx context.Context, username, password st
 		return nil, err
 	}
 
-	// Create user session with Valley cluster caching
+	// Create user session with Valkey cluster caching
 	session := &models.UserSession{
 		ID:           generateSessionID(),
 		UserID:       userInfo.UserID,
@@ -74,7 +74,7 @@ func (s *SSOService) AuthenticateUser(ctx context.Context, username, password st
 		UserAgent:    "", // Set by middleware
 	}
 
-	// Store session in Valley cluster
+	// Store session in Valkey cluster
 	if err := s.cache.SetSession(ctx, session); err != nil {
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
@@ -125,7 +125,7 @@ func (s *SSOService) ValidateOAuthToken(ctx context.Context, tokenString string)
 		Settings:     make(map[string]interface{}),
 	}
 
-	// Store in Valley cluster
+	// Store in Valkey cluster
 	if err := s.cache.SetSession(ctx, session); err != nil {
 		return nil, err
 	}

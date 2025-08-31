@@ -16,14 +16,14 @@ import (
 type RCAHandler struct {
 	rcaClient   *clients.RCAEngineClient
 	logsService *services.VictoriaLogsService
-	cache       cache.ValleyCluster
+	cache       cache.ValkeyCluster
 	logger      logger.Logger
 }
 
 func NewRCAHandler(
 	rcaClient *clients.RCAEngineClient,
 	logsService *services.VictoriaLogsService,
-	cache cache.ValleyCluster,
+	cache cache.ValkeyCluster,
 	logger logger.Logger,
 ) *RCAHandler {
 	return &RCAHandler{

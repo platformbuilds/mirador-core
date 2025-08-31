@@ -49,7 +49,7 @@ func LoadSecrets(config *Config) error {
 		config.Auth.OAuth.ClientSecret = strings.TrimSpace(string(secret))
 	}
 
-	// Load Redis password for Valley cluster
+	// Load Redis password for Valkey cluster
 	if redisPassword := os.Getenv("REDIS_PASSWORD"); redisPassword != "" {
 		config.Cache.Password = redisPassword
 	} else if passwordFile := os.Getenv("REDIS_PASSWORD_FILE"); passwordFile != "" {

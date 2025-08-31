@@ -1,5 +1,3 @@
-
-
 // ================================
 // internal/metrics/metrics.go - Self-monitoring for MIRADOR-CORE
 // ================================
@@ -48,7 +46,7 @@ var (
 		[]string{"service", "method"},
 	)
 
-	// Valley Cluster cache metrics
+	// Valkey Cluster cache metrics
 	CacheRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "mirador_core_cache_requests_total",

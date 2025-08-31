@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,12 +18,12 @@ import (
 
 type MetricsQLHandler struct {
 	metricsService *services.VictoriaMetricsService
-	cache          cache.ValleyCluster
+	cache          cache.ValkeyCluster
 	logger         logger.Logger
 	validator      *utils.QueryValidator
 }
 
-func NewMetricsQLHandler(metricsService *services.VictoriaMetricsService, cache cache.ValleyCluster, logger logger.Logger) *MetricsQLHandler {
+func NewMetricsQLHandler(metricsService *services.VictoriaMetricsService, cache cache.ValkeyCluster, logger logger.Logger) *MetricsQLHandler {
 	return &MetricsQLHandler{
 		metricsService: metricsService,
 		cache:          cache,
@@ -41,8 +41,8 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 	if err := c.ShouldBindJSON(&request); err != nil {
 		metrics.HTTPRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), "400", tenantID).Inc()
 		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  "Invalid query request format",
+			"status":  "error",
+			"error":   "Invalid query request format",
 			"details": err.Error(),
 		})
 		return
@@ -58,7 +58,7 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 		return
 	}
 
-	// Check Valley cluster cache for query results
+	// Check Valkey cluster cache for query results
 	queryHash := generateQueryHash(request.Query, request.Time, tenantID)
 	if cached, err := h.cache.GetCachedQueryResult(c.Request.Context(), queryHash); err == nil {
 		var cachedResult models.MetricsQLQueryResponse
@@ -86,14 +86,14 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 		executionTime := time.Since(start)
 		metrics.HTTPRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), "500", tenantID).Inc()
 		metrics.QueryExecutionDuration.WithLabelValues("metricsql", tenantID).Observe(executionTime.Seconds())
-		
-		h.logger.Error("MetricsQL query execution failed", 
-			"query", request.Query, 
-			"tenant", tenantID, 
+
+		h.logger.Error("MetricsQL query execution failed",
+			"query", request.Query,
+			"tenant", tenantID,
 			"error", err,
 			"executionTime", executionTime,
 		)
-		
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
 			"error":  "Query execution failed",
@@ -102,8 +102,8 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 	}
 
 	executionTime := time.Since(start)
-	
-	// Cache successful results in Valley cluster for faster fetch
+
+	// Cache successful results in Valkey cluster for faster fetch
 	if result.Status == "success" {
 		cacheResponse := models.MetricsQLQueryResponse{
 			Data:          result.Data,
@@ -160,13 +160,13 @@ func (h *MetricsQLHandler) ExecuteRangeQuery(c *gin.Context) {
 	result, err := h.metricsService.ExecuteRangeQuery(c.Request.Context(), &request)
 	if err != nil {
 		executionTime := time.Since(start)
-		h.logger.Error("MetricsQL range query failed", 
+		h.logger.Error("MetricsQL range query failed",
 			"query", request.Query,
 			"timeRange", fmt.Sprintf("%s to %s", request.Start, request.End),
 			"error", err,
 			"executionTime", executionTime,
 		)
-		
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
 			"error":  "Range query execution failed",
