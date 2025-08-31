@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	pb "github.com/mirador/core/internal/grpc/proto/rca"
-	"github.com/mirador/core/internal/models"
-	"github.com/mirador/core/pkg/logger"
+	pb "github.com/platformbuilds/miradorstack/internal/grpc/proto/rca"
+	"github.com/platformbuilds/miradorstack/internal/models"
+	"github.com/platformbuilds/miradorstack/pkg/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

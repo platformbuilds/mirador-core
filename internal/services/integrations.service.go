@@ -12,9 +12,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/mirador/core/internal/config"
-	"github.com/mirador/core/internal/models"
-	"github.com/mirador/core/pkg/logger"
+	"github.com/platformbuilds/miradorstack/internal/config"
+	"github.com/platformbuilds/miradorstack/internal/models"
+	"github.com/platformbuilds/miradorstack/pkg/logger"
 )
 
 type IntegrationsService struct {

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mirador/core/internal/metrics"
+	"github.com/platformbuilds/miradorstack/internal/metrics"
 )
 
 // MetricsMiddleware collects HTTP request metrics for MIRADOR-CORE monitoring

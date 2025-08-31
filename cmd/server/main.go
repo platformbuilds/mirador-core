@@ -8,12 +8,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mirador/core/internal/api"
-	"github.com/mirador/core/internal/config"
-	"github.com/mirador/core/internal/grpc/clients"
-	"github.com/mirador/core/internal/services"
-	"github.com/mirador/core/pkg/cache"
-	"github.com/mirador/core/pkg/logger"
+	"github.com/platformbuilds/miradorstack/internal/api"
+	"github.com/platformbuilds/miradorstack/internal/config"
+	"github.com/platformbuilds/miradorstack/internal/grpc/clients"
+	"github.com/platformbuilds/miradorstack/internal/services"
+	"github.com/platformbuilds/miradorstack/pkg/cache"
+	"github.com/platformbuilds/miradorstack/pkg/logger"
 )
 
 func main() {

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mirador/core/internal/models"
+	"github.com/platformbuilds/miradorstack/internal/models"
 )
 
 // GenerateSessionID creates a secure session identifier

@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mirador/core/internal/config"
-	"github.com/mirador/core/internal/grpc/proto/alert"
-	"github.com/mirador/core/internal/grpc/proto/predict"
-	"github.com/mirador/core/internal/grpc/proto/rca"
-	"github.com/mirador/core/pkg/logger"
+	"github.com/platformbuilds/miradorstack/internal/config"
+	"github.com/platformbuilds/miradorstack/internal/grpc/proto/alert"
+	"github.com/platformbuilds/miradorstack/internal/grpc/proto/predict"
+	"github.com/platformbuilds/miradorstack/internal/grpc/proto/rca"
+	"github.com/platformbuilds/miradorstack/pkg/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

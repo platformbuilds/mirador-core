@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mirador/core/pkg/logger"
+	"github.com/platformbuilds/miradorstack/pkg/logger"
 )
 
 // RBACMiddleware enforces role-based access control

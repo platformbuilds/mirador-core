@@ -7,9 +7,9 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"github.com/mirador/core/internal/grpc/proto/predict"
-	"github.com/mirador/core/internal/models"
-	"github.com/mirador/core/pkg/logger"
+	"github.com/platformbuilds/miradorstack/internal/grpc/proto/predict"
+	"github.com/platformbuilds/miradorstack/internal/models"
+	"github.com/platformbuilds/miradorstack/pkg/logger"
 )
 
 // PredictEngineClient wraps the gRPC client for PREDICT-ENGINE

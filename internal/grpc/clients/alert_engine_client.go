@@ -7,9 +7,9 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"github.com/mirador/core/internal/grpc/proto/alert"
-	"github.com/mirador/core/internal/models"
-	"github.com/mirador/core/pkg/logger"
+	"github.com/platformbuilds/miradorstack/internal/grpc/proto/alert"
+	"github.com/platformbuilds/miradorstack/internal/models"
+	"github.com/platformbuilds/miradorstack/pkg/logger"
 )
 
 // AlertEngineClient wraps the gRPC client for ALERT-ENGINE

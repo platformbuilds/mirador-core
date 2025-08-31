@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mirador/core/internal/models"
-	"github.com/mirador/core/pkg/cache"
-	"github.com/mirador/core/pkg/logger"
+	"github.com/platformbuilds/miradorstack/internal/models"
+	"github.com/platformbuilds/miradorstack/pkg/cache"
+	"github.com/platformbuilds/miradorstack/pkg/logger"
 )
 
 type ConfigHandler struct {

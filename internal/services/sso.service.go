@@ -8,10 +8,10 @@ import (
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/mirador/core/internal/config"
-	"github.com/mirador/core/internal/models"
-	"github.com/mirador/core/pkg/cache"
-	"github.com/mirador/core/pkg/logger"
+	"github.com/platformbuilds/miradorstack/internal/config"
+	"github.com/platformbuilds/miradorstack/internal/models"
+	"github.com/platformbuilds/miradorstack/pkg/cache"
+	"github.com/platformbuilds/miradorstack/pkg/logger"
 )
 
 type SSOService struct {
