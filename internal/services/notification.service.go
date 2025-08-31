@@ -2,9 +2,11 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/mirador/core/internal/config"
+	"github.com/mirador/core/internal/metrics"
 	"github.com/mirador/core/internal/models"
 	"github.com/mirador/core/pkg/logger"
 )
@@ -62,12 +64,12 @@ func (s *NotificationService) SendNotification(ctx context.Context, notification
 // ProcessPredictionNotification handles AI prediction notifications
 func (s *NotificationService) ProcessPredictionNotification(ctx context.Context, prediction *models.SystemFracture) error {
 	notification := &models.Notification{
-		ID:        fmt.Sprintf("pred-%s", prediction.ID),
-		Type:      "prediction",
-		Title:     fmt.Sprintf("System Fracture Predicted: %s", prediction.Component),
-		Message:   fmt.Sprintf("Component %s has %0.1f%% probability of fracture in %s. Severity: %s", 
-			prediction.Component, 
-			prediction.Probability*100, 
+		ID:    fmt.Sprintf("pred-%s", prediction.ID),
+		Type:  "prediction",
+		Title: fmt.Sprintf("System Fracture Predicted: %s", prediction.Component),
+		Message: fmt.Sprintf("Component %s has %0.1f%% probability of fracture in %s. Severity: %s",
+			prediction.Component,
+			prediction.Probability*100,
 			prediction.TimeToFracture.String(),
 			prediction.Severity),
 		Component: prediction.Component,
@@ -81,10 +83,10 @@ func (s *NotificationService) ProcessPredictionNotification(ctx context.Context,
 // ProcessCorrelationNotification handles RCA correlation notifications
 func (s *NotificationService) ProcessCorrelationNotification(ctx context.Context, correlation *models.CorrelationResult) error {
 	notification := &models.Notification{
-		ID:        fmt.Sprintf("rca-%s", correlation.CorrelationID),
-		Type:      "correlation",
-		Title:     fmt.Sprintf("Root Cause Found: %s", correlation.IncidentID),
-		Message:   fmt.Sprintf("Root cause identified: %s (Confidence: %0.1f%%). Affected services: %v",
+		ID:    fmt.Sprintf("rca-%s", correlation.CorrelationID),
+		Type:  "correlation",
+		Title: fmt.Sprintf("Root Cause Found: %s", correlation.IncidentID),
+		Message: fmt.Sprintf("Root cause identified: %s (Confidence: %0.1f%%). Affected services: %v",
 			correlation.RootCause,
 			correlation.Confidence*100,
 			correlation.AffectedServices),

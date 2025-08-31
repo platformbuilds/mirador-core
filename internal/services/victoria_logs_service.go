@@ -22,6 +22,7 @@ type VictoriaLogsService struct {
 	timeout   time.Duration
 	client    *http.Client
 	logger    logger.Logger
+	current   int
 }
 
 func NewVictoriaLogsService(cfg config.VictoriaLogsConfig, logger logger.Logger) *VictoriaLogsService {
@@ -132,4 +133,36 @@ func (s *VictoriaLogsService) QueryPredictionEvents(ctx context.Context, query, 
 func (s *VictoriaLogsService) selectEndpoint() string {
 	// Simple round-robin load balancing
 	return s.endpoints[time.Now().Unix()%int64(len(s.endpoints))]
+}
+
+// HealthCheck checks VictoriaLogs health
+func (s *VictoriaLogsService) HealthCheck(ctx context.Context) error {
+	endpoint := s.selectEndpoint()
+	req, err := http.NewRequestWithContext(ctx, "GET", endpoint+"/health", nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("VictoriaLogs health check failed: status %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+// selectEndpoint implements round-robin load balancing
+func (s *VictoriaLogsService) selectEndpoint() string {
+	if len(s.endpoints) == 0 {
+		return "http://localhost:9428" // Default fallback
+	}
+
+	endpoint := s.endpoints[s.current%len(s.endpoints)]
+	s.current++
+	return endpoint
 }
