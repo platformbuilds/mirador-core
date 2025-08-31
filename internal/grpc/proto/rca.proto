@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package mirador.rca;
+
+option go_package = "github.com/mirador/core/internal/grpc/proto/rca";
+
+service RCAEngineService {
+  // Investigate incident using red anchors pattern
+  rpc InvestigateIncident(InvestigateRequest) returns (InvestigateResponse);
+  
+  // Get active correlations
+  rpc GetActiveCorrelations(GetCorrelationsRequest) returns (GetCorrelationsResponse);
+  
+  // Get failure patterns
+  rpc GetFailurePatterns(GetPatternsRequest) returns (GetPatternsResponse);
+}
+
+message InvestigateRequest {
+  string incident_id = 1;
+  repeated string symptoms = 2;
+  TimeRange time_range = 3;
+  repeated string affected_services = 4;
+  double anomaly_threshold = 5;
+}
+
+message InvestigateResponse {
+  string correlation_id = 1;
+  string root_cause = 2;
+  double confidence = 3;
+  repeated string affected_services = 4;
+  repeated TimelineEvent timeline = 5;
+  repeated RedAnchor red_anchors = 6; // Anomaly score pattern
+  repeated string recommendations = 7;
+}
+
+message RedAnchor {
+  string service = 1;
+  string metric = 2;
+  double anomaly_score = 3;
+  double threshold = 4;
+  int64 timestamp_unix = 5;
+  string data_type = 6; // metrics, logs, traces
+}
+
+message TimeRange {
+  int64 start_unix = 1;
+  int64 end_unix = 2;
+}
+
+message TimelineEvent {
+  int64 timestamp_unix = 1;
+  string event = 2;
+  string service = 3;
+  string severity = 4;
+  double anomaly_score = 5;
+}
+
+message GetCorrelationsRequest {}
+
+message GetCorrelationsResponse {
+  repeated Correlation correlations = 1;
+}
+
+message Correlation {
+  string correlation_id = 1;
+  string root_cause = 2;
+  double confidence = 3;
+  repeated string affected_services = 4;
+  repeated TimelineEvent timeline = 5;
+  repeated RedAnchor red_anchors = 6;
+  repeated string recommendations = 7;
+}

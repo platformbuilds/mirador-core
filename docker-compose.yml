@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # Redis Cluster for Valley caching
+  redis-cluster:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
+  # VictoriaMetrics for metrics storage
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:latest
+    ports:
+      - "8481:8428"
+    command:
+      - '--storageDataPath=/victoria-metrics-data'
+      - '--httpListenAddr=:8428'
+      - '--retentionPeriod=12'
+    volumes:
+      - vm_data:/victoria-metrics-data
+
+  # VictoriaLogs for log storage  
+  victorialogs:
+    image: victoriametrics/victoria-logs:latest
+    ports:
+      - "9428:9428"
+    command:
+      - '--storageDataPath=/victoria-logs-data'
+      - '--httpListenAddr=:9428'
+    volumes:
+      - vl_data:/victoria-logs-data
+
+  # VictoriaTraces for trace storage
+  victoriatraces:
+    image: victoriametrics/victoria-traces:latest
+    ports:
+      - "10428:10428"
+    command:
+      - '--storageDataPath=/victoria-traces-data'
+      - '--httpListenAddr=:10428'
+    volumes:
+      - vt_data:/victoria-traces-data
+
+  # Mock AI engines for development
+  mock-predict-engine:
+    image: mirador/mock-predict-engine:latest
+    ports:
+      - "9091:9091"
+    environment:
+      - GRPC_PORT=9091
+
+  mock-rca-engine:
+    image: mirador/mock-rca-engine:latest  
+    ports:
+      - "9092:9092"
+    environment:
+      - GRPC_PORT=9092
+
+  mock-alert-engine:
+    image: mirador/mock-alert-engine:latest
+    ports:
+      - "9093:9093"
+    environment:
+      - GRPC_PORT=9093
+
+  # MIRADOR-CORE development instance
+  mirador-core-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=debug
+      - VM_ENDPOINTS=http://victoriametrics:8428
+      - VL_ENDPOINTS=http://victorialogs:9428
+      - VT_ENDPOINTS=http://victoriatraces:10428
+      - PREDICT_ENGINE_GRPC=mock-predict-engine:9091
+      - RCA_ENGINE_GRPC=mock-rca-engine:9092
+      - ALERT_ENGINE_GRPC=mock-alert-engine:9093
+      - VALLEY_CACHE_NODES=redis-cluster:6379
+    depends_on:
+      - redis-cluster
+      - victoriametrics
+      - victorialogs
+      - victoriatraces
+      - mock-predict-engine
+      - mock-rca-engine
+      - mock-alert-engine
+    volumes:
+      - .:/app
+      - go_mod_cache:/go/pkg/mod
+
+volumes:
+  redis_data:
+  vm_data:
+  vl_data:
+  vt_data:
+  go_mod_cache:

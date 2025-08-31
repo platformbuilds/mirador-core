@@ -1,0 +1,146 @@
+# MIRADOR-CORE Configuration File
+# Complete configuration with all available options
+
+environment: development
+port: 8080
+log_level: info
+
+# VictoriaMetrics Ecosystem Configuration
+database:
+  victoria_metrics:
+    endpoints:
+      - "http://vm-select-0.vm-select:8481"
+      - "http://vm-select-1.vm-select:8481"
+    timeout: 30000
+    username: ""
+    password: "" # Set via environment variable
+    
+  victoria_logs:
+    endpoints:
+      - "http://vl-select-0.vl-select:9428"
+      - "http://vl-select-1.vl-select:9428"
+    timeout: 30000
+    username: ""
+    password: ""
+    
+  victoria_traces:
+    endpoints:
+      - "http://vt-select-0.vt-select:10428"
+      - "http://vt-select-1.vt-select:10428"
+    timeout: 30000
+    username: ""
+    password: ""
+
+# AI Engines gRPC Configuration
+grpc:
+  predict_engine:
+    endpoint: "predict-engine.mirador:9091"
+    models:
+      - "isolation_forest"
+      - "lstm_trend" 
+      - "anomaly_detector"
+      - "ensemble_predictor"
+    timeout: 30000
+    
+  rca_engine:
+    endpoint: "rca-engine.mirador:9092"
+    correlation_threshold: 0.85
+    timeout: 30000
+    
+  alert_engine:
+    endpoint: "alert-engine.mirador:9093"
+    rules_path: "/etc/mirador/alert-rules.yaml"
+    timeout: 30000
+
+# Authentication and Authorization
+auth:
+  ldap:
+    url: "ldap://ldap.company.com"
+    base_dn: "dc=company,dc=com"
+    username: "cn=mirador,ou=services,dc=company,dc=com"
+    password: "" # Set via environment variable
+    enabled: true
+    
+  oauth:
+    client_id: "mirador-core"
+    client_secret: "" # Set via environment variable
+    redirect_url: "https://mirador.company.com/auth/callback"
+    issuer: "https://auth.company.com"
+    enabled: false
+    
+  rbac:
+    enabled: true
+    admin_role: "mirador-admin"
+    
+  jwt:
+    secret: "" # Set via environment variable
+    expiry_minutes: 1440 # 24 hours
+
+# Valley Cluster Caching
+cache:
+  nodes:
+    - "redis-cluster-0.redis-cluster:6379"
+    - "redis-cluster-1.redis-cluster:6379"
+    - "redis-cluster-2.redis-cluster:6379"
+  ttl: 300 # 5 minutes default
+  password: "" # Set via environment variable
+  db: 0
+
+# Cross-Origin Resource Sharing
+cors:
+  allowed_origins:
+    - "https://mirador.company.com"
+    - "https://mirador-ui.company.com"
+  allowed_methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+    - "OPTIONS"
+  allowed_headers:
+    - "Content-Type"
+    - "Authorization"
+    - "X-Tenant-ID"
+    - "X-User-ID"
+  exposed_headers:
+    - "X-Cache"
+    - "X-Rate-Limit-Remaining"
+    - "X-Rate-Limit-Reset"
+  allow_credentials: true
+  max_age: 3600
+
+# External Integrations
+integrations:
+  slack:
+    webhook_url: "" # Set via environment variable
+    channel: "#mirador-alerts"
+    enabled: false
+    
+  ms_teams:
+    webhook_url: "" # Set via environment variable
+    enabled: false
+    
+  email:
+    smtp_host: "smtp.company.com"
+    smtp_port: 587
+    username: "mirador@company.com"
+    password: "" # Set via environment variable
+    from_address: "mirador@company.com"
+    enabled: false
+
+# Real-time WebSocket Streaming
+websocket:
+  enabled: true
+  max_connections: 1000
+  read_buffer_size: 1024
+  write_buffer_size: 1024
+  ping_interval: 30 # seconds
+  max_message_size: 1048576 # 1MB
+
+# Self-monitoring Configuration
+monitoring:
+  enabled: true
+  metrics_path: "/metrics"
+  prometheus_enabled: true
+  tracing_enabled: false
+  jaeger_endpoint: "http://jaeger:14268/api/traces"
