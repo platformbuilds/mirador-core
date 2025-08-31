@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/mirador/core/internal/config"
 	"github.com/mirador/core/internal/models"
 	"github.com/mirador/core/pkg/logger"
@@ -156,13 +157,80 @@ func (s *VictoriaLogsService) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-// selectEndpoint implements round-robin load balancing
-func (s *VictoriaLogsService) selectEndpoint() string {
-	if len(s.endpoints) == 0 {
-		return "http://localhost:9428" // Default fallback
+// GET /api/v1/logs/fields - Get available log fields
+func (h *LogsQLHandler) GetFields(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	fields, err := h.logsService.GetFields(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to get log fields", "tenant", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve log fields",
+		})
+		return
 	}
 
-	endpoint := s.endpoints[s.current%len(s.endpoints)]
-	s.current++
-	return endpoint
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"fields": fields,
+			"total":  len(fields),
+		},
+	})
+}
+
+// POST /api/v1/logs/export - Export logs in specified format
+func (h *LogsQLHandler) ExportLogs(c *gin.Context) {
+	var request models.LogsExportRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid export request format",
+		})
+		return
+	}
+
+	request.TenantID = c.GetString("tenant_id")
+
+	// Validate LogsQL query
+	if err := h.validator.ValidateLogsQL(request.Query); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  fmt.Sprintf("Invalid LogsQL query: %s", err.Error()),
+		})
+		return
+	}
+
+	// Export logs
+	result, err := h.logsService.ExportLogs(c.Request.Context(), &request)
+	if err != nil {
+		h.logger.Error("Failed to export logs", "tenant", request.TenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to export logs",
+		})
+		return
+	}
+
+	// Set appropriate headers for file download
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", result.Filename))
+	c.Header("Content-Type", getContentType(result.Format))
+	c.Header("Content-Length", fmt.Sprintf("%d", result.Size))
+
+	c.Data(http.StatusOK, getContentType(result.Format), result.Data)
+}
+
+// Helper function to get content type based on format
+func getContentType(format string) string {
+	switch format {
+	case "json":
+		return "application/json"
+	case "csv":
+		return "text/csv"
+	case "txt":
+		return "text/plain"
+	default:
+		return "application/octet-stream"
+	}
 }

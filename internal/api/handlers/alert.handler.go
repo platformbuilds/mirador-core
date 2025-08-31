@@ -11,6 +11,7 @@ import (
 	"github.com/mirador/core/internal/grpc/clients"
 	"github.com/mirador/core/internal/models"
 	"github.com/mirador/core/internal/services"
+	"github.com/mirador/core/internal/utils"
 	"github.com/mirador/core/pkg/cache"
 	"github.com/mirador/core/pkg/logger"
 )
@@ -84,9 +85,9 @@ func (h *AlertHandler) GetAlerts(c *gin.Context) {
 			"alerts": alerts,
 			"total":  len(alerts),
 			"summary": gin.H{
-				"critical": countAlertsBySeverity(alerts, "critical"),
-				"warning":  countAlertsBySeverity(alerts, "warning"),
-				"info":     countAlertsBySeverity(alerts, "info"),
+				"critical": utils.CountAlertsBySeverity(alerts, "critical"),
+				"warning":  utils.CountAlertsBySeverity(alerts, "warning"),
+				"info":     utils.CountAlertsBySeverity(alerts, "info"),
 			},
 		},
 		"timestamp": time.Now().Format(time.RFC3339),
