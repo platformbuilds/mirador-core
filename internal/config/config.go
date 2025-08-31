@@ -1,20 +1,10 @@
 package config
 
-import (
-	"fmt"
-	"os"
-	"strconv"
-	"strings"
-	"time"
-
-	"github.com/spf13/viper"
-)
-
 type Config struct {
 	Environment string `mapstructure:"environment" yaml:"environment"`
 	Port        int    `mapstructure:"port" yaml:"port"`
 	LogLevel    string `mapstructure:"log_level" yaml:"log_level"`
-	
+
 	Database     DatabaseConfig     `mapstructure:"database" yaml:"database"`
 	GRPC         GRPCConfig         `mapstructure:"grpc" yaml:"grpc"`
 	Auth         AuthConfig         `mapstructure:"auth" yaml:"auth"`
@@ -112,7 +102,7 @@ type JWTConfig struct {
 	ExpiryMin int    `mapstructure:"expiry_minutes" yaml:"expiry_minutes"`
 }
 
-// CacheConfig handles Valley cluster caching configuration
+// CacheConfig handles Valkey cluster caching configuration
 type CacheConfig struct {
 	Nodes    []string `mapstructure:"nodes" yaml:"nodes"`
 	TTL      int      `mapstructure:"ttl" yaml:"ttl"` // seconds
@@ -159,12 +149,12 @@ type EmailConfig struct {
 
 // WebSocketConfig handles real-time streaming configuration
 type WebSocketConfig struct {
-	Enabled           bool `mapstructure:"enabled" yaml:"enabled"`
-	MaxConnections    int  `mapstructure:"max_connections" yaml:"max_connections"`
-	ReadBufferSize    int  `mapstructure:"read_buffer_size" yaml:"read_buffer_size"`
-	WriteBufferSize   int  `mapstructure:"write_buffer_size" yaml:"write_buffer_size"`
-	PingInterval      int  `mapstructure:"ping_interval" yaml:"ping_interval"` // seconds
-	MaxMessageSize    int  `mapstructure:"max_message_size" yaml:"max_message_size"`
+	Enabled         bool `mapstructure:"enabled" yaml:"enabled"`
+	MaxConnections  int  `mapstructure:"max_connections" yaml:"max_connections"`
+	ReadBufferSize  int  `mapstructure:"read_buffer_size" yaml:"read_buffer_size"`
+	WriteBufferSize int  `mapstructure:"write_buffer_size" yaml:"write_buffer_size"`
+	PingInterval    int  `mapstructure:"ping_interval" yaml:"ping_interval"` // seconds
+	MaxMessageSize  int  `mapstructure:"max_message_size" yaml:"max_message_size"`
 }
 
 // MonitoringConfig handles self-monitoring configuration

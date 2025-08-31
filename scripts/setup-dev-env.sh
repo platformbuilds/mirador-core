@@ -28,7 +28,7 @@ go install github.com/swaggo/swag/cmd/swag@latest
 # Setup local development dependencies
 echo "Setting up local dependencies..."
 
-# Start Redis cluster for Valley caching
+# Start Redis cluster for Valkey caching
 docker-compose up -d redis-cluster
 
 # Start VictoriaMetrics ecosystem

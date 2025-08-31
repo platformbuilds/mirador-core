@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Redis Cluster for Valley caching
+  # Redis Cluster for Valkey caching
   redis-cluster:
     image: redis:7-alpine
     ports:

@@ -18,14 +18,14 @@ import (
 type AlertHandler struct {
 	alertClient         *clients.AlertEngineClient
 	integrationsService *services.IntegrationsService
-	cache               cache.ValleyCluster
+	cache               cache.ValkeyCluster
 	logger              logger.Logger
 }
 
 func NewAlertHandler(
 	alertClient *clients.AlertEngineClient,
 	integrationsService *services.IntegrationsService,
-	cache cache.ValleyCluster,
+	cache cache.ValkeyCluster,
 	logger logger.Logger,
 ) *AlertHandler {
 	return &AlertHandler{

@@ -10,7 +10,7 @@ MIRADOR-CORE serves as the central orchestration layer for the MIRADOR observabi
 - **AI Engine Integration** via gRPC + Protocol Buffers
 - **VictoriaMetrics Ecosystem** connectivity (Metrics, Logs, Traces)
 - **Enterprise Authentication** (LDAP/AD, OAuth 2.0, RBAC)
-- **Valley Cluster Caching** for high-performance data access
+- **Valkey Cluster Caching** for high-performance data access
 - **Real-time WebSocket Streams** for live data
 
 ## Key Features
@@ -27,7 +27,7 @@ MIRADOR-CORE serves as the central orchestration layer for the MIRADOR observabi
 
 ### 🚀 High Performance
 - **10x less RAM** usage compared to traditional solutions
-- **Valley Cluster Caching** for sub-millisecond query responses
+- **Valkey Cluster Caching** for sub-millisecond query responses
 - **Horizontal scaling** with load balancing
 - **gRPC communication** for internal service communication
 
@@ -36,7 +36,7 @@ MIRADOR-CORE serves as the central orchestration layer for the MIRADOR observabi
 ### Prerequisites
 - Go 1.21+
 - Docker & Kubernetes
-- Redis Cluster (Valley Cluster)
+- Redis Cluster (Valkey Cluster)
 - VictoriaMetrics ecosystem
 
 ### Development Setup
@@ -152,7 +152,7 @@ export PREDICT_ENGINE_GRPC=predict-engine:9091
 export RCA_ENGINE_GRPC=rca-engine:9092
 export ALERT_ENGINE_GRPC=alert-engine:9093
 
-# Valley Cluster caching
+# Valkey Cluster caching
 export VALLEY_CACHE_NODES=redis-1:6379,redis-2:6379,redis-3:6379
 export CACHE_TTL=300
 
@@ -181,20 +181,20 @@ MIRADOR-CORE exposes Prometheus metrics at `/metrics`:
 ### Data Flow
 1. **Telemetry Ingestion** → VictoriaMetrics ecosystem
 2. **AI Analysis** → gRPC + protobuf communication
-3. **Valley Cluster Caching** → Faster data access
+3. **Valkey Cluster Caching** → Faster data access
 4. **REST API** → MIRADOR-UI consumption
 5. **External Integrations** → Slack, MS Teams, Email
 
 ### Security
 - **RBAC**: Role-based access control with LDAP/AD
-- **Session Management**: Valley cluster-based sessions
+- **Session Management**: Valkey cluster-based sessions
 - **Tenant Isolation**: Multi-tenant data segregation
 - **API Rate Limiting**: Per-tenant request limits
 
 ### Performance
 - **Load Balancing**: Round-robin across VictoriaMetrics nodes
 - **Connection Pooling**: Efficient resource utilization  
-- **Query Caching**: Valley cluster query result caching
+- **Query Caching**: Valkey cluster query result caching
 - **Horizontal Scaling**: Stateless microservice design
 
 ## Contributing

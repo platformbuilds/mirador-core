@@ -104,7 +104,7 @@ spec:
       port: 9092
     - protocol: TCP
       port: 9093
-  # Allow egress to Valley cluster (Redis)
+  # Allow egress to Valkey cluster (Redis)
   - to:
     - podSelector:
         matchLabels:

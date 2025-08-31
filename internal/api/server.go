@@ -19,7 +19,7 @@ import (
 type Server struct {
 	config      *config.Config
 	logger      logger.Logger
-	cache       cache.ValleyCluster
+	cache       cache.ValkeyCluster
 	grpcClients *clients.GRPCClients
 	vmServices  *services.VictoriaMetricsServices
 	router      *gin.Engine
@@ -29,7 +29,7 @@ type Server struct {
 func NewServer(
 	cfg *config.Config,
 	log logger.Logger,
-	valleyCache cache.ValleyCluster,
+	valleyCache cache.ValkeyCluster,
 	grpcClients *clients.GRPCClients,
 	vmServices *services.VictoriaMetricsServices,
 ) *Server {
@@ -64,7 +64,7 @@ func (s *Server) setupMiddleware() {
 	// Request logging
 	s.router.Use(middleware.RequestLogger(s.logger))
 
-	// Rate limiting using Valley cluster
+	// Rate limiting using Valkey cluster
 	s.router.Use(middleware.RateLimiter(s.cache))
 
 	// RBAC authentication (LDAP/AD + SSO integration)
@@ -127,7 +127,7 @@ func (s *Server) setupRoutes() {
 	v1.PUT("/config/user-settings", configHandler.UpdateUserSettings)
 	v1.GET("/config/integrations", configHandler.GetIntegrations)
 
-	// Session management (Valley cluster caching)
+	// Session management (Valkey cluster caching)
 	sessionHandler := handlers.NewSessionHandler(s.cache, s.logger)
 	v1.GET("/sessions/active", sessionHandler.GetActiveSessions)
 	v1.POST("/sessions/invalidate", sessionHandler.InvalidateSession)

@@ -90,7 +90,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.rbac.admin_role", "mirador-admin")
 	v.SetDefault("auth.jwt.expiry_minutes", 1440) // 24 hours
 
-	// Cache defaults (Valley cluster)
+	// Cache defaults (Valkey cluster)
 	v.SetDefault("cache.nodes", []string{"localhost:6379"})
 	v.SetDefault("cache.ttl", 300) // 5 minutes
 	v.SetDefault("cache.db", 0)
@@ -181,7 +181,7 @@ func overrideWithEnvVars(v *viper.Viper) {
 		v.Set("grpc.alert_engine.endpoint", alertGRPC)
 	}
 
-	// Valley cluster cache nodes
+	// Valkey cluster cache nodes
 	if cacheNodes := os.Getenv("VALLEY_CACHE_NODES"); cacheNodes != "" {
 		nodes := strings.Split(cacheNodes, ",")
 		for i, node := range nodes {
@@ -246,7 +246,7 @@ func validateConfig(config *Config) error {
 	}
 
 	if len(config.Cache.Nodes) == 0 {
-		return fmt.Errorf("at least one Valley cluster cache node is required")
+		return fmt.Errorf("at least one Valkey cluster cache node is required")
 	}
 
 	// Validate gRPC endpoints

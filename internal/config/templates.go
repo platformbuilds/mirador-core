@@ -58,7 +58,7 @@ auth:
   jwt:
     expiry_minutes: %d
 
-# Valley Cluster Caching
+# Valkey Cluster Caching
 cache:
   nodes:
     - "redis-cluster:6379"

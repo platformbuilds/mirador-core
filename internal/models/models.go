@@ -66,7 +66,7 @@ type CorrelationEvent struct {
 	TenantID   string          `json:"tenant_id,omitempty"`
 }
 
-// UserSession for Valley cluster session management
+// UserSession for Valkey cluster session management
 type UserSession struct {
 	ID           string                 `json:"id"`
 	UserID       string                 `json:"user_id"`

@@ -62,7 +62,7 @@ func (h *WebSocketHandler) HandleMetricsStream(c *gin.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			// Get latest metrics from Valley cluster cache
+			// Get latest metrics from Valkey cluster cache
 			metrics, err := h.getLatestMetrics(client.tenantID)
 			if err != nil {
 				h.logger.Error("Failed to get latest metrics", "error", err)

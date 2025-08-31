@@ -245,7 +245,7 @@ require (
     google.golang.org/grpc v1.59.0
     google.golang.org/protobuf v1.31.0
     
-    // Redis cluster for Valley caching
+    // Redis cluster for Valkey caching
     github.com/go-redis/redis/v8 v8.11.5
     
     // LDAP/AD authentication
