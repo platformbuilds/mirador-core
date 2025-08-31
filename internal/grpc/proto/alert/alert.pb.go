@@ -2,9 +2,8 @@ package alert
 
 import (
 	"context"
+
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // ProcessAlertRequest represents an alert processing request
@@ -102,7 +101,7 @@ type GetHealthRequest struct{}
 
 // GetHealthResponse represents a health check response
 type GetHealthResponse struct {
-	Status      string `json:"status"`
+	Status       string `json:"status"`
 	ActiveAlerts int32  `json:"active_alerts"`
 	RulesCount   int32  `json:"rules_count"`
 	LastUpdate   string `json:"last_update"`
