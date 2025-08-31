@@ -1,0 +1,290 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mirador
+  labels:
+    name: mirador
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mirador-core-config
+  namespace: mirador
+data:
+  config.yaml: |
+    environment: production
+    log_level: info
+    
+    database:
+      victoria_metrics:
+        endpoints:
+          - "http://vm-select-0.vm-select:8481"
+          - "http://vm-select-1.vm-select:8481"
+        timeout: 30000
+      victoria_logs:
+        endpoints:
+          - "http://vl-select-0.vl-select:9428"
+          - "http://vl-select-1.vl-select:9428"
+        timeout: 30000
+      victoria_traces:
+        endpoints:
+          - "http://vt-select-0.vt-select:10428"
+          - "http://vt-select-1.vt-select:10428"
+        timeout: 30000
+    
+    grpc:
+      predict_engine:
+        endpoint: "predict-engine.mirador:9091"
+        models: ["isolation_forest", "lstm_trend", "anomaly_detector"]
+      rca_engine:
+        endpoint: "rca-engine.mirador:9092"
+        correlation_threshold: 0.85
+      alert_engine:
+        endpoint: "alert-engine.mirador:9093"
+        rules_path: "/etc/mirador/alert-rules.yaml"
+    
+    auth:
+      ldap:
+        url: "ldap://ldap.company.com"
+        base_dn: "dc=company,dc=com"
+      rbac:
+        enabled: true
+        admin_role: "mirador-admin"
+    
+    cache:
+      nodes:
+        - "redis-cluster-0.redis-cluster:6379"
+        - "redis-cluster-1.redis-cluster:6379" 
+        - "redis-cluster-2.redis-cluster:6379"
+      ttl: 300
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mirador-core
+  namespace: mirador
+  labels:
+    app: mirador-core
+    component: backend
+    version: v2.1.3
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: mirador-core
+  template:
+    metadata:
+      labels:
+        app: mirador-core
+        component: backend
+        version: v2.1.3
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: mirador-core
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+      containers:
+      - name: mirador-core
+        image: mirador/core:v2.1.3
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http-api
+          containerPort: 8080
+          protocol: TCP
+        - name: grpc
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/mirador/config.yaml"
+        - name: ENVIRONMENT
+          value: "production"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        volumeMounts:
+        - name: config
+          mountPath: /etc/mirador
+          readOnly: true
+        - name: alert-rules
+          mountPath: /etc/mirador/alert-rules.yaml
+          subPath: alert-rules.yaml
+          readOnly: true
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http-api
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http-api
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http-api
+          initialDelaySeconds: 10
+          periodSeconds: 2
+          timeoutSeconds: 5
+          failureThreshold: 30
+      volumes:
+      - name: config
+        configMap:
+          name: mirador-core-config
+      - name: alert-rules
+        configMap:
+          name: mirador-alert-rules
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mirador-core
+  namespace: mirador
+  labels:
+    app: mirador-core
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http-api
+    port: 8080
+    targetPort: http-api
+    protocol: TCP
+  - name: grpc
+    port: 9090
+    targetPort: grpc
+    protocol: TCP
+  selector:
+    app: mirador-core
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mirador-core
+  namespace: mirador
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: mirador-core
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: mirador-core
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: mirador-core
+subjects:
+- kind: ServiceAccount
+  name: mirador-core
+  namespace: mirador
+*/
+
+// ================================
+// go.mod - Complete dependency management
+// ================================
+
+/*
+module github.com/mirador/core
+
+go 1.21
+
+require (
+    // HTTP framework
+    github.com/gin-gonic/gin v1.9.1
+    
+    // gRPC and Protocol Buffers
+    google.golang.org/grpc v1.59.0
+    google.golang.org/protobuf v1.31.0
+    
+    // Redis cluster for Valley caching
+    github.com/go-redis/redis/v8 v8.11.5
+    
+    // LDAP/AD authentication
+    github.com/go-ldap/ldap/v3 v3.4.6
+    
+    // JWT for OAuth handling
+    github.com/golang-jwt/jwt/v5 v5.0.0
+    
+    // Configuration management
+    github.com/spf13/viper v1.17.0
+    
+    // Structured logging
+    go.uber.org/zap v1.26.0
+    
+    // WebSocket for real-time streams
+    github.com/gorilla/websocket v1.5.0
+    
+    // HTTP client with retries
+    github.com/hashicorp/go-retryablehttp v0.7.4
+    
+    // Metrics for MIRADOR-CORE itself
+    github.com/prometheus/client_golang v1.17.0
+    
+    // Testing
+    github.com/stretchr/testify v1.8.4
+    
+    // JSON handling
+    github.com/json-iterator/go v1.1.12
+    
+    // UUID generation
+    github.com/google/uuid v1.4.0
+    
+    // Rate limiting
+    github.com/ulule/limiter/v3 v3.11.2
+    
+    // Validation
+    github.com/go-playground/validator/v10 v10.15.5
+    
+    // OpenAPI documentation
+    github.com/swaggo/gin-swagger v1.6.0
+    github.com/swaggo/files v1.0.1
+)

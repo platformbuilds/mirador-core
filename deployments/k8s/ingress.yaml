@@ -1,0 +1,119 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mirador-core-ingress
+  namespace: mirador
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    # Rate limiting
+    nginx.ingress.kubernetes.io/rate-limit: "1000"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+spec:
+  tls:
+  - hosts:
+    - mirador-core.company.com
+    secretName: mirador-core-tls
+  rules:
+  - host: mirador-core.company.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: mirador-core
+            port:
+              number: 8080
+      # WebSocket endpoints
+      - path: /ws
+        pathType: Prefix
+        backend:
+          service:
+            name: mirador-core
+            port:
+              number: 8080
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mirador-core-netpol
+  namespace: mirador
+spec:
+  podSelector:
+    matchLabels:
+      app: mirador-core
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow ingress from MIRADOR-UI
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: mirador
+    - podSelector:
+        matchLabels:
+          app: mirador-ui
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow health checks
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  # Allow egress to VictoriaMetrics ecosystem
+  - to:
+    - podSelector:
+        matchLabels:
+          app: victoriametrics
+    ports:
+    - protocol: TCP
+      port: 8481
+  - to:
+    - podSelector:
+        matchLabels:
+          app: victorialogs
+    ports:
+    - protocol: TCP
+      port: 9428
+  - to:
+    - podSelector:
+        matchLabels:
+          app: victoriatraces
+    ports:
+    - protocol: TCP
+      port: 10428
+  # Allow egress to AI engines
+  - to:
+    - podSelector:
+        matchLabels:
+          component: ai-engine
+    ports:
+    - protocol: TCP
+      port: 9091
+    - protocol: TCP
+      port: 9092
+    - protocol: TCP
+      port: 9093
+  # Allow egress to Valley cluster (Redis)
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis-cluster
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow DNS
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
