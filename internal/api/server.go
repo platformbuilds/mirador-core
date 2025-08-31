@@ -69,6 +69,15 @@ func (s *Server) setupMiddleware() {
 
 	// RBAC authentication (LDAP/AD + SSO integration)
 	s.router.Use(middleware.AuthMiddleware(s.config.Auth, s.cache))
+
+	// OpenAPI specification endpoints
+	s.router.StaticFile("/api/openapi.yaml", "api/openapi.yaml")
+	s.router.GET("/api/openapi.json", handlers.GetOpenAPISpec)
+
+	// Swagger UI (browser docs)
+	s.router.GET("/docs", handlers.ServeSwaggerUI)
+	s.router.GET("/docs/index.html", handlers.ServeSwaggerUI) // optional convenience
+
 }
 
 func (s *Server) setupRoutes() {
@@ -76,8 +85,10 @@ func (s *Server) setupRoutes() {
 	s.router.GET("/health", handlers.HealthCheck)
 	s.router.GET("/ready", handlers.ReadinessCheck)
 
-	// OpenAPI specification endpoint
-	s.router.GET("/api/openapi.json", handlers.GetOpenAPISpec)
+	// OpenAPI specification endpoints
+	// Serve the committed YAML directly, and a JSON-converted variant via handler.
+	s.router.StaticFile("/api/openapi.yaml", "api/openapi.yaml")
+	s.router.GET("/api/openapi.json", handlers.GetOpenAPISpec) // expects handlers.GetOpenAPISpec to YAML→JSON
 
 	// API v1 group (protected by RBAC)
 	v1 := s.router.Group("/api/v1")
@@ -97,6 +108,13 @@ func (s *Server) setupRoutes() {
 	v1.GET("/logs/fields", logsHandler.GetFields)
 	v1.POST("/logs/export", logsHandler.ExportLogs)
 	v1.POST("/logs/store", logsHandler.StoreEvent) // For AI engines to store JSON events
+
+	// D3-friendly log endpoints for the upcoming UI (histogram, facets, search, tail)
+	d3Logs := handlers.NewLogsHandler(s.vmServices.Logs, s.logger)
+	v1.GET("/logs/histogram", d3Logs.Histogram)
+	v1.GET("/logs/facets", d3Logs.Facets)
+	v1.POST("/logs/search", d3Logs.Search)
+	v1.GET("/logs/tail", d3Logs.TailWS) // WebSocket upgrade for tailing logs
 
 	// VictoriaTraces endpoints (Jaeger-compatible HTTP API)
 	tracesHandler := handlers.NewTracesHandler(s.vmServices.Traces, s.cache, s.logger)
@@ -138,6 +156,12 @@ func (s *Server) setupRoutes() {
 	v1.GET("/rbac/roles", rbacHandler.GetRoles)
 	v1.POST("/rbac/roles", rbacHandler.CreateRole)
 	v1.PUT("/rbac/users/:userId/roles", rbacHandler.AssignUserRoles)
+
+	// WebSocket streams (metrics, alerts, predictions)
+	ws := handlers.NewWebSocketHandler(s.logger)
+	v1.GET("/ws/metrics", ws.HandleMetricsStream)
+	v1.GET("/ws/alerts", ws.HandleAlertsStream)
+	v1.GET("/ws/predictions", ws.HandlePredictionsStream)
 }
 
 func (s *Server) Start(ctx context.Context) error {

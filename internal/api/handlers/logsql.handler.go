@@ -1,7 +1,3 @@
-// ================================
-// internal/api/handlers/logsql.handler.go - LogsQL API Handler
-// ================================
-
 package handlers
 
 import (

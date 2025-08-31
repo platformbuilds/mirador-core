@@ -4,8 +4,8 @@ info:
   description: Advanced Observability Platform REST API
   version: 2.1.3
   contact:
-    name: MIRADOR Team
-    email: support@mirador.com
+    name: Platformbuilds Team
+    email: rv@platformbuilds.org
 
 servers:
   - url: http://localhost:8080/api/v1
