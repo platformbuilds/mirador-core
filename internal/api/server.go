@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mirador/core/internal/api/handlers"
-	"github.com/mirador/core/internal/api/middleware"
-	"github.com/mirador/core/internal/config"
-	"github.com/mirador/core/internal/grpc/clients"
-	"github.com/mirador/core/internal/services"
-	"github.com/mirador/core/pkg/cache"
-	"github.com/mirador/core/pkg/logger"
+	"github.com/platformbuilds/miradorstack/internal/api/handlers"
+	"github.com/platformbuilds/miradorstack/internal/api/middleware"
+	"github.com/platformbuilds/miradorstack/internal/config"
+	"github.com/platformbuilds/miradorstack/internal/grpc/clients"
+	"github.com/platformbuilds/miradorstack/internal/services"
+	"github.com/platformbuilds/miradorstack/pkg/cache"
+	"github.com/platformbuilds/miradorstack/pkg/logger"
 )
 
 type Server struct {

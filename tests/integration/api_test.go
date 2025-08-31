@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mirador/core/internal/api"
-	"github.com/mirador/core/internal/config"
-	"github.com/mirador/core/pkg/logger"
+	"github.com/platformbuilds/miradorstack/internal/api"
+	"github.com/platformbuilds/miradorstack/internal/config"
+	"github.com/platformbuilds/miradorstack/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )

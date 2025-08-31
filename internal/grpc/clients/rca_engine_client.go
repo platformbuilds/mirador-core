@@ -7,9 +7,9 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"github.com/mirador/core/internal/grpc/proto/rca"
-	"github.com/mirador/core/internal/models"
-	"github.com/mirador/core/pkg/logger"
+	"github.com/platformbuilds/miradorstack/internal/grpc/proto/rca"
+	"github.com/platformbuilds/miradorstack/internal/models"
+	"github.com/platformbuilds/miradorstack/pkg/logger"
 )
 
 // RCAEngineClient wraps the gRPC client for RCA-ENGINE

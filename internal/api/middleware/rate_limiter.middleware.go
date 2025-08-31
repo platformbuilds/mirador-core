@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mirador/core/pkg/cache"
+	"github.com/platformbuilds/miradorstack/pkg/cache"
 )
 
 // RateLimiter implements per-tenant rate limiting using Valkey cluster

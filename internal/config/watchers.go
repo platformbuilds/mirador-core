@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/mirador/core/pkg/logger"
+	"github.com/platformbuilds/miradorstack/pkg/logger"
 )
 
 type ConfigWatcher struct {

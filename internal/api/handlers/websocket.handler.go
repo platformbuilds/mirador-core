@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/mirador/core/internal/models"
-	"github.com/mirador/core/pkg/logger"
+	"github.com/platformbuilds/miradorstack/internal/models"
+	"github.com/platformbuilds/miradorstack/pkg/logger"
 )
 
 type WebSocketHandler struct {
