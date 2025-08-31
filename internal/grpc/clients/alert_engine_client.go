@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"github.com/platformbuilds/miradorstack/internal/grpc/proto/alert"
 	"github.com/platformbuilds/miradorstack/internal/models"
 	"github.com/platformbuilds/miradorstack/pkg/logger"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // AlertEngineClient wraps the gRPC client for ALERT-ENGINE
@@ -21,7 +21,7 @@ type AlertEngineClient struct {
 
 // NewAlertEngineClient creates a new ALERT-ENGINE gRPC client
 func NewAlertEngineClient(endpoint string, logger logger.Logger) (*AlertEngineClient, error) {
-	conn, err := grpc.Dial(endpoint, 
+	conn, err := grpc.Dial(endpoint,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithTimeout(5*time.Second),
 	)
@@ -60,13 +60,13 @@ func (c *AlertEngineClient) ProcessAlert(ctx context.Context, alertModel *models
 	}
 
 	return &models.ProcessedAlert{
-		OriginalID:     alertModel.ID,
-		ProcessedID:    response.ProcessedAlert.Id,
-		Action:         response.ProcessedAlert.Action,
-		ClusterID:      response.ProcessedAlert.ClusterId,
-		Escalation:     response.ProcessedAlert.Escalation,
-		Notifications:  response.ProcessedAlert.Notifications,
-		ProcessedAt:    time.Now(),
+		OriginalID:    alertModel.ID,
+		ProcessedID:   response.ProcessedAlert.Id,
+		Action:        response.ProcessedAlert.Action,
+		ClusterID:     response.ProcessedAlert.ClusterId,
+		Escalation:    response.ProcessedAlert.Escalation,
+		Notifications: response.ProcessedAlert.Notifications,
+		ProcessedAt:   time.Now(),
 	}, nil
 }
 

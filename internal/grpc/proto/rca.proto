@@ -4,69 +4,108 @@ package mirador.rca;
 
 option go_package = "github.com/platformbuilds/miradorstack/internal/grpc/proto/rca";
 
+// =========================
+// Service
+// =========================
 service RCAEngineService {
-  // Investigate incident using red anchors pattern
   rpc InvestigateIncident(InvestigateRequest) returns (InvestigateResponse);
-  
-  // Get active correlations
   rpc GetActiveCorrelations(GetCorrelationsRequest) returns (GetCorrelationsResponse);
-  
-  // Get failure patterns
   rpc GetFailurePatterns(GetPatternsRequest) returns (GetPatternsResponse);
+  rpc GetHealth(GetHealthRequest) returns (GetHealthResponse);
 }
 
+// =========================
+/* Messages */
+// =========================
+
+// Request for RCA investigation
 message InvestigateRequest {
-  string incident_id = 1;
-  repeated string symptoms = 2;
-  TimeRange time_range = 3;
+  string incident_id        = 1;
+  repeated string symptoms  = 2;
+  TimeRange time_range      = 3;
   repeated string affected_services = 4;
-  double anomaly_threshold = 5;
+  double anomaly_threshold  = 5;
 }
 
+// Response from RCA investigation
 message InvestigateResponse {
-  string correlation_id = 1;
-  string root_cause = 2;
-  double confidence = 3;
+  string correlation_id           = 1;
+  string root_cause               = 2;
+  double confidence               = 3;
   repeated string affected_services = 4;
   repeated TimelineEvent timeline = 5;
-  repeated RedAnchor red_anchors = 6; // Anomaly score pattern
+  repeated RedAnchor red_anchors  = 6;
   repeated string recommendations = 7;
 }
 
+// Anomaly “red anchor”
 message RedAnchor {
-  string service = 1;
-  string metric = 2;
+  string service       = 1;
+  string metric        = 2;
   double anomaly_score = 3;
-  double threshold = 4;
-  int64 timestamp_unix = 5;
-  string data_type = 6; // metrics, logs, traces
+  double threshold     = 4;
+  int64  timestamp_unix = 5;           // epoch seconds (or ms if you prefer—keep consistent)
+  string data_type     = 6;            // "metrics" | "logs" | "traces"
 }
 
+// Time range
 message TimeRange {
   int64 start_unix = 1;
-  int64 end_unix = 2;
+  int64 end_unix   = 2;
 }
 
+// Timeline event in correlation result
 message TimelineEvent {
-  int64 timestamp_unix = 1;
-  string event = 2;
-  string service = 3;
-  string severity = 4;
-  double anomaly_score = 5;
+  int64  timestamp_unix = 1;
+  string event          = 2;
+  string service        = 3;
+  string severity       = 4;
+  double anomaly_score  = 5;
+  string data_type      = 6;           // NEW: keep in sync with your client conversion
 }
 
-message GetCorrelationsRequest {}
+// List active correlations
+message GetCorrelationsRequest {
+  string tenant_id = 1;
+}
 
 message GetCorrelationsResponse {
   repeated Correlation correlations = 1;
 }
 
 message Correlation {
-  string correlation_id = 1;
-  string root_cause = 2;
-  double confidence = 3;
+  string correlation_id            = 1;
+  string root_cause                = 2;
+  double confidence                = 3;
   repeated string affected_services = 4;
-  repeated TimelineEvent timeline = 5;
-  repeated RedAnchor red_anchors = 6;
-  repeated string recommendations = 7;
+  repeated TimelineEvent timeline  = 5;
+  repeated RedAnchor red_anchors   = 6;
+  repeated string recommendations  = 7;
+}
+
+// Failure patterns
+message GetPatternsRequest {
+  string tenant_id = 1;
+}
+
+message GetPatternsResponse {
+  repeated FailurePattern patterns = 1;
+}
+
+message FailurePattern {
+  string pattern_id   = 1;
+  string name         = 2;
+  string description  = 3;
+  repeated string indicators = 4;
+  double frequency    = 5;
+}
+
+// Health
+message GetHealthRequest {}
+
+message GetHealthResponse {
+  string status              = 1;
+  int32  active_correlations = 2;
+  double avg_resolution_time = 3;
+  string last_update         = 4;
 }

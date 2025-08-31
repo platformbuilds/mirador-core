@@ -2,15 +2,9 @@ package clients
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/platformbuilds/miradorstack/internal/config"
-	"github.com/platformbuilds/miradorstack/internal/grpc/proto/alert"
-	"github.com/platformbuilds/miradorstack/internal/grpc/proto/predict"
-	"github.com/platformbuilds/miradorstack/internal/grpc/proto/rca"
 	"github.com/platformbuilds/miradorstack/pkg/logger"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 // GRPCClients holds all gRPC client connections

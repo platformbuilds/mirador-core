@@ -2,9 +2,8 @@ package rca
 
 import (
 	"context"
+
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // InvestigateRequest represents an RCA investigation request
@@ -50,6 +49,7 @@ type TimelineEvent struct {
 	Service       string  `json:"service"`
 	Severity      string  `json:"severity"`
 	AnomalyScore  float64 `json:"anomaly_score"`
+	DataType      string  `json:"data_type"` // NEW
 }
 
 // GetCorrelationsRequest represents a request for correlations
@@ -97,10 +97,10 @@ type GetHealthRequest struct{}
 
 // GetHealthResponse represents a health check response
 type GetHealthResponse struct {
-	Status              string  `json:"status"`
-	ActiveCorrelations  int32   `json:"active_correlations"`
-	AvgResolutionTime   float64 `json:"avg_resolution_time"`
-	LastUpdate          string  `json:"last_update"`
+	Status             string  `json:"status"`
+	ActiveCorrelations int32   `json:"active_correlations"`
+	AvgResolutionTime  float64 `json:"avg_resolution_time"`
+	LastUpdate         string  `json:"last_update"`
 }
 
 // Getter methods for all structs
@@ -279,30 +279,9 @@ func (x *TimelineEvent) GetAnomalyScore() float64 {
 	return 0
 }
 
-func (x *GetHealthResponse) GetStatus() string {
+func (x *TimelineEvent) GetDataType() string { // NEW getter
 	if x != nil {
-		return x.Status
-	}
-	return ""
-}
-
-func (x *GetHealthResponse) GetActiveCorrelations() int32 {
-	if x != nil {
-		return x.ActiveCorrelations
-	}
-	return 0
-}
-
-func (x *GetHealthResponse) GetAvgResolutionTime() float64 {
-	if x != nil {
-		return x.AvgResolutionTime
-	}
-	return 0
-}
-
-func (x *GetHealthResponse) GetLastUpdate() string {
-	if x != nil {
-		return x.LastUpdate
+		return x.DataType
 	}
 	return ""
 }

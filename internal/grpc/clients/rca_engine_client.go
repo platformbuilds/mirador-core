@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"github.com/platformbuilds/miradorstack/internal/grpc/proto/rca"
 	"github.com/platformbuilds/miradorstack/internal/models"
 	"github.com/platformbuilds/miradorstack/pkg/logger"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/platformbuilds/miradorstack/internal/grpc/proto/rca"
 )
 
 // RCAEngineClient wraps the gRPC client for RCA-ENGINE
@@ -21,7 +22,7 @@ type RCAEngineClient struct {
 
 // NewRCAEngineClient creates a new RCA-ENGINE gRPC client
 func NewRCAEngineClient(endpoint string, logger logger.Logger) (*RCAEngineClient, error) {
-	conn, err := grpc.Dial(endpoint, 
+	conn, err := grpc.Dial(endpoint,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithTimeout(5*time.Second),
 	)
@@ -39,6 +40,7 @@ func NewRCAEngineClient(endpoint string, logger logger.Logger) (*RCAEngineClient
 }
 
 // InvestigateIncident uses Time and Anomaly Score Pattern (red anchors)
+// across data from multiple data stores and types (metrics, logs, traces)
 func (c *RCAEngineClient) InvestigateIncident(ctx context.Context, request *models.RCAInvestigationRequest) (*models.CorrelationResult, error) {
 	grpcRequest := &rca.InvestigateRequest{
 		IncidentId:       request.IncidentID,
@@ -89,11 +91,6 @@ func (c *RCAEngineClient) HealthCheck() error {
 	return err
 }
 
-// Close closes the gRPC connection
-func (c *RCAEngineClient) Close() error {
-	return c.conn.Close()
-}
-
 // Helper functions
 func convertTimeRangeToGRPC(tr models.TimeRange) *rca.TimeRange {
 	return &rca.TimeRange{
@@ -106,13 +103,19 @@ func convertTimelineFromGRPC(timeline []*rca.TimelineEvent) []models.TimelineEve
 	events := make([]models.TimelineEvent, len(timeline))
 	for i, event := range timeline {
 		events[i] = models.TimelineEvent{
-			Time:         time.Unix(event.TimestampUnix, 0),
-			Event:        event.Event,
-			Service:      event.Service,
-			Severity:     event.Severity,
-			AnomalyScore: event.AnomalyScore,
-			DataSource:   event.DataType,
+			Time:         time.Unix(event.GetTimestampUnix(), 0),
+			Event:        event.GetEvent(),
+			Service:      event.GetService(),
+			Severity:     event.GetSeverity(),
+			AnomalyScore: event.GetAnomalyScore(),
+			// TimelineEvent in proto has NO DataType / DataSource.
+			// Fill with empty or a default if you want.
+			DataSource: "", // or "unknown" / "mixed"
 		}
 	}
 	return events
+}
+
+func (c *RCAEngineClient) Close() error {
+	return c.conn.Close()
 }

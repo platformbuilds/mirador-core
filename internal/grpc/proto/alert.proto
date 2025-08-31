@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package mirador.alert;
+
+option go_package = "github.com/platformbuilds/miradorstack/internal/grpc/proto/alert";
+
+// -------------------------
+// Service
+// -------------------------
+service AlertEngineService {
+  rpc ProcessAlert(ProcessAlertRequest) returns (ProcessAlertResponse);
+  rpc GetAlertRules(GetAlertRulesRequest) returns (GetAlertRulesResponse);
+  rpc CreateAlertRule(CreateAlertRuleRequest) returns (CreateAlertRuleResponse);
+  rpc GetActiveAlerts(GetActiveAlertsRequest) returns (GetActiveAlertsResponse);
+  rpc AcknowledgeAlert(AcknowledgeAlertRequest) returns (AcknowledgeAlertResponse);
+  rpc GetHealth(GetHealthRequest) returns (GetHealthResponse);
+}
+
+// -------------------------
+// Messages
+// -------------------------
+
+message ProcessAlertRequest {
+  Alert alert        = 1;
+  string tenant_id   = 2;
+}
+
+message ProcessAlertResponse {
+  ProcessedAlert processed_alert = 1;
+}
+
+message Alert {
+  string id                         = 1;
+  string severity                   = 2;
+  string component                  = 3;
+  string message                    = 4;
+  int64  timestamp                  = 5; // epoch seconds (or ms if you prefer—keep consistent)
+  map<string, string> labels        = 6;
+  map<string, string> annotations   = 7;
+}
+
+message ProcessedAlert {
+  string id                 = 1;
+  string action             = 2;       // fire | suppress | escalate | cluster
+  string cluster_id         = 3;
+  string escalation         = 4;
+  repeated string notifications = 5;   // slack, teams, email, ...
+}
+
+message GetAlertRulesRequest {
+  string tenant_id = 1;
+}
+
+message GetAlertRulesResponse {
+  repeated AlertRule rules = 1;
+}
+
+message AlertRule {
+  string id                         = 1;
+  string name                       = 2;
+  string query                      = 3; // MetricsQL/LogsQL/Traces
+  string condition                  = 4; // e.g. "> 0.8"
+  string severity                   = 5; // critical/warning/info
+  bool   enabled                    = 6;
+  map<string, string> labels        = 7;
+  map<string, string> annotations   = 8;
+}
+
+message CreateAlertRuleRequest {
+  AlertRule rule   = 1;
+  string tenant_id = 2;
+}
+
+message CreateAlertRuleResponse {
+  AlertRule rule = 1;
+}
+
+message GetActiveAlertsRequest {
+  string tenant_id = 1;
+  int32  limit     = 2;
+  string severity  = 3; // optional filter
+}
+
+message GetActiveAlertsResponse {
+  repeated Alert alerts = 1;
+  int32 total          = 2;
+}
+
+message AcknowledgeAlertRequest {
+  string alert_id        = 1;
+  string acknowledged_by = 2;
+  string comment         = 3;
+}
+
+message AcknowledgeAlertResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message GetHealthRequest {}
+
+message GetHealthResponse {
+  string status        = 1;
+  int32  active_alerts = 2;
+  int32  rules_count   = 3;
+  string last_update   = 4;
+}
