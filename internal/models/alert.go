@@ -1,3 +1,7 @@
+// ================================
+// Complete internal/models/alert.go file
+// ================================
+
 package models
 
 import "time"
@@ -14,6 +18,15 @@ type Alert struct {
 	Timestamp   time.Time         `json:"timestamp"`
 	TenantID    string            `json:"tenant_id"`
 	CreatedBy   string            `json:"created_by,omitempty"`
+}
+
+// AlertQuery represents a query for alerts
+type AlertQuery struct {
+	TenantID  string `json:"tenant_id"`
+	Limit     int    `json:"limit,omitempty"`
+	Severity  string `json:"severity,omitempty"`
+	Status    string `json:"status,omitempty"` // active, acknowledged, resolved
+	Component string `json:"component,omitempty"`
 }
 
 type AlertRule struct {

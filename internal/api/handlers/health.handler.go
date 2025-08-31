@@ -83,7 +83,7 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 	}
 
 	// Check AI engines connectivity
-	if err := h.grpcClients.PredictEngine.HealthCheck(ctx); err != nil {
+	if err := h.grpcClients.PredictEngine.HealthCheck(); err != nil {
 		checks["predict_engine"] = map[string]interface{}{
 			"status": "unhealthy",
 			"error":  err.Error(),
@@ -95,7 +95,7 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 		}
 	}
 
-	if err := h.grpcClients.RCAEngine.HealthCheck(ctx); err != nil {
+	if err := h.grpcClients.RCAEngine.HealthCheck(); err != nil {
 		checks["rca_engine"] = map[string]interface{}{
 			"status": "unhealthy",
 			"error":  err.Error(),
@@ -107,7 +107,7 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 		}
 	}
 
-	if err := h.grpcClients.AlertEngine.HealthCheck(ctx); err != nil {
+	if err := h.grpcClients.AlertEngine.HealthCheck(); err != nil {
 		checks["alert_engine"] = map[string]interface{}{
 			"status": "unhealthy",
 			"error":  err.Error(),
