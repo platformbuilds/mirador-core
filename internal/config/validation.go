@@ -1,9 +1,10 @@
+package config
+
 import (
 	"fmt"
 	"net"
 	"net/url"
 	"strconv"
-	"strings"
 )
 
 // ValidateEndpoint validates that an endpoint is properly formatted

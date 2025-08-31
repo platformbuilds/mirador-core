@@ -27,12 +27,12 @@ func main() {
 	logger := logger.New(cfg.LogLevel)
 	logger.Info("Starting MIRADOR-CORE", "version", "v2.1.3", "environment", cfg.Environment)
 
-	// Initialize Valley Cluster caching (as shown in diagram)
-	valleyCache, err := cache.NewValleyCluster(cfg.Cache.Nodes, time.Duration(cfg.Cache.TTL)*time.Second)
+	// Initialize Valkey Cluster caching (as shown in diagram)
+	valleyCache, err := cache.NewValkeyCluster(cfg.Cache.Nodes, time.Duration(cfg.Cache.TTL)*time.Second)
 	if err != nil {
-		logger.Fatal("Failed to initialize Valley cluster cache", "error", err)
+		logger.Fatal("Failed to initialize Valkey cluster cache", "error", err)
 	}
-	logger.Info("Valley cluster cache initialized", "nodes", len(cfg.Cache.Nodes))
+	logger.Info("Valkey cluster cache initialized", "nodes", len(cfg.Cache.Nodes))
 
 	// Initialize gRPC clients for AI engines
 	grpcClients, err := clients.NewGRPCClients(cfg, logger)

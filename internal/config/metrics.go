@@ -1,3 +1,5 @@
+package config
+
 import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -45,7 +47,7 @@ func RecordValidationError() {
 // UpdateFeatureFlagMetrics updates feature flag metrics for a tenant
 func UpdateFeatureFlagMetrics(tenantID string, flags *FeatureFlags) {
 	features := map[string]bool{
-		"predictive_alerting":    flags.PredictiveAlerting,
+		"predictive_alerting":   flags.PredictiveAlerting,
 		"advanced_rca":          flags.AdvancedRCA,
 		"ai_insights":           flags.AIInsights,
 		"realtime_streaming":    flags.RealtimeStreaming,

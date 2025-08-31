@@ -1,3 +1,13 @@
+package config
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"strconv"
+	"time"
+)
+
 // contains checks if a string slice contains a specific value
 func contains(slice []string, item string) bool {
 	for _, s := range slice {

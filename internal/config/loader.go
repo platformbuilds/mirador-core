@@ -1,3 +1,14 @@
+package config
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+
+	"github.com/spf13/viper"
+)
+
 // Load loads configuration from various sources with priority order:
 // 1. Environment variables
 // 2. Configuration file (config.yaml)
@@ -5,14 +16,14 @@
 func Load() (*Config, error) {
 	// Initialize Viper
 	v := viper.New()
-	
+
 	// Set configuration file details
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
 	v.AddConfigPath("/etc/mirador/")
 	v.AddConfigPath("./configs/")
 	v.AddConfigPath(".")
-	
+
 	// Enable environment variable support
 	v.AutomaticEnv()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -121,11 +132,11 @@ func overrideWithEnvVars(v *viper.Viper) {
 			v.Set("port", p)
 		}
 	}
-	
+
 	if env := os.Getenv("ENVIRONMENT"); env != "" {
 		v.Set("environment", env)
 	}
-	
+
 	if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" {
 		v.Set("log_level", logLevel)
 	}
@@ -161,11 +172,11 @@ func overrideWithEnvVars(v *viper.Viper) {
 	if predictGRPC := os.Getenv("PREDICT_ENGINE_GRPC"); predictGRPC != "" {
 		v.Set("grpc.predict_engine.endpoint", predictGRPC)
 	}
-	
+
 	if rcaGRPC := os.Getenv("RCA_ENGINE_GRPC"); rcaGRPC != "" {
 		v.Set("grpc.rca_engine.endpoint", rcaGRPC)
 	}
-	
+
 	if alertGRPC := os.Getenv("ALERT_ENGINE_GRPC"); alertGRPC != "" {
 		v.Set("grpc.alert_engine.endpoint", alertGRPC)
 	}
@@ -178,7 +189,7 @@ func overrideWithEnvVars(v *viper.Viper) {
 		}
 		v.Set("cache.nodes", nodes)
 	}
-	
+
 	if cacheTTL := os.Getenv("CACHE_TTL"); cacheTTL != "" {
 		if ttl, err := strconv.Atoi(cacheTTL); err == nil {
 			v.Set("cache.ttl", ttl)
@@ -190,11 +201,11 @@ func overrideWithEnvVars(v *viper.Viper) {
 		v.Set("auth.ldap.url", ldapURL)
 		v.Set("auth.ldap.enabled", true)
 	}
-	
+
 	if ldapBaseDN := os.Getenv("LDAP_BASE_DN"); ldapBaseDN != "" {
 		v.Set("auth.ldap.base_dn", ldapBaseDN)
 	}
-	
+
 	if rbacEnabled := os.Getenv("RBAC_ENABLED"); rbacEnabled != "" {
 		if enabled, err := strconv.ParseBool(rbacEnabled); err == nil {
 			v.Set("auth.rbac.enabled", enabled)
@@ -211,7 +222,7 @@ func overrideWithEnvVars(v *viper.Viper) {
 		v.Set("integrations.slack.webhook_url", slackWebhook)
 		v.Set("integrations.slack.enabled", true)
 	}
-	
+
 	if teamsWebhook := os.Getenv("TEAMS_WEBHOOK_URL"); teamsWebhook != "" {
 		v.Set("integrations.ms_teams.webhook_url", teamsWebhook)
 		v.Set("integrations.ms_teams.enabled", true)

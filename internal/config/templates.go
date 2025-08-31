@@ -1,3 +1,11 @@
+package config
+
+import (
+	"fmt"
+	"os"
+	"strings"
+	"time"
+)
 
 // GenerateConfigTemplate generates a configuration template based on environment
 func GenerateConfigTemplate(environment string) string {
@@ -84,15 +92,15 @@ websocket:
 		logLevel = "warn"
 		ldapEnabled = true
 		integrationsEnabled = true
-		jwtExpiry = 480  // 8 hours
-		cacheTTL = 600   // 10 minutes
+		jwtExpiry = 480 // 8 hours
+		cacheTTL = 600  // 10 minutes
 		maxConnections = 5000
 	case "staging":
 		logLevel = "info"
 		ldapEnabled = true
 		integrationsEnabled = false
-		jwtExpiry = 720  // 12 hours
-		cacheTTL = 300   // 5 minutes
+		jwtExpiry = 720 // 12 hours
+		cacheTTL = 300  // 5 minutes
 		maxConnections = 1000
 	case "development":
 		logLevel = "debug"
@@ -136,11 +144,11 @@ func SaveConfigTemplate(environment, filepath string) error {
 // ================================
 
 type ConfigProfile struct {
-	Name        string            `yaml:"name"`
-	Description string            `yaml:"description"`
+	Name        string                 `yaml:"name"`
+	Description string                 `yaml:"description"`
 	Settings    map[string]interface{} `yaml:"settings"`
-	Tags        []string          `yaml:"tags"`
-	CreatedAt   time.Time         `yaml:"created_at"`
+	Tags        []string               `yaml:"tags"`
+	CreatedAt   time.Time              `yaml:"created_at"`
 }
 
 // GetProfile returns a predefined configuration profile
@@ -150,10 +158,10 @@ func GetProfile(profileName string) (*ConfigProfile, error) {
 			Name:        "high-performance",
 			Description: "Optimized for high-throughput workloads",
 			Settings: map[string]interface{}{
-				"cache.ttl":                    120,
-				"websocket.max_connections":    10000,
+				"cache.ttl":                         120,
+				"websocket.max_connections":         10000,
 				"database.victoria_metrics.timeout": 10000,
-				"grpc.predict_engine.timeout":      10000,
+				"grpc.predict_engine.timeout":       10000,
 			},
 			Tags:      []string{"performance", "high-load"},
 			CreatedAt: time.Now(),
@@ -162,11 +170,11 @@ func GetProfile(profileName string) (*ConfigProfile, error) {
 			Name:        "security-focused",
 			Description: "Enhanced security configuration",
 			Settings: map[string]interface{}{
-				"auth.rbac.enabled":         true,
-				"auth.ldap.enabled":         true,
-				"auth.jwt.expiry_minutes":   240, // 4 hours
-				"cors.allowed_origins":      []string{"https://mirador.company.com"},
-				"cors.allow_credentials":    true,
+				"auth.rbac.enabled":       true,
+				"auth.ldap.enabled":       true,
+				"auth.jwt.expiry_minutes": 240, // 4 hours
+				"cors.allowed_origins":    []string{"https://mirador.company.com"},
+				"cors.allow_credentials":  true,
 			},
 			Tags:      []string{"security", "enterprise"},
 			CreatedAt: time.Now(),
@@ -175,11 +183,11 @@ func GetProfile(profileName string) (*ConfigProfile, error) {
 			Name:        "minimal",
 			Description: "Minimal configuration for small deployments",
 			Settings: map[string]interface{}{
-				"websocket.enabled":           false,
-				"monitoring.tracing_enabled":  false,
-				"integrations.slack.enabled":  false,
+				"websocket.enabled":             false,
+				"monitoring.tracing_enabled":    false,
+				"integrations.slack.enabled":    false,
 				"integrations.ms_teams.enabled": false,
-				"integrations.email.enabled":  false,
+				"integrations.email.enabled":    false,
 			},
 			Tags:      []string{"minimal", "small-scale"},
 			CreatedAt: time.Now(),
@@ -227,7 +235,7 @@ func (c *Config) ApplyProfile(profileName string) error {
 // applyConfigSetting applies a single configuration setting
 func applyConfigSetting(config *Config, key string, value interface{}) error {
 	parts := strings.Split(key, ".")
-	
+
 	switch parts[0] {
 	case "cache":
 		if len(parts) > 1 {
@@ -268,7 +276,7 @@ func applyConfigSetting(config *Config, key string, value interface{}) error {
 				}
 			}
 		}
-	// Add more cases as needed
+		// Add more cases as needed
 	}
 
 	return nil

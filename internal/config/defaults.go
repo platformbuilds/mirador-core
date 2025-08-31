@@ -1,10 +1,12 @@
+package config
+
 // GetDefaultConfig returns a configuration with all default values
 func GetDefaultConfig() *Config {
 	return &Config{
 		Environment: "development",
 		Port:        8080,
 		LogLevel:    "info",
-		
+
 		Database: DatabaseConfig{
 			VictoriaMetrics: VictoriaMetricsConfig{
 				Endpoints: []string{"http://localhost:8481"},
@@ -19,7 +21,7 @@ func GetDefaultConfig() *Config {
 				Timeout:   30000,
 			},
 		},
-		
+
 		GRPC: GRPCConfig{
 			PredictEngine: PredictEngineConfig{
 				Endpoint: "localhost:9091",
@@ -37,7 +39,7 @@ func GetDefaultConfig() *Config {
 				Timeout:   30000,
 			},
 		},
-		
+
 		Auth: AuthConfig{
 			LDAP: LDAPConfig{
 				Enabled: false,
@@ -53,13 +55,13 @@ func GetDefaultConfig() *Config {
 				ExpiryMin: 1440, // 24 hours
 			},
 		},
-		
+
 		Cache: CacheConfig{
 			Nodes: []string{"localhost:6379"},
 			TTL:   300,
 			DB:    0,
 		},
-		
+
 		CORS: CORSConfig{
 			AllowedOrigins:   []string{"*"},
 			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -68,7 +70,7 @@ func GetDefaultConfig() *Config {
 			AllowCredentials: true,
 			MaxAge:           3600,
 		},
-		
+
 		Integrations: IntegrationsConfig{
 			Slack: SlackConfig{
 				Enabled: false,
@@ -81,7 +83,7 @@ func GetDefaultConfig() *Config {
 				SMTPPort: 587,
 			},
 		},
-		
+
 		WebSocket: WebSocketConfig{
 			Enabled:         true,
 			MaxConnections:  1000,
@@ -90,7 +92,7 @@ func GetDefaultConfig() *Config {
 			PingInterval:    30,
 			MaxMessageSize:  1048576, // 1MB
 		},
-		
+
 		Monitoring: MonitoringConfig{
 			Enabled:           true,
 			MetricsPath:       "/metrics",

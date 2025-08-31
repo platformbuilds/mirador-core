@@ -1,7 +1,9 @@
+package config
+
 import (
 	"context"
+	"fmt"
 	"sync"
-	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/mirador/core/pkg/logger"
@@ -49,7 +51,7 @@ func (w *ConfigWatcher) Start(ctx context.Context) error {
 
 			if event.Op&fsnotify.Write == fsnotify.Write {
 				w.logger.Info("Configuration file changed, reloading...", "file", event.Name)
-				
+
 				// Reload configuration
 				if err := w.reloadConfig(); err != nil {
 					w.logger.Error("Failed to reload configuration", "error", err)

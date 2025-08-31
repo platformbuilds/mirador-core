@@ -1,7 +1,10 @@
+package config
+
 import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // LoadSecrets loads sensitive configuration from environment or files
