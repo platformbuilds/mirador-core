@@ -1,5 +1,7 @@
+package config
+
 type FeatureFlags struct {
-	PredictiveAlerting    bool `mapstructure:"predictive_alerting" yaml:"predictive_alerting"`
+	PredictiveAlerting   bool `mapstructure:"predictive_alerting" yaml:"predictive_alerting"`
 	AdvancedRCA          bool `mapstructure:"advanced_rca" yaml:"advanced_rca"`
 	AIInsights           bool `mapstructure:"ai_insights" yaml:"ai_insights"`
 	RealtimeStreaming    bool `mapstructure:"realtime_streaming" yaml:"realtime_streaming"`
@@ -13,7 +15,7 @@ type FeatureFlags struct {
 func (c *Config) GetFeatureFlags(tenantID string) *FeatureFlags {
 	// Default feature flags
 	flags := &FeatureFlags{
-		PredictiveAlerting:    true,
+		PredictiveAlerting:   true,
 		AdvancedRCA:          true,
 		AIInsights:           true,
 		RealtimeStreaming:    true,
@@ -39,6 +41,6 @@ func (c *Config) GetFeatureFlags(tenantID string) *FeatureFlags {
 
 	// Tenant-specific overrides could be loaded from database
 	// This would be implemented based on business requirements
-	
+
 	return flags
 }

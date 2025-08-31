@@ -1,3 +1,13 @@
+package config
+
+import (
+	"os"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
 func TestConfigLoading(t *testing.T) {
 	// Test loading from file
 	t.Run("load from file", func(t *testing.T) {
@@ -92,7 +102,7 @@ func BenchmarkConfigLoad(b *testing.B) {
 func BenchmarkConfigValidation(b *testing.B) {
 	config := GetDefaultConfig()
 	b.ResetTimer()
-	
+
 	for i := 0; i < b.N; i++ {
 		err := validateConfig(config)
 		if err != nil {
