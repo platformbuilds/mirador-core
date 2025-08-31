@@ -47,13 +47,16 @@ message SystemFracture {
 message GetFracturesRequest {
   string time_range = 1;
   double min_probability = 2;
+  string tenant_id = 3;
 }
 
 message GetFracturesResponse {
   repeated SystemFracture fractures = 1;
 }
 
-message GetModelsRequest {}
+message GetModelsRequest {
+  string tenant_id = 1;
+}
 
 message GetModelsResponse {
   repeated MLModel models = 1;
