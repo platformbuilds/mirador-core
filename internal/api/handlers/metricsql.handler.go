@@ -194,3 +194,120 @@ func generateQueryHash(query, timeParam, tenantID string) string {
 	hash := sha256.Sum256([]byte(data))
 	return fmt.Sprintf("%x", hash)
 }
+
+func (h *MetricsQLHandler) GetSeries(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	// Parse query parameters
+	match := c.QueryArray("match[]")
+	start := c.Query("start")
+	end := c.Query("end")
+
+	if len(match) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "At least one match[] parameter is required",
+		})
+		return
+	}
+
+	// Create series request
+	request := &models.SeriesRequest{
+		Match:    match,
+		Start:    start,
+		End:      end,
+		TenantID: tenantID,
+	}
+
+	series, err := h.metricsService.GetSeries(c.Request.Context(), request)
+	if err != nil {
+		h.logger.Error("Failed to get series", "tenant", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve series",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   series,
+	})
+}
+
+func (h *MetricsQLHandler) GetLabels(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	// Parse query parameters
+	start := c.Query("start")
+	end := c.Query("end")
+	match := c.QueryArray("match[]")
+
+	request := &models.LabelsRequest{
+		Start:    start,
+		End:      end,
+		Match:    match,
+		TenantID: tenantID,
+	}
+
+	labels, err := h.metricsService.GetLabels(c.Request.Context(), request)
+	if err != nil {
+		h.logger.Error("Failed to get labels", "tenant", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve labels",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   labels,
+	})
+}
+
+// GET /api/v1/label/:name/values - Get values for a specific label
+func (h *MetricsQLHandler) GetLabelValues(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	labelName := c.Param("name")
+
+	if labelName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Label name is required",
+		})
+		return
+	}
+
+	// Parse query parameters
+	start := c.Query("start")
+	end := c.Query("end")
+	match := c.QueryArray("match[]")
+
+	request := &models.LabelValuesRequest{
+		Label:    labelName,
+		Start:    start,
+		End:      end,
+		Match:    match,
+		TenantID: tenantID,
+	}
+
+	values, err := h.metricsService.GetLabelValues(c.Request.Context(), request)
+	if err != nil {
+		h.logger.Error("Failed to get label values",
+			"label", labelName,
+			"tenant", tenantID,
+			"error", err,
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve label values",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   values,
+	})
+}

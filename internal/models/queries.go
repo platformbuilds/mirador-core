@@ -51,6 +51,28 @@ type MetricsQLQueryResponse struct {
 	Timestamp     time.Time   `json:"timestamp"`
 }
 
+type SeriesRequest struct {
+	Match    []string `json:"match[]"`
+	Start    string   `json:"start,omitempty"`
+	End      string   `json:"end,omitempty"`
+	TenantID string   `json:"-"`
+}
+
+type LabelsRequest struct {
+	Start    string   `json:"start,omitempty"`
+	End      string   `json:"end,omitempty"`
+	Match    []string `json:"match[],omitempty"`
+	TenantID string   `json:"-"`
+}
+
+type LabelValuesRequest struct {
+	Label    string   `json:"label"`
+	Start    string   `json:"start,omitempty"`
+	End      string   `json:"end,omitempty"`
+	Match    []string `json:"match[],omitempty"`
+	TenantID string   `json:"-"`
+}
+
 // LogsQL Models
 
 type LogsQLQueryRequest struct {

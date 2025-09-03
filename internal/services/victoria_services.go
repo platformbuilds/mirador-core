@@ -5,7 +5,6 @@
 package services
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -50,7 +49,7 @@ func NewVictoriaTracesService(cfg config.VictoriaTracesConfig, logger logger.Log
 func (s *VictoriaTracesService) GetServices(ctx context.Context, tenantID string) ([]string, error) {
 	endpoint := s.selectEndpoint()
 	fullURL := fmt.Sprintf("%s/select/jaeger/api/services", endpoint)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
 	if err != nil {
 		return nil, err
@@ -85,7 +84,7 @@ func (s *VictoriaTracesService) GetServices(ctx context.Context, tenantID string
 func (s *VictoriaTracesService) GetTrace(ctx context.Context, traceID, tenantID string) (*models.Trace, error) {
 	endpoint := s.selectEndpoint()
 	fullURL := fmt.Sprintf("%s/select/jaeger/api/traces/%s", endpoint, traceID)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
 	if err != nil {
 		return nil, err
@@ -116,7 +115,7 @@ func (s *VictoriaTracesService) GetTrace(ctx context.Context, traceID, tenantID 
 // SearchTraces searches for traces with filters
 func (s *VictoriaTracesService) SearchTraces(ctx context.Context, request *models.TraceSearchRequest) (*models.TraceSearchResult, error) {
 	endpoint := s.selectEndpoint()
-	
+
 	params := url.Values{}
 	if request.Service != "" {
 		params.Set("service", request.Service)
@@ -206,10 +205,10 @@ func (s *VictoriaTracesService) selectEndpoint() string {
 func NewVictoriaMetricsServices(dbConfig config.DatabaseConfig, logger logger.Logger) (*VictoriaMetricsServices, error) {
 	// Initialize VictoriaMetrics service
 	metricsService := NewVictoriaMetricsService(dbConfig.VictoriaMetrics, logger)
-	
+
 	// Initialize VictoriaLogs service
 	logsService := NewVictoriaLogsService(dbConfig.VictoriaLogs, logger)
-	
+
 	// Initialize VictoriaTraces service
 	tracesService := NewVictoriaTracesService(dbConfig.VictoriaTraces, logger)
 
