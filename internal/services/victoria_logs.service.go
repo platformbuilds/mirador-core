@@ -458,3 +458,128 @@ func (s *VictoriaLogsService) GetStreams(ctx context.Context, tenantID string, l
 
 	return streams, nil
 }
+
+// GetFields retrieves available log fields from VictoriaLogs
+func (s *VictoriaLogsService) GetFields(ctx context.Context, request *models.LogFieldsRequest) ([]string, error) {
+	endpoint := s.selectEndpoint()
+
+	params := url.Values{}
+	if request.Query != "" {
+		params.Set("query", request.Query)
+	}
+	if request.Limit > 0 {
+		params.Set("limit", strconv.Itoa(request.Limit))
+	}
+
+	fullURL := fmt.Sprintf("%s/select/logsql/field_names?%s", endpoint, params.Encode())
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if request.TenantID != "" {
+		req.Header.Set("AccountID", request.TenantID)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("VictoriaLogs returned status %d", resp.StatusCode)
+	}
+
+	var vlResponse struct {
+		Status string   `json:"status"`
+		Data   []string `json:"data"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&vlResponse); err != nil {
+		return nil, err
+	}
+
+	return vlResponse.Data, nil
+}
+
+// ExportLogs exports logs from VictoriaLogs in the specified format
+func (s *VictoriaLogsService) ExportLogs(ctx context.Context, request *models.LogExportRequest) (*models.LogExportResult, error) {
+	endpoint := s.selectEndpoint()
+
+	params := url.Values{}
+	params.Set("query", request.Query)
+
+	if request.Start != "" {
+		params.Set("start", request.Start)
+	}
+	if request.End != "" {
+		params.Set("end", request.End)
+	}
+	if request.Limit > 0 {
+		params.Set("limit", strconv.Itoa(request.Limit))
+	}
+
+	// Set format parameter for VictoriaLogs
+	switch request.Format {
+	case "csv":
+		params.Set("format", "csv")
+	case "json":
+		params.Set("format", "json")
+	default:
+		params.Set("format", "json")
+	}
+
+	// Use VictoriaLogs export endpoint
+	fullURL := fmt.Sprintf("%s/select/logsql/query?%s", endpoint, params.Encode())
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if request.TenantID != "" {
+		req.Header.Set("AccountID", request.TenantID)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("VictoriaLogs export failed with status %d", resp.StatusCode)
+	}
+
+	// For now, we'll create a simple export result
+	// In a real implementation, you might save the export to a file/S3 and return a download URL
+	exportID := fmt.Sprintf("export_%d", time.Now().Unix())
+
+	// Count records (this is a simplified approach)
+	var vlResponse struct {
+		Data []interface{} `json:"data"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&vlResponse); err != nil {
+		return nil, err
+	}
+
+	result := &models.LogExportResult{
+		ExportID:      exportID,
+		Format:        request.Format,
+		RecordCount:   len(vlResponse.Data),
+		DownloadURL:   fmt.Sprintf("/api/v1/exports/%s", exportID),
+		ExpiresAt:     time.Now().Add(24 * time.Hour),                      // Expires in 24 hours
+		EstimatedSize: fmt.Sprintf("%d KB", len(vlResponse.Data)*100/1024), // Rough estimate
+	}
+
+	s.logger.Info("Log export completed",
+		"exportId", exportID,
+		"recordCount", result.RecordCount,
+		"format", request.Format,
+		"tenant", request.TenantID,
+	)
+
+	return result, nil
+}

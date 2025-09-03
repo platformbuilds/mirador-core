@@ -88,3 +88,35 @@ type TimelineEvent struct {
 	AnomalyScore float64   `json:"anomaly_score"`
 	DataSource   string    `json:"data_source"` // metrics, logs, traces
 }
+
+// Predict model definitions
+type ActiveModelsRequest struct {
+	TenantID string `json:"-"`
+}
+
+type ActiveModelsResponse struct {
+	Models      []PredictionModel `json:"models"`
+	LastUpdated string            `json:"last_updated"`
+}
+
+type PredictionModel struct {
+	ID          string                 `json:"id"`
+	Name        string                 `json:"name"`
+	Version     string                 `json:"version"`
+	Type        string                 `json:"type"`   // fracture, fatigue, anomaly
+	Status      string                 `json:"status"` // active, training, deprecated
+	Accuracy    float64                `json:"accuracy"`
+	CreatedAt   string                 `json:"created_at"`
+	UpdatedAt   string                 `json:"updated_at"`
+	Description string                 `json:"description"`
+	Parameters  map[string]interface{} `json:"parameters"`
+	Metrics     ModelMetrics           `json:"metrics"`
+}
+
+type ModelMetrics struct {
+	Precision float64 `json:"precision"`
+	Recall    float64 `json:"recall"`
+	F1Score   float64 `json:"f1_score"`
+	MAE       float64 `json:"mae"`  // Mean Absolute Error
+	RMSE      float64 `json:"rmse"` // Root Mean Square Error
+}

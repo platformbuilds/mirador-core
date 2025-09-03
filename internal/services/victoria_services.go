@@ -1,7 +1,3 @@
-// ================================
-// internal/services/victoria_services.go - VictoriaMetrics Services Container
-// ================================
-
 package services
 
 import (
