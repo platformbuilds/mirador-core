@@ -236,3 +236,90 @@ func calculateAvgTimeToFailure(fractures []*models.SystemFracture) time.Duration
 	}
 	return time.Duration(int64(sum) / count)
 }
+
+// GET /api/v1/predict/health - Check PREDICT-ENGINE health
+func (h *PredictHandler) GetHealth(c *gin.Context) {
+	_, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	// Check PREDICT-ENGINE health via gRPC
+	err := h.predictClient.HealthCheck()
+	if err != nil {
+		h.logger.Error("PREDICT-ENGINE health check failed", "error", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status":    "unhealthy",
+			"service":   "mirador-predict-engine",
+			"error":     "PREDICT-ENGINE is unavailable",
+			"timestamp": time.Now().Format(time.RFC3339),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":    "healthy",
+		"service":   "mirador-predict-engine",
+		"version":   "v1.0.0", // You can get this from the gRPC response if available
+		"timestamp": time.Now().Format(time.RFC3339),
+		"capabilities": []string{
+			"fracture-analysis",
+			"fatigue-prediction",
+			"system-health-modeling",
+		},
+	})
+}
+
+// GET /api/v1/predict/models - Get active prediction models
+func (h *PredictHandler) GetActiveModels(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	// Check cache first
+	cacheKey := fmt.Sprintf("predict_models:%s", tenantID)
+	if cached, err := h.cache.Get(c.Request.Context(), cacheKey); err == nil {
+		var models []interface{}
+		if json.Unmarshal(cached, &models) == nil {
+			c.Header("X-Cache", "HIT")
+			c.JSON(http.StatusOK, gin.H{
+				"status": "success",
+				"data": gin.H{
+					"models": models,
+					"count":  len(models),
+				},
+			})
+			return
+		}
+	}
+
+	// Get active models from PREDICT-ENGINE via gRPC
+	request := &models.ActiveModelsRequest{
+		TenantID: tenantID,
+	}
+
+	modelsResponse, err := h.predictClient.GetActiveModels(c.Request.Context(), request)
+	if err != nil {
+		h.logger.Error("Failed to get active prediction models",
+			"tenant", tenantID,
+			"error", err,
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve active models",
+		})
+		return
+	}
+
+	// Cache models list for 10 minutes
+	h.cache.Set(c.Request.Context(), cacheKey, modelsResponse.Models, 10*time.Minute)
+
+	c.Header("X-Cache", "MISS")
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"models": modelsResponse.Models,
+			"count":  len(modelsResponse.Models),
+		},
+		"metadata": gin.H{
+			"lastUpdated": modelsResponse.LastUpdated,
+			"totalModels": len(modelsResponse.Models),
+		},
+	})
+}

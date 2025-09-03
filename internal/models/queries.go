@@ -95,6 +95,30 @@ type LogsQLResponse struct {
 	Data   []map[string]interface{} `json:"data"`
 }
 
+type LogFieldsRequest struct {
+	Query    string `json:"query,omitempty"`
+	Limit    int    `json:"limit,omitempty"`
+	TenantID string `json:"-"`
+}
+
+type LogExportRequest struct {
+	Query    string `json:"query" binding:"required"`
+	Format   string `json:"format,omitempty"` // json, csv, parquet
+	Start    string `json:"start,omitempty"`
+	End      string `json:"end,omitempty"`
+	Limit    int    `json:"limit,omitempty"`
+	TenantID string `json:"-"`
+}
+
+type LogExportResult struct {
+	ExportID      string    `json:"export_id"`
+	Format        string    `json:"format"`
+	RecordCount   int       `json:"record_count"`
+	DownloadURL   string    `json:"download_url"`
+	ExpiresAt     time.Time `json:"expires_at"`
+	EstimatedSize string    `json:"estimated_size"`
+}
+
 // VictoriaTraces Models
 type TraceSearchRequest struct {
 	Service     string    `json:"service,omitempty"`

@@ -140,3 +140,52 @@ func (h *TracesHandler) SearchTraces(c *gin.Context) {
 		},
 	})
 }
+
+// GET /api/v1/traces/services/:service/operations - Get operations for a service (Jaeger-compatible)
+func (h *TracesHandler) GetOperations(c *gin.Context) {
+	serviceName := c.Param("service")
+	tenantID := c.GetString("tenant_id")
+
+	if serviceName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Service name is required",
+		})
+		return
+	}
+
+	// Check Valkey cluster cache first
+	cacheKey := fmt.Sprintf("trace_operations:%s:%s", tenantID, serviceName)
+	if cached, err := h.cache.Get(c.Request.Context(), cacheKey); err == nil {
+		var operations []string
+		if json.Unmarshal(cached, &operations) == nil {
+			c.Header("X-Cache", "HIT")
+			c.JSON(http.StatusOK, gin.H{
+				"data": operations,
+			})
+			return
+		}
+	}
+
+	operations, err := h.tracesService.GetOperations(c.Request.Context(), serviceName, tenantID)
+	if err != nil {
+		h.logger.Error("Failed to get trace operations",
+			"service", serviceName,
+			"tenant", tenantID,
+			"error", err,
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve operations",
+		})
+		return
+	}
+
+	// Cache operations list for 5 minutes
+	h.cache.Set(c.Request.Context(), cacheKey, operations, 5*time.Minute)
+
+	c.Header("X-Cache", "MISS")
+	c.JSON(http.StatusOK, gin.H{
+		"data": operations,
+	})
+}
