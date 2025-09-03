@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -161,6 +162,88 @@ func (h *ConfigHandler) GetDataSources(c *gin.Context) {
 		"data": gin.H{
 			"datasources": dataSources,
 			"total":       len(dataSources),
+		},
+	})
+}
+
+// POST /api/v1/config/datasources - Add a new data source (minimal stub)
+// Accepts a JSON body compatible with models.DataSource.
+// If ID is empty, one is generated. TenantID is taken from request context.
+func (h *ConfigHandler) AddDataSource(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	var req models.DataSource
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "invalid datasource payload",
+		})
+		return
+	}
+
+	// Fill defaults
+	if req.ID == "" {
+		req.ID = fmt.Sprintf("ds_%d", time.Now().UnixNano())
+	}
+	if req.Status == "" {
+		req.Status = "connected" // or "pending" if you prefer
+	}
+	req.TenantID = tenantID
+
+	// NOTE: Persisting to Valkey/DB can be added later; for now return success.
+	// Example (only if your cache exposes a generic Set):
+	// _ = h.cache.SetJSON(c.Request.Context(), "cfg:datasource:"+req.ID, req, time.Hour*24)
+
+	h.logger.Info("Data source added",
+		"id", req.ID, "type", req.Type, "name", req.Name, "tenant", tenantID)
+
+	c.JSON(http.StatusCreated, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"datasource": req,
+			"createdAt":  time.Now().Format(time.RFC3339),
+		},
+	})
+}
+
+// GET /api/v1/config/integrations - List available/connected integrations
+// Returns a simple list for UI toggles; replace with real discovery later.
+func (h *ConfigHandler) GetIntegrations(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	// Mocked integrations snapshot; extend with real status checks later
+	integrations := []map[string]interface{}{
+		{
+			"id":        "predict-engine",
+			"name":      "Predict Engine",
+			"type":      "ai",
+			"status":    "connected",
+			"tenantId":  tenantID,
+			"endpoints": []string{"/api/v1/predict/health", "/api/v1/predict/models"},
+		},
+		{
+			"id":        "rca-engine",
+			"name":      "RCA Engine",
+			"type":      "ai",
+			"status":    "connected",
+			"tenantId":  tenantID,
+			"endpoints": []string{"/api/v1/rca/investigate", "/api/v1/rca/patterns"},
+		},
+		{
+			"id":        "alertmanager",
+			"name":      "Alertmanager",
+			"type":      "alerts",
+			"status":    "optional",
+			"tenantId":  tenantID,
+			"endpoints": []string{},
+		},
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"integrations": integrations,
+			"total":        len(integrations),
 		},
 	})
 }

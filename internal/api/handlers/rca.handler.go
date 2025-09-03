@@ -137,3 +137,46 @@ func (h *RCAHandler) StoreCorrelation(c *gin.Context) {
 		},
 	})
 }
+
+// GET /api/v1/rca/correlations - List active correlations (stubbed; fill with gRPC later)
+func (h *RCAHandler) GetActiveCorrelations(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	// Optional filters
+	service := c.Query("service")
+	limitStr := c.DefaultQuery("limit", "50")
+
+	// TODO: Replace with h.rcaClient.ListActiveCorrelations(...)
+	// Minimal response to unblock compilation and UI wiring
+	resp := gin.H{
+		"status":   "success",
+		"tenantId": tenantID,
+		"filters":  gin.H{"service": service, "limit": limitStr},
+		"data": gin.H{
+			"correlations": []interface{}{}, // fill with real items later
+		},
+		"timestamp": time.Now().Format(time.RFC3339),
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// GET /api/v1/rca/patterns - List known failure patterns (stubbed; fill with gRPC later)
+func (h *RCAHandler) GetFailurePatterns(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	// Optional filters
+	service := c.Query("service")
+	since := c.Query("since") // e.g., RFC3339 or unix seconds
+
+	// TODO: Replace with h.rcaClient.GetPatterns(...) once proto/engine is ready
+	resp := gin.H{
+		"status":   "success",
+		"tenantId": tenantID,
+		"filters":  gin.H{"service": service, "since": since},
+		"data": gin.H{
+			"patterns": []interface{}{}, // fill with real patterns later
+		},
+		"timestamp": time.Now().Format(time.RFC3339),
+	}
+	c.JSON(http.StatusOK, resp)
+}
