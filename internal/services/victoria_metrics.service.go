@@ -1,5 +1,3 @@
-
-
 // ================================
 // internal/services/victoria_metrics.service.go - VictoriaMetrics Integration
 // ================================
@@ -7,7 +5,6 @@
 package services
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -41,10 +38,10 @@ func NewVictoriaMetricsService(cfg config.VictoriaMetricsConfig, logger logger.L
 
 func (s *VictoriaMetricsService) ExecuteQuery(ctx context.Context, request *models.MetricsQLQueryRequest) (*models.MetricsQLQueryResult, error) {
 	start := time.Now()
-	
+
 	// Select endpoint with load balancing
 	endpoint := s.selectEndpoint()
-	
+
 	// Build query parameters
 	params := url.Values{}
 	params.Set("query", request.Query)
@@ -86,7 +83,7 @@ func (s *VictoriaMetricsService) ExecuteQuery(ctx context.Context, request *mode
 	}
 
 	executionTime := time.Since(start)
-	
+
 	result := &models.MetricsQLQueryResult{
 		Status:        vmResponse.Status,
 		Data:          vmResponse.Data,
@@ -107,7 +104,7 @@ func (s *VictoriaMetricsService) ExecuteQuery(ctx context.Context, request *mode
 
 func (s *VictoriaMetricsService) ExecuteRangeQuery(ctx context.Context, request *models.MetricsQLRangeQueryRequest) (*models.MetricsQLRangeQueryResult, error) {
 	endpoint := s.selectEndpoint()
-	
+
 	params := url.Values{}
 	params.Set("query", request.Query)
 	params.Set("start", request.Start)
@@ -144,7 +141,7 @@ func (s *VictoriaMetricsService) ExecuteRangeQuery(ctx context.Context, request 
 
 func (s *VictoriaMetricsService) GetSeries(ctx context.Context, request *models.SeriesRequest) ([]map[string]string, error) {
 	endpoint := s.selectEndpoint()
-	
+
 	params := url.Values{}
 	for _, match := range request.Match {
 		params.Add("match[]", match)
@@ -209,4 +206,88 @@ func (s *VictoriaMetricsService) selectEndpoint() string {
 	endpoint := s.endpoints[s.current%len(s.endpoints)]
 	s.current++
 	return endpoint
+}
+
+func (s *VictoriaMetricsService) GetLabels(ctx context.Context, request *models.LabelsRequest) ([]string, error) {
+	endpoint := s.selectEndpoint()
+
+	params := url.Values{}
+	if request.Start != "" {
+		params.Set("start", request.Start)
+	}
+	if request.End != "" {
+		params.Set("end", request.End)
+	}
+	for _, match := range request.Match {
+		params.Add("match[]", match)
+	}
+
+	fullURL := fmt.Sprintf("%s/select/0/prometheus/api/v1/labels?%s", endpoint, params.Encode())
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if request.TenantID != "" {
+		req.Header.Set("AccountID", request.TenantID)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var vmResponse struct {
+		Status string   `json:"status"`
+		Data   []string `json:"data"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&vmResponse); err != nil {
+		return nil, err
+	}
+
+	return vmResponse.Data, nil
+}
+
+func (s *VictoriaMetricsService) GetLabelValues(ctx context.Context, request *models.LabelValuesRequest) ([]string, error) {
+	endpoint := s.selectEndpoint()
+
+	params := url.Values{}
+	if request.Start != "" {
+		params.Set("start", request.Start)
+	}
+	if request.End != "" {
+		params.Set("end", request.End)
+	}
+	for _, match := range request.Match {
+		params.Add("match[]", match)
+	}
+
+	fullURL := fmt.Sprintf("%s/select/0/prometheus/api/v1/label/%s/values?%s", endpoint, request.Label, params.Encode())
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if request.TenantID != "" {
+		req.Header.Set("AccountID", request.TenantID)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var vmResponse struct {
+		Status string   `json:"status"`
+		Data   []string `json:"data"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&vmResponse); err != nil {
+		return nil, err
+	}
+
+	return vmResponse.Data, nil
 }

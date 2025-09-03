@@ -77,18 +77,15 @@ func (s *Server) setupMiddleware() {
 	// Swagger UI (browser docs)
 	s.router.GET("/docs", handlers.ServeSwaggerUI)
 	s.router.GET("/docs/index.html", handlers.ServeSwaggerUI) // optional convenience
-
 }
 
 func (s *Server) setupRoutes() {
-	// Public health endpoints
-	s.router.GET("/health", handlers.HealthCheck)
-	s.router.GET("/ready", handlers.ReadinessCheck)
+	// Create health handler instance
+	healthHandler := handlers.NewHealthHandler(s.grpcClients, s.vmServices, s.logger)
 
-	// OpenAPI specification endpoints
-	// Serve the committed YAML directly, and a JSON-converted variant via handler.
-	s.router.StaticFile("/api/openapi.yaml", "api/openapi.yaml")
-	s.router.GET("/api/openapi.json", handlers.GetOpenAPISpec) // expects handlers.GetOpenAPISpec to YAML→JSON
+	// Public health endpoints - now using handler instance methods
+	s.router.GET("/health", healthHandler.HealthCheck)
+	s.router.GET("/ready", healthHandler.ReadinessCheck)
 
 	// API v1 group (protected by RBAC)
 	v1 := s.router.Group("/api/v1")
