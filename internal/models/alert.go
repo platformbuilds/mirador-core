@@ -1,7 +1,3 @@
-// ================================
-// Complete internal/models/alert.go file
-// ================================
-
 package models
 
 import "time"

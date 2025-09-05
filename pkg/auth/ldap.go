@@ -1,7 +1,3 @@
-// ================================
-// pkg/auth/ldap.go - LDAP/AD Integration
-// ================================
-
 package auth
 
 import (
