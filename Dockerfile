@@ -1,20 +1,37 @@
 # Multi-stage build for optimized container
-FROM golang:1.21-alpine AS builder
+# syntax=docker/dockerfile:1.6
+
+# Use BuildKit-aware, platform-specific builder to avoid QEMU segfaults on M1
+FROM --platform=$BUILDPLATFORM golang:1.23-bookworm AS builder
 
 # Install build dependencies
-RUN apk add --no-cache git ca-certificates tzdata
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git ca-certificates tzdata \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Copy go mod files first for better caching
 COPY go.mod go.sum ./
-RUN go mod download
+# Ensure pure-Go DNS resolver to avoid musl/QEMU issues during mod download
+ENV GODEBUG=netdns=go \
+    GOPROXY=https://proxy.golang.org,direct
+
+# Cache go modules and build cache (requires BuildKit)
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod download
 
 # Copy source code
 COPY . .
 
-# Build the binary with optimizations
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+# Build the binary with optimizations (multi-platform)
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build \
     -a -installsuffix cgo \
     -ldflags="-w -s -X main.version=v2.1.3 -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     -o mirador-core cmd/server/main.go
