@@ -1,8 +1,6 @@
 package monitoring
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -12,7 +10,7 @@ import (
 func SetupPrometheusMetrics(router *gin.Engine) {
 	// Custom registry for MIRADOR-CORE metrics
 	registry := prometheus.NewRegistry()
-	
+
 	// Register custom metrics
 	registry.MustRegister(
 		prometheus.NewGaugeFunc(prometheus.GaugeOpts{

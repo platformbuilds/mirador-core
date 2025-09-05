@@ -142,43 +142,45 @@ func (c *PredictEngineClient) Close() error {
 	return c.conn.Close()
 }
 
-// GetActiveModels retrieves active prediction models using existing GetModels method
+// GetActiveModels retrieves active prediction models from PREDICT-ENGINE
 func (c *PredictEngineClient) GetActiveModels(ctx context.Context, request *models.ActiveModelsRequest) (*models.ActiveModelsResponse, error) {
-	// Use the existing GetModels method that actually exists in your gRPC service
-	allModels, err := c.GetModels(ctx)
+	// Call gRPC directly so we can send tenant_id from the request
+	resp, err := c.client.GetModels(ctx, &predict.GetModelsRequest{
+		TenantId: request.TenantID,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	// Filter for active models and convert to internal format
-	activeModels := make([]models.PredictionModel, 0)
-	for _, model := range allModels {
-		// Only include active models (your MLModel has Status field)
-		if model.Status == "active" || model.Status == "" { // Empty status defaults to active
-			activeModels = append(activeModels, models.PredictionModel{
-				ID:          model.Id,
-				Name:        model.Name,
-				Version:     model.Version,
-				Type:        model.Type,
-				Status:      "active",
-				Accuracy:    model.Accuracy,
-				CreatedAt:   model.LastTrained, // Using LastTrained as CreatedAt since that's what your proto has
-				UpdatedAt:   model.LastTrained,
-				Description: "",                           // Not in your proto, so empty
-				Parameters:  make(map[string]interface{}), // Not in your proto, so empty map
-				Metrics: models.ModelMetrics{
-					Precision: 0.0, // Not in your proto
-					Recall:    0.0, // Not in your proto
-					F1Score:   0.0, // Not in your proto
-					MAE:       0.0, // Not in your proto
-					RMSE:      0.0, // Not in your proto
-				},
-			})
+	active := make([]models.PredictionModel, 0, len(resp.Models))
+	for _, m := range resp.Models {
+		// Treat empty status as active (safe default for early engine builds)
+		if m.Status != "" && m.Status != "active" {
+			continue
 		}
+
+		// NOTE: MLModel has no Id/Version in proto.
+		// If your internal model requires them, fill sensible placeholders.
+		pm := models.PredictionModel{
+			ID:          "", // proto has no id; leave empty or derive from name+type
+			Name:        m.Name,
+			Version:     "", // proto has no version
+			Type:        m.Type,
+			Status:      "active",
+			Accuracy:    m.Accuracy,
+			CreatedAt:   m.LastTrained, // proto gives string; your struct uses string in current code
+			UpdatedAt:   m.LastTrained,
+			Description: "",
+			Parameters:  map[string]interface{}{},
+			Metrics: models.ModelMetrics{
+				Precision: 0, Recall: 0, F1Score: 0, MAE: 0, RMSE: 0,
+			},
+		}
+		active = append(active, pm)
 	}
 
 	return &models.ActiveModelsResponse{
-		Models:      activeModels,
+		Models:      active,
 		LastUpdated: time.Now().Format(time.RFC3339),
 	}, nil
 }

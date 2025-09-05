@@ -197,3 +197,8 @@ func (s *Server) Start(ctx context.Context) error {
 
 	return s.httpServer.Shutdown(shutdownCtx)
 }
+
+// Handler returns the underlying Gin engine so tests (or embedders) can mount it.
+func (s *Server) Handler() http.Handler {
+	return s.router
+}

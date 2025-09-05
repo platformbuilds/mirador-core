@@ -17,6 +17,13 @@ func (tr TimeRange) Duration() time.Duration {
 }
 
 // MetricsQL Models
+
+// VictoriaMetricsResponse matches Prometheus-compatible JSON responses from VictoriaMetrics.
+type VictoriaMetricsResponse struct {
+	Status string      `json:"status"`
+	Data   interface{} `json:"data"` // can be instant vector, range vector, scalar, etc.
+}
+
 type MetricsQLQueryRequest struct {
 	Query    string `json:"query" binding:"required"`
 	Time     string `json:"time,omitempty"`
