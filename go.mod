@@ -1,4 +1,4 @@
-module github.com/platformbuilds/miradorstack
+module github.com/platformbuilds/mirador-core
 
 go 1.23.0
 
