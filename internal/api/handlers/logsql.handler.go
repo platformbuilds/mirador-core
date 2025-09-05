@@ -157,20 +157,11 @@ func (h *LogsQLHandler) StoreEvent(c *gin.Context) {
 func (h *LogsQLHandler) GetFields(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
-	// Parse query parameters
-	query := c.Query("query")
-	limit, err := strconv.Atoi(c.DefaultQuery("limit", "1000"))
-	if err != nil {
-		limit = 1000
-	}
+	// (optional) parse query/limit, but the current service does not use them
+	// query := c.Query("query")
+	// limit, _ := strconv.Atoi(c.DefaultQuery("limit", "1000"))
 
-	request := &models.LogFieldsRequest{
-		Query:    query,
-		Limit:    limit,
-		TenantID: tenantID,
-	}
-
-	fields, err := h.logsService.GetFields(c.Request.Context(), request)
+	fields, err := h.logsService.GetFields(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get log fields", "tenant", tenantID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{

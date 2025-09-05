@@ -10,10 +10,19 @@ import (
 
 	"github.com/platformbuilds/miradorstack/internal/api"
 	"github.com/platformbuilds/miradorstack/internal/config"
+	"github.com/platformbuilds/miradorstack/internal/grpc/clients"
 	"github.com/platformbuilds/miradorstack/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
+
+// NewMockGRPCClients returns an empty gRPC client bundle suitable for these
+// integration tests (VM services are mocked; we don't hit gRPC paths here).
+// If you later add tests that call predict/rca/alert handlers, replace the
+// zero fields with proper test doubles.
+func NewMockGRPCClients() *clients.GRPCClients {
+	return &clients.GRPCClients{}
+}
 
 type APITestSuite struct {
 	suite.Suite
@@ -27,10 +36,10 @@ func (suite *APITestSuite) SetupSuite() {
 	cfg := &config.Config{
 		Environment: "test",
 		LogLevel:    "error",
-		// ... test config
+		// ... any other test config fields you need
 	}
 
-	logger := logger.New("error")
+	log := logger.New("error")
 
 	// Mock dependencies for testing
 	mockCache := NewMockValkeyCluster()
@@ -38,7 +47,7 @@ func (suite *APITestSuite) SetupSuite() {
 	mockVMServices := NewMockVMServices()
 
 	// Create test server
-	suite.server = api.NewServer(cfg, logger, mockCache, mockGRPCClients, mockVMServices)
+	suite.server = api.NewServer(cfg, log, mockCache, mockGRPCClients, mockVMServices)
 	suite.testServer = httptest.NewServer(suite.server.Handler())
 	suite.client = &http.Client{Timeout: 10 * time.Second}
 }

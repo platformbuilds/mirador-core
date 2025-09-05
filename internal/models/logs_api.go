@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // Generic LogSQL query
 func (r *LogsQLQueryRequest) GetExtra() map[string]string { // used by service
 	if r.Extra == nil {
@@ -13,9 +15,17 @@ type LogsExportRequest = LogExportRequest
 
 // Binary export result used by the /logs/export handler.
 type LogsExportResult struct {
-	Filename string `json:"filename"`
-	Format   string `json:"format"`
-	Size     int    `json:"size"`
+	// Handler-expected fields
+	ExportID      string    `json:"export_id"`
+	Format        string    `json:"format"`
+	RecordCount   int       `json:"record_count"`
+	DownloadURL   string    `json:"download_url"`
+	ExpiresAt     time.Time `json:"expires_at"`
+	EstimatedSize string    `json:"estimated_size"`
+
+	// Optional binary response fields (not used by handler right now)
+	Filename string `json:"filename,omitempty"`
+	Size     int    `json:"size,omitempty"`
 	Data     []byte `json:"-"`
 }
 
