@@ -14,17 +14,17 @@ import (
 )
 
 type RCAHandler struct {
-	rcaClient   *clients.RCAEngineClient
-	logsService *services.VictoriaLogsService
-	cache       cache.ValkeyCluster
-	logger      logger.Logger
+    rcaClient   clients.RCAClient
+    logsService *services.VictoriaLogsService
+    cache       cache.ValkeyCluster
+    logger      logger.Logger
 }
 
 func NewRCAHandler(
-	rcaClient *clients.RCAEngineClient,
-	logsService *services.VictoriaLogsService,
-	cache cache.ValkeyCluster,
-	logger logger.Logger,
+    rcaClient clients.RCAClient,
+    logsService *services.VictoriaLogsService,
+    cache cache.ValkeyCluster,
+    logger logger.Logger,
 ) *RCAHandler {
 	return &RCAHandler{
 		rcaClient:   rcaClient,
@@ -59,28 +59,20 @@ func (h *RCAHandler) StartInvestigation(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data": gin.H{
-			"correlation": gin.H{
-				"id":               correlation.CorrelationID,
-				"incidentId":       correlation.IncidentID,
-				"rootCause":        correlation.RootCause,
-				"confidence":       correlation.Confidence,
-				"affectedServices": correlation.AffectedServices,
-				"timeline":         correlation.Timeline,
-				"redAnchors":       correlation.RedAnchors, // Anomaly score pattern
-				"recommendations":  correlation.Recommendations,
-			},
-			"investigation": gin.H{
-				"startedAt":       correlation.CreatedAt,
-				"processingTime":  time.Since(correlation.CreatedAt).Milliseconds(),
-				"dataSourcesUsed": []string{"metrics", "logs", "traces"},
-				"anchorsFound":    len(correlation.RedAnchors),
-			},
-		},
-		"timestamp": time.Now().Format(time.RFC3339),
-	})
+    c.JSON(http.StatusOK, gin.H{
+        "status": "success",
+        "data": gin.H{
+            // Return the struct directly so json tags (snake_case) are preserved
+            "correlation": correlation,
+            "investigation": gin.H{
+                "startedAt":       correlation.CreatedAt,
+                "processingTime":  time.Since(correlation.CreatedAt).Milliseconds(),
+                "dataSourcesUsed": []string{"metrics", "logs", "traces"},
+                "anchorsFound":    len(correlation.RedAnchors),
+            },
+        },
+        "timestamp": time.Now().Format(time.RFC3339),
+    })
 }
 
 // POST /api/v1/rca/store - Store correlation back to VictoriaLogs as JSON
