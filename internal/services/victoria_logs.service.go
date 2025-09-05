@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/platformbuilds/miradorstack/internal/config"
 	"github.com/platformbuilds/miradorstack/internal/models"
 	"github.com/platformbuilds/miradorstack/pkg/logger"
@@ -42,7 +41,6 @@ func NewVictoriaLogsService(cfg config.VictoriaLogsConfig, logger logger.Logger)
 
 // -------------------------------------------------------------------
 // ExecuteQuery delegates to ExecuteQueryStream and buffers rows in memory.
-// Existing handlers depending on []map[string]any keep working unchanged.
 // -------------------------------------------------------------------
 func (s *VictoriaLogsService) ExecuteQuery(
 	ctx context.Context,
@@ -51,7 +49,6 @@ func (s *VictoriaLogsService) ExecuteQuery(
 
 	var rows []map[string]any
 	onRow := func(m map[string]any) error {
-		// shallow copy to avoid scanner buffer reuse issues
 		cp := make(map[string]any, len(m))
 		for k, v := range m {
 			cp[k] = v
@@ -112,16 +109,6 @@ func (s *VictoriaLogsService) ExecuteQueryStream(
 	if req.Limit > 0 {
 		q.Set("limit", strconv.Itoa(req.Limit))
 	}
-
-	// Optional: pass extra flags if request supports them
-	type flags interface{ GetExtra() map[string]string }
-	if f, ok := any(req).(flags); ok {
-		for k, v := range f.GetExtra() {
-			if k != "" && v != "" {
-				q.Set(k, v)
-			}
-		}
-	}
 	u.RawQuery = q.Encode()
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
@@ -176,11 +163,6 @@ func (s *VictoriaLogsService) ExecuteQueryStream(
 	)
 
 	for sc.Scan() {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-		}
 		b := sc.Bytes()
 		bytesRead += int64(len(b))
 		line := bytes.TrimSpace(b)
@@ -203,9 +185,6 @@ func (s *VictoriaLogsService) ExecuteQueryStream(
 		}
 	}
 	if err := sc.Err(); err != nil {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
 		return nil, fmt.Errorf("stream read error: %w", err)
 	}
 
@@ -283,7 +262,8 @@ func (s *VictoriaLogsService) StoreJSONEvent(ctx context.Context, event map[stri
 	}
 	endpoint := s.selectEndpoint()
 	url := fmt.Sprintf("%s/insert/jsonline", endpoint)
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonData))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonData))
 	if err != nil {
 		return err
 	}
@@ -296,6 +276,7 @@ func (s *VictoriaLogsService) StoreJSONEvent(ctx context.Context, event map[stri
 		return fmt.Errorf("failed to store event: %w", err)
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("VictoriaLogs returned status %d", resp.StatusCode)
 	}
@@ -306,12 +287,14 @@ func (s *VictoriaLogsService) StoreJSONEvent(ctx context.Context, event map[stri
 func (s *VictoriaLogsService) QueryPredictionEvents(ctx context.Context, query, tenantID string) ([]*models.SystemFracture, error) {
 	endpoint := s.selectEndpoint()
 	url := fmt.Sprintf("%s/select/logsql/query", endpoint)
+
 	reqBody := map[string]interface{}{"query": query, "limit": 1000}
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonData))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonData))
 	if err != nil {
 		return nil, err
 	}
@@ -319,35 +302,44 @@ func (s *VictoriaLogsService) QueryPredictionEvents(ctx context.Context, query, 
 	if tenantID != "" {
 		req.Header.Set("AccountID", tenantID)
 	}
+
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
 	var queryResponse models.LogsQLResponse
 	if err := json.NewDecoder(resp.Body).Decode(&queryResponse); err != nil {
 		return nil, err
 	}
+
 	var fractures []*models.SystemFracture
 	for _, entry := range queryResponse.Data {
 		if prediction, ok := entry["prediction"].(map[string]interface{}); ok {
-			fracture := &models.SystemFracture{
-				ID:        prediction["id"].(string),
-				Component: prediction["component"].(string),
+			f := &models.SystemFracture{}
+			if v, ok := prediction["id"].(string); ok {
+				f.ID = v
 			}
-			fractures = append(fractures, fracture)
+			if v, ok := prediction["component"].(string); ok {
+				f.Component = v
+			}
+			fractures = append(fractures, f)
 		}
 	}
 	return fractures, nil
 }
 
 func (s *VictoriaLogsService) selectEndpoint() string {
+	if len(s.endpoints) == 0 {
+		return ""
+	}
 	return s.endpoints[time.Now().Unix()%int64(len(s.endpoints))]
 }
 
 func (s *VictoriaLogsService) HealthCheck(ctx context.Context) error {
 	endpoint := s.selectEndpoint()
-	req, err := http.NewRequestWithContext(ctx, "GET", endpoint+"/health", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"/health", nil)
 	if err != nil {
 		return err
 	}
@@ -362,56 +354,7 @@ func (s *VictoriaLogsService) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-// GET /api/v1/logs/fields - unchanged
-func (h *LogsQLHandler) GetFields(c *gin.Context) {
-	tenantID := c.GetString("tenant_id")
-	fields, err := h.logsService.GetFields(c.Request.Context(), tenantID)
-	if err != nil {
-		h.logger.Error("Failed to get log fields", "tenant", tenantID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": "Failed to retrieve log fields"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"status": "success", "data": gin.H{"fields": fields, "total": len(fields)}})
-}
-
-// POST /api/v1/logs/export - unchanged
-func (h *LogsQLHandler) ExportLogs(c *gin.Context) {
-	var request models.LogsExportRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "Invalid export request format"})
-		return
-	}
-	request.TenantID = c.GetString("tenant_id")
-	if err := h.validator.ValidateLogsQL(request.Query); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": fmt.Sprintf("Invalid LogsQL query: %s", err.Error())})
-		return
-	}
-	result, err := h.logsService.ExportLogs(c.Request.Context(), &request)
-	if err != nil {
-		h.logger.Error("Failed to export logs", "tenant", request.TenantID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": "Failed to export logs"})
-		return
-	}
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", result.Filename))
-	c.Header("Content-Type", getContentType(result.Format))
-	c.Header("Content-Length", fmt.Sprintf("%d", result.Size))
-	c.Data(http.StatusOK, getContentType(result.Format), result.Data)
-}
-
-func getContentType(format string) string {
-	switch format {
-	case "json":
-		return "application/json"
-	case "csv":
-		return "text/csv"
-	case "txt":
-		return "text/plain"
-	default:
-		return "application/octet-stream"
-	}
-}
-
-// GetStreams queries VictoriaLogs for available log streams (distinct label sets).
+// GetStreams queries VictoriaLogs for available log streams.
 func (s *VictoriaLogsService) GetStreams(ctx context.Context, tenantID string, limit int) ([]map[string]string, error) {
 	endpoint := s.selectEndpoint()
 	u := fmt.Sprintf("%s/select/logsql/labels", endpoint)
@@ -420,7 +363,6 @@ func (s *VictoriaLogsService) GetStreams(ctx context.Context, tenantID string, l
 	if err != nil {
 		return nil, err
 	}
-
 	req.Header.Set("Accept", "application/json")
 	if tenantID != "" {
 		req.Header.Set("X-Scope-OrgID", tenantID)
@@ -446,8 +388,6 @@ func (s *VictoriaLogsService) GetStreams(ctx context.Context, tenantID string, l
 		return nil, fmt.Errorf("decode labels: %w", err)
 	}
 
-	// For now, just wrap each label name into a map to look like a "stream".
-	// Later you could expand this to query label values for each.
 	streams := make([]map[string]string, 0, len(labels))
 	for _, lbl := range labels {
 		streams = append(streams, map[string]string{"label": lbl})
@@ -455,30 +395,24 @@ func (s *VictoriaLogsService) GetStreams(ctx context.Context, tenantID string, l
 			break
 		}
 	}
-
 	return streams, nil
 }
 
-// GetFields retrieves available log fields from VictoriaLogs
-func (s *VictoriaLogsService) GetFields(ctx context.Context, request *models.LogFieldsRequest) ([]string, error) {
+// GetFields retrieves available log fields.
+func (s *VictoriaLogsService) GetFields(ctx context.Context, tenantID string) ([]string, error) {
 	endpoint := s.selectEndpoint()
-
-	params := url.Values{}
-	if request.Query != "" {
-		params.Set("query", request.Query)
-	}
-	if request.Limit > 0 {
-		params.Set("limit", strconv.Itoa(request.Limit))
+	if endpoint == "" {
+		return nil, fmt.Errorf("no victoria logs endpoint configured")
 	}
 
-	fullURL := fmt.Sprintf("%s/select/logsql/field_names?%s", endpoint, params.Encode())
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	u := fmt.Sprintf("%s/select/logsql/field_names", endpoint)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	if request.TenantID != "" {
-		req.Header.Set("AccountID", request.TenantID)
+	req.Header.Set("Accept", "application/json")
+	if tenantID != "" {
+		req.Header.Set("AccountID", tenantID)
 	}
 
 	resp, err := s.client.Do(req)
@@ -486,30 +420,34 @@ func (s *VictoriaLogsService) GetFields(ctx context.Context, request *models.Log
 		return nil, err
 	}
 	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("VictoriaLogs returned status %d", resp.StatusCode)
 	}
 
-	var vlResponse struct {
+	var vlResp struct {
 		Status string   `json:"status"`
 		Data   []string `json:"data"`
 	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&vlResponse); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&vlResp); err != nil {
 		return nil, err
 	}
-
-	return vlResponse.Data, nil
+	return vlResp.Data, nil
 }
 
-// ExportLogs exports logs from VictoriaLogs in the specified format
-func (s *VictoriaLogsService) ExportLogs(ctx context.Context, request *models.LogExportRequest) (*models.LogExportResult, error) {
+// ExportLogs returns a binary export (used by handler for download).
+func (s *VictoriaLogsService) ExportLogs(ctx context.Context, request *models.LogsExportRequest) (*models.LogsExportResult, error) {
+	if request == nil {
+		return nil, fmt.Errorf("nil export request")
+	}
 	endpoint := s.selectEndpoint()
+	if endpoint == "" {
+		return nil, fmt.Errorf("no victoria logs endpoint configured")
+	}
 
 	params := url.Values{}
-	params.Set("query", request.Query)
-
+	if strings.TrimSpace(request.Query) != "" {
+		params.Set("query", request.Query)
+	}
 	if request.Start != "" {
 		params.Set("start", request.Start)
 	}
@@ -519,67 +457,41 @@ func (s *VictoriaLogsService) ExportLogs(ctx context.Context, request *models.Lo
 	if request.Limit > 0 {
 		params.Set("limit", strconv.Itoa(request.Limit))
 	}
-
-	// Set format parameter for VictoriaLogs
-	switch request.Format {
-	case "csv":
-		params.Set("format", "csv")
-	case "json":
-		params.Set("format", "json")
-	default:
-		params.Set("format", "json")
+	format := strings.ToLower(strings.TrimSpace(request.Format))
+	if format == "" {
+		format = "json"
 	}
+	params.Set("format", format)
 
-	// Use VictoriaLogs export endpoint
-	fullURL := fmt.Sprintf("%s/select/logsql/query?%s", endpoint, params.Encode())
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	u := fmt.Sprintf("%s/select/logsql/api/v1/export?%s", endpoint, params.Encode())
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err
 	}
-
 	if request.TenantID != "" {
 		req.Header.Set("AccountID", request.TenantID)
 	}
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", "*/*")
 
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("VictoriaLogs export failed with status %d", resp.StatusCode)
 	}
 
-	// For now, we'll create a simple export result
-	// In a real implementation, you might save the export to a file/S3 and return a download URL
-	exportID := fmt.Sprintf("export_%d", time.Now().Unix())
-
-	// Count records (this is a simplified approach)
-	var vlResponse struct {
-		Data []interface{} `json:"data"`
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read export: %w", err)
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&vlResponse); err != nil {
-		return nil, err
-	}
-
-	result := &models.LogExportResult{
-		ExportID:      exportID,
-		Format:        request.Format,
-		RecordCount:   len(vlResponse.Data),
-		DownloadURL:   fmt.Sprintf("/api/v1/exports/%s", exportID),
-		ExpiresAt:     time.Now().Add(24 * time.Hour),                      // Expires in 24 hours
-		EstimatedSize: fmt.Sprintf("%d KB", len(vlResponse.Data)*100/1024), // Rough estimate
-	}
-
-	s.logger.Info("Log export completed",
-		"exportId", exportID,
-		"recordCount", result.RecordCount,
-		"format", request.Format,
-		"tenant", request.TenantID,
-	)
-
-	return result, nil
+	filename := fmt.Sprintf("logs-%d.%s", time.Now().Unix(), format)
+	return &models.LogsExportResult{
+		Filename: filename,
+		Format:   format,
+		Size:     len(data),
+		Data:     data,
+	}, nil
 }

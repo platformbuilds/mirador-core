@@ -1,7 +1,3 @@
-// ================================
-// tests/integration/api_test.go - Integration testing
-// ================================
-
 package integration
 
 import (

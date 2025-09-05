@@ -58,12 +58,47 @@ func NewValkeyCluster(nodes []string, defaultTTL time.Duration) (ValkeyCluster, 
 	}, nil
 }
 
-// Session management implementation
+/* ---------------------------- generic cache ---------------------------- */
+
+func (v *valkeyClusterImpl) Get(ctx context.Context, key string) ([]byte, error) {
+	b, err := v.client.Get(ctx, key).Bytes()
+	if err == redis.Nil {
+		return nil, fmt.Errorf("key not found: %s", key)
+	}
+	return b, err
+}
+
+func (v *valkeyClusterImpl) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+	var data []byte
+	switch x := value.(type) {
+	case []byte:
+		data = x
+	case string:
+		data = []byte(x)
+	default:
+		j, err := json.Marshal(x)
+		if err != nil {
+			return fmt.Errorf("marshal value for key %s: %w", key, err)
+		}
+		data = j
+	}
+	if ttl <= 0 {
+		ttl = v.ttl
+	}
+	return v.client.Set(ctx, key, data, ttl).Err()
+}
+
+func (v *valkeyClusterImpl) Delete(ctx context.Context, key string) error {
+	return v.client.Del(ctx, key).Err()
+}
+
+/* --------------------------- session management --------------------------- */
+
 func (v *valkeyClusterImpl) SetSession(ctx context.Context, session *models.UserSession) error {
 	session.LastActivity = time.Now()
 	key := fmt.Sprintf("session:%s", session.ID)
 
-	// Store session with 24h TTL
+	// Store session with 24h TTL (override default)
 	if err := v.Set(ctx, key, session, 24*time.Hour); err != nil {
 		return err
 	}
@@ -84,8 +119,17 @@ func (v *valkeyClusterImpl) GetSession(ctx context.Context, sessionID string) (*
 	if err := json.Unmarshal(data, &session); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal session: %w", err)
 	}
-
 	return &session, nil
+}
+
+func (v *valkeyClusterImpl) InvalidateSession(ctx context.Context, sessionID string) error {
+	// Best-effort remove from tenant set as well
+	sess, err := v.GetSession(ctx, sessionID)
+	if err == nil && sess != nil {
+		tenantKey := fmt.Sprintf("tenant_sessions:%s", sess.TenantID)
+		_ = v.client.SRem(ctx, tenantKey, sessionID).Err()
+	}
+	return v.Delete(ctx, fmt.Sprintf("session:%s", sessionID))
 }
 
 func (v *valkeyClusterImpl) GetActiveSessions(ctx context.Context, tenantID string) ([]*models.UserSession, error) {
@@ -95,17 +139,20 @@ func (v *valkeyClusterImpl) GetActiveSessions(ctx context.Context, tenantID stri
 		return nil, err
 	}
 
-	var sessions []*models.UserSession
+	sessions := make([]*models.UserSession, 0, len(sessionIDs))
 	for _, sessionID := range sessionIDs {
 		if session, err := v.GetSession(ctx, sessionID); err == nil {
 			sessions = append(sessions, session)
+		} else {
+			// Clean up stale references
+			_ = v.client.SRem(ctx, tenantKey, sessionID).Err()
 		}
 	}
-
 	return sessions, nil
 }
 
-// Query result caching for faster fetch (as noted in diagram)
+/* --------------------------- query result cache --------------------------- */
+
 func (v *valkeyClusterImpl) CacheQueryResult(ctx context.Context, queryHash string, result interface{}, ttl time.Duration) error {
 	key := fmt.Sprintf("query_cache:%s", queryHash)
 	return v.Set(ctx, key, result, ttl)

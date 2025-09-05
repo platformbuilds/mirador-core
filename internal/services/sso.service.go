@@ -2,14 +2,18 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/platformbuilds/miradorstack/internal/config"
 	"github.com/platformbuilds/miradorstack/internal/models"
+	"github.com/platformbuilds/miradorstack/pkg/auth"
 	"github.com/platformbuilds/miradorstack/pkg/cache"
 	"github.com/platformbuilds/miradorstack/pkg/logger"
 )
@@ -27,12 +31,12 @@ func NewSSOService(cfg config.AuthConfig, cache cache.ValkeyCluster, logger logg
 		cache:  cache,
 		logger: logger,
 	}
-
-	// Initialize LDAP connection
-	if err := service.initLDAPConnection(); err != nil {
-		return nil, fmt.Errorf("failed to initialize LDAP: %w", err)
+	// Initialize LDAP connection (tolerate disabled LDAP in config if needed)
+	if cfg.LDAP.URL != "" {
+		if err := service.initLDAPConnection(); err != nil {
+			return nil, fmt.Errorf("failed to initialize LDAP: %w", err)
+		}
 	}
-
 	return service, nil
 }
 
@@ -47,10 +51,13 @@ func (s *SSOService) initLDAPConnection() error {
 
 // AuthenticateUser handles LDAP/AD authentication and creates session
 func (s *SSOService) AuthenticateUser(ctx context.Context, username, password string) (*models.UserSession, error) {
+	if s.ldapConn == nil {
+		return nil, fmt.Errorf("ldap is not configured")
+	}
+
 	// LDAP authentication
 	userDN := fmt.Sprintf("uid=%s,%s", username, s.config.LDAP.BaseDN)
-	err := s.ldapConn.Bind(userDN, password)
-	if err != nil {
+	if err := s.ldapConn.Bind(userDN, password); err != nil {
 		s.logger.Error("LDAP authentication failed", "username", username, "error", err)
 		return nil, fmt.Errorf("authentication failed")
 	}
@@ -93,7 +100,6 @@ func (s *SSOService) ValidateOAuthToken(ctx context.Context, tokenString string)
 		}
 		return []byte(s.config.OAuth.ClientSecret), nil
 	})
-
 	if err != nil || !token.Valid {
 		return nil, fmt.Errorf("invalid OAuth token")
 	}
@@ -103,15 +109,38 @@ func (s *SSOService) ValidateOAuthToken(ctx context.Context, tokenString string)
 		return nil, fmt.Errorf("invalid token claims")
 	}
 
-	// Extract user information from token
-	userID := claims["sub"].(string)
-	tenantID := claims["tenant"].(string)
-	roles := claims["roles"].([]interface{})
+	// Extract user information from token, safely
+	userID, _ := claims["sub"].(string)
+	if userID == "" {
+		return nil, fmt.Errorf("token missing sub")
+	}
+	tenantID, _ := claims["tenant"].(string)
+	if tenantID == "" {
+		tenantID = "default"
+	}
 
-	// Convert roles to string slice
-	userRoles := make([]string, len(roles))
-	for i, role := range roles {
-		userRoles[i] = role.(string)
+	// roles can be []string, []interface{}, or comma-separated string
+	var userRoles []string
+	switch v := claims["roles"].(type) {
+	case []interface{}:
+		for _, r := range v {
+			if s, ok := r.(string); ok && s != "" {
+				userRoles = append(userRoles, strings.ToLower(s))
+			}
+		}
+	case []string:
+		for _, r := range v {
+			if r != "" {
+				userRoles = append(userRoles, strings.ToLower(r))
+			}
+		}
+	case string:
+		for _, r := range strings.Split(v, ",") {
+			r = strings.TrimSpace(r)
+			if r != "" {
+				userRoles = append(userRoles, strings.ToLower(r))
+			}
+		}
 	}
 
 	// Create session
@@ -129,11 +158,10 @@ func (s *SSOService) ValidateOAuthToken(ctx context.Context, tokenString string)
 	if err := s.cache.SetSession(ctx, session); err != nil {
 		return nil, err
 	}
-
 	return session, nil
 }
 
-func (s *SSOService) getUserInfoFromLDAP(username string) (*models.UserInfo, error) {
+func (s *SSOService) getUserInfoFromLDAP(username string) (*auth.UserInfo, error) {
 	// LDAP search for user details
 	searchRequest := ldap.NewSearchRequest(
 		s.config.LDAP.BaseDN,
@@ -149,21 +177,84 @@ func (s *SSOService) getUserInfoFromLDAP(username string) (*models.UserInfo, err
 	if err != nil {
 		return nil, err
 	}
-
 	if len(searchResult.Entries) == 0 {
 		return nil, fmt.Errorf("user not found")
 	}
-
 	entry := searchResult.Entries[0]
 
 	// Extract roles from LDAP groups
 	roles := extractRolesFromLDAP(entry.GetAttributeValues("memberOf"))
 
-	return &models.UserInfo{
+	return &auth.UserInfo{
 		UserID:   entry.GetAttributeValue("uid"),
 		TenantID: extractTenantFromLDAP(entry.GetAttributeValue("ou")),
 		Email:    entry.GetAttributeValue("mail"),
 		FullName: entry.GetAttributeValue("cn"),
 		Roles:    roles,
 	}, nil
+}
+
+/* ------------------------- helpers (private) ------------------------- */
+
+// generateSessionID returns a 32-byte random hex string (64 chars).
+func generateSessionID() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		// fallback (dev only) – still unique enough
+		return fmt.Sprintf("sess_%d", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
+}
+
+// extractRolesFromLDAP converts memberOf DNs to simple role names.
+// Example DN: "CN=ops,OU=groups,DC=corp,DC=local" -> "ops"
+func extractRolesFromLDAP(memberOf []string) []string {
+	roles := make([]string, 0, len(memberOf))
+	for _, dn := range memberOf {
+		parts := strings.Split(dn, ",")
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if strings.HasPrefix(strings.ToUpper(p), "CN=") {
+				role := strings.TrimSpace(p[3:])
+				if role != "" {
+					roles = append(roles, strings.ToLower(role))
+				}
+				break
+			}
+		}
+	}
+	// de-dup
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(roles))
+	for _, r := range roles {
+		if _, ok := seen[r]; !ok {
+			seen[r] = struct{}{}
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// extractTenantFromLDAP tries OU or returns a default.
+func extractTenantFromLDAP(ou string) string {
+	ou = strings.TrimSpace(ou)
+	if ou == "" {
+		return "default"
+	}
+	// If OU is a DN fragment like "OU=payments", keep the right side.
+	if strings.Contains(ou, "=") {
+		kv := strings.SplitN(ou, "=", 2)
+		if len(kv) == 2 && strings.TrimSpace(kv[1]) != "" {
+			return strings.ToLower(strings.TrimSpace(kv[1]))
+		}
+	}
+	return strings.ToLower(ou)
+}
+
+// Close releases LDAP connection if open.
+func (s *SSOService) Close() error {
+	if s.ldapConn != nil {
+		s.ldapConn.Close()
+	}
+	return nil
 }

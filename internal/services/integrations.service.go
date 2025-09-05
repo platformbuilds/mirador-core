@@ -1,7 +1,3 @@
-// ================================
-// internal/services/integrations.service.go - External Integrations
-// ================================
-
 package services
 
 import (
@@ -10,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/smtp"
+	"strings"
 	"time"
 
 	"github.com/platformbuilds/miradorstack/internal/config"
@@ -38,6 +36,8 @@ type IntegrationsConfig struct {
 	Email struct {
 		SMTPHost    string `json:"smtp_host"`
 		SMTPPort    int    `json:"smtp_port"`
+		Username    string `json:"username"`
+		Password    string `json:"password"`
 		FromAddress string `json:"from_address"`
 		Enabled     bool   `json:"enabled"`
 	} `json:"email"`
@@ -182,4 +182,59 @@ func (s *IntegrationsService) getTeamsColor(severity string) string {
 	default:
 		return "0078D4"
 	}
+}
+
+// SendEmailNotification sends an email alert using SMTP with optional auth.
+func (s *IntegrationsService) SendEmailNotification(ctx context.Context, notification *models.Notification) error {
+	if !s.config.Email.Enabled {
+		return nil
+	}
+	if s.config.Email.SMTPHost == "" || s.config.Email.SMTPPort == 0 || s.config.Email.FromAddress == "" {
+		return fmt.Errorf("email integration not properly configured")
+	}
+
+	recipients := []string{s.config.Email.FromAddress} // fallback recipient
+	// TODO: if your Notification struct has To/Recipients, replace with that.
+
+	addr := fmt.Sprintf("%s:%d", s.config.Email.SMTPHost, s.config.Email.SMTPPort)
+
+	subject := fmt.Sprintf("[Mirador] %s - %s", strings.ToUpper(notification.Severity), notification.Title)
+	body := fmt.Sprintf(
+		"Component: %s\nSeverity: %s\nTime: %s\nType: %s\n\n%s",
+		notification.Component,
+		notification.Severity,
+		notification.Timestamp.Format(time.RFC3339),
+		notification.Type,
+		notification.Message,
+	)
+
+	msg := []byte(fmt.Sprintf(
+		"From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s",
+		s.config.Email.FromAddress,
+		strings.Join(recipients, ","),
+		subject,
+		body,
+	))
+
+	// Build auth only if username/password provided
+	var auth smtp.Auth
+	if s.config.Email.Username != "" && s.config.Email.Password != "" {
+		auth = smtp.PlainAuth(
+			"",
+			s.config.Email.Username,
+			s.config.Email.Password,
+			s.config.Email.SMTPHost,
+		)
+	}
+
+	if err := smtp.SendMail(addr, auth, s.config.Email.FromAddress, recipients, msg); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	s.logger.Info("Email notification sent",
+		"type", notification.Type,
+		"component", notification.Component,
+		"to", recipients,
+	)
+	return nil
 }

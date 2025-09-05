@@ -8,6 +8,17 @@ func (r *LogsQLQueryRequest) GetExtra() map[string]string { // used by service
 	return r.Extra
 }
 
+// Alias: handlers expect LogsExportRequest; reuse LogExportRequest fields.
+type LogsExportRequest = LogExportRequest
+
+// Binary export result used by the /logs/export handler.
+type LogsExportResult struct {
+	Filename string `json:"filename"`
+	Format   string `json:"format"`
+	Size     int    `json:"size"`
+	Data     []byte `json:"-"`
+}
+
 // Histogram
 type LogsHistogramRequest struct {
 	Query    string `form:"query" json:"query"`

@@ -6,9 +6,40 @@ import (
 	"testing"
 	"time"
 
+	"github.com/platformbuilds/miradorstack/internal/config"
 	"github.com/platformbuilds/miradorstack/internal/models"
+	"github.com/platformbuilds/miradorstack/internal/services"
+	"github.com/platformbuilds/miradorstack/pkg/cache"
 	"github.com/platformbuilds/miradorstack/pkg/logger"
 )
+
+// setupTestVictoriaMetricsService creates a VictoriaMetricsService for tests
+func setupTestVictoriaMetricsService(log logger.Logger) *services.VictoriaMetricsService {
+	cfg := config.VictoriaMetricsConfig{
+		Endpoints: []string{"http://localhost:8428"}, // VM default endpoint
+		Timeout:   2000,                              // ms
+	}
+	return services.NewVictoriaMetricsService(cfg, log)
+}
+
+// setupTestVictoriaLogsService creates a VictoriaLogsService for tests
+func setupTestVictoriaLogsService(log logger.Logger) *services.VictoriaLogsService {
+	cfg := config.VictoriaLogsConfig{
+		Endpoints: []string{"http://localhost:9428"}, // VL default endpoint
+		Timeout:   2000,
+	}
+	return services.NewVictoriaLogsService(cfg, log)
+}
+
+// setupTestValkeyCluster creates a ValkeyCluster using localhost Redis
+func setupTestValkeyCluster() cache.ValkeyCluster {
+	nodes := []string{"127.0.0.1:6379"}
+	c, err := cache.NewValkeyCluster(nodes, time.Minute)
+	if err != nil {
+		panic("failed to connect to test valkey cluster: " + err.Error())
+	}
+	return c
+}
 
 func BenchmarkMetricsQLQuery(b *testing.B) {
 	// Setup
