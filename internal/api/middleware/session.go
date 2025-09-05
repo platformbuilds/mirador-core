@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/platformbuilds/miradorstack/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/models"
 )
 
 // generateSessionID creates a cryptographically secure session identifier

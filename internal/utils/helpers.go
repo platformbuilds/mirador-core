@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/platformbuilds/miradorstack/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/models"
 )
 
 // GenerateSessionID creates a secure session identifier
@@ -77,7 +77,7 @@ func CalculateAvgTimeToFailure(fractures []*models.SystemFracture) time.Duration
 	for _, fracture := range fractures {
 		total += fracture.TimeToFracture
 	}
-	
+
 	return total / time.Duration(len(fractures))
 }
 

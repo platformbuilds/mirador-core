@@ -3,7 +3,7 @@ syntax = "proto3";
 
 package mirador.predict;
 
-option go_package = "github.com/platformbuilds/miradorstack/internal/grpc/proto/predict";
+option go_package = "github.com/platformbuilds/mirador-core/internal/grpc/proto/predict";
 
 service PredictEngineService {
   // Analyze potential system fractures/fatigue

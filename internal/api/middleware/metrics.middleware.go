@@ -1,5 +1,3 @@
-
-
 // ================================
 // internal/api/middleware/metrics.middleware.go - Request metrics collection
 // ================================
@@ -11,17 +9,17 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/platformbuilds/miradorstack/internal/metrics"
+	"github.com/platformbuilds/mirador-core/internal/metrics"
 )
 
 // MetricsMiddleware collects HTTP request metrics for MIRADOR-CORE monitoring
 func MetricsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
-		
+
 		// Process request
 		c.Next()
-		
+
 		// Record metrics
 		duration := time.Since(start).Seconds()
 		statusCode := strconv.Itoa(c.Writer.Status())

@@ -7,11 +7,12 @@
 package rca
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -948,7 +949,7 @@ const file_internal_grpc_proto_rca_proto_rawDesc = "" +
 	"\x13InvestigateIncident\x12\x1f.mirador.rca.InvestigateRequest\x1a .mirador.rca.InvestigateResponse\x12b\n" +
 	"\x15GetActiveCorrelations\x12#.mirador.rca.GetCorrelationsRequest\x1a$.mirador.rca.GetCorrelationsResponse\x12W\n" +
 	"\x12GetFailurePatterns\x12\x1f.mirador.rca.GetPatternsRequest\x1a .mirador.rca.GetPatternsResponse\x12J\n" +
-	"\tGetHealth\x12\x1d.mirador.rca.GetHealthRequest\x1a\x1e.mirador.rca.GetHealthResponseB@Z>github.com/platformbuilds/miradorstack/internal/grpc/proto/rcab\x06proto3"
+	"\tGetHealth\x12\x1d.mirador.rca.GetHealthRequest\x1a\x1e.mirador.rca.GetHealthResponseB@Z>github.com/platformbuilds/mirador-core/internal/grpc/proto/rcab\x06proto3"
 
 var (
 	file_internal_grpc_proto_rca_proto_rawDescOnce sync.Once

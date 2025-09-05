@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/platformbuilds/miradorstack/pkg/cache"
-	"github.com/platformbuilds/miradorstack/pkg/logger"
+	"github.com/platformbuilds/mirador-core/pkg/cache"
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type RBACHandler struct {

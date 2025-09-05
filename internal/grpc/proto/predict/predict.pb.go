@@ -7,11 +7,12 @@
 package predict
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -695,7 +696,7 @@ const file_internal_grpc_proto_predict_proto_rawDesc = "" +
 	"\x10AnalyzeFractures\x12(.mirador.predict.AnalyzeFracturesRequest\x1a).mirador.predict.AnalyzeFracturesResponse\x12d\n" +
 	"\x15GetPredictedFractures\x12$.mirador.predict.GetFracturesRequest\x1a%.mirador.predict.GetFracturesResponse\x12R\n" +
 	"\tGetModels\x12!.mirador.predict.GetModelsRequest\x1a\".mirador.predict.GetModelsResponse\x12R\n" +
-	"\tGetHealth\x12!.mirador.predict.GetHealthRequest\x1a\".mirador.predict.GetHealthResponseBDZBgithub.com/platformbuilds/miradorstack/internal/grpc/proto/predictb\x06proto3"
+	"\tGetHealth\x12!.mirador.predict.GetHealthRequest\x1a\".mirador.predict.GetHealthResponseBDZBgithub.com/platformbuilds/mirador-core/internal/grpc/proto/predictb\x06proto3"
 
 var (
 	file_internal_grpc_proto_predict_proto_rawDescOnce sync.Once

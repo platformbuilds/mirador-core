@@ -12,18 +12,18 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/platformbuilds/miradorstack/internal/api"
-	"github.com/platformbuilds/miradorstack/internal/config"
-	"github.com/platformbuilds/miradorstack/internal/grpc/clients"
-	"github.com/platformbuilds/miradorstack/internal/models"
-	"github.com/platformbuilds/miradorstack/pkg/logger"
+	"github.com/platformbuilds/mirador-core/internal/api"
+	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
+	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 // ---- Mocks ---------------------------------------------------------------
 func NewMockGRPCClients() *clients.GRPCClients {
-    gc := &clients.GRPCClients{}
+	gc := &clients.GRPCClients{}
 
 	// Common field names we see in codebases; change to match yours.
 	// Example A:
@@ -41,9 +41,9 @@ func NewMockGRPCClients() *clients.GRPCClients {
 	// gc.RCA = &MockRCAClient{}                 // <-- adjust name if needed
 	// ------------------------------------------------------------------
 
-    // Fallback option (uncomment if your struct uses different names):
-    gc.PredictEngine = &MockPredictClient{}
-    gc.RCAEngine     = &MockRCAClient{}
+	// Fallback option (uncomment if your struct uses different names):
+	gc.PredictEngine = &MockPredictClient{}
+	gc.RCAEngine = &MockRCAClient{}
 
 	return gc
 }
@@ -67,32 +67,32 @@ type APITestSuite struct {
 type MockPredictClient struct{}
 
 func (m *MockPredictClient) AnalyzeFractures(ctx context.Context, req *models.FractureAnalysisRequest) (*models.FractureAnalysisResponse, error) {
-    now := time.Now()
-    return &models.FractureAnalysisResponse{
-        Fractures: []*models.SystemFracture{
-            {
-                ID:             "fx-1",
-                Component:      req.Component,
-                FractureType:   "fatigue",
-                TimeToFracture: 30 * time.Minute,
-                Severity:       "medium",
-                Probability:    0.82,
-                Confidence:     0.76,
-                PredictedAt:    now,
-            },
-        },
-        ModelsUsed:       append([]string{"mock_model"}, req.ModelTypes...),
-        ProcessingTimeMs: 12,
-    }, nil
+	now := time.Now()
+	return &models.FractureAnalysisResponse{
+		Fractures: []*models.SystemFracture{
+			{
+				ID:             "fx-1",
+				Component:      req.Component,
+				FractureType:   "fatigue",
+				TimeToFracture: 30 * time.Minute,
+				Severity:       "medium",
+				Probability:    0.82,
+				Confidence:     0.76,
+				PredictedAt:    now,
+			},
+		},
+		ModelsUsed:       append([]string{"mock_model"}, req.ModelTypes...),
+		ProcessingTimeMs: 12,
+	}, nil
 }
 
 func (m *MockPredictClient) GetActiveModels(ctx context.Context, req *models.ActiveModelsRequest) (*models.ActiveModelsResponse, error) {
-    return &models.ActiveModelsResponse{
-        Models: []models.PredictionModel{
-            {Name: "mock_model", Type: "fracture", Status: "active", Accuracy: 0.9},
-        },
-        LastUpdated: time.Now().Format(time.RFC3339),
-    }, nil
+	return &models.ActiveModelsResponse{
+		Models: []models.PredictionModel{
+			{Name: "mock_model", Type: "fracture", Status: "active", Accuracy: 0.9},
+		},
+		LastUpdated: time.Now().Format(time.RFC3339),
+	}, nil
 }
 
 func (m *MockPredictClient) HealthCheck() error { return nil }
@@ -100,21 +100,21 @@ func (m *MockPredictClient) HealthCheck() error { return nil }
 type MockRCAClient struct{}
 
 func (m *MockRCAClient) InvestigateIncident(ctx context.Context, req *models.RCAInvestigationRequest) (*models.CorrelationResult, error) {
-    return &models.CorrelationResult{
-        CorrelationID:    "corr-1",
-        IncidentID:       req.IncidentID,
-        RootCause:        "database-connection-pool-exhaustion",
-        Confidence:       0.88,
-        AffectedServices: []string{"database", "payment-service"},
-        Timeline: []models.TimelineEvent{
-            {Event: "error_rate_spike", Severity: "high", Time: time.Now().Add(-20 * time.Minute), DataSource: "metrics"},
-        },
-        RedAnchors: []*models.RedAnchor{
-            {Service: "database", Metric: "timeouts", Score: 0.92, Threshold: 0.8, Timestamp: time.Now(), DataType: "metrics"},
-        },
-        Recommendations: []string{"scale connection pool", "optimize queries"},
-        CreatedAt:        time.Now(),
-    }, nil
+	return &models.CorrelationResult{
+		CorrelationID:    "corr-1",
+		IncidentID:       req.IncidentID,
+		RootCause:        "database-connection-pool-exhaustion",
+		Confidence:       0.88,
+		AffectedServices: []string{"database", "payment-service"},
+		Timeline: []models.TimelineEvent{
+			{Event: "error_rate_spike", Severity: "high", Time: time.Now().Add(-20 * time.Minute), DataSource: "metrics"},
+		},
+		RedAnchors: []*models.RedAnchor{
+			{Service: "database", Metric: "timeouts", Score: 0.92, Threshold: 0.8, Timestamp: time.Now(), DataType: "metrics"},
+		},
+		Recommendations: []string{"scale connection pool", "optimize queries"},
+		CreatedAt:       time.Now(),
+	}, nil
 }
 
 func (m *MockRCAClient) HealthCheck() error { return nil }
