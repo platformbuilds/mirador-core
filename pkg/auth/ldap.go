@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/go-ldap/ldap/v3"
-	"github.com/platformbuilds/miradorstack/internal/config"
-	"github.com/platformbuilds/miradorstack/pkg/logger"
+	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type LDAPAuthenticator struct {

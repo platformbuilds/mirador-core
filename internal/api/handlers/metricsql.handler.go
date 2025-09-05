@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/platformbuilds/miradorstack/internal/metrics"
-	"github.com/platformbuilds/miradorstack/internal/models"
-	"github.com/platformbuilds/miradorstack/internal/services"
-	"github.com/platformbuilds/miradorstack/internal/utils"
-	"github.com/platformbuilds/miradorstack/pkg/cache"
-	"github.com/platformbuilds/miradorstack/pkg/logger"
+	"github.com/platformbuilds/mirador-core/internal/metrics"
+	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/services"
+	"github.com/platformbuilds/mirador-core/internal/utils"
+	"github.com/platformbuilds/mirador-core/pkg/cache"
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type MetricsQLHandler struct {

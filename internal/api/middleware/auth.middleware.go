@@ -9,9 +9,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/platformbuilds/miradorstack/internal/config"
-	"github.com/platformbuilds/miradorstack/internal/models"
-	"github.com/platformbuilds/miradorstack/pkg/cache"
+	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/pkg/cache"
 )
 
 // AuthMiddleware handles LDAP/AD + SSO authentication for MIRADOR-CORE

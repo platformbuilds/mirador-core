@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/platformbuilds/miradorstack/internal/models"
-	"github.com/platformbuilds/miradorstack/pkg/logger"
+	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type ValkeyCluster interface {

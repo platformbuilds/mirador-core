@@ -80,7 +80,7 @@ syntax = "proto3";
 
 package mirador.alert;
 
-option go_package = "github.com/platformbuilds/miradorstack/internal/grpc/proto/alert";
+option go_package = "github.com/platformbuilds/mirador-core/internal/grpc/proto/alert";
 
 service AlertEngineService {
   rpc ProcessAlert(ProcessAlertRequest) returns (ProcessAlertResponse);

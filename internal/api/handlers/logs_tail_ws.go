@@ -9,7 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/platformbuilds/miradorstack/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/models"
 )
 
 // GET /api/v1/logs/tail (upgrades to WS)

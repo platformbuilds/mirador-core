@@ -6,25 +6,25 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/platformbuilds/miradorstack/internal/grpc/clients"
-	"github.com/platformbuilds/miradorstack/internal/models"
-	"github.com/platformbuilds/miradorstack/internal/services"
-	"github.com/platformbuilds/miradorstack/pkg/cache"
-	"github.com/platformbuilds/miradorstack/pkg/logger"
+	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
+	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/services"
+	"github.com/platformbuilds/mirador-core/pkg/cache"
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type RCAHandler struct {
-    rcaClient   clients.RCAClient
-    logsService *services.VictoriaLogsService
-    cache       cache.ValkeyCluster
-    logger      logger.Logger
+	rcaClient   clients.RCAClient
+	logsService *services.VictoriaLogsService
+	cache       cache.ValkeyCluster
+	logger      logger.Logger
 }
 
 func NewRCAHandler(
-    rcaClient clients.RCAClient,
-    logsService *services.VictoriaLogsService,
-    cache cache.ValkeyCluster,
-    logger logger.Logger,
+	rcaClient clients.RCAClient,
+	logsService *services.VictoriaLogsService,
+	cache cache.ValkeyCluster,
+	logger logger.Logger,
 ) *RCAHandler {
 	return &RCAHandler{
 		rcaClient:   rcaClient,
@@ -59,20 +59,20 @@ func (h *RCAHandler) StartInvestigation(c *gin.Context) {
 		return
 	}
 
-    c.JSON(http.StatusOK, gin.H{
-        "status": "success",
-        "data": gin.H{
-            // Return the struct directly so json tags (snake_case) are preserved
-            "correlation": correlation,
-            "investigation": gin.H{
-                "startedAt":       correlation.CreatedAt,
-                "processingTime":  time.Since(correlation.CreatedAt).Milliseconds(),
-                "dataSourcesUsed": []string{"metrics", "logs", "traces"},
-                "anchorsFound":    len(correlation.RedAnchors),
-            },
-        },
-        "timestamp": time.Now().Format(time.RFC3339),
-    })
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			// Return the struct directly so json tags (snake_case) are preserved
+			"correlation": correlation,
+			"investigation": gin.H{
+				"startedAt":       correlation.CreatedAt,
+				"processingTime":  time.Since(correlation.CreatedAt).Milliseconds(),
+				"dataSourcesUsed": []string{"metrics", "logs", "traces"},
+				"anchorsFound":    len(correlation.RedAnchors),
+			},
+		},
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
 }
 
 // POST /api/v1/rca/store - Store correlation back to VictoriaLogs as JSON

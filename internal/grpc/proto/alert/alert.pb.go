@@ -7,11 +7,12 @@
 package alert
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -982,7 +983,7 @@ const file_internal_grpc_proto_alert_proto_rawDesc = "" +
 	"\x0fCreateAlertRule\x12%.mirador.alert.CreateAlertRuleRequest\x1a&.mirador.alert.CreateAlertRuleResponse\x12`\n" +
 	"\x0fGetActiveAlerts\x12%.mirador.alert.GetActiveAlertsRequest\x1a&.mirador.alert.GetActiveAlertsResponse\x12c\n" +
 	"\x10AcknowledgeAlert\x12&.mirador.alert.AcknowledgeAlertRequest\x1a'.mirador.alert.AcknowledgeAlertResponse\x12N\n" +
-	"\tGetHealth\x12\x1f.mirador.alert.GetHealthRequest\x1a .mirador.alert.GetHealthResponseBBZ@github.com/platformbuilds/miradorstack/internal/grpc/proto/alertb\x06proto3"
+	"\tGetHealth\x12\x1f.mirador.alert.GetHealthRequest\x1a .mirador.alert.GetHealthResponseBBZ@github.com/platformbuilds/mirador-core/internal/grpc/proto/alertb\x06proto3"
 
 var (
 	file_internal_grpc_proto_alert_proto_rawDescOnce sync.Once

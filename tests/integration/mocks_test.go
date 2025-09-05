@@ -8,11 +8,11 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/platformbuilds/miradorstack/internal/config"
-	"github.com/platformbuilds/miradorstack/internal/grpc/proto/predict"
-	"github.com/platformbuilds/miradorstack/internal/models"
-	"github.com/platformbuilds/miradorstack/internal/services"
-	"github.com/platformbuilds/miradorstack/pkg/cache"
+	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/grpc/proto/predict"
+	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/services"
+	"github.com/platformbuilds/mirador-core/pkg/cache"
 )
 
 /* -------------------------------------------------------------------------- */

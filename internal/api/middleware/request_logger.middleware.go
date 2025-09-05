@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/platformbuilds/miradorstack/pkg/logger"
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // RequestLogger logs HTTP requests for MIRADOR-CORE observability

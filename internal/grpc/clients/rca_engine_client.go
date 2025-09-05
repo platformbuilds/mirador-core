@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/platformbuilds/miradorstack/internal/models"
-	"github.com/platformbuilds/miradorstack/pkg/logger"
+	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/platformbuilds/miradorstack/internal/grpc/proto/rca"
+	"github.com/platformbuilds/mirador-core/internal/grpc/proto/rca"
 )
 
 // RCAEngineClient wraps the gRPC client for RCA-ENGINE
