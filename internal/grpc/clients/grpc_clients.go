@@ -1,18 +1,59 @@
+// internal/grpc/clients/grpc_clients.go
 package clients
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/platformbuilds/miradorstack/internal/config"
+	"github.com/platformbuilds/miradorstack/internal/models"
 	"github.com/platformbuilds/miradorstack/pkg/logger"
 )
 
-// GRPCClients holds all gRPC client connections
+/* ========= Interfaces used by HTTP handlers ========= */
+
+// PredictClient is the abstraction the HTTP handlers depend on.
+// It must include every RPC your handlers call.
+type PredictClient interface {
+	AnalyzeFractures(ctx context.Context, req *models.FractureAnalysisRequest) (*models.FractureAnalysisResponse, error)
+	GetActiveModels(ctx context.Context, req *models.ActiveModelsRequest) (*models.ActiveModelsResponse, error)
+	HealthCheck() error
+}
+
+type RCAClient interface {
+	InvestigateIncident(ctx context.Context, req *models.RCARequest) (*models.RCAResponse, error)
+	HealthCheck() error
+}
+
+/* ========= Adapters to real concrete clients ========= */
+
+// realPredictAdapter wraps *PredictEngineClient to satisfy PredictClient.
+type realPredictAdapter struct{ c *PredictEngineClient }
+
+func (a *realPredictAdapter) AnalyzeFractures(ctx context.Context, req *models.FractureAnalysisRequest) (*models.FractureAnalysisResponse, error) {
+	return a.c.AnalyzeFractures(ctx, req)
+}
+func (a *realPredictAdapter) GetActiveModels(ctx context.Context, req *models.ActiveModelsRequest) (*models.ActiveModelsResponse, error) {
+	return a.c.GetActiveModels(ctx, req)
+}
+func (a *realPredictAdapter) HealthCheck() error { return a.c.HealthCheck() }
+
+// realRCAAdapter wraps *RCAEngineClient to satisfy RCAClient.
+type realRCAAdapter struct{ c *RCAEngineClient }
+
+func (a *realRCAAdapter) InvestigateIncident(ctx context.Context, req *models.RCARequest) (*models.RCAResponse, error) {
+	return a.c.InvestigateIncident(ctx, req)
+}
+func (a *realRCAAdapter) HealthCheck() error { return a.c.HealthCheck() }
+
+/* ========= Bundle used by server/handlers ========= */
+
+// GRPCClients holds all gRPC client connections (as interfaces)
 type GRPCClients struct {
-	PredictEngine *PredictEngineClient
-	RCAEngine     *RCAEngineClient
-	AlertEngine   *AlertEngineClient
-	logger        logger.Logger
+	Predict     PredictClient
+	RCA         RCAClient
+	AlertEngine *AlertEngineClient // unchanged (can be interfaced later)
+	logger      logger.Logger
 }
 
 // NewGRPCClients creates and initializes all gRPC clients
@@ -30,7 +71,7 @@ func NewGRPCClients(cfg *config.Config, logger logger.Logger) (*GRPCClients, err
 		return nil, fmt.Errorf("failed to create RCA-ENGINE client: %w", err)
 	}
 
-	// Initialize ALERT-ENGINE client
+	// Initialize ALERT-ENGINE client (unchanged)
 	alertEngine, err := NewAlertEngineClient(cfg.GRPC.AlertEngine.Endpoint, logger)
 	if err != nil {
 		predictEngine.Close()
@@ -39,10 +80,10 @@ func NewGRPCClients(cfg *config.Config, logger logger.Logger) (*GRPCClients, err
 	}
 
 	return &GRPCClients{
-		PredictEngine: predictEngine,
-		RCAEngine:     rcaEngine,
-		AlertEngine:   alertEngine,
-		logger:        logger,
+		Predict:     &realPredictAdapter{c: predictEngine},
+		RCA:         &realRCAAdapter{c: rcaEngine},
+		AlertEngine: alertEngine,
+		logger:      logger,
 	}, nil
 }
 
@@ -50,42 +91,46 @@ func NewGRPCClients(cfg *config.Config, logger logger.Logger) (*GRPCClients, err
 func (g *GRPCClients) Close() error {
 	var errors []error
 
-	if err := g.PredictEngine.Close(); err != nil {
-		errors = append(errors, fmt.Errorf("PREDICT-ENGINE close error: %w", err))
+	// Close underlying real clients when using adapters
+	if a, ok := g.Predict.(*realPredictAdapter); ok && a.c != nil {
+		if err := a.c.Close(); err != nil {
+			errors = append(errors, fmt.Errorf("PREDICT-ENGINE close error: %w", err))
+		}
 	}
-
-	if err := g.RCAEngine.Close(); err != nil {
-		errors = append(errors, fmt.Errorf("RCA-ENGINE close error: %w", err))
+	if a, ok := g.RCA.(*realRCAAdapter); ok && a.c != nil {
+		if err := a.c.Close(); err != nil {
+			errors = append(errors, fmt.Errorf("RCA-ENGINE close error: %w", err))
+		}
 	}
-
-	if err := g.AlertEngine.Close(); err != nil {
-		errors = append(errors, fmt.Errorf("ALERT-ENGINE close error: %w", err))
+	if g.AlertEngine != nil {
+		if err := g.AlertEngine.Close(); err != nil {
+			errors = append(errors, fmt.Errorf("ALERT-ENGINE close error: %w", err))
+		}
 	}
 
 	if len(errors) > 0 {
 		return fmt.Errorf("gRPC client close errors: %v", errors)
 	}
-
 	g.logger.Info("All gRPC clients closed successfully")
 	return nil
 }
 
 // HealthCheck checks health of all gRPC services
 func (g *GRPCClients) HealthCheck() error {
-	// Check PREDICT-ENGINE
-	if err := g.PredictEngine.HealthCheck(); err != nil {
-		return fmt.Errorf("PREDICT-ENGINE health check failed: %w", err)
+	if g.Predict != nil {
+		if err := g.Predict.HealthCheck(); err != nil {
+			return fmt.Errorf("PREDICT-ENGINE health check failed: %w", err)
+		}
 	}
-
-	// Check RCA-ENGINE
-	if err := g.RCAEngine.HealthCheck(); err != nil {
-		return fmt.Errorf("RCA-ENGINE health check failed: %w", err)
+	if g.RCA != nil {
+		if err := g.RCA.HealthCheck(); err != nil {
+			return fmt.Errorf("RCA-ENGINE health check failed: %w", err)
+		}
 	}
-
-	// Check ALERT-ENGINE
-	if err := g.AlertEngine.HealthCheck(); err != nil {
-		return fmt.Errorf("ALERT-ENGINE health check failed: %w", err)
+	if g.AlertEngine != nil {
+		if err := g.AlertEngine.HealthCheck(); err != nil {
+			return fmt.Errorf("ALERT-ENGINE health check failed: %w", err)
+		}
 	}
-
 	return nil
 }

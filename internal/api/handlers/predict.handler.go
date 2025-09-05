@@ -17,14 +17,15 @@ import (
 )
 
 type PredictHandler struct {
-	predictClient *clients.PredictEngineClient
+	// Switched from *clients.PredictEngineClient to interface clients.PredictClient
+	predictClient clients.PredictClient
 	logsService   *services.VictoriaLogsService
 	cache         cache.ValkeyCluster
 	logger        logger.Logger
 }
 
 func NewPredictHandler(
-	predictClient *clients.PredictEngineClient,
+	predictClient clients.PredictClient, // interface type (works with real adapter in prod, mock in tests)
 	logsService *services.VictoriaLogsService,
 	cache cache.ValkeyCluster,
 	logger logger.Logger,

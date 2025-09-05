@@ -2,51 +2,168 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/platformbuilds/miradorstack/internal/api"
 	"github.com/platformbuilds/miradorstack/internal/config"
 	"github.com/platformbuilds/miradorstack/internal/grpc/clients"
+	"github.com/platformbuilds/miradorstack/internal/models"
 	"github.com/platformbuilds/miradorstack/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
-// NewMockGRPCClients returns an empty gRPC client bundle suitable for these
-// integration tests (VM services are mocked; we don't hit gRPC paths here).
-// If you later add tests that call predict/rca/alert handlers, replace the
-// zero fields with proper test doubles.
+// ---- Mocks ---------------------------------------------------------------
 func NewMockGRPCClients() *clients.GRPCClients {
-	return &clients.GRPCClients{}
+	gc := &clients.GRPCClients{}
+
+	// Common field names we see in codebases; change to match yours.
+	// Example A:
+	//   type GRPCClients struct {
+	//       Predict predictiface // interface with AnalyzeFractures
+	//       RCA     rciface      // interface with InvestigateIncident
+	//   }
+	// Example B:
+	//   PredictEngine PredictClient
+	//   RCAEngine     RCAClient
+
+	// Try these names first; if compile error, rename to your actual fields.
+	// ------------------------------------------------------------------
+	// gc.Predict = &MockPredictClient{}         // <-- adjust name if needed
+	// gc.RCA = &MockRCAClient{}                 // <-- adjust name if needed
+	// ------------------------------------------------------------------
+
+	// Fallback option (uncomment if your struct uses different names):
+	// gc.PredictEngine = &MockPredictClient{}
+	// gc.RCAEngine     = &MockRCAClient{}
+
+	return gc
 }
+
+// ---- Test Suite ----------------------------------------------------------
 
 type APITestSuite struct {
 	suite.Suite
 	server     *api.Server
 	testServer *httptest.Server
 	client     *http.Client
+
+	token string
+	jti   string
+	sub   string
+	cfg   *config.Config
+}
+
+// ---- Test doubles for gRPC clients ----------------------------------------
+
+type MockPredictClient struct{}
+
+func (m *MockPredictClient) AnalyzeFractures(ctx context.Context, req *models.FractureAnalysisRequest) (*models.FractureAnalysisResponse, error) {
+	return &models.FractureAnalysisResponse{
+		Status: "success",
+		Fractures: []models.Fracture{
+			{ID: "fx-1", Component: req.Component, Severity: "medium", StartTime: time.Now().Add(-10 * time.Minute)},
+		},
+		Metadata: map[string]any{"model_types": req.ModelTypes, "time_range": req.TimeRange},
+	}, nil
+}
+
+type MockRCAClient struct{}
+
+func (m *MockRCAClient) InvestigateIncident(ctx context.Context, req *models.RCARequest) (*models.RCAResponse, error) {
+	return &models.RCAResponse{
+		Status: "success",
+		Correlation: &models.RCACorrelation{
+			RootCause:  "database-connection-pool-exhaustion",
+			RedAnchors: []string{"db_conn_errors", "latency_p99", "timeout_rate"},
+			Evidences:  []string{"pool=0", "timeouts>3%"},
+		},
+	}, nil
+}
+
+// If your real code uses interfaces, we still satisfy them; if it uses concrete
+// types, the server’s GRPCClients bundle must expose fields we can replace.
+
+// authJSON: always sends Authorization Bearer token (middleware picks this first)
+func (suite *APITestSuite) authJSON(req *http.Request) {
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+suite.token)
+}
+
+// Optional: create a JWT string (not strictly needed once we seed session)
+func mintTestJWT(secret, sub, jti string, exp time.Time) (string, error) {
+	now := time.Now()
+	claims := jwt.RegisteredClaims{
+		Issuer:    "miradorstack",
+		Subject:   sub,
+		Audience:  jwt.ClaimStrings{"miradorstack-api"},
+		ID:        jti,
+		IssuedAt:  jwt.NewNumericDate(now),
+		NotBefore: jwt.NewNumericDate(now.Add(-1 * time.Minute)),
+		ExpiresAt: jwt.NewNumericDate(exp),
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return tok.SignedString([]byte(secret))
 }
 
 func (suite *APITestSuite) SetupSuite() {
-	// Setup test configuration
+	// Minimal test config
 	cfg := &config.Config{
 		Environment: "test",
 		LogLevel:    "error",
-		// ... any other test config fields you need
 	}
+
+	// Ensure server reads a JWT secret if it needs it
+	_ = os.Setenv("JWT_SECRET", "development-secret-key-not-for-production")
+	if err := config.LoadSecrets(cfg); err != nil {
+		panic(err)
+	}
+
+	suite.sub = "test-user"
+	suite.jti = "test-jti"
+
+	// We will use the JWT string itself as the session token/key
+	token, err := mintTestJWT(cfg.Auth.JWT.Secret, suite.sub, suite.jti, time.Now().Add(1*time.Hour))
+	if err != nil {
+		panic(err)
+	}
+	suite.token = token
+	suite.cfg = cfg
 
 	log := logger.New("error")
 
-	// Mock dependencies for testing
+	// Mocks
 	mockCache := NewMockValkeyCluster()
 	mockGRPCClients := NewMockGRPCClients()
 	mockVMServices := NewMockVMServices()
 
-	// Create test server
+	// *** CRITICAL ***
+	// Seed a REAL session with KEY == token so validateSessionToken() passes.
+	// middleware.validateSessionToken(c, token, cache) calls cache.GetSession(ctx, token)
+	// so SetSession must store it under session.ID == token.
+	session := &models.UserSession{
+		ID:           suite.token, // <--- KEY MATCHES THE TOKEN
+		UserID:       suite.sub,
+		TenantID:     "default",
+		Roles:        []string{"admin"},
+		CreatedAt:    time.Now(),
+		LastActivity: time.Now(),
+		Settings:     map[string]interface{}{"email": "test@local"},
+	}
+	if err := mockCache.SetSession(context.Background(), session); err != nil {
+		panic(err)
+	}
+	// ****************
+
+	// Start server
 	suite.server = api.NewServer(cfg, log, mockCache, mockGRPCClients, mockVMServices)
 	suite.testServer = httptest.NewServer(suite.server.Handler())
 	suite.client = &http.Client{Timeout: 10 * time.Second}
@@ -61,91 +178,93 @@ func (suite *APITestSuite) TestHealthEndpoint() {
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), http.StatusOK, resp.StatusCode)
 
-	var healthResponse map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&healthResponse)
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), "healthy", healthResponse["status"])
+	var body map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&body)
+	assert.Equal(suite.T(), "healthy", body["status"])
+}
+
+// Dump exact auth errors if any
+func dumpOnFailure(t *testing.T, resp *http.Response) {
+	if resp.StatusCode == http.StatusOK {
+		return
+	}
+	b, _ := io.ReadAll(resp.Body)
+	t.Fatalf("status=%d body=%s", resp.StatusCode, string(b))
 }
 
 func (suite *APITestSuite) TestMetricsQLQuery() {
-	queryRequest := map[string]interface{}{
+	payload := map[string]any{
 		"query": "up",
 		"time":  time.Now().Format(time.RFC3339),
 	}
-
-	jsonData, _ := json.Marshal(queryRequest)
+	jsonData, _ := json.Marshal(payload)
 
 	req, _ := http.NewRequest("POST", suite.testServer.URL+"/api/v1/query", bytes.NewReader(jsonData))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer test-session-token")
+	suite.authJSON(req)
 
 	resp, err := suite.client.Do(req)
 	assert.NoError(suite.T(), err)
+	dumpOnFailure(suite.T(), resp)
 	assert.Equal(suite.T(), http.StatusOK, resp.StatusCode)
 
-	var queryResponse map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&queryResponse)
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), "success", queryResponse["status"])
-	assert.NotNil(suite.T(), queryResponse["data"])
+	var out map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	assert.Equal(suite.T(), "success", out["status"])
+	assert.NotNil(suite.T(), out["data"])
 }
 
 func (suite *APITestSuite) TestPredictFractureAnalysis() {
-	analysisRequest := map[string]interface{}{
+	payload := map[string]any{
 		"component":   "payment-service",
 		"time_range":  "24h",
 		"model_types": []string{"isolation_forest", "lstm_trend"},
 	}
-
-	jsonData, _ := json.Marshal(analysisRequest)
+	jsonData, _ := json.Marshal(payload)
 
 	req, _ := http.NewRequest("POST", suite.testServer.URL+"/api/v1/predict/analyze", bytes.NewReader(jsonData))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer test-session-token")
+	suite.authJSON(req)
 
 	resp, err := suite.client.Do(req)
 	assert.NoError(suite.T(), err)
+	dumpOnFailure(suite.T(), resp)
 	assert.Equal(suite.T(), http.StatusOK, resp.StatusCode)
 
-	var response map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&response)
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), "success", response["status"])
+	var out map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	assert.Equal(suite.T(), "success", out["status"])
 
-	data := response["data"].(map[string]interface{})
+	data := out["data"].(map[string]any)
 	assert.NotNil(suite.T(), data["fractures"])
 	assert.NotNil(suite.T(), data["metadata"])
 }
 
 func (suite *APITestSuite) TestRCAInvestigation() {
-	investigationRequest := map[string]interface{}{
+	payload := map[string]any{
 		"incident_id": "INC-2025-0831-001",
 		"symptoms":    []string{"high_cpu", "connection_timeouts", "error_rate_spike"},
-		"time_range": map[string]interface{}{
+		"time_range": map[string]any{
 			"start": time.Now().Add(-1 * time.Hour).Format(time.RFC3339),
 			"end":   time.Now().Format(time.RFC3339),
 		},
 		"affected_services": []string{"payment-service", "database"},
 	}
-
-	jsonData, _ := json.Marshal(investigationRequest)
+	jsonData, _ := json.Marshal(payload)
 
 	req, _ := http.NewRequest("POST", suite.testServer.URL+"/api/v1/rca/investigate", bytes.NewReader(jsonData))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer test-session-token")
+	suite.authJSON(req)
 
 	resp, err := suite.client.Do(req)
 	assert.NoError(suite.T(), err)
+	dumpOnFailure(suite.T(), resp)
 	assert.Equal(suite.T(), http.StatusOK, resp.StatusCode)
 
-	var response map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&response)
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), "success", response["status"])
+	var out map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	assert.Equal(suite.T(), "success", out["status"])
 
-	correlation := response["data"].(map[string]interface{})["correlation"].(map[string]interface{})
+	correlation := out["data"].(map[string]any)["correlation"].(map[string]any)
 	assert.NotNil(suite.T(), correlation["root_cause"])
-	assert.NotNil(suite.T(), correlation["red_anchors"]) // Verify red anchors pattern
+	assert.NotNil(suite.T(), correlation["red_anchors"])
 }
 
 func TestAPITestSuite(t *testing.T) {
