@@ -103,8 +103,8 @@ fmt:
 # Build Docker image
 docker: build
 	@echo "🐳 Building Docker image..."
-	docker build -t mirador/core:$(VERSION) .
-	docker tag mirador/core:$(VERSION) mirador/core:latest
+	docker build -t platformbuilds/mirador-core:$(VERSION) .
+	docker tag platformbuilds/mirador-core:$(VERSION) platformbuilds/mirador-core:latest
 
 # Start local development stack
 dev-stack:
