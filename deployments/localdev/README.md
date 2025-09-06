@@ -13,7 +13,7 @@ This folder contains minimal Docker Compose setups for running a full local loop
 
 ## 1) Start Victoria stack
 
-Launch metrics/logs/traces single nodes. Data is stored in local folders under this directory.
+Launch metrics/logs/traces single nodes. Data is stored in Docker named volumes.
 
 ```bash
 cd public/mirador-core/deployments/localdev
@@ -46,6 +46,8 @@ docker compose -f otel-collector-docker-compose.yaml up -d
 
 Run a single-node Valkey and MIRADOR-CORE. MIRADOR-CORE will look for Victoria endpoints on the host, and Valkey on the local compose network.
 
+Cross-platform note (Apple Silicon, ARM64, x86_64): All localdev images are multi-arch. The compose files do not pin `platform` so Docker will pull the native image for your host automatically (arm64 on Apple Silicon, amd64 on Intel/AMD). If you need to force a specific platform, you may add a `platform:` line to a local override compose file.
+
 Auth toggle (optional): You can disable auth for local testing by setting the config flag `auth.enabled: false` (Helm) or environment variable `AUTH_ENABLED=false` (Docker). When disabled, requests run as `anonymous` on tenant `default` and no token is required.
 
 ```bash
@@ -56,7 +58,7 @@ docker compose -f mirador-core-docker-compose.yaml up -d
 - MIRADOR-CORE: http://localhost:8080
 - Health: http://localhost:8080/health
 
-Tip: To build MIRADOR-CORE from source instead of pulling the image, uncomment the `build:` block in `mirador-core-docker-compose.yaml`.
+Tip: The `mirador-core` service is configured to `build` locally, which produces a native binary for your host (arm64 on Apple Silicon, amd64 on Intel/AMD). If you prefer to pull a published image instead, comment out the `build:` block and set `image: platformbuilds/mirador-core:<tag>`.
 
 ## 4) Generate Synthetic OTEL Data (telemetrygen)
 
@@ -125,5 +127,6 @@ docker compose -f victoria-docker-compose.yaml down
 
 ## Notes & Tips
 - Linux networking: if `host.docker.internal` is not resolvable, prefer a single shared user-defined network for all compose stacks and address services by name (e.g., `victoriametrics:8428`).
-- Persisted data: local folders (`./vmdata`, `./vldata`, `./vtdata`) hold Victoria state; delete them for a clean slate.
+- Persisted data: Victoria state is stored in Docker named volumes (`vmdata`, `vldata`, `vtdata`). Remove them to reset:
+  - `docker volume rm vmdata vldata vtdata` (only after all stacks are stopped).
 - MIRADOR-CORE config: local compose sets Victoria endpoints via env vars; adjust them if you move services to another network.

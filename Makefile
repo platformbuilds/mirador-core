@@ -1,5 +1,5 @@
-.PHONY: build build-linux-amd64 build-linux-arm64 build-darwin-arm64 build-windows-amd64 build-all \
-	docker docker-build dockerx-build dockerx-push docker-publish-release docker-publish-canary docker-publish-pr \
+.PHONY: build build-native build-linux-multi build-linux-amd64 build-linux-arm64 build-darwin-arm64 build-windows-amd64 build-all \
+	docker docker-build docker-build-native dockerx-build dockerx-push docker-publish-release docker-publish-canary docker-publish-pr \
 	release test clean proto vendor lint run dev setup tools check-tools dev-stack dev-stack-down fmt version proto-clean clean-build \
 	tag-release helm-bump version-human version-ci
 
@@ -15,6 +15,10 @@ REGISTRY?=platformbuilds
 IMAGE_NAME?=$(BINARY_NAME)
 IMAGE=$(REGISTRY)/$(IMAGE_NAME)
 DOCKER_PLATFORMS?=linux/amd64,linux/arm64
+
+# Host platform (for native builds)
+HOST_OS?=$(shell go env GOOS)
+HOST_ARCH?=$(shell go env GOARCH)
 
 # CI/environment metadata
 BRANCH?=$(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "local")
@@ -37,18 +41,24 @@ proto:
 	@./scripts/generate-proto-code.sh
 
 # Build
-build: proto ## Release-style static build for Linux/amd64
+build: proto ## Release-style static build for Linux/amd64 (default)
 	@echo "🔨 Building MIRADOR-CORE (linux/amd64)..."
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 		-ldflags="$(LDFLAGS)" \
 		-o bin/$(BINARY_NAME) \
 		cmd/server/main.go
 
+build-native: proto ## Build native (HOST_OS/HOST_ARCH)
+	@echo "🔨 Building MIRADOR-CORE (native: $(HOST_OS)/$(HOST_ARCH))..."
+	CGO_ENABLED=0 GOOS=$(HOST_OS) GOARCH=$(HOST_ARCH) go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY_NAME)-$(HOST_OS)-$(HOST_ARCH) cmd/server/main.go
+
 build-linux-amd64: proto ## Build linux/amd64
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY_NAME)-linux-amd64 cmd/server/main.go
 
 build-linux-arm64: proto ## Build linux/arm64
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY_NAME)-linux-arm64 cmd/server/main.go
+
+build-linux-multi: build-linux-amd64 build-linux-arm64 ## Build linux binaries for amd64 and arm64
 
 build-darwin-arm64: proto ## Build darwin/arm64 (Apple Silicon)
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY_NAME)-darwin-arm64 cmd/server/main.go
@@ -136,16 +146,36 @@ docker: docker-build ## Alias
 
 docker-build: ## Build single-arch docker image (host arch)
 	@echo "🐳 Building Docker image $(IMAGE):$(VERSION) ..."
-	docker build -t $(IMAGE):$(VERSION) .
+	docker build \
+	  --build-arg VERSION=$(VERSION) \
+	  --build-arg BUILD_TIME=$(BUILD_TIME) \
+	  --build-arg COMMIT_HASH=$(COMMIT_HASH) \
+	  -t $(IMAGE):$(VERSION) .
 	docker tag $(IMAGE):$(VERSION) $(IMAGE):latest
+
+docker-build-native: ## Build native-arch image via buildx and load to local Docker
+	@echo "🐳 Building native image $(IMAGE):$(VERSION) for linux/$(HOST_ARCH) ..."
+	docker buildx build --platform linux/$(HOST_ARCH) \
+	  --build-arg VERSION=$(VERSION) \
+	  --build-arg BUILD_TIME=$(BUILD_TIME) \
+	  --build-arg COMMIT_HASH=$(COMMIT_HASH) \
+	  -t $(IMAGE):$(VERSION) -t $(IMAGE):latest --load .
 
 dockerx-build: ## Build multi-arch image with buildx (no push)
 	@echo "🐳 Building multi-arch image $(IMAGE):$(VERSION) for $(DOCKER_PLATFORMS) ..."
-	docker buildx build --platform $(DOCKER_PLATFORMS) -t $(IMAGE):$(VERSION) -t $(IMAGE):latest --load .
+	docker buildx build --platform $(DOCKER_PLATFORMS) \
+	  --build-arg VERSION=$(VERSION) \
+	  --build-arg BUILD_TIME=$(BUILD_TIME) \
+	  --build-arg COMMIT_HASH=$(COMMIT_HASH) \
+	  -t $(IMAGE):$(VERSION) -t $(IMAGE):latest --load .
 
 dockerx-push: ## Build and push multi-arch image with buildx
 	@echo "🐳 Building & pushing multi-arch image $(IMAGE):$(VERSION) for $(DOCKER_PLATFORMS) ..."
-	docker buildx build --platform $(DOCKER_PLATFORMS) -t $(IMAGE):$(VERSION) -t $(IMAGE):latest --push .
+	docker buildx build --platform $(DOCKER_PLATFORMS) \
+	  --build-arg VERSION=$(VERSION) \
+	  --build-arg BUILD_TIME=$(BUILD_TIME) \
+	  --build-arg COMMIT_HASH=$(COMMIT_HASH) \
+	  -t $(IMAGE):$(VERSION) -t $(IMAGE):latest --push .
 
 release: test dockerx-push ## Run tests then push multi-arch image
 
@@ -186,6 +216,9 @@ docker-publish-release: ## VERSION=vX.Y.Z REGISTRY=... IMAGE_NAME=... make docke
 	BASE=$(IMAGE); \
 	echo "Publishing $$BASE:$(VERSION) $$BASE:v$$MAJOR.$$MINOR $$BASE:v$$MAJOR latest stable"; \
 	docker buildx build --platform $(DOCKER_PLATFORMS) \
+	  --build-arg VERSION=$(VERSION) \
+	  --build-arg BUILD_TIME=$(BUILD_TIME) \
+	  --build-arg COMMIT_HASH=$(COMMIT_HASH) \
 	  -t $$BASE:$(VERSION) -t $$BASE:v$$MAJOR.$$MINOR -t $$BASE:v$$MAJOR -t $$BASE:latest -t $$BASE:stable \
 	  --push .
 
@@ -194,7 +227,11 @@ docker-publish-canary:
 	@TAG=$$(make -s version-ci); \
 	BASE=$(IMAGE); \
 	echo "Publishing $$BASE:$$TAG and $$BASE:canary"; \
-	docker buildx build --platform $(DOCKER_PLATFORMS) -t $$BASE:$$TAG -t $$BASE:canary --push .
+	docker buildx build --platform $(DOCKER_PLATFORMS) \
+	  --build-arg VERSION=$$TAG \
+	  --build-arg BUILD_TIME=$(BUILD_TIME) \
+	  --build-arg COMMIT_HASH=$(COMMIT_HASH) \
+	  -t $$BASE:$$TAG -t $$BASE:canary --push .
 
 # Push PR image: tags 0.0.0-pr.<PR#>.<sha> and pr-<PR#>
 docker-publish-pr:
@@ -202,7 +239,11 @@ docker-publish-pr:
 	@TAG="0.0.0-pr.$(PR_NUMBER).$(SHA_SHORT)"; \
 	BASE=$(IMAGE); \
 	echo "Publishing $$BASE:$$TAG and $$BASE:pr-$(PR_NUMBER)"; \
-	docker buildx build --platform $(DOCKER_PLATFORMS) -t $$BASE:$$TAG -t $$BASE:pr-$(PR_NUMBER) --push .
+	docker buildx build --platform $(DOCKER_PLATFORMS) \
+	  --build-arg VERSION=$$TAG \
+	  --build-arg BUILD_TIME=$(BUILD_TIME) \
+	  --build-arg COMMIT_HASH=$(COMMIT_HASH) \
+	  -t $$BASE:$$TAG -t $$BASE:pr-$(PR_NUMBER) --push .
 
 # Bump Helm chart appVersion and/or chart version (requires yq or sed fallback)
 helm-bump: ## VERSION=vX.Y.Z CHART_VER=0.1.1 make helm-bump

@@ -68,9 +68,10 @@ services:
 
   # MIRADOR-CORE development instance
   mirador-core-dev:
+    # Build locally for native architecture (arm64 on Apple Silicon, amd64 on Intel)
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
       - "9090:9090"
@@ -92,13 +93,9 @@ services:
       - mock-predict-engine
       - mock-rca-engine
       - mock-alert-engine
-    volumes:
-      - .:/app
-      - go_mod_cache:/go/pkg/mod
 
 volumes:
   redis_data:
   vm_data:
   vl_data:
   vt_data:
-  go_mod_cache:

@@ -28,12 +28,15 @@ COPY . .
 # Build the binary with optimizations (multi-platform)
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
+ARG VERSION=v0.0.0
+ARG BUILD_TIME
+ARG COMMIT_HASH
 ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go build \
     -a -installsuffix cgo \
-    -ldflags="-w -s -X main.version=v2.1.3 -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    -ldflags="-w -s -X main.version=${VERSION} -X main.buildTime=${BUILD_TIME} -X main.commitHash=${COMMIT_HASH}" \
     -o mirador-core cmd/server/main.go
 
 # Final stage - minimal runtime image
