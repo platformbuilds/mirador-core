@@ -42,3 +42,7 @@ vtdata
 */vtdata
 vmdata
 */vmdata
+
+# Build binaries
+bin/
+bin/*
