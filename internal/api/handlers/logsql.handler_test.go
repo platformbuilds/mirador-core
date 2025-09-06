@@ -20,7 +20,7 @@ type noCache struct{ cache.ValkeyCluster }
 func logsServer() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/select/logsql/api/v1/export":
+		case r.Method == http.MethodGet && r.URL.Path == "/select/logsql/query":
 			// stream a couple of json lines
 			_, _ = w.Write([]byte("{\"a\":1}\n{\"b\":2}\n"))
 		case r.Method == http.MethodPost && r.URL.Path == "/insert/jsonline":

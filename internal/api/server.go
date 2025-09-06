@@ -15,6 +15,8 @@ import (
     "github.com/platformbuilds/mirador-core/internal/services"
     "github.com/platformbuilds/mirador-core/pkg/cache"
     "github.com/platformbuilds/mirador-core/pkg/logger"
+    swaggerFiles "github.com/swaggo/files"
+    ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type Server struct {
@@ -83,9 +85,9 @@ func (s *Server) setupMiddleware() {
 	s.router.StaticFile("/api/openapi.yaml", "api/openapi.yaml")
 	s.router.GET("/api/openapi.json", handlers.GetOpenAPISpec)
 
-    // Swagger UI (browser docs)
-    s.router.GET("/docs", handlers.ServeSwaggerUI)
-    s.router.GET("/docs/index.html", handlers.ServeSwaggerUI) // optional convenience
+    // Swagger UI via gin-swagger (serves Swagger UI using external openapi.yaml)
+    // Visit /swagger/index.html
+    s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/api/openapi.yaml")))
 
     // Prometheus metrics endpoint
     monitoring.SetupPrometheusMetrics(s.router)
@@ -102,12 +104,23 @@ func (s *Server) setupRoutes() {
 	// API v1 group (protected by RBAC)
 	v1 := s.router.Group("/api/v1")
 
-	// MetricsQL endpoints (VictoriaMetrics integration)
-	metricsHandler := handlers.NewMetricsQLHandler(s.vmServices.Metrics, s.cache, s.logger)
-	v1.POST("/query", metricsHandler.ExecuteQuery)
-	v1.POST("/query_range", metricsHandler.ExecuteRangeQuery)
-	v1.GET("/series", metricsHandler.GetSeries)
-	v1.GET("/labels", metricsHandler.GetLabels)
+	// Back-compat: expose health under /api/v1 as well
+	v1.GET("/health", healthHandler.HealthCheck)
+	v1.GET("/ready", healthHandler.ReadinessCheck)
+
+    // MetricsQL endpoints (VictoriaMetrics integration)
+    metricsHandler := handlers.NewMetricsQLHandler(s.vmServices.Metrics, s.cache, s.logger)
+    v1.POST("/query", metricsHandler.ExecuteQuery)
+    v1.POST("/query_range", metricsHandler.ExecuteRangeQuery)
+    v1.GET("/series", metricsHandler.GetSeries)
+    v1.GET("/labels", metricsHandler.GetLabels)
+    v1.GET("/metrics/names", metricsHandler.GetMetricNames)
+    // Back-compat aliases at root so Swagger with base "/" also works
+    s.router.POST("/query", metricsHandler.ExecuteQuery)
+    s.router.POST("/query_range", metricsHandler.ExecuteRangeQuery)
+    s.router.GET("/series", metricsHandler.GetSeries)
+    s.router.GET("/labels", metricsHandler.GetLabels)
+    s.router.GET("/metrics/names", metricsHandler.GetMetricNames)
 	v1.GET("/label/:name/values", metricsHandler.GetLabelValues)
 
 	// LogsQL endpoints (VictoriaLogs integration)
@@ -129,8 +142,10 @@ func (s *Server) setupRoutes() {
 	tracesHandler := handlers.NewTracesHandler(s.vmServices.Traces, s.cache, s.logger)
 	v1.GET("/traces/services", tracesHandler.GetServices)
 	v1.GET("/traces/services/:service/operations", tracesHandler.GetOperations)
-	v1.GET("/traces/:traceId", tracesHandler.GetTrace)
-	v1.POST("/traces/search", tracesHandler.SearchTraces)
+    v1.GET("/traces/:traceId", tracesHandler.GetTrace)
+    v1.GET("/traces/:traceId/flamegraph", tracesHandler.GetFlameGraph)
+    v1.POST("/traces/search", tracesHandler.SearchTraces)
+    v1.POST("/traces/flamegraph/search", tracesHandler.SearchFlameGraph)
 
 	// AI PREDICT-ENGINE endpoints (gRPC + protobuf communication)
 	predictHandler := handlers.NewPredictHandler(s.grpcClients.PredictEngine, s.vmServices.Logs, s.cache, s.logger)

@@ -1,0 +1,230 @@
+{
+  "info": {
+    "name": "mirador-core",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Postman collection for mirador-core local dev and smoke tests"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        },
+        {
+          "name": "GET /api/v1/health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/health", "host": ["{{baseUrl}}"], "path": ["api","v1","health"] }
+          }
+        },
+        {
+          "name": "GET /api/v1/ready",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/ready", "host": ["{{baseUrl}}"], "path": ["api","v1","ready"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Metrics",
+      "item": [
+        {
+          "name": "POST /api/v1/query (instant)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "X-Tenant-ID", "value": "{{tenantId}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"1\",\n  \"time\": \"{{now_rfc}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/query", "host": ["{{baseUrl}}"], "path": ["api","v1","query"] }
+          }
+        },
+        {
+          "name": "POST /api/v1/query_range (range)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "X-Tenant-ID", "value": "{{tenantId}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"1\",\n  \"start\": \"{{start_rfc}}\",\n  \"end\": \"{{now_rfc}}\",\n  \"step\": \"30s\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/query_range", "host": ["{{baseUrl}}"], "path": ["api","v1","query_range"] }
+          }
+        },
+        {
+          "name": "GET /api/v1/labels",
+          "request": { "method": "GET", "header": [{"key": "X-Tenant-ID","value": "{{tenantId}}"}],
+            "url": { "raw": "{{baseUrl}}/api/v1/labels", "host": ["{{baseUrl}}"], "path": ["api","v1","labels"] } }
+        },
+        {
+          "name": "GET /api/v1/metrics/names",
+          "request": { "method": "GET", "header": [{"key": "X-Tenant-ID","value": "{{tenantId}}"}],
+            "url": { "raw": "{{baseUrl}}/api/v1/metrics/names?start={{start_rfc}}&end={{now_rfc}}",
+              "host": ["{{baseUrl}}"], "path": ["api","v1","metrics","names"],
+              "query": [{"key":"start","value":"{{start_rfc}}"},{"key":"end","value":"{{now_rfc}}"}] } }
+        },
+        {
+          "name": "GET /api/v1/label/__name__/values",
+          "request": { "method": "GET", "header": [{"key": "X-Tenant-ID","value": "{{tenantId}}"}],
+            "url": { "raw": "{{baseUrl}}/api/v1/label/__name__/values?start={{start_rfc}}&end={{now_rfc}}",
+              "host": ["{{baseUrl}}"], "path": ["api","v1","label","__name__","values"],
+              "query": [{"key":"start","value":"{{start_rfc}}"},{"key":"end","value":"{{now_rfc}}"}] } }
+        }
+      ]
+    },
+    {
+      "name": "Logs",
+      "item": [
+        {
+          "name": "POST /api/v1/logs/query",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "X-Tenant-ID", "value": "{{tenantId}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"service.name:\\\"telemetrygen\\\"\",\n  \"start\": {{start_ms}},\n  \"end\": {{now_ms}},\n  \"limit\": 20000\n}"
+          },
+            "url": { "raw": "{{baseUrl}}/api/v1/logs/query", "host": ["{{baseUrl}}"], "path": ["api","v1","logs","query"] }
+          }
+        },
+        {
+          "name": "POST /api/v1/logs/export",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "X-Tenant-ID", "value": "{{tenantId}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"service.name:\\\"telemetrygen\\\"\",\n  \"start\": {{start_ms}},\n  \"end\": {{now_ms}},\n  \"limit\": 20000,\n  \"format\": \"csv\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/logs/export", "host": ["{{baseUrl}}"], "path": ["api","v1","logs","export"] }
+          }
+        },
+        {
+          "name": "GET /api/v1/logs/fields",
+          "request": { "method": "GET", "header": [{"key": "X-Tenant-ID","value": "{{tenantId}}"}],
+            "url": { "raw": "{{baseUrl}}/api/v1/logs/fields", "host": ["{{baseUrl}}"], "path": ["api","v1","logs","fields"] } }
+        },
+        {
+          "name": "GET /api/v1/logs/streams",
+          "request": { "method": "GET", "header": [{"key": "X-Tenant-ID","value": "{{tenantId}}"}],
+            "url": { "raw": "{{baseUrl}}/api/v1/logs/streams", "host": ["{{baseUrl}}"], "path": ["api","v1","logs","streams"] } }
+        }
+      ]
+    },
+    {
+      "name": "Traces",
+      "item": [
+        {
+          "name": "GET /api/v1/traces/services",
+          "request": { "method": "GET", "header": [{"key": "X-Tenant-ID", "value": "{{tenantId}}"}],
+            "url": { "raw": "{{baseUrl}}/api/v1/traces/services", "host": ["{{baseUrl}}"], "path": ["api","v1","traces","services"] } }
+        },
+        {
+          "name": "GET /api/v1/traces/services/:service/operations",
+          "request": { "method": "GET", "header": [{"key": "X-Tenant-ID", "value": "{{tenantId}}"}],
+            "url": { "raw": "{{baseUrl}}/api/v1/traces/services/{{traceService}}/operations",
+              "host": ["{{baseUrl}}"], "path": ["api","v1","traces","services","{{traceService}}","operations"] } }
+        },
+        {
+          "name": "POST /api/v1/traces/search",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "X-Tenant-ID", "value": "{{tenantId}}"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service\": \"{{traceService}}\",\n  \"limit\": 20\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/traces/search", "host": ["{{baseUrl}}"], "path": ["api","v1","traces","search"] }
+          }
+        }
+      ,
+        {
+          "name": "GET /api/v1/traces/:traceId/flamegraph",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "X-Tenant-ID", "value": "{{tenantId}}"}],
+            "url": { "raw": "{{baseUrl}}/api/v1/traces/{{traceId}}/flamegraph?mode={{flame_mode}}",
+              "host": ["{{baseUrl}}"], "path": ["api","v1","traces","{{traceId}}","flamegraph"],
+              "query": [{"key": "mode", "value": "{{flame_mode}}"}] }
+          }
+        },
+        {
+          "name": "POST /api/v1/traces/flamegraph/search",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "X-Tenant-ID", "value": "{{tenantId}}"}],
+            "body": { "mode": "raw", "raw": "{\n  \"service\": \"{{traceService}}\",\n  \"limit\": 10\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/traces/flamegraph/search?mode={{flame_mode}}",
+              "host": ["{{baseUrl}}"], "path": ["api","v1","traces","flamegraph","search"],
+              "query": [{"key": "mode", "value": "{{flame_mode}}"}] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Docs",
+      "item": [
+        {
+          "name": "OpenAPI YAML",
+          "request": { "method": "GET", "header": [],
+            "url": { "raw": "{{baseUrl}}/api/openapi.yaml", "host": ["{{baseUrl}}"], "path": ["api","openapi.yaml"] } }
+        },
+        {
+          "name": "Swagger UI",
+          "request": { "method": "GET", "header": [],
+            "url": { "raw": "{{baseUrl}}/swagger/index.html", "host": ["{{baseUrl}}"], "path": ["swagger","index.html"] } }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Compute dynamic timestamps for examples",
+          "const now = new Date();",
+          "pm.collectionVariables.set('now_rfc', now.toISOString());",
+          "pm.collectionVariables.set('now_ms', Date.now());",
+          "pm.collectionVariables.set('start_ms', Date.now() - 10*60*1000);",
+          "pm.collectionVariables.set('start_rfc', new Date(Date.now() - 10*60*1000).toISOString());",
+          "if (!pm.collectionVariables.get('traceService')) pm.collectionVariables.set('traceService','telemetrygen');"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "tenantId", "value": "0" },
+    { "key": "now_rfc", "value": "" },
+    { "key": "start_rfc", "value": "" },
+    { "key": "now_ms", "value": "" },
+    { "key": "start_ms", "value": "" },
+    { "key": "traceService", "value": "telemetrygen" },
+    { "key": "traceId", "value": "" },
+    { "key": "flame_mode", "value": "duration" }
+  ]
+}

@@ -22,11 +22,22 @@ func (h *LogsHandler) TailWS(c *gin.Context) {
 		sampling = parseIntDefault(c.Query("sampling"), 1)
 	)
 
-	upgrader := websocket.Upgrader{
-		ReadBufferSize:  8 << 10,
-		WriteBufferSize: 64 << 10,
-		CheckOrigin:     func(*http.Request) bool { return true }, // TODO: tighten CORS in prod
-	}
+    // If this isn't a proper WebSocket upgrade, return a helpful error
+    if !websocket.IsWebSocketUpgrade(c.Request) {
+        c.JSON(http.StatusUpgradeRequired, gin.H{
+            "status": "error",
+            "error":  "WebSocket upgrade required",
+            "detail": "Connect with a WebSocket client (e.g., ws://host/api/v1/logs/tail). Swagger 'Try it out' uses HTTP and will fail.",
+            "example": "wscat -c ws://localhost:8080/api/v1/logs/tail?query=_time:5m",
+        })
+        return
+    }
+
+    upgrader := websocket.Upgrader{
+        ReadBufferSize:  8 << 10,
+        WriteBufferSize: 64 << 10,
+        CheckOrigin:     func(*http.Request) bool { return true }, // TODO: tighten CORS in prod
+    }
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {

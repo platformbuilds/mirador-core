@@ -155,29 +155,28 @@ func (h *LogsQLHandler) StoreEvent(c *gin.Context) {
 
 // GET /api/v1/logs/fields - Get available log fields
 func (h *LogsQLHandler) GetFields(c *gin.Context) {
-	tenantID := c.GetString("tenant_id")
+    tenantID := c.GetString("tenant_id")
 
-	// (optional) parse query/limit, but the current service does not use them
-	// query := c.Query("query")
-	// limit, _ := strconv.Atoi(c.DefaultQuery("limit", "1000"))
+    fields, err := h.logsService.GetFields(c.Request.Context(), tenantID)
+    if err != nil {
+        h.logger.Error("Failed to get log fields", "tenant", tenantID, "error", err)
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "status": "error",
+            "error":  "Failed to retrieve log fields",
+        })
+        return
+    }
 
-	fields, err := h.logsService.GetFields(c.Request.Context(), tenantID)
-	if err != nil {
-		h.logger.Error("Failed to get log fields", "tenant", tenantID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "error",
-			"error":  "Failed to retrieve log fields",
-		})
-		return
-	}
+    if fields == nil {
+        fields = []string{}
+    }
 
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data": gin.H{
-			"fields": fields,
-			"count":  len(fields),
-		},
-	})
+    c.JSON(http.StatusOK, gin.H{
+        "status": "success",
+        "data": gin.H{
+            "fields": fields,
+        },
+    })
 }
 
 // POST /api/v1/logs/export - Export logs in various formats
@@ -218,31 +217,27 @@ func (h *LogsQLHandler) ExportLogs(c *gin.Context) {
 		return
 	}
 
-	// Set appropriate headers based on format
-	switch request.Format {
-	case "csv":
-		c.Header("Content-Type", "text/csv")
-		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=logs-%s.csv", time.Now().Format("2006-01-02")))
-	case "json":
-		c.Header("Content-Type", "application/json")
-		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=logs-%s.json", time.Now().Format("2006-01-02")))
-	default:
-		c.Header("Content-Type", "application/octet-stream")
-	}
+    // Stream the exported file bytes directly as an attachment.
+    // This avoids inventing a temporary URL and matches the service, which
+    // already fetched the full payload from VictoriaLogs.
+    var contentType string
+    switch request.Format {
+    case "csv":
+        contentType = "text/csv"
+    case "json":
+        contentType = "application/json"
+    default:
+        contentType = "application/octet-stream"
+    }
 
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data": gin.H{
-			"exportId":    exportResult.ExportID,
-			"format":      exportResult.Format,
-			"recordCount": exportResult.RecordCount,
-			"downloadUrl": exportResult.DownloadURL,
-			"expiresAt":   exportResult.ExpiresAt,
-		},
-		"metadata": gin.H{
-			"query":         request.Query,
-			"exportedAt":    time.Now().Format(time.RFC3339),
-			"estimatedSize": exportResult.EstimatedSize,
-		},
-	})
+    filename := exportResult.Filename
+    if filename == "" {
+        // Fallback filename based on format
+        filename = fmt.Sprintf("logs-%s.%s", time.Now().Format("2006-01-02"), request.Format)
+    }
+
+    c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+    c.Header("Content-Type", contentType)
+    c.Header("Content-Length", strconv.Itoa(len(exportResult.Data)))
+    c.Data(http.StatusOK, contentType, exportResult.Data)
 }

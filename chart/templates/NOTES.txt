@@ -15,7 +15,7 @@ MIRADOR-CORE has been deployed.
   - Readiness:    /ready
   - Metrics:      /metrics
   - OpenAPI:      /api/openapi.yaml
-  - Swagger UI:   /docs
+  - Swagger UI:   /swagger
 
 {{- if .Values.ingress.enabled }}
 Ingress enabled. Try:
@@ -25,4 +25,3 @@ If using port-forward:
   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "mirador-core.fullname" . }} 8080:{{ .Values.service.ports.http.port }}
   then open http://localhost:8080/health
 {{- end }}
-

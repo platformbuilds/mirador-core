@@ -82,42 +82,60 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 		}
 	}
 
-	// Check AI engines connectivity
-	if err := h.grpcClients.PredictEngine.HealthCheck(); err != nil {
-		checks["predict_engine"] = map[string]interface{}{
-			"status": "unhealthy",
-			"error":  err.Error(),
-		}
-		overallHealthy = false
-	} else {
-		checks["predict_engine"] = map[string]interface{}{
-			"status": "healthy",
-		}
-	}
+    // Check AI engines connectivity (tolerate disabled in development)
+    if h.grpcClients.PredictEngine != nil {
+        if err := h.grpcClients.PredictEngine.HealthCheck(); err != nil {
+            checks["predict_engine"] = map[string]interface{}{
+                "status": "unhealthy",
+                "error":  err.Error(),
+            }
+            overallHealthy = false
+        } else {
+            status := "healthy"
+            if !h.grpcClients.PredictEnabled { status = "disabled" }
+            checks["predict_engine"] = map[string]interface{}{
+                "status": status,
+            }
+        }
+    } else {
+        checks["predict_engine"] = map[string]interface{}{"status": "disabled"}
+    }
 
-	if err := h.grpcClients.RCAEngine.HealthCheck(); err != nil {
-		checks["rca_engine"] = map[string]interface{}{
-			"status": "unhealthy",
-			"error":  err.Error(),
-		}
-		overallHealthy = false
-	} else {
-		checks["rca_engine"] = map[string]interface{}{
-			"status": "healthy",
-		}
-	}
+    if h.grpcClients.RCAEngine != nil {
+        if err := h.grpcClients.RCAEngine.HealthCheck(); err != nil {
+            checks["rca_engine"] = map[string]interface{}{
+                "status": "unhealthy",
+                "error":  err.Error(),
+            }
+            overallHealthy = false
+        } else {
+            status := "healthy"
+            if !h.grpcClients.RCAEnabled { status = "disabled" }
+            checks["rca_engine"] = map[string]interface{}{
+                "status": status,
+            }
+        }
+    } else {
+        checks["rca_engine"] = map[string]interface{}{"status": "disabled"}
+    }
 
-	if err := h.grpcClients.AlertEngine.HealthCheck(); err != nil {
-		checks["alert_engine"] = map[string]interface{}{
-			"status": "unhealthy",
-			"error":  err.Error(),
-		}
-		overallHealthy = false
-	} else {
-		checks["alert_engine"] = map[string]interface{}{
-			"status": "healthy",
-		}
-	}
+    if h.grpcClients.AlertEngine != nil {
+        if err := h.grpcClients.AlertEngine.HealthCheck(); err != nil {
+            checks["alert_engine"] = map[string]interface{}{
+                "status": "unhealthy",
+                "error":  err.Error(),
+            }
+            overallHealthy = false
+        } else {
+            status := "healthy"
+            if !h.grpcClients.AlertEnabled { status = "disabled" }
+            checks["alert_engine"] = map[string]interface{}{
+                "status": status,
+            }
+        }
+    } else {
+        checks["alert_engine"] = map[string]interface{}{"status": "disabled"}
+    }
 
 	status := "healthy"
 	httpStatus := http.StatusOK

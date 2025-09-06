@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -111,4 +113,11 @@ func GetStreamNames(streams map[string]bool) []string {
 		}
 	}
 	return names
+}
+
+// IsUint32String returns true if s is a base-10 unsigned integer that fits in uint32.
+func IsUint32String(s string) bool {
+    if strings.TrimSpace(s) == "" { return false }
+    if _, err := strconv.ParseUint(s, 10, 32); err != nil { return false }
+    return true
 }

@@ -34,3 +34,11 @@ go.work.sum
 
 # Apple OS
 .DS_Store
+
+#localdev data
+vldata
+*/vldata
+vtdata
+*/vtdata
+vmdata
+*/vmdata

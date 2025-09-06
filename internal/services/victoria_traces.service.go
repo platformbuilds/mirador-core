@@ -1,10 +1,14 @@
 package services
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
+    "bytes"
+    "context"
+    "encoding/json"
+    "fmt"
+    "io"
+    "net/http"
+
+    "github.com/platformbuilds/mirador-core/internal/utils"
 )
 
 // GetOperations returns all operations for a specific service from VictoriaTraces
@@ -17,9 +21,9 @@ func (s *VictoriaTracesService) GetOperations(ctx context.Context, serviceName, 
 		return nil, err
 	}
 
-	if tenantID != "" {
-		req.Header.Set("AccountID", tenantID)
-	}
+    if utils.IsUint32String(tenantID) {
+        req.Header.Set("AccountID", tenantID)
+    }
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -31,17 +35,20 @@ func (s *VictoriaTracesService) GetOperations(ctx context.Context, serviceName, 
 		return nil, fmt.Errorf("VictoriaTraces returned status %d", resp.StatusCode)
 	}
 
-	var operations []string
-	if err := json.NewDecoder(resp.Body).Decode(&operations); err != nil {
-		return nil, err
-	}
-
-	s.logger.Debug("Operations retrieved successfully",
-		"service", serviceName,
-		"endpoint", endpoint,
-		"operationCount", len(operations),
-		"tenant", tenantID,
-	)
-
-	return operations, nil
+    // Some VT builds return {"data":[...]} while others may return a bare array.
+    // Read body once and try both shapes for robustness.
+    b, err := io.ReadAll(resp.Body)
+    if err != nil { return nil, err }
+    b = bytes.TrimSpace(b)
+    var wrap struct{ Data []string `json:"data"` }
+    if json.Unmarshal(b, &wrap) == nil && wrap.Data != nil {
+        operations := make([]string, len(wrap.Data))
+        copy(operations, wrap.Data)
+        return operations, nil
+    }
+    var ops []string
+    if json.Unmarshal(b, &ops) == nil {
+        return ops, nil
+    }
+    return nil, fmt.Errorf("unexpected operations response shape: %s", string(b))
 }

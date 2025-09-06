@@ -378,6 +378,10 @@ VALUES
 
 Headless Services for Victoria* selectors are recommended so cluster DNS exposes per-pod A records.
 
+API Docs
+- OpenAPI: `http://<host>/api/openapi.yaml`
+- Swagger UI: `http://<host>/swagger`
+
 ## Production Readiness Checklist
 
 - Security

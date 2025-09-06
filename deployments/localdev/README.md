@@ -23,7 +23,7 @@ docker compose -f victoria-docker-compose.yaml up -d
 Exposed ports:
 - VictoriaMetrics UI/API: http://localhost:8428
 - VictoriaLogs UI/API: http://localhost:9428
-- VictoriaTraces UI/API: http://localhost:8429
+- VictoriaTraces UI/API: http://localhost:10428
 
 Note: Jaeger HTTP ingestion for traces is commonly on 14268. If your image doesn’t expose it by default, map `14268:14268` and enable Jaeger HTTP in the container flags.
 
@@ -48,7 +48,7 @@ Run a single-node Valkey and MIRADOR-CORE. MIRADOR-CORE will look for Victoria e
 
 Cross-platform note (Apple Silicon, ARM64, x86_64): All localdev images are multi-arch. The compose files do not pin `platform` so Docker will pull the native image for your host automatically (arm64 on Apple Silicon, amd64 on Intel/AMD). If you need to force a specific platform, you may add a `platform:` line to a local override compose file.
 
-Auth toggle (optional): You can disable auth for local testing by setting the config flag `auth.enabled: false` (Helm) or environment variable `AUTH_ENABLED=false` (Docker). When disabled, requests run as `anonymous` on tenant `default` and no token is required.
+Auth in localdev: Authentication is disabled by default (AUTH_ENABLED=false). Requests run as `anonymous` on tenant `default` unless you set `X-Tenant-ID`. To test auth flows, remove `AUTH_ENABLED=false` from `mirador-core-docker-compose.yaml` and seed a session or use JWT.
 
 ```bash
 cd public/mirador-core/deployments/localdev
@@ -117,13 +117,11 @@ telemetrygen logs \
 - OpenAPI: `http://localhost:8080/api/openapi.yaml`
 - Metrics: `http://localhost:8080/metrics`
 
-## 7) Cleanup
+## Cleanup
 
 ```bash
-# Stop stacks
-docker compose -f mirador-core-docker-compose.yaml down
-docker compose -f otel-collector-docker-compose.yaml down
-docker compose -f victoria-docker-compose.yaml down
+# Stop stack
+docker compose -f docker-compose.yaml down
 ```
 
 ## Notes & Tips
