@@ -144,7 +144,7 @@ Secrets such as JWT, LDAP, Redis, or SMTP are expected via environment variables
 
 The application exposes:
 
-- REST: `/health`, `/ready`, `/metrics`, `/api/openapi.yaml`, `/docs`
+- REST: `/health`, `/ready`, `/metrics`, `/api/openapi.yaml`, `/swagger`
 - gRPC client connections to AI engines are configured through the `grpc.*` section of the config.
 
 ## Multi-Arch Images

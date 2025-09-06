@@ -3,6 +3,14 @@ set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 
+# Support: ./localdev-setup.sh stop|down to stop the stack
+if [[ ${1-} == "stop" || ${1-} == "down" ]]; then
+  echo "Stopping localdev stack..."
+  docker compose -f "$here/docker-compose.yaml" down
+  echo "Done."
+  exit 0
+fi
+
 echo "=== MIRADOR-CORE local dev setup ==="
 read -r -p "Enter mirador-core image tag to pull (leave blank to build locally): " MC_TAG
 MC_TAG=${MC_TAG:-}
@@ -13,18 +21,7 @@ else
   echo "No image tag provided — will build mirador-core locally for native arch"
 fi
 
-echo "\n[1/4] Starting Victoria single nodes (metrics/logs/traces)..."
-docker compose -f "$here/victoria-docker-compose.yaml" up -d
-
-echo "\n[2/4] Starting OpenTelemetry Collector..."
-# Clean any legacy network named 'mirador-localdev' to avoid label mismatches
-if docker network inspect mirador-localdev >/dev/null 2>&1; then
-  echo "Found legacy network 'mirador-localdev' — removing to avoid label conflicts"
-  docker network rm mirador-localdev >/dev/null 2>&1 || true
-fi
-docker compose -f "$here/otel-collector-docker-compose.yaml" up -d
-
-echo "\n[3/4] Starting Valkey + MIRADOR-CORE..."
+echo "\n[1/2] Starting full local stack (Victoria + OTEL + Valkey + MIRADOR-CORE)..."
 if [ -n "$MC_TAG" ]; then
   # Create a tiny override file to set the image tag
   override_file="$(mktemp -t miradorcore-override-XXXX).yaml"
@@ -33,9 +30,9 @@ services:
   mirador-core:
     image: platformbuilds/mirador-core:${MC_TAG}
 EOF
-  docker compose -f "$here/mirador-core-docker-compose.yaml" -f "$override_file" up -d
+  docker compose -f "$here/docker-compose.yaml" -f "$override_file" up -d
 else
-  docker compose -f "$here/mirador-core-docker-compose.yaml" up -d --build
+  docker compose -f "$here/docker-compose.yaml" up -d --build
 fi
 
 echo "Waiting for MIRADOR-CORE to be healthy (http://localhost:8080/health)..."
@@ -47,27 +44,43 @@ for i in {1..60}; do
   sleep 2
 done
 
-echo "\n[4/4] Seeding a local session token in Valkey so API calls work without SSO..."
-TOKEN="devtoken-$(date +%s)"
-NOW_RFC3339="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-# Minimal session JSON as expected by MIRADOR-CORE
-SESSION_JSON=$(cat <<JSON
-{
-  "id": "${TOKEN}",
-  "user_id": "localdev",
-  "tenant_id": "default",
-  "roles": ["admin"],
-  "created_at": "${NOW_RFC3339}",
-  "last_activity": "${NOW_RFC3339}",
-  "user_settings": {},
-  "ip_address": "",
-  "user_agent": "localdev"
-}
-JSON
-)
+echo "\n[2/2] Auth is disabled by default in localdev (AUTH_ENABLED=false). Skipping session seeding."
 
-# Store with 24h TTL (86400 seconds); valkey image ships valkey-cli
-docker exec mirador-valkey sh -c "echo '$SESSION_JSON' | valkey-cli SETEX session:${TOKEN} 86400 -"
+# -----------------------------------------------------------------------------
+# Optional: generate sample telemetry via telemetrygen
+# -----------------------------------------------------------------------------
+read -r -p $'\nWould you like to pump sample telemetry (metrics/logs/traces) now? [Y/n]: ' GEN_TEL
+GEN_TEL=${GEN_TEL:-Y}
+if [[ "$GEN_TEL" =~ ^[Yy]$ ]]; then
+  if ! command -v telemetrygen >/dev/null 2>&1; then
+    echo "telemetrygen not found. Attempting to install (requires Go toolchain)..."
+    if command -v go >/dev/null 2>&1; then
+      # best-effort install; do not fail script if install fails
+      GO111MODULE=on go install github.com/open-telemetry/opentelemetry-collector-contrib/cmd/telemetrygen@latest || {
+        echo "Install failed; you can manually install telemetrygen and re-run later.";
+      }
+      # add GOPATH/bin to PATH for current shell if needed
+      if [ -d "$HOME/go/bin" ]; then
+        export PATH="$HOME/go/bin:$PATH"
+      fi
+    else
+      echo "Go is not installed; skipping auto-install of telemetrygen."
+    fi
+  fi
+
+  if command -v telemetrygen >/dev/null 2>&1; then
+    echo "\nPumping traces (30s @ 5 rps) to OTLP gRPC 4317..."
+    telemetrygen traces --otlp-endpoint localhost:4317 --otlp-insecure --duration 30s --rate 5 || true
+
+    echo "\nPumping metrics (30s @ 100 rps) to OTLP gRPC 4317..."
+    telemetrygen metrics --otlp-endpoint localhost:4317 --otlp-insecure --duration 30s --rate 100 || true
+
+    echo "\nPumping logs (30s @ 10 rps) to OTLP gRPC 4317..."
+    telemetrygen logs --otlp-endpoint localhost:4317 --otlp-insecure --duration 30s --rate 10 || true
+  else
+    echo "telemetrygen is not available; skipping sample telemetry generation."
+  fi
+fi
 
 cat <<EOT
 
@@ -76,12 +89,9 @@ cat <<EOT
 Services:
 - VictoriaMetrics: http://localhost:8428
 - VictoriaLogs:    http://localhost:9428
-- VictoriaTraces:  http://localhost:8429 (enable Jaeger HTTP on 14268 if needed)
+- VictoriaTraces:  http://localhost:10428 (enable Jaeger HTTP on 14268 if needed)
 - OTEL Collector:  OTLP gRPC :4317, OTLP HTTP :4318
 - MIRADOR-CORE:    http://localhost:8080
-
-Session token for API calls (valid ~24h):
-  ${TOKEN}
 
 Generate telemetry (requires Go: telemetrygen installed):
   go install github.com/open-telemetry/opentelemetry-collector-contrib/cmd/telemetrygen@latest
@@ -95,27 +105,22 @@ Metrics (gRPC):
 Logs (gRPC):
   telemetrygen logs --otlp-endpoint localhost:4317 --otlp-insecure --duration 30s --rate 10
 
-Query via MIRADOR-CORE (use X-Session-Token header):
+Query via MIRADOR-CORE (auth disabled; no token required):
 
 - MetricsQL instant query:
-  curl -sS -H "X-Session-Token: ${TOKEN}" \
-    -H "Content-Type: application/json" \
+  curl -sS -H "Content-Type: application/json" \
     -d '{"query":"up"}' \
     http://localhost:8080/api/v1/query | jq .
 
 - LogsQL query (last 5 minutes):
-  curl -sS -H "X-Session-Token: ${TOKEN}" \
-    -H "Content-Type: application/json" \
+  curl -sS -H "Content-Type: application/json" \
     -d '{"query":"_time:5m"}' \
     http://localhost:8080/api/v1/logs/query | jq .
 
 - Traces (list services via Jaeger-compatible API):
-  curl -sS -H "X-Session-Token: ${TOKEN}" \
-    http://localhost:8080/api/v1/traces/services | jq .
+  curl -sS http://localhost:8080/api/v1/traces/services | jq .
 
 Cleanup:
-  docker compose -f "$here/mirador-core-docker-compose.yaml" down
-  docker compose -f "$here/otel-collector-docker-compose.yaml" down
-  docker compose -f "$here/victoria-docker-compose.yaml" down
+  docker compose -f "$here/docker-compose.yaml" down
 
 EOT

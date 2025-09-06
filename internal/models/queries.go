@@ -109,12 +109,12 @@ type LogFieldsRequest struct {
 }
 
 type LogExportRequest struct {
-	Query    string `json:"query" binding:"required"`
-	Format   string `json:"format,omitempty"` // json, csv, parquet
-	Start    string `json:"start,omitempty"`
-	End      string `json:"end,omitempty"`
-	Limit    int    `json:"limit,omitempty"`
-	TenantID string `json:"-"`
+    Query    string `json:"query" binding:"required"`
+    Format   string `json:"format,omitempty"` // json, csv, parquet
+    Start    int64  `json:"start,omitempty"` // epoch (sec/ms/ns ok; service normalizes)
+    End      int64  `json:"end,omitempty"`
+    Limit    int    `json:"limit,omitempty"`
+    TenantID string `json:"-"`
 }
 
 type LogExportResult struct {
@@ -128,15 +128,15 @@ type LogExportResult struct {
 
 // VictoriaTraces Models
 type TraceSearchRequest struct {
-	Service     string    `json:"service,omitempty"`
-	Operation   string    `json:"operation,omitempty"`
-	Tags        string    `json:"tags,omitempty"`
-	MinDuration string    `json:"minDuration,omitempty"`
-	MaxDuration string    `json:"maxDuration,omitempty"`
-	Start       time.Time `json:"start"`
-	End         time.Time `json:"end"`
-	Limit       int       `json:"limit,omitempty"`
-	TenantID    string    `json:"-"`
+    Service     string       `json:"service,omitempty"`
+    Operation   string       `json:"operation,omitempty"`
+    Tags        string       `json:"tags,omitempty"`
+    MinDuration string       `json:"minDuration,omitempty"`
+    MaxDuration string       `json:"maxDuration,omitempty"`
+    Start       FlexibleTime `json:"start"`
+    End         FlexibleTime `json:"end"`
+    Limit       int          `json:"limit,omitempty"`
+    TenantID    string       `json:"-"`
 }
 
 type TraceSearchResult struct {

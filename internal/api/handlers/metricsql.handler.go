@@ -24,12 +24,34 @@ type MetricsQLHandler struct {
 }
 
 func NewMetricsQLHandler(metricsService *services.VictoriaMetricsService, cache cache.ValkeyCluster, logger logger.Logger) *MetricsQLHandler {
-	return &MetricsQLHandler{
-		metricsService: metricsService,
-		cache:          cache,
-		logger:         logger,
-		validator:      utils.NewQueryValidator(),
-	}
+    return &MetricsQLHandler{
+        metricsService: metricsService,
+        cache:          cache,
+        logger:         logger,
+        validator:      utils.NewQueryValidator(),
+    }
+}
+
+// GET /api/v1/metrics/names - List metric names (__name__) from VictoriaMetrics
+func (h *MetricsQLHandler) GetMetricNames(c *gin.Context) {
+    tenantID := c.GetString("tenant_id")
+    req := &models.LabelValuesRequest{
+        Label:    "__name__",
+        Start:    c.Query("start"),
+        End:      c.Query("end"),
+        Match:    c.QueryArray("match[]"),
+        TenantID: tenantID,
+    }
+    names, err := h.metricsService.GetLabelValues(c.Request.Context(), req)
+    if err != nil {
+        h.logger.Error("Failed to get metric names", "tenant", tenantID, "error", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": "Failed to retrieve metric names"})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{
+        "status": "success",
+        "data": gin.H{"names": names, "total": len(names)},
+    })
 }
 
 // POST /api/v1/query - Execute instant MetricsQL query

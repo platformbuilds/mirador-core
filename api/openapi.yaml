@@ -9,9 +9,11 @@ info:
 
 servers:
   - url: http://localhost:8080/api/v1
-    description: Development server
+    description: Development API v1
   - url: https://mirador-core.company.com/api/v1
-    description: Production server
+    description: Production API v1
+  - url: http://localhost:8080
+    description: Development root (health, docs)
 
 components:
   securitySchemes:
@@ -83,6 +85,20 @@ security:
   - BearerAuth: []
 
 paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns basic service health
+      responses:
+        '200':
+          description: Healthy
+  /ready:
+    get:
+      summary: Readiness check
+      description: Checks backends (Victoria*, engines) and returns readiness
+      responses:
+        '200': { description: Ready }
+        '503': { description: Not ready }
   /predict/analyze:
     post:
       summary: Analyze system fractures
@@ -153,3 +169,520 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CorrelationResult'
+  /predict/health:
+    get:
+      summary: Predict Engine health
+      responses:
+        '200': { description: Healthy }
+  /predict/fractures:
+    get:
+      summary: List predicted fractures
+      parameters:
+        - in: query
+          name: time_range
+          schema: { type: string }
+        - in: query
+          name: min_prob
+          schema: { type: number }
+      responses:
+        '200': { description: OK }
+  /predict/models:
+    get:
+      summary: List active prediction models
+      responses:
+        '200': { description: OK }
+
+  /rca/correlations:
+    get:
+      summary: Get active correlations
+      responses:
+        '200': { description: OK }
+  /rca/patterns:
+    get:
+      summary: Get failure patterns
+      responses:
+        '200': { description: OK }
+  /rca/store:
+    post:
+      summary: Store correlation event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: OK }
+
+  /query:
+    post:
+      summary: MetricsQL instant query (VictoriaMetrics)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query: { type: string }
+                time: { type: string }
+      responses:
+        '200': { description: OK }
+  /query_range:
+    post:
+      summary: MetricsQL range query (VictoriaMetrics)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query: { type: string }
+                start: { type: string }
+                end: { type: string }
+                step: { type: string }
+      responses:
+        '200': { description: OK }
+  /series:
+    get:
+      summary: Series listing
+      parameters:
+        - in: query
+          name: match
+          schema: { type: array, items: { type: string } }
+          style: form
+          explode: true
+      responses:
+        '200': { description: OK }
+  /labels:
+    get:
+      summary: Labels listing
+      responses:
+        '200': { description: OK }
+  /metrics/names:
+    get:
+      summary: List metric names
+      description: Returns values of the special label `__name__` from VictoriaMetrics.
+      parameters:
+        - in: query
+          name: start
+          schema: { type: string }
+          description: Start time (RFC3339 or unix seconds)
+        - in: query
+          name: end
+          schema: { type: string }
+          description: End time (RFC3339 or unix seconds)
+        - in: query
+          name: match[]
+          schema:
+            type: array
+            items: { type: string }
+          style: form
+          explode: true
+          description: Optional label matchers
+      responses:
+        '200': { description: OK }
+  /label/{name}/values:
+    get:
+      summary: Label values
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+
+  /logs/query:
+    post:
+      summary: LogsQL query (VictoriaLogs)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                  description: 'LogsQL expression (e.g., `{service.name="telemetrygen"} AND severity="Info" AND _msg~"message"`)'
+                start:
+                  type: integer
+                  format: int64
+                  description: Start time in milliseconds since epoch
+                end:
+                  type: integer
+                  format: int64
+                  description: End time in milliseconds since epoch
+                limit:
+                  type: integer
+                  description: Max rows to return (default 1000)
+                tenantId:
+                  type: string
+                  description: Optional tenant override
+            example:
+              query: '{service.name="telemetrygen"} AND severity="Info" AND _msg~"message"'
+              start: 1694009100000
+              end: 1694009700000
+              limit: 200
+      responses:
+        '200': { description: OK }
+  /logs/streams:
+    get:
+      summary: Log streams
+      responses:
+        '200': { description: OK }
+  /logs/fields:
+    get:
+      summary: Log fields
+      description: Returns only the union of field names derived from a hardcoded query over the last 10 minutes. Response contains only the fields array.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      fields:
+                        type: array
+                        items: { type: string }
+  /logs/export:
+    post:
+      summary: Export logs (streaming)
+      description: Streams a file attachment. Defaults to CSV when format is omitted. May convert JSON/NDJSON to CSV on the fly for compatibility.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query: { type: string }
+                start: { type: integer, format: int64 }
+                end: { type: integer, format: int64 }
+                limit: { type: integer }
+                format: { type: string, enum: [csv, json] }
+      responses:
+        '200':
+          description: File stream
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                type: string
+                format: binary
+  /logs/store:
+    post:
+      summary: Store JSON event to logs
+      responses:
+        '200': { description: OK }
+  /logs/histogram:
+    get:
+      summary: Histogram (D3)
+      responses:
+        '200': { description: OK }
+  /logs/facets:
+    get:
+      summary: Facets (D3)
+      responses:
+        '200': { description: OK }
+  /logs/search:
+    post:
+      summary: Search logs (D3)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                  description: 'LogsQL expression (e.g., "_time:5m service=web")'
+                start:
+                  type: integer
+                  format: int64
+                  description: Start time in ms since epoch
+                end:
+                  type: integer
+                  format: int64
+                  description: End time in ms since epoch
+                limit:
+                  type: integer
+                  description: Rows per page (default 1000, max 10000)
+                page_after:
+                  type: object
+                  properties:
+                    ts:
+                      type: integer
+                      format: int64
+                      description: Cursor timestamp (ms)
+                    offset:
+                      type: integer
+                      description: Offset for same-ms rows
+                tenantId:
+                  type: string
+                  description: Optional tenant override
+            example:
+              query: "_time:15m level=error"
+              limit: 200
+      responses:
+        '200': { description: OK }
+  /logs/tail:
+    get:
+      summary: Tail logs (WebSocket)
+      description: |
+        Upgrades to a WebSocket connection and streams log rows as JSON frames.
+        Note: Swagger "Try it out" sends a normal HTTP request and will not work here.
+        Use a WebSocket client, for example:
+
+        - wscat: `wscat -c ws://localhost:8080/api/v1/logs/tail?query=_time:5m&sampling=10`
+        - websocat: `websocat -n ws://localhost:8080/api/v1/logs/tail?query=_time:5m`
+        - Browser console: `new WebSocket("ws://localhost:8080/api/v1/logs/tail?query=_time:5m")`
+
+        Query parameters:
+        - `query`: LogsQL expression (e.g., `_time:5m`)
+        - `since`: Start time in milliseconds since epoch (defaults to last 5 minutes)
+        - `sampling`: Send every Nth row (integer, default 1)
+        - `tenantId`: Optional tenant override
+
+      parameters:
+        - in: query
+          name: query
+          schema: { type: string }
+          description: LogsQL expression (e.g., `_time:5m`)
+        - in: query
+          name: since
+          schema: { type: integer, format: int64 }
+          description: Start timestamp in ms (defaults to now-5m)
+        - in: query
+          name: sampling
+          schema: { type: integer, minimum: 1 }
+          description: Downsample by sending every Nth row (default 1)
+        - in: query
+          name: tenantId
+          schema: { type: string }
+          description: Optional tenant override for the request
+      responses:
+        '101':
+          description: Switching Protocols (WebSocket upgrade successful)
+        '426':
+          description: Upgrade Required — endpoint must be called via WebSocket (not HTTP)
+
+  /traces/services:
+    get:
+      summary: List services (VictoriaTraces/Jaeger)
+      responses:
+        '200': { description: OK }
+  /traces/services/{service}/operations:
+    get:
+      summary: List operations for a service
+      parameters:
+        - in: path
+          name: service
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /traces/{traceId}:
+    get:
+      summary: Get trace by ID
+      parameters:
+        - in: path
+          name: traceId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+  /traces/{traceId}/flamegraph:
+    get:
+      summary: Flame graph tree for a trace (D3)
+      description: Returns a hierarchical structure suitable for d3-flame-graph built from the Jaeger trace spans using CHILD_OF references.
+      parameters:
+        - in: path
+          name: traceId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: mode
+          schema: { type: string, enum: [duration, self] }
+          description: Node sizing mode. duration = total span duration; self = duration minus children durations (approximate).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      name: { type: string }
+                      value: { type: integer }
+                      children:
+                        type: array
+                        items: { $ref: '#/components/schemas/FlameNode' }
+
+  /traces/flamegraph/search:
+    post:
+      summary: Aggregate flame graph over a traces search (D3)
+      description: Searches VictoriaTraces (Jaeger) and merges returned traces into a single flame graph tree. Useful for service-level flame graphs over a time window.
+      parameters:
+        - in: query
+          name: mode
+          schema: { type: string, enum: [duration, self] }
+          description: Node sizing mode. duration = total span duration; self = duration minus children durations (approximate).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  data: { $ref: '#/components/schemas/FlameNode' }
+
+components:
+  schemas:
+    FlameNode:
+      type: object
+      properties:
+        name: { type: string }
+        value: { type: integer, description: Duration in ms }
+        spanId: { type: string }
+        service: { type: string }
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlameNode'
+  /traces/search:
+    post:
+      summary: Search traces
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: OK }
+
+  /config/datasources:
+    get:
+      summary: Get data sources
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Add data source
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: OK }
+  /config/user-settings:
+    get:
+      summary: Get user settings
+      responses:
+        '200': { description: OK }
+    put:
+      summary: Update user settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: OK }
+  /config/integrations:
+    get:
+      summary: Get integrations config
+      responses:
+        '200': { description: OK }
+
+  /sessions/active:
+    get:
+      summary: Get active sessions (current user)
+      responses:
+        '200': { description: OK }
+  /sessions/invalidate:
+    post:
+      summary: Invalidate a session
+      requestBody:
+        required: false
+      responses:
+        '200': { description: OK }
+  /sessions/user/{userId}:
+    get:
+      summary: Get sessions for a user
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+
+  /rbac/roles:
+    get:
+      summary: List roles
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Create role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: OK }
+  /rbac/users/{userId}/roles:
+    put:
+      summary: Assign user roles
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: OK }
+
+  /ws/metrics:
+    get:
+      summary: Metrics stream (WebSocket)
+      responses:
+        '101': { description: Switching Protocols }
+  /ws/alerts:
+    get:
+      summary: Alerts stream (WebSocket)
+      responses:
+        '101': { description: Switching Protocols }
+  /ws/predictions:
+    get:
+      summary: Predictions stream (WebSocket)
+      responses:
+        '101': { description: Switching Protocols }

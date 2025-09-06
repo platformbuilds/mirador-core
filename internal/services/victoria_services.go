@@ -8,6 +8,7 @@ import (
     "sync"
     "net/url"
     "time"
+    "github.com/platformbuilds/mirador-core/internal/utils"
 
     "github.com/platformbuilds/mirador-core/internal/config"
     "github.com/platformbuilds/mirador-core/internal/discovery"
@@ -59,9 +60,7 @@ func (s *VictoriaTracesService) GetServices(ctx context.Context, tenantID string
 		return nil, err
 	}
 
-    if tenantID != "" {
-        req.Header.Set("AccountID", tenantID)
-    }
+    if utils.IsUint32String(tenantID) { req.Header.Set("AccountID", tenantID) }
     if s.username != "" { req.SetBasicAuth(s.username, s.password) }
 
 	resp, err := s.client.Do(req)
@@ -87,35 +86,37 @@ func (s *VictoriaTracesService) GetServices(ctx context.Context, tenantID string
 
 // GetTrace retrieves a specific trace by ID
 func (s *VictoriaTracesService) GetTrace(ctx context.Context, traceID, tenantID string) (*models.Trace, error) {
-	endpoint := s.selectEndpoint()
-	fullURL := fmt.Sprintf("%s/select/jaeger/api/traces/%s", endpoint, traceID)
+    endpoint := s.selectEndpoint()
+    fullURL := fmt.Sprintf("%s/select/jaeger/api/traces/%s", endpoint, traceID)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-    if tenantID != "" {
-        req.Header.Set("AccountID", tenantID)
+    req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+    if err != nil {
+        return nil, err
     }
+
+    if utils.IsUint32String(tenantID) { req.Header.Set("AccountID", tenantID) }
     if s.username != "" { req.SetBasicAuth(s.username, s.password) }
+    req.Header.Set("Accept", "application/json, */*")
 
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("VictoriaTraces request failed: %w", err)
-	}
-	defer resp.Body.Close()
+    resp, err := s.client.Do(req)
+    if err != nil {
+        return nil, fmt.Errorf("VictoriaTraces request failed: %w", err)
+    }
+    defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("trace not found")
-	}
+    if resp.StatusCode != http.StatusOK {
+        return nil, fmt.Errorf("trace not found")
+    }
 
-	var trace models.Trace
-	if err := json.NewDecoder(resp.Body).Decode(&trace); err != nil {
-		return nil, fmt.Errorf("failed to parse trace response: %w", err)
-	}
-
-	return &trace, nil
+    // VictoriaTraces (Jaeger API) returns {"data":[{ trace }]}
+    var wrap struct{ Data []models.Trace `json:"data"` }
+    if err := json.NewDecoder(resp.Body).Decode(&wrap); err != nil {
+        return nil, fmt.Errorf("failed to parse trace response: %w", err)
+    }
+    if len(wrap.Data) == 0 {
+        return nil, fmt.Errorf("trace not found in response")
+    }
+    return &wrap.Data[0], nil
 }
 
 // SearchTraces searches for traces with filters
@@ -132,32 +133,32 @@ func (s *VictoriaTracesService) SearchTraces(ctx context.Context, request *model
 	if request.Tags != "" {
 		params.Set("tags", request.Tags)
 	}
-	if request.MinDuration != "" {
-		params.Set("minDuration", request.MinDuration)
-	}
-	if request.MaxDuration != "" {
-		params.Set("maxDuration", request.MaxDuration)
-	}
-	if !request.Start.IsZero() {
-		params.Set("start", fmt.Sprintf("%d", request.Start.Unix()))
-	}
-	if !request.End.IsZero() {
-		params.Set("end", fmt.Sprintf("%d", request.End.Unix()))
-	}
+    if request.MinDuration != "" {
+        params.Set("minDuration", request.MinDuration)
+    }
+    if request.MaxDuration != "" {
+        params.Set("maxDuration", request.MaxDuration)
+    }
+    // Jaeger HTTP API expects start/end in microseconds since epoch
+    if !request.Start.IsZero() {
+        params.Set("start", fmt.Sprintf("%d", request.Start.AsTime().UnixMicro()))
+    }
+    if !request.End.IsZero() {
+        params.Set("end", fmt.Sprintf("%d", request.End.AsTime().UnixMicro()))
+    }
 	if request.Limit > 0 {
 		params.Set("limit", fmt.Sprintf("%d", request.Limit))
 	}
 
 	fullURL := fmt.Sprintf("%s/select/jaeger/api/traces?%s", endpoint, params.Encode())
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-    if request.TenantID != "" {
-        req.Header.Set("AccountID", request.TenantID)
+    req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+    if err != nil {
+        return nil, err
     }
+
+    if utils.IsUint32String(request.TenantID) { req.Header.Set("AccountID", request.TenantID) }
     if s.username != "" { req.SetBasicAuth(s.username, s.password) }
+    req.Header.Set("Accept", "application/json, */*")
 
     resp, err := s.client.Do(req)
 	if err != nil {
@@ -179,6 +180,7 @@ func (s *VictoriaTracesService) SearchTraces(ctx context.Context, request *model
 		SearchTime: 0, // Would be calculated from response time
 	}, nil
 }
+// (moved) tenant ID numeric check lives in utils.IsUint32String
 
 // HealthCheck checks VictoriaTraces health
 func (s *VictoriaTracesService) HealthCheck(ctx context.Context) error {

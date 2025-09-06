@@ -25,18 +25,22 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Copy source code
 COPY . .
 
+# Re-resolve modules after copying source to ensure go.sum includes new deps
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod download
+
 # Build the binary with optimizations (multi-platform)
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
+# Build for the builder's native platform; Buildx spawns per-arch builders.
 ARG VERSION=v0.0.0
 ARG BUILD_TIME
 ARG COMMIT_HASH
-ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
+ENV CGO_ENABLED=0
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go build \
     -a -installsuffix cgo \
-    -ldflags="-w -s -X main.version=${VERSION} -X main.buildTime=${BUILD_TIME} -X main.commitHash=${COMMIT_HASH}" \
+    -ldflags="-w -s -X main.version=${VERSION} -X main.buildTime=${BUILD_TIME} -X main.commitHash=${COMMIT_HASH} -X github.com/platformbuilds/mirador-core/internal/version.Version=${VERSION} -X github.com/platformbuilds/mirador-core/internal/version.CommitHash=${COMMIT_HASH} -X github.com/platformbuilds/mirador-core/internal/version.BuildTime=${BUILD_TIME}" \
     -o mirador-core cmd/server/main.go
 
 # Final stage - minimal runtime image

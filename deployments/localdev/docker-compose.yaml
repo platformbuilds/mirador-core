@@ -1,0 +1,110 @@
+services:
+  # VictoriaMetrics Suite
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:latest
+    container_name: victoriametrics
+    ports:
+      - 8428:8428 # Metrics UI/API
+    volumes:
+      - vmdata:/victoria-metrics-data
+    command:
+      - --storageDataPath=/victoria-metrics-data
+
+  victorialogs:
+    image: victoriametrics/victoria-logs:latest
+    container_name: victorialogs
+    ports:
+      - 9428:9428 # Logs UI/API
+    volumes:
+      - vldata:/victoria-logs-data
+    command:
+      - --storageDataPath=/victoria-logs-data
+
+  victoriatraces:
+    image: victoriametrics/victoria-traces:latest
+    container_name: victoriatraces
+    ports:
+      - 10428:10428 # Traces UI/API
+    volumes:
+      - vtdata:/victoria-traces-data
+    command:
+      - --storageDataPath=/victoria-traces-data
+
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config", "/etc/otelcol/config.yaml"]
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+    # On Linux, uncomment to allow host.docker.internal resolution
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "/otelcol-contrib", "--version"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Valkey (single-node)
+  valkey:
+    image: valkey/valkey:latest
+    container_name: mirador-valkey
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "valkey-cli -h 127.0.0.1 ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # MIRADOR-CORE (builds natively for host arch)
+  mirador-core:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    # If you prefer to pull a published image instead of building, comment out the build: block above
+    # and set the image tag:
+    # image: platformbuilds/mirador-core:v2.1.3
+    container_name: mirador-core
+    depends_on:
+      valkey:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    # On Linux, uncomment to allow host.docker.internal resolution
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+    environment:
+      # App basics
+      - PORT=8080
+      - LOG_LEVEL=debug
+      - ENVIRONMENT=development
+      - AUTH_ENABLED=false
+
+      # Point to local Victoria services (same compose network)
+      - VM_ENDPOINTS=http://victoriametrics:8428
+      - VL_ENDPOINTS=http://victorialogs:9428
+      - VT_ENDPOINTS=http://victoriatraces:10428
+
+      # Valkey (single-node)
+      - VALLEY_CACHE_NODES=valkey:6379
+      - CACHE_TTL=300
+
+      # Auth + RBAC (dev)
+      - JWT_SECRET=development-secret-key-not-for-production
+      - RBAC_ENABLED=true
+
+    healthcheck:
+      test: ["CMD", "/mirador-core", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  vmdata: {}
+  vldata: {}
+  vtdata: {}

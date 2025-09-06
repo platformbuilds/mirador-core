@@ -50,41 +50,67 @@ func (a *realRCAAdapter) HealthCheck() error { return a.c.HealthCheck() }
 
 // GRPCClients holds all gRPC client connections (as interfaces)
 type GRPCClients struct {
-	PredictEngine PredictClient
-	RCAEngine     RCAClient
-	AlertEngine   *AlertEngineClient // unchanged (can be interfaced later)
-	logger        logger.Logger
+    PredictEngine PredictClient
+    RCAEngine     RCAClient
+    AlertEngine   *AlertEngineClient // unchanged (can be interfaced later)
+    logger        logger.Logger
+    // enabled flags (useful for health/readiness reporting)
+    PredictEnabled bool
+    RCAEnabled     bool
+    AlertEnabled   bool
 }
 
 // NewGRPCClients creates and initializes all gRPC clients
 func NewGRPCClients(cfg *config.Config, logger logger.Logger) (*GRPCClients, error) {
-	// Initialize PREDICT-ENGINE client
-	predictEngine, err := NewPredictEngineClient(cfg.GRPC.PredictEngine.Endpoint, logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create PREDICT-ENGINE client: %w", err)
-	}
+    g := &GRPCClients{logger: logger}
 
-	// Initialize RCA-ENGINE client
-	rcaEngine, err := NewRCAEngineClient(cfg.GRPC.RCAEngine.Endpoint, logger)
-	if err != nil {
-		predictEngine.Close() // Cleanup on failure
-		return nil, fmt.Errorf("failed to create RCA-ENGINE client: %w", err)
-	}
+    // Initialize PREDICT-ENGINE client
+    if c, err := NewPredictEngineClient(cfg.GRPC.PredictEngine.Endpoint, logger); err != nil {
+        if cfg.IsDevelopment() {
+            logger.Warn("PREDICT-ENGINE unavailable; using no-op client (development)")
+            g.PredictEngine = &noopPredictClient{logger: logger}
+            g.PredictEnabled = false
+        } else {
+            return nil, fmt.Errorf("failed to create PREDICT-ENGINE client: %w", err)
+        }
+    } else {
+        g.PredictEngine = &realPredictAdapter{c: c}
+        g.PredictEnabled = true
+    }
 
-	// Initialize ALERT-ENGINE client (unchanged)
-	alertEngine, err := NewAlertEngineClient(cfg.GRPC.AlertEngine.Endpoint, logger)
-	if err != nil {
-		predictEngine.Close()
-		rcaEngine.Close()
-		return nil, fmt.Errorf("failed to create ALERT-ENGINE client: %w", err)
-	}
+    // Initialize RCA-ENGINE client
+    if c, err := NewRCAEngineClient(cfg.GRPC.RCAEngine.Endpoint, logger); err != nil {
+        if cfg.IsDevelopment() {
+            logger.Warn("RCA-ENGINE unavailable; using no-op client (development)")
+            g.RCAEngine = &noopRCAClient{logger: logger}
+            g.RCAEnabled = false
+        } else {
+            // close predict if it was real
+            if a, ok := g.PredictEngine.(*realPredictAdapter); ok && a.c != nil { _ = a.c.Close() }
+            return nil, fmt.Errorf("failed to create RCA-ENGINE client: %w", err)
+        }
+    } else {
+        g.RCAEngine = &realRCAAdapter{c: c}
+        g.RCAEnabled = true
+    }
 
-	return &GRPCClients{
-		PredictEngine: &realPredictAdapter{c: predictEngine},
-		RCAEngine:     &realRCAAdapter{c: rcaEngine},
-		AlertEngine:   alertEngine,
-		logger:        logger,
-	}, nil
+    // Initialize ALERT-ENGINE client
+    if c, err := NewAlertEngineClient(cfg.GRPC.AlertEngine.Endpoint, logger); err != nil {
+        if cfg.IsDevelopment() {
+            logger.Warn("ALERT-ENGINE unavailable; disabling client (development)")
+            g.AlertEngine = nil
+            g.AlertEnabled = false
+        } else {
+            if a, ok := g.PredictEngine.(*realPredictAdapter); ok && a.c != nil { _ = a.c.Close() }
+            if a, ok := g.RCAEngine.(*realRCAAdapter); ok && a.c != nil { _ = a.c.Close() }
+            return nil, fmt.Errorf("failed to create ALERT-ENGINE client: %w", err)
+        }
+    } else {
+        g.AlertEngine = c
+        g.AlertEnabled = true
+    }
+
+    return g, nil
 }
 
 // Close closes all gRPC connections
@@ -117,20 +143,42 @@ func (g *GRPCClients) Close() error {
 
 // HealthCheck checks health of all gRPC services
 func (g *GRPCClients) HealthCheck() error {
-	if g.PredictEngine != nil {
-		if err := g.PredictEngine.HealthCheck(); err != nil {
-			return fmt.Errorf("PREDICT-ENGINE health check failed: %w", err)
-		}
-	}
-	if g.RCAEngine != nil {
-		if err := g.RCAEngine.HealthCheck(); err != nil {
-			return fmt.Errorf("RCA-ENGINE health check failed: %w", err)
-		}
-	}
-	if g.AlertEngine != nil {
-		if err := g.AlertEngine.HealthCheck(); err != nil {
-			return fmt.Errorf("ALERT-ENGINE health check failed: %w", err)
-		}
-	}
-	return nil
+    if g.PredictEngine != nil {
+        if err := g.PredictEngine.HealthCheck(); err != nil {
+            return fmt.Errorf("PREDICT-ENGINE health check failed: %w", err)
+        }
+    }
+    if g.RCAEngine != nil {
+        if err := g.RCAEngine.HealthCheck(); err != nil {
+            return fmt.Errorf("RCA-ENGINE health check failed: %w", err)
+        }
+    }
+    if g.AlertEngine != nil {
+        if err := g.AlertEngine.HealthCheck(); err != nil {
+            return fmt.Errorf("ALERT-ENGINE health check failed: %w", err)
+        }
+    }
+    return nil
 }
+
+/* ========= No-op clients for development ========= */
+
+type noopPredictClient struct{ logger logger.Logger }
+
+func (n *noopPredictClient) AnalyzeFractures(ctx context.Context, req *models.FractureAnalysisRequest) (*models.FractureAnalysisResponse, error) {
+    n.logger.Warn("AnalyzeFractures called on no-op PREDICT client")
+    return nil, fmt.Errorf("predict engine disabled in development")
+}
+func (n *noopPredictClient) GetActiveModels(ctx context.Context, req *models.ActiveModelsRequest) (*models.ActiveModelsResponse, error) {
+    n.logger.Warn("GetActiveModels called on no-op PREDICT client")
+    return &models.ActiveModelsResponse{Models: []models.PredictionModel{}}, nil
+}
+func (n *noopPredictClient) HealthCheck() error { return nil }
+
+type noopRCAClient struct{ logger logger.Logger }
+
+func (n *noopRCAClient) InvestigateIncident(ctx context.Context, req *models.RCAInvestigationRequest) (*models.CorrelationResult, error) {
+    n.logger.Warn("InvestigateIncident called on no-op RCA client")
+    return nil, fmt.Errorf("rca engine disabled in development")
+}
+func (n *noopRCAClient) HealthCheck() error { return nil }
