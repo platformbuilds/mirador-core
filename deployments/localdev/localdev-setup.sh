@@ -4,28 +4,39 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 
 echo "=== MIRADOR-CORE local dev setup ==="
-read -r -p "Enter mirador-core image tag [latest]: " MC_TAG
-MC_TAG=${MC_TAG:-latest}
+read -r -p "Enter mirador-core image tag to pull (leave blank to build locally): " MC_TAG
+MC_TAG=${MC_TAG:-}
 
-echo "Using mirador-core tag: ${MC_TAG}"
+if [ -n "$MC_TAG" ]; then
+  echo "Using mirador-core tag: ${MC_TAG} (will pull image)"
+else
+  echo "No image tag provided — will build mirador-core locally for native arch"
+fi
 
 echo "\n[1/4] Starting Victoria single nodes (metrics/logs/traces)..."
 docker compose -f "$here/victoria-docker-compose.yaml" up -d
 
 echo "\n[2/4] Starting OpenTelemetry Collector..."
+# Clean any legacy network named 'mirador-localdev' to avoid label mismatches
+if docker network inspect mirador-localdev >/dev/null 2>&1; then
+  echo "Found legacy network 'mirador-localdev' — removing to avoid label conflicts"
+  docker network rm mirador-localdev >/dev/null 2>&1 || true
+fi
 docker compose -f "$here/otel-collector-docker-compose.yaml" up -d
 
-echo "\n[3/4] Starting Valkey + MIRADOR-CORE (image tag=${MC_TAG})..."
-# Create a tiny override file to set the image tag
-override_file="$(mktemp -t miradorcore-override-XXXX).yaml"
-cat > "$override_file" <<EOF
-version: "3.9"
+echo "\n[3/4] Starting Valkey + MIRADOR-CORE..."
+if [ -n "$MC_TAG" ]; then
+  # Create a tiny override file to set the image tag
+  override_file="$(mktemp -t miradorcore-override-XXXX).yaml"
+  cat > "$override_file" <<EOF
 services:
   mirador-core:
     image: platformbuilds/mirador-core:${MC_TAG}
 EOF
-
-docker compose -f "$here/mirador-core-docker-compose.yaml" -f "$override_file" up -d
+  docker compose -f "$here/mirador-core-docker-compose.yaml" -f "$override_file" up -d
+else
+  docker compose -f "$here/mirador-core-docker-compose.yaml" up -d --build
+fi
 
 echo "Waiting for MIRADOR-CORE to be healthy (http://localhost:8080/health)..."
 for i in {1..60}; do
@@ -108,4 +119,3 @@ Cleanup:
   docker compose -f "$here/victoria-docker-compose.yaml" down
 
 EOT
-

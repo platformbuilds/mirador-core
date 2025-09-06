@@ -146,3 +146,29 @@ The application exposes:
 
 - REST: `/health`, `/ready`, `/metrics`, `/api/openapi.yaml`, `/docs`
 - gRPC client connections to AI engines are configured through the `grpc.*` section of the config.
+
+## Multi-Arch Images
+
+The `platformbuilds/mirador-core` image is intended to be published as a multi-arch manifest (linux/amd64 and linux/arm64). When the image tag is multi-arch:
+
+- `docker run` and Kubernetes automatically pull the correct architecture for the host/node.
+- No `nodeSelector` or platform pin is necessary for architecture selection.
+
+Build and push a multi-arch image from this repo using Docker Buildx:
+
+```bash
+# Set registry/org and version as needed
+make dockerx-push REGISTRY=platformbuilds IMAGE_NAME=mirador-core VERSION=v2.1.3
+
+# Verify manifest includes both amd64 and arm64
+docker buildx imagetools inspect platformbuilds/mirador-core:v2.1.3
+```
+
+Then set the chart values to reference that tag:
+
+```yaml
+image:
+  repository: platformbuilds/mirador-core
+  tag: v2.1.3 # multi-arch manifest
+  pullPolicy: IfNotPresent
+```

@@ -1,30 +1,33 @@
-version: "3.9"
-
 services:
   valkey:
-    image: valkey/valkey:7
+    image: valkey/valkey:latest
     container_name: mirador-valkey
     ports:
       - "6379:6379"
-    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    # Valkey image is multi-arch; no platform pin needed.
     healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
+      test: ["CMD-SHELL", "valkey-cli -h 127.0.0.1 ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 10
 
   mirador-core:
-    # For local iteration you can build from source by uncommenting build
-    # build:
-    #   context: ../..
-    #   dockerfile: Dockerfile
-    image: platformbuilds/mirador-core:v2.1.3
+    # Build locally for native arch (recommended on Apple Silicon to avoid amd64 emulation crashes)
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    # If you prefer to pull a published image instead of building, comment out the build: block above
+    # and set an image tag that includes your platform (arm64 on Apple Silicon):
+    # image: platformbuilds/mirador-core:v2.1.3
     container_name: mirador-core
     depends_on:
       valkey:
         condition: service_healthy
     ports:
       - "8080:8080"
+    # On Linux, uncomment to allow host.docker.internal resolution
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
     environment:
       # App basics
       - PORT=8080
@@ -51,9 +54,3 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-
-networks:
-  default:
-    name: mirador-localdev
-    driver: bridge
-
