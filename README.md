@@ -197,6 +197,105 @@ MIRADOR-CORE exposes Prometheus metrics at `/metrics`:
 - **Query Caching**: Valkey cluster query result caching
 - **Horizontal Scaling**: Stateless microservice design
 
+## Architecture Diagram (Text)
+
+### High-Level Diagram
+- Clients: MIRADOR-UI (browser), Prometheus (scraper), engineers (API/CLI)
+- Core: mirador-core (Gin HTTP API + WebSocket), middleware (Auth/JWT/Session, RBAC, RateLimiter, RequestLogger, Metrics), handlers (MetricsQL, LogsQL + D3, Traces, Predict, RCA, Alerts, Config, Sessions, RBAC), services (VictoriaMetricsServices, gRPC Clients, NotificationService), caching (Valkey cluster), config/secrets/watcher, logger, internal metrics
+- Backends: VictoriaMetrics (metrics), VictoriaLogs (logs), VictoriaTraces (traces/Jaeger), AI Engines (Predict, RCA, Alert via gRPC), Identity (LDAP/AD, OAuth/OIDC), External (Slack, MS Teams, SMTP)
+
+```
+[ MIRADOR‑UI ]                      [ Prometheus ]
+     |  HTTPS (REST, WS)                   |  HTTP /metrics
+     v                                     v
++-------------------- Ingress / LB ---------------------+
+                        |
+                        v
+                 +--------------+
+                 | mirador-core |
+                 |  Gin Server  |
+                 +--------------+
+                        |
+       +----------------+-----------------------------+
+       |                |                             |
+       v                v                             v
+ +--------------+  +-----------+                 +-----------+
+ | Middleware   |  | Handlers  |                 | WebSocket |
+ | - Auth       |  | - Metrics |                 |  Streams  |
+ | - RBAC       |  | - Logs    |                 | (metrics, |
+ | - RateLimit  |  | - Traces  |                 | alerts,   |
+ | - ReqLogger  |  | - Predict |                 | predicts) |
+ | - Metrics    |  | - RCA     |                 +-----------+
+ +--------------+  | - Alerts  |
+                   | - Config  |
+                   | - Session |
+                   | - RBAC    |
+                   +-----+-----+
+                         |
+                         v
+           +-------------------------------+
+           |  Internal Services Layer      |
+           |-------------------------------|
+           | VictoriaMetricsServices       |
+           |  - Metrics (HTTP→VM Select)   |
+           |  - Logs (HTTP→VL Select)      |
+           |  - Traces (HTTP→Jaeger API)   |
+           |                               |
+           | gRPC Clients                  |
+           |  - Predict-Engine             |
+           |  - RCA-Engine                 |
+           |  - Alert-Engine               |
+           |                               |
+           | NotificationService           |
+           +--------+------------+---------+
+                    |            |
+                    v            v
+            +---------------+   +-------------------+
+            | Valkey Cluster|   | External Notifiers|
+            | - Sessions    |   | Slack / Teams /   |
+            | - Query Cache |   | SMTP Email        |
+            | - Rate Limits |   +-------------------+
+            +-------+-------+
+                    |
+    +---------------+------------------------------+
+    |                                              |
+    v                                              v
+ [ VictoriaMetrics ]                       [ VictoriaLogs / VictoriaTraces ]
+   - /select/0/prometheus/api/v1/...        - /select/logsql/... , /insert/jsonline
+                                            - /select/jaeger/api/
+```
+
+### Security & Identity
+- OAuth/JWT and/or Valkey-backed session tokens; tenant context injected into requests.
+- LDAP/AD support for enterprise auth; RBAC enforced at handler level.
+- CORS configured; security headers added; per-tenant rate limiting enabled.
+
+### Primary Flows
+- MetricsQL (instant/range): UI → `/api/v1/query|query_range` → middleware (auth/RBAC/rate limit) → Valkey cache → VictoriaMetrics (round‑robin + retry/backoff) → cache set → response.
+- LogsQL & D3: UI → `/api/v1/logs/query|histogram|facets|search|tail` → VictoriaLogs streaming JSON (gzip‑aware) → on‑the‑fly aggregations (buckets/facets/paging) → response; `/logs/store` persists AI events.
+- Traces: UI → `/api/v1/traces/services|operations|:traceId|search` → pass‑through to VictoriaTraces (Jaeger HTTP) with optional caching for lists.
+- Predict: UI → `/api/v1/predict/analyze` → gRPC to Predict‑Engine → store prediction JSON events to VictoriaLogs → optional notifications → list via `/predict/fractures` (logs query + cache).
+- RCA: UI → `/api/v1/rca/investigate` → gRPC to RCA‑Engine → timeline + red anchors → optional store via `/api/v1/rca/store`.
+- Alerts: UI → `/api/v1/alerts` (GET with cache; POST to create rule) and `/api/v1/alerts/:id/acknowledge` → gRPC to Alert‑Engine → optional WS broadcast.
+
+### Cross‑Cutting Concerns
+- Caching: Valkey stores sessions, query results, and rate‑limit counters.
+- Observability: Prometheus metrics for HTTP, gRPC, cache, sessions, query durations.
+- Configuration: Viper layered config, env overrides (e.g., `VM_ENDPOINTS`), secrets loader, file watcher for reloads.
+- Resilience: Round‑robin endpoints and exponential backoff for VictoriaMetrics; structured error logging.
+
+### Ports / Protocols
+- REST & WebSocket on `:8080`
+- gRPC to AI engines: Predict `:9091`, RCA `:9092`, Alert `:9093`
+- Backends (default): VM `:8481`, VL `:9428`, VT `:10428`
+- Prometheus scrape: `/metrics`
+
+### Production Hardening
+- Restrict WebSocket `CheckOrigin` and CORS origins.
+- Manage JWT secrets and engine endpoints via secrets/env.
+- Tune per‑tenant rate limits; consider retries for VictoriaLogs.
+- Enhance query validation where stricter inputs are required.
+
 ## Contributing
 
 1. Fork the repository
@@ -206,3 +305,100 @@ MIRADOR-CORE exposes Prometheus metrics at `/metrics`:
 5. Open Pull Request
 
 ## License
+
+## Build & Release (Multi-Platform)
+
+MIRADOR-CORE targets Go 1.23 and builds as a statically linked binary (CGO disabled) suitable for containers. All common build workflows are available via the Makefile.
+
+- Native build (host OS/arch):
+  - `make dev-build` (debug) or `make build` (Linux/amd64 release-style)
+
+- Cross-compile (Makefile targets):
+  - Linux/amd64: `make build-linux-amd64`
+  - Linux/arm64: `make build-linux-arm64`
+  - macOS/arm64: `make build-darwin-arm64`
+  - Windows/amd64: `make build-windows-amd64`
+  - All of the above: `make build-all`
+
+- Docker images:
+  - Single-arch build (host arch): `make docker-build`
+  - Multi-arch build (no push): `make dockerx-build`
+  - Multi-arch build & push: `make dockerx-push`
+  - Full release (tests + multi-arch push): `make release`
+
+Notes
+- The Makefile injects versioning via `-ldflags` (version, commit, build time).
+- Regenerate protobuf stubs when proto files change: `make proto` (requires `protoc`, `protoc-gen-go`, `protoc-gen-go-grpc`).
+
+### Makefile Targets
+- `make setup`: generate protobufs and download modules (first-time setup).
+- `make proto`: regenerate protobuf stubs from existing `.proto` files.
+- `make build`: release-style static build for Linux/amd64 (CGO disabled), outputs `bin/mirador-core`.
+- `make dev-build`: local debug build for your host, outputs `bin/mirador-core-dev`.
+- `make build-linux-amd64` / `make build-linux-arm64` / `make build-darwin-arm64` / `make build-windows-amd64` / `make build-all`.
+- `make dev`: run the server locally (ensure dependencies are up with `make dev-stack`).
+- `make docker-build`: build and tag Docker image `${REGISTRY}/${IMAGE_NAME}:${VERSION}` and `:latest`.
+- `make dockerx-build` / `make dockerx-push`: multi-arch image build (with/without push) using buildx (`DOCKER_PLATFORMS` default: linux/amd64,linux/arm64).
+- `make docker-publish-release VERSION=vX.Y.Z`: multi-arch build & push with SemVer fanout tags (`vX.Y.Z`, `vX.Y`, `vX`, `latest`, `stable`).
+- `make docker-publish-canary` (CI): computes `0.0.0-<branch>.<date>.<sha>` and pushes that tag + `canary`.
+- `make docker-publish-pr PR_NUMBER=123` (CI): pushes `0.0.0-pr.123.<sha>` + `pr-123`.
+- `make release`: run tests then multi-arch build & push of `${VERSION}`.
+- `make test`: run tests with race detector and coverage.
+- `make clean` / `make proto-clean`: remove build artifacts and (re)generate protobufs.
+- `make tools` / `make check-tools`: install and verify proto/grpc toolchain.
+- `make dev-stack` / `make dev-stack-down`: start/stop local Victoria* + Redis via docker-compose.
+- `make vendor`: tidy and vendor dependencies.
+
+## Kubernetes Deployment (Helm)
+
+The chart is bundled at `chart/`. Typical install:
+
+```
+helm upgrade --install mirador-core ./chart -n mirador --create-namespace \
+  --set image.repository=platformbuilds/mirador-core \
+  --set image.tag=v2.1.3
+```
+
+Enable dynamic discovery of vmselect/vlselect/vtselect pods (recommended for scale-out):
+
+```
+helm upgrade --install mirador-core ./chart -n mirador --create-namespace \
+  -f - <<'VALUES'
+discovery:
+  vm: { enabled: true, service: vm-select.vm-select.svc.cluster.local, port: 8481, scheme: http, refreshSeconds: 30, useSRV: false }
+  vl: { enabled: true, service: vl-select.vl-select.svc.cluster.local, port: 9428, scheme: http, refreshSeconds: 30, useSRV: false }
+  vt: { enabled: true, service: vt-select.vt-select.svc.cluster.local, port: 10428, scheme: http, refreshSeconds: 30, useSRV: false }
+VALUES
+```
+
+Headless Services for Victoria* selectors are recommended so cluster DNS exposes per-pod A records.
+
+## Production Readiness Checklist
+
+- Security
+  - JWT secret provided via secret/env; disable default secrets in non-dev (`JWT_SECRET`).
+  - Lock CORS to allowed origins; tighten WebSocket `CheckOrigin` to your domains.
+  - Enforce RBAC roles; validate and sanitize user input (queries) as needed.
+  - Run as non-root (chart defaults) and prefer read-only root FS.
+
+- Reliability & Scale
+  - Enable discovery for vmselect/vlselect/vtselect (auto-updates endpoints on scale changes).
+  - Configure probes (`/health`, `/ready`), CPU/memory requests/limits (chart defaults provided).
+  - Set replicaCount>=3 for HA and define PodDisruptionBudget (add via chart if required).
+  - Use Valkey/Redis cluster with proper persistence/HA; set `cache.ttl` appropriately.
+
+- Observability
+  - Scrape `/metrics` (Prometheus annotations included by default in the chart).
+  - Centralize logs; consider structured log shipping from container stdout.
+
+- Networking
+  - Ingress/TLS termination at your gateway; prefer HTTP/2 for gRPC backends.
+  - Rate limiting per tenant is enabled; tune thresholds as needed.
+
+- Configuration & Secrets
+  - Externalize config via Helm values or ConfigMap; secrets via Kubernetes Secrets (`envFrom`).
+  - Prefer headless Services or SRV for backend discovery.
+
+- Supply Chain
+  - Build with `CGO_ENABLED=0` and minimal base image.
+  - Optionally build multi-arch images with `docker buildx`.

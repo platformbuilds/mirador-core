@@ -13,14 +13,21 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"sync"
 )
 
 type VictoriaMetricsService struct {
-	endpoints []string
-	timeout   time.Duration
-	client    *http.Client
-	logger    logger.Logger
-	current   int // round-robin cursor
+    endpoints []string
+    timeout   time.Duration
+    client    *http.Client
+    logger    logger.Logger
+    current   int // round-robin cursor
+
+    // guards updates/selection when discovery refreshes endpoints
+    mu sync.Mutex
+
+    username string
+    password string
 
 	// retry knobs
 	retries   int
@@ -28,16 +35,27 @@ type VictoriaMetricsService struct {
 }
 
 func NewVictoriaMetricsService(cfg config.VictoriaMetricsConfig, logger logger.Logger) *VictoriaMetricsService {
-	return &VictoriaMetricsService{
-		endpoints: cfg.Endpoints,
-		timeout:   time.Duration(cfg.Timeout) * time.Millisecond,
-		client: &http.Client{
-			Timeout: time.Duration(cfg.Timeout) * time.Millisecond,
-		},
-		logger:    logger,
-		retries:   3,   // total attempts
-		backoffMS: 200, // 200ms, 400ms, 800ms
-	}
+    return &VictoriaMetricsService{
+        endpoints: cfg.Endpoints,
+        timeout:   time.Duration(cfg.Timeout) * time.Millisecond,
+        client: &http.Client{
+            Timeout: time.Duration(cfg.Timeout) * time.Millisecond,
+        },
+        logger:    logger,
+        retries:   3,   // total attempts
+        backoffMS: 200, // 200ms, 400ms, 800ms
+        username:  cfg.Username,
+        password:  cfg.Password,
+    }
+}
+
+// ReplaceEndpoints swaps the list used for round-robin (used by discovery)
+func (s *VictoriaMetricsService) ReplaceEndpoints(eps []string) {
+    s.mu.Lock()
+    s.endpoints = append([]string(nil), eps...)
+    s.current = 0
+    s.mu.Unlock()
+    s.logger.Info("VictoriaMetrics endpoints updated", "count", len(eps))
 }
 
 func (s *VictoriaMetricsService) ExecuteQuery(ctx context.Context, request *models.MetricsQLQueryRequest) (*models.MetricsQLQueryResult, error) {
@@ -286,12 +304,14 @@ func (s *VictoriaMetricsService) HealthCheck(ctx context.Context) error {
 
 // selectEndpoint implements round-robin load balancing (safe for empty slice).
 func (s *VictoriaMetricsService) selectEndpoint() string {
-	if len(s.endpoints) == 0 {
-		return ""
-	}
-	ep := s.endpoints[s.current%len(s.endpoints)]
-	s.current++
-	return ep
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    if len(s.endpoints) == 0 {
+        return ""
+    }
+    ep := s.endpoints[s.current%len(s.endpoints)]
+    s.current++
+    return ep
 }
 
 /* ----------------------------- retry + helpers ----------------------------- */
@@ -299,23 +319,26 @@ func (s *VictoriaMetricsService) selectEndpoint() string {
 // doRequestWithRetry sends an HTTP request and retries on 5xx or transport errors.
 // It logs every retry attempt to stdout via s.logger so operators can see timeouts/errors.
 func (s *VictoriaMetricsService) doRequestWithRetry(
-	ctx context.Context,
-	method, urlStr string,
-	body io.Reader,
-	headers map[string]string,
+    ctx context.Context,
+    method, urlStr string,
+    body io.Reader,
+    headers map[string]string,
 ) (*http.Response, error) {
 
 	var lastErr error
 	backoff := time.Duration(s.backoffMS) * time.Millisecond
 
 	for attempt := 1; attempt <= s.retries; attempt++ {
-		req, err := http.NewRequestWithContext(ctx, method, urlStr, body)
-		if err != nil {
-			return nil, err
-		}
-		for k, v := range headers {
-			req.Header.Set(k, v)
-		}
+        req, err := http.NewRequestWithContext(ctx, method, urlStr, body)
+        if err != nil {
+            return nil, err
+        }
+        for k, v := range headers {
+            req.Header.Set(k, v)
+        }
+        if s.username != "" {
+            req.SetBasicAuth(s.username, s.password)
+        }
 
 		resp, err := s.client.Do(req)
 		// transport error (timeout, connection refused, etc.)

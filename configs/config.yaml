@@ -14,6 +14,14 @@ database:
     timeout: 30000
     username: ""
     password: "" # Set via environment variable
+    # Optional: enable DNS-based discovery of vmselect pods behind a headless Service
+    # discovery:
+    #   enabled: true
+    #   service: "vm-select.vm-select.svc.cluster.local"
+    #   port: 8481
+    #   scheme: "http"
+    #   refresh_seconds: 30
+    #   use_srv: false
     
   victoria_logs:
     endpoints:
@@ -22,6 +30,13 @@ database:
     timeout: 30000
     username: ""
     password: ""
+    # discovery:
+    #   enabled: true
+    #   service: "vl-select.vl-select.svc.cluster.local"
+    #   port: 9428
+    #   scheme: "http"
+    #   refresh_seconds: 30
+    #   use_srv: false
     
   victoria_traces:
     endpoints:
@@ -30,6 +45,13 @@ database:
     timeout: 30000
     username: ""
     password: ""
+    # discovery:
+    #   enabled: true
+    #   service: "vt-select.vt-select.svc.cluster.local"
+    #   port: 10428
+    #   scheme: "http"
+    #   refresh_seconds: 30
+    #   use_srv: false
 
 # AI Engines gRPC Configuration
 grpc:
@@ -54,6 +76,7 @@ grpc:
 
 # Authentication and Authorization
 auth:
+  enabled: true
   ldap:
     url: "ldap://ldap.company.com"
     base_dn: "dc=company,dc=com"

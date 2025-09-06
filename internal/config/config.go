@@ -23,24 +23,37 @@ type DatabaseConfig struct {
 }
 
 type VictoriaMetricsConfig struct {
-	Endpoints []string `mapstructure:"endpoints" yaml:"endpoints"`
-	Timeout   int      `mapstructure:"timeout" yaml:"timeout"` // milliseconds
-	Username  string   `mapstructure:"username" yaml:"username"`
-	Password  string   `mapstructure:"password" yaml:"password"`
+    Endpoints []string `mapstructure:"endpoints" yaml:"endpoints"`
+    Timeout   int      `mapstructure:"timeout" yaml:"timeout"` // milliseconds
+    Username  string   `mapstructure:"username" yaml:"username"`
+    Password  string   `mapstructure:"password" yaml:"password"`
+    Discovery K8sDiscoveryConfig `mapstructure:"discovery" yaml:"discovery"`
 }
 
 type VictoriaLogsConfig struct {
-	Endpoints []string `mapstructure:"endpoints" yaml:"endpoints"`
-	Timeout   int      `mapstructure:"timeout" yaml:"timeout"`
-	Username  string   `mapstructure:"username" yaml:"username"`
-	Password  string   `mapstructure:"password" yaml:"password"`
+    Endpoints []string `mapstructure:"endpoints" yaml:"endpoints"`
+    Timeout   int      `mapstructure:"timeout" yaml:"timeout"`
+    Username  string   `mapstructure:"username" yaml:"username"`
+    Password  string   `mapstructure:"password" yaml:"password"`
+    Discovery K8sDiscoveryConfig `mapstructure:"discovery" yaml:"discovery"`
 }
 
 type VictoriaTracesConfig struct {
-	Endpoints []string `mapstructure:"endpoints" yaml:"endpoints"`
-	Timeout   int      `mapstructure:"timeout" yaml:"timeout"`
-	Username  string   `mapstructure:"username" yaml:"username"`
-	Password  string   `mapstructure:"password" yaml:"password"`
+    Endpoints []string `mapstructure:"endpoints" yaml:"endpoints"`
+    Timeout   int      `mapstructure:"timeout" yaml:"timeout"`
+    Username  string   `mapstructure:"username" yaml:"username"`
+    Password  string   `mapstructure:"password" yaml:"password"`
+    Discovery K8sDiscoveryConfig `mapstructure:"discovery" yaml:"discovery"`
+}
+
+// K8sDiscoveryConfig enables dynamic endpoint discovery for a Service
+type K8sDiscoveryConfig struct {
+    Enabled        bool   `mapstructure:"enabled" yaml:"enabled"`
+    Service        string `mapstructure:"service" yaml:"service"`                 // e.g. vmselect.vm-select.svc.cluster.local
+    Port           int    `mapstructure:"port" yaml:"port"`
+    Scheme         string `mapstructure:"scheme" yaml:"scheme"`                 // http | https
+    RefreshSeconds int    `mapstructure:"refresh_seconds" yaml:"refresh_seconds"`
+    UseSRV         bool   `mapstructure:"use_srv" yaml:"use_srv"`
 }
 
 // GRPCConfig handles AI engines gRPC configuration
@@ -70,10 +83,11 @@ type AlertEngineConfig struct {
 
 // AuthConfig handles authentication and authorization
 type AuthConfig struct {
-	LDAP  LDAPConfig  `mapstructure:"ldap" yaml:"ldap"`
-	OAuth OAuthConfig `mapstructure:"oauth" yaml:"oauth"`
-	RBAC  RBACConfig  `mapstructure:"rbac" yaml:"rbac"`
-	JWT   JWTConfig   `mapstructure:"jwt" yaml:"jwt"`
+    Enabled bool        `mapstructure:"enabled" yaml:"enabled"`
+    LDAP  LDAPConfig  `mapstructure:"ldap" yaml:"ldap"`
+    OAuth OAuthConfig `mapstructure:"oauth" yaml:"oauth"`
+    RBAC  RBACConfig  `mapstructure:"rbac" yaml:"rbac"`
+    JWT   JWTConfig   `mapstructure:"jwt" yaml:"jwt"`
 }
 
 type LDAPConfig struct {

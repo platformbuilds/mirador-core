@@ -1,0 +1,12 @@
+apiVersion: v2
+name: mirador-core
+description: Helm chart for MIRADOR-CORE (Advanced Observability Platform - Backend REST API Service)
+type: application
+version: 0.1.0
+appVersion: "v2.1.3"
+
+dependencies:
+  - name: valkey
+    repository: https://charts.bitnami.com/bitnami
+    version: ^2.0.0
+    condition: valkey.enabled

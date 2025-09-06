@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  valkey:
+    image: valkey/valkey:7
+    container_name: mirador-valkey
+    ports:
+      - "6379:6379"
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mirador-core:
+    # For local iteration you can build from source by uncommenting build
+    # build:
+    #   context: ../..
+    #   dockerfile: Dockerfile
+    image: platformbuilds/mirador-core:v2.1.3
+    container_name: mirador-core
+    depends_on:
+      valkey:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # App basics
+      - PORT=8080
+      - LOG_LEVEL=debug
+      - ENVIRONMENT=development
+
+      # Point to local Victoria stack (run victoria-docker-compose.yaml separately)
+      # If you run the Victoria services in another compose or on the host, use
+      # host.docker.internal to reach them from inside this container.
+      - VM_ENDPOINTS=http://host.docker.internal:8428
+      - VL_ENDPOINTS=http://host.docker.internal:9428
+      - VT_ENDPOINTS=http://host.docker.internal:8429
+
+      # Valkey (single-node)
+      - VALLEY_CACHE_NODES=valkey:6379
+      - CACHE_TTL=300
+
+      # Auth + RBAC (dev)
+      - JWT_SECRET=development-secret-key-not-for-production
+      - RBAC_ENABLED=true
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+networks:
+  default:
+    name: mirador-localdev
+    driver: bridge
+

@@ -1,19 +1,20 @@
 package api
 
 import (
-	"context"
-	"fmt"
-	"net/http"
-	"time"
+    "context"
+    "fmt"
+    "net/http"
+    "time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/platformbuilds/mirador-core/internal/api/handlers"
-	"github.com/platformbuilds/mirador-core/internal/api/middleware"
-	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
-	"github.com/platformbuilds/mirador-core/internal/services"
-	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+    "github.com/gin-gonic/gin"
+    "github.com/platformbuilds/mirador-core/internal/api/handlers"
+    "github.com/platformbuilds/mirador-core/internal/api/middleware"
+    "github.com/platformbuilds/mirador-core/internal/config"
+    "github.com/platformbuilds/mirador-core/internal/grpc/clients"
+    "github.com/platformbuilds/mirador-core/internal/monitoring"
+    "github.com/platformbuilds/mirador-core/internal/services"
+    "github.com/platformbuilds/mirador-core/pkg/cache"
+    "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type Server struct {
@@ -55,28 +56,39 @@ func NewServer(
 }
 
 func (s *Server) setupMiddleware() {
-	// Recovery middleware
-	s.router.Use(gin.Recovery())
+    // Recovery middleware
+    s.router.Use(gin.Recovery())
 
-	// CORS for MIRADOR-UI communication
-	s.router.Use(middleware.CORSMiddleware(s.config.CORS))
+    // CORS for MIRADOR-UI communication
+    s.router.Use(middleware.CORSMiddleware(s.config.CORS))
 
-	// Request logging
-	s.router.Use(middleware.RequestLogger(s.logger))
+    // Request logging
+    s.router.Use(middleware.RequestLogger(s.logger))
 
-	// Rate limiting using Valkey cluster
-	s.router.Use(middleware.RateLimiter(s.cache))
+    // Prometheus request metrics
+    s.router.Use(middleware.MetricsMiddleware())
 
-	// RBAC authentication (LDAP/AD + SSO integration)
-	s.router.Use(middleware.AuthMiddleware(s.config.Auth, s.cache))
+    // Rate limiting using Valkey cluster
+    s.router.Use(middleware.RateLimiter(s.cache))
+
+    // Authentication (can be disabled via config.auth.enabled)
+    if s.config.Auth.Enabled {
+        s.router.Use(middleware.AuthMiddleware(s.config.Auth, s.cache))
+    } else {
+        s.router.Use(middleware.NoAuthMiddleware())
+        s.logger.Warn("Authentication is DISABLED by configuration; requests will use anonymous/default context")
+    }
 
 	// OpenAPI specification endpoints
 	s.router.StaticFile("/api/openapi.yaml", "api/openapi.yaml")
 	s.router.GET("/api/openapi.json", handlers.GetOpenAPISpec)
 
-	// Swagger UI (browser docs)
-	s.router.GET("/docs", handlers.ServeSwaggerUI)
-	s.router.GET("/docs/index.html", handlers.ServeSwaggerUI) // optional convenience
+    // Swagger UI (browser docs)
+    s.router.GET("/docs", handlers.ServeSwaggerUI)
+    s.router.GET("/docs/index.html", handlers.ServeSwaggerUI) // optional convenience
+
+    // Prometheus metrics endpoint
+    monitoring.SetupPrometheusMetrics(s.router)
 }
 
 func (s *Server) setupRoutes() {

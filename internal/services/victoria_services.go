@@ -1,16 +1,18 @@
 package services
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"net/url"
-	"time"
+    "context"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "sync"
+    "net/url"
+    "time"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+    "github.com/platformbuilds/mirador-core/internal/config"
+    "github.com/platformbuilds/mirador-core/internal/discovery"
+    "github.com/platformbuilds/mirador-core/internal/models"
+    "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // VictoriaMetricsServices contains all VictoriaMetrics ecosystem services
@@ -22,23 +24,29 @@ type VictoriaMetricsServices struct {
 
 // VictoriaTracesService handles VictoriaTraces operations
 type VictoriaTracesService struct {
-	endpoints []string
-	timeout   time.Duration
-	client    *http.Client
-	logger    logger.Logger
-	current   int // For round-robin load balancing
+    endpoints []string
+    timeout   time.Duration
+    client    *http.Client
+    logger    logger.Logger
+    current   int // For round-robin load balancing
+    mu        sync.Mutex
+
+    username string
+    password string
 }
 
 // NewVictoriaTracesService creates a new VictoriaTraces service
 func NewVictoriaTracesService(cfg config.VictoriaTracesConfig, logger logger.Logger) *VictoriaTracesService {
-	return &VictoriaTracesService{
-		endpoints: cfg.Endpoints,
-		timeout:   time.Duration(cfg.Timeout) * time.Millisecond,
-		client: &http.Client{
-			Timeout: time.Duration(cfg.Timeout) * time.Millisecond,
-		},
-		logger: logger,
-	}
+    return &VictoriaTracesService{
+        endpoints: cfg.Endpoints,
+        timeout:   time.Duration(cfg.Timeout) * time.Millisecond,
+        client: &http.Client{
+            Timeout: time.Duration(cfg.Timeout) * time.Millisecond,
+        },
+        logger: logger,
+        username: cfg.Username,
+        password: cfg.Password,
+    }
 }
 
 // GetServices returns all services from VictoriaTraces
@@ -51,9 +59,10 @@ func (s *VictoriaTracesService) GetServices(ctx context.Context, tenantID string
 		return nil, err
 	}
 
-	if tenantID != "" {
-		req.Header.Set("AccountID", tenantID)
-	}
+    if tenantID != "" {
+        req.Header.Set("AccountID", tenantID)
+    }
+    if s.username != "" { req.SetBasicAuth(s.username, s.password) }
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -86,9 +95,10 @@ func (s *VictoriaTracesService) GetTrace(ctx context.Context, traceID, tenantID 
 		return nil, err
 	}
 
-	if tenantID != "" {
-		req.Header.Set("AccountID", tenantID)
-	}
+    if tenantID != "" {
+        req.Header.Set("AccountID", tenantID)
+    }
+    if s.username != "" { req.SetBasicAuth(s.username, s.password) }
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -144,11 +154,12 @@ func (s *VictoriaTracesService) SearchTraces(ctx context.Context, request *model
 		return nil, err
 	}
 
-	if request.TenantID != "" {
-		req.Header.Set("AccountID", request.TenantID)
-	}
+    if request.TenantID != "" {
+        req.Header.Set("AccountID", request.TenantID)
+    }
+    if s.username != "" { req.SetBasicAuth(s.username, s.password) }
 
-	resp, err := s.client.Do(req)
+    resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("VictoriaTraces request failed: %w", err)
 	}
@@ -192,9 +203,14 @@ func (s *VictoriaTracesService) HealthCheck(ctx context.Context) error {
 
 // selectEndpoint implements round-robin load balancing
 func (s *VictoriaTracesService) selectEndpoint() string {
-	endpoint := s.endpoints[s.current%len(s.endpoints)]
-	s.current++
-	return endpoint
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    if len(s.endpoints) == 0 {
+        return ""
+    }
+    endpoint := s.endpoints[s.current%len(s.endpoints)]
+    s.current++
+    return endpoint
 }
 
 // NewVictoriaMetricsServices initializes all VictoriaMetrics services
@@ -219,4 +235,65 @@ func NewVictoriaMetricsServices(dbConfig config.DatabaseConfig, logger logger.Lo
 		Logs:    logsService,
 		Traces:  tracesService,
 	}, nil
+}
+
+// StartDiscovery enables periodic DNS discovery for Victoria* services when configured.
+// It relies on headless Services (A/AAAA records per pod) or SRV records.
+func (s *VictoriaMetricsServices) StartDiscovery(ctx context.Context, dbConfig config.DatabaseConfig, log logger.Logger) {
+    // VictoriaMetrics
+    if dbConfig.VictoriaMetrics.Discovery.Enabled && s.Metrics != nil {
+        cfg := dbConfig.VictoriaMetrics.Discovery
+        if len(dbConfig.VictoriaMetrics.Endpoints) > 0 {
+            s.Metrics.ReplaceEndpoints(dbConfig.VictoriaMetrics.Endpoints)
+        }
+        discovery.StartDNSDiscovery(ctx, discovery.DNSConfig{
+            Enabled:        true,
+            Service:        cfg.Service,
+            Port:           cfg.Port,
+            Scheme:         cfg.Scheme,
+            RefreshSeconds: cfg.RefreshSeconds,
+            UseSRV:         cfg.UseSRV,
+        }, s.Metrics, log)
+    }
+
+    // VictoriaLogs
+    if dbConfig.VictoriaLogs.Discovery.Enabled && s.Logs != nil {
+        cfg := dbConfig.VictoriaLogs.Discovery
+        if len(dbConfig.VictoriaLogs.Endpoints) > 0 {
+            s.Logs.ReplaceEndpoints(dbConfig.VictoriaLogs.Endpoints)
+        }
+        discovery.StartDNSDiscovery(ctx, discovery.DNSConfig{
+            Enabled:        true,
+            Service:        cfg.Service,
+            Port:           cfg.Port,
+            Scheme:         cfg.Scheme,
+            RefreshSeconds: cfg.RefreshSeconds,
+            UseSRV:         cfg.UseSRV,
+        }, s.Logs, log)
+    }
+
+    // VictoriaTraces
+    if dbConfig.VictoriaTraces.Discovery.Enabled && s.Traces != nil {
+        cfg := dbConfig.VictoriaTraces.Discovery
+        if len(dbConfig.VictoriaTraces.Endpoints) > 0 {
+            s.Traces.ReplaceEndpoints(dbConfig.VictoriaTraces.Endpoints)
+        }
+        discovery.StartDNSDiscovery(ctx, discovery.DNSConfig{
+            Enabled:        true,
+            Service:        cfg.Service,
+            Port:           cfg.Port,
+            Scheme:         cfg.Scheme,
+            RefreshSeconds: cfg.RefreshSeconds,
+            UseSRV:         cfg.UseSRV,
+        }, s.Traces, log)
+    }
+}
+
+// ReplaceEndpoints allows dynamic update from discovery
+func (s *VictoriaTracesService) ReplaceEndpoints(eps []string) {
+    s.mu.Lock()
+    s.endpoints = append([]string(nil), eps...)
+    s.current = 0
+    s.mu.Unlock()
+    s.logger.Info("VictoriaTraces endpoints updated", "count", len(eps))
 }

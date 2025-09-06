@@ -135,10 +135,19 @@ func setDefaults(v *viper.Viper) {
 	// Databases
 	v.SetDefault("database.victoria_metrics.endpoints", []string{"http://localhost:8481"})
 	v.SetDefault("database.victoria_metrics.timeout", 30000)
+	v.SetDefault("database.victoria_metrics.discovery.enabled", false)
+	v.SetDefault("database.victoria_metrics.discovery.scheme", "http")
+	v.SetDefault("database.victoria_metrics.discovery.refresh_seconds", 30)
 	v.SetDefault("database.victoria_logs.endpoints", []string{"http://localhost:9428"})
 	v.SetDefault("database.victoria_logs.timeout", 30000)
+	v.SetDefault("database.victoria_logs.discovery.enabled", false)
+	v.SetDefault("database.victoria_logs.discovery.scheme", "http")
+	v.SetDefault("database.victoria_logs.discovery.refresh_seconds", 30)
 	v.SetDefault("database.victoria_traces.endpoints", []string{"http://localhost:10428"})
 	v.SetDefault("database.victoria_traces.timeout", 30000)
+	v.SetDefault("database.victoria_traces.discovery.enabled", false)
+	v.SetDefault("database.victoria_traces.discovery.scheme", "http")
+	v.SetDefault("database.victoria_traces.discovery.refresh_seconds", 30)
 
 	// gRPC
 	v.SetDefault("grpc.predict_engine.endpoint", "localhost:9091")
@@ -151,12 +160,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("grpc.alert_engine.rules_path", "/etc/mirador/alert-rules.yaml")
 	v.SetDefault("grpc.alert_engine.timeout", 30000)
 
-	// Auth
-	v.SetDefault("auth.ldap.enabled", false)
-	v.SetDefault("auth.oauth.enabled", false)
-	v.SetDefault("auth.rbac.enabled", true)
-	v.SetDefault("auth.rbac.admin_role", "mirador-admin")
-	v.SetDefault("auth.jwt.expiry_minutes", 1440)
+    // Auth
+    v.SetDefault("auth.enabled", true)
+    v.SetDefault("auth.ldap.enabled", false)
+    v.SetDefault("auth.oauth.enabled", false)
+    v.SetDefault("auth.rbac.enabled", true)
+    v.SetDefault("auth.rbac.admin_role", "mirador-admin")
+    v.SetDefault("auth.jwt.expiry_minutes", 1440)
 
 	// Cache (Valkey)
 	v.SetDefault("cache.nodes", []string{"localhost:6379"})
@@ -242,9 +252,14 @@ func overrideWithEnvVars(v *viper.Viper) {
 		v.Set("auth.ldap.url", ldapURL)
 		v.Set("auth.ldap.enabled", true)
 	}
-	if ldapBase := os.Getenv("LDAP_BASE_DN"); ldapBase != "" {
-		v.Set("auth.ldap.base_dn", ldapBase)
-	}
+    if ldapBase := os.Getenv("LDAP_BASE_DN"); ldapBase != "" {
+        v.Set("auth.ldap.base_dn", ldapBase)
+    }
+    if ae := os.Getenv("AUTH_ENABLED"); ae != "" {
+        if b, err := strconv.ParseBool(ae); err == nil {
+            v.Set("auth.enabled", b)
+        }
+    }
 	if rbac := os.Getenv("RBAC_ENABLED"); rbac != "" {
 		if b, err := strconv.ParseBool(rbac); err == nil {
 			v.Set("auth.rbac.enabled", b)
@@ -271,12 +286,12 @@ func overrideWithEnvVars(v *viper.Viper) {
 
 // Note: JWT secret enforcement is handled in secrets.go (LoadSecrets).
 func validateConfig(cfg *Config) error {
-	if len(cfg.Database.VictoriaMetrics.Endpoints) == 0 {
-		return fmt.Errorf("at least one VictoriaMetrics endpoint is required")
-	}
-	if len(cfg.Database.VictoriaLogs.Endpoints) == 0 {
-		return fmt.Errorf("at least one VictoriaLogs endpoint is required")
-	}
+    if len(cfg.Database.VictoriaMetrics.Endpoints) == 0 && !cfg.Database.VictoriaMetrics.Discovery.Enabled {
+        return fmt.Errorf("at least one VictoriaMetrics endpoint is required (or enable discovery)")
+    }
+    if len(cfg.Database.VictoriaLogs.Endpoints) == 0 && !cfg.Database.VictoriaLogs.Discovery.Enabled {
+        return fmt.Errorf("at least one VictoriaLogs endpoint is required (or enable discovery)")
+    }
 	if len(cfg.Cache.Nodes) == 0 {
 		return fmt.Errorf("at least one Valkey cluster cache node is required")
 	}

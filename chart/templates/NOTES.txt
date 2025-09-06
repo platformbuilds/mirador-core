@@ -1,0 +1,28 @@
+MIRADOR-CORE has been deployed.
+
+1. Service
+  Name: {{ include "mirador-core.fullname" . }}
+  Namespace: {{ .Release.Namespace }}
+  Type: {{ .Values.service.type }}
+  Port: {{ .Values.service.ports.http.port }}
+
+2. Health
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "mirador-core.fullname" . }} -f
+
+3. Access
+  - Health:       /health
+  - Readiness:    /ready
+  - Metrics:      /metrics
+  - OpenAPI:      /api/openapi.yaml
+  - Swagger UI:   /docs
+
+{{- if .Values.ingress.enabled }}
+Ingress enabled. Try:
+  https://{{ (index .Values.ingress.hosts 0).host }}
+{{- else }}
+If using port-forward:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "mirador-core.fullname" . }} 8080:{{ .Values.service.ports.http.port }}
+  then open http://localhost:8080/health
+{{- end }}
+
