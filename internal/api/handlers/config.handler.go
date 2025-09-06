@@ -25,11 +25,12 @@ func NewConfigHandler(cache cache.ValkeyCluster, logger logger.Logger) *ConfigHa
 
 // GET /api/v1/config/user-settings - Get user-driven settings
 func (h *ConfigHandler) GetUserSettings(c *gin.Context) {
-	userID := c.GetString("user_id")
-	tenantID := c.GetString("tenant_id")
+    userID := c.GetString("user_id")
+    tenantID := c.GetString("tenant_id")
 
-	// Get user session with settings
-	session, err := h.cache.GetSession(c.Request.Context(), c.GetHeader("Authorization"))
+    // Get user session with settings (use session_id from auth middleware)
+    sessionID := c.GetString("session_id")
+    session, err := h.cache.GetSession(c.Request.Context(), sessionID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
@@ -82,9 +83,9 @@ func (h *ConfigHandler) UpdateUserSettings(c *gin.Context) {
 		return
 	}
 
-	// Get current session
-	sessionToken := c.GetHeader("Authorization")
-	session, err := h.cache.GetSession(c.Request.Context(), sessionToken)
+    // Get current session
+    sessionID := c.GetString("session_id")
+    session, err := h.cache.GetSession(c.Request.Context(), sessionID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",

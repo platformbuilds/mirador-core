@@ -1,0 +1,233 @@
+# Default values for mirador-core.
+
+replicaCount: 3
+
+image:
+  repository: platformbuilds/mirador-core
+  tag: v2.1.3
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+rbac:
+  create: true
+  clusterWide: true
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  fsGroup: 65534
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  ports:
+    http:
+      port: 8080
+      targetPort: http-api
+    grpc:
+      port: 9090
+      targetPort: grpc
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: mirador-core.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+nodeSelector: {}
+affinity: {}
+tolerations: []
+
+env:
+  - name: CONFIG_PATH
+    value: /etc/mirador/config.yaml
+  - name: ENVIRONMENT
+    value: production
+  # Add any extra env vars here
+  extra: []
+
+envFrom: [] # e.g., [{ secretRef: { name: my-secrets } }]
+
+# Optional: create an application Secret with common credentials that MIRADOR-CORE
+# expects as environment variables. If you already manage secrets, keep create=false
+# and reference them via `envFrom` above.
+secrets:
+  create: false
+  name: "" # defaults to <release>-mirador-env when create=true
+  data:
+    # Keys consumed by MIRADOR-CORE (see internal/config/secrets.go):
+    # JWT_SECRET, LDAP_PASSWORD, SMTP_PASSWORD, REDIS_PASSWORD, VM_PASSWORD
+    JWT_SECRET: ""
+    LDAP_PASSWORD: ""
+    SMTP_PASSWORD: ""
+    REDIS_PASSWORD: ""
+    VM_PASSWORD: ""
+
+config:
+  enabled: true
+  # If you already manage a ConfigMap with the configuration, set the name here
+  existingConfigMap: ""
+
+# Native YAML for /etc/mirador/config.yaml.
+mirador:
+  environment: production
+  log_level: info
+  port: 8080
+
+  database:
+    victoria_metrics:
+      endpoints:
+        - "http://vm-select-0.vm-select:8481"
+        - "http://vm-select-1.vm-select:8481"
+      timeout: 30000
+    victoria_logs:
+      endpoints:
+        - "http://vl-select-0.vl-select:9428"
+        - "http://vl-select-1.vl-select:9428"
+      timeout: 30000
+    victoria_traces:
+      endpoints:
+        - "http://vt-select-0.vt-select:10428"
+        - "http://vt-select-1.vt-select:10428"
+      timeout: 30000
+
+  grpc:
+    predict_engine:
+      endpoint: "predict-engine.mirador:9091"
+      models: ["isolation_forest", "lstm_trend", "anomaly_detector"]
+      timeout: 30000
+    rca_engine:
+      endpoint: "rca-engine.mirador:9092"
+      correlation_threshold: 0.85
+      timeout: 30000
+    alert_engine:
+      endpoint: "alert-engine.mirador:9093"
+      rules_path: "/etc/mirador/alert-rules.yaml"
+      timeout: 30000
+
+  auth:
+    enabled: true
+    ldap:
+      url: "ldap://ldap.company.com"
+      base_dn: "dc=company,dc=com"
+    rbac:
+      enabled: true
+      admin_role: "mirador-admin"
+
+  cache:
+    # Cache nodes for Valkey/Redis. Leave empty when using the embedded Bitnami
+    # Valkey subchart (valkey.enabled=true); the chart will auto-wire the
+    # service ("<release>-valkey:6379") into the rendered config.
+    # Otherwise, specify your external Valkey/Redis endpoints here.
+    nodes: []
+    ttl: 300
+      
+alertRules:
+  enabled: true
+  # Set to use an existing ConfigMap with alert-rules.yaml key
+  existingConfigMap: ""
+  content: |
+    # example alert rules file
+  groups: []
+
+# Kubernetes Service Discovery for VM/VL/VT
+discovery:
+  vm:
+    enabled: false
+    service: "vm-select.vm-select.svc.cluster.local"
+    port: 8481
+    scheme: http
+    refreshSeconds: 30
+    useSRV: false
+  vl:
+    enabled: false
+    service: "vl-select.vl-select.svc.cluster.local"
+    port: 9428
+    scheme: http
+    refreshSeconds: 30
+    useSRV: false
+  vt:
+    enabled: false
+    service: "vt-select.vt-select.svc.cluster.local"
+    port: 10428
+    scheme: http
+    refreshSeconds: 30
+    useSRV: false
+
+# Bitnami Valkey subchart configuration
+valkey:
+  enabled: false
+  version: "^2.0.0"
+  # Optional: override computed service names if your cluster renames resources
+  # serviceName: my-valkey
+  # headlessServiceName: my-valkey-headless
+  architecture: standalone # set to 'replication' for production
+  auth:
+    enabled: false
+    # existingSecret: my-valkey-secret
+    # password: ""
+    # secretName: "" # defaults to <release>-valkey
+    # passwordKey: "valkey-password" # default key in the subchart secret
+  replica:
+    replicaCount: 1
+    persistence:
+      enabled: true
+  primary:
+    persistence:
+      enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+probes:
+  liveness:
+    path: /health
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    path: /ready
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 3
+  startup:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 2
+    timeoutSeconds: 5
+    failureThreshold: 30

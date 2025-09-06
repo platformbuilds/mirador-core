@@ -1,0 +1,50 @@
+{{- if and .Values.config.enabled (not .Values.config.existingConfigMap) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mirador-core.fullname" . }}
+  labels:
+    {{- include "mirador-core.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    {{- /* Start with a deep copy of .Values.mirador */ -}}
+    {{- $cfg := (fromYaml (toYaml .Values.mirador)) -}}
+    {{- /* Inject discovery blocks when enabled */ -}}
+    {{- if .Values.discovery.vm.enabled -}}
+      {{- $_ := set $cfg "database" (merge (dict) ($cfg.database | default (dict))) -}}
+      {{- $vm := dict "enabled" true "service" .Values.discovery.vm.service "port" .Values.discovery.vm.port "scheme" .Values.discovery.vm.scheme "refresh_seconds" .Values.discovery.vm.refreshSeconds "use_srv" .Values.discovery.vm.useSRV -}}
+      {{- $_ := set $cfg.database "victoria_metrics" (merge (dict) ($cfg.database.victoria_metrics | default (dict))) -}}
+      {{- $_ := set $cfg.database.victoria_metrics "discovery" $vm -}}
+    {{- end -}}
+    {{- if .Values.discovery.vl.enabled -}}
+      {{- $_ := set $cfg "database" (merge (dict) ($cfg.database | default (dict))) -}}
+      {{- $vl := dict "enabled" true "service" .Values.discovery.vl.service "port" .Values.discovery.vl.port "scheme" .Values.discovery.vl.scheme "refresh_seconds" .Values.discovery.vl.refreshSeconds "use_srv" .Values.discovery.vl.useSRV -}}
+      {{- $_ := set $cfg.database "victoria_logs" (merge (dict) ($cfg.database.victoria_logs | default (dict))) -}}
+      {{- $_ := set $cfg.database.victoria_logs "discovery" $vl -}}
+    {{- end -}}
+    {{- if .Values.discovery.vt.enabled -}}
+      {{- $_ := set $cfg "database" (merge (dict) ($cfg.database | default (dict))) -}}
+      {{- $vt := dict "enabled" true "service" .Values.discovery.vt.service "port" .Values.discovery.vt.port "scheme" .Values.discovery.vt.scheme "refresh_seconds" .Values.discovery.vt.refreshSeconds "use_srv" .Values.discovery.vt.useSRV -}}
+      {{- $_ := set $cfg.database "victoria_traces" (merge (dict) ($cfg.database.victoria_traces | default (dict))) -}}
+      {{- $_ := set $cfg.database.victoria_traces "discovery" $vt -}}
+    {{- end -}}
+    {{- /* Override cache.nodes when valkey subchart is enabled */ -}}
+    {{- if .Values.valkey.enabled -}}
+      {{- $_ := set $cfg "cache" (merge (dict) ($cfg.cache | default (dict))) -}}
+      {{- $_ := set $cfg.cache "nodes" (list (printf "%s:6379" (include "mirador-core.valkeyServiceHost" .))) -}}
+    {{- end -}}
+{{ toYaml $cfg | nindent 4 }}
+{{- end }}
+
+{{- if and .Values.alertRules.enabled (not .Values.alertRules.existingConfigMap) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mirador-core.fullname" . }}-alert-rules
+  labels:
+    {{- include "mirador-core.labels" . | nindent 4 }}
+data:
+  alert-rules.yaml: |
+{{- tpl .Values.alertRules.content . | nindent 4 }}
+{{- end }}

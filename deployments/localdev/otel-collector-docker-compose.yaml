@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config", "/etc/otelcol/config.yaml"]
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "/otelcol-contrib", "--version"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    environment:
+      # Helpful for Linux; on macOS/Windows host.docker.internal works by default.
+      - GODEBUG=x509ignoreCN=0
+    networks:
+      - mirador-localdev
+
+networks:
+  mirador-localdev:
+    name: mirador-localdev
+    driver: bridge
+

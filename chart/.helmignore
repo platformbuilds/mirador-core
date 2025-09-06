@@ -1,0 +1,13 @@
+# Patterns to ignore when building packages.
+.DS_Store
+# Git
+.git/
+.gitignore
+# Editor
+.idea/
+.vscode/
+*.swp
+# Node
+node_modules/
+# Mac
+__MACOSX/

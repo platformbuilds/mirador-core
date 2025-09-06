@@ -18,25 +18,32 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"sync"
 )
 
 type VictoriaLogsService struct {
-	endpoints []string
-	timeout   time.Duration
-	client    *http.Client
-	logger    logger.Logger
-	current   int
+    endpoints []string
+    timeout   time.Duration
+    client    *http.Client
+    logger    logger.Logger
+    current   int
+    mu        sync.Mutex
+
+    username string
+    password string
 }
 
 func NewVictoriaLogsService(cfg config.VictoriaLogsConfig, logger logger.Logger) *VictoriaLogsService {
-	return &VictoriaLogsService{
-		endpoints: cfg.Endpoints,
-		timeout:   time.Duration(cfg.Timeout) * time.Millisecond,
-		client: &http.Client{
-			Timeout: time.Duration(cfg.Timeout) * time.Millisecond,
-		},
-		logger: logger,
-	}
+    return &VictoriaLogsService{
+        endpoints: cfg.Endpoints,
+        timeout:   time.Duration(cfg.Timeout) * time.Millisecond,
+        client: &http.Client{
+            Timeout: time.Duration(cfg.Timeout) * time.Millisecond,
+        },
+        logger: logger,
+        username: cfg.Username,
+        password: cfg.Password,
+    }
 }
 
 // -------------------------------------------------------------------
@@ -111,12 +118,13 @@ func (s *VictoriaLogsService) ExecuteQueryStream(
 	}
 	u.RawQuery = q.Encode()
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("build request: %w", err)
-	}
-	httpReq.Header.Set("Accept", "application/json")
-	httpReq.Header.Set("Accept-Encoding", "gzip")
+    httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+    if err != nil {
+        return nil, fmt.Errorf("build request: %w", err)
+    }
+    httpReq.Header.Set("Accept", "application/json")
+    httpReq.Header.Set("Accept-Encoding", "gzip")
+    if s.username != "" { httpReq.SetBasicAuth(s.username, s.password) }
 
 	if t := strings.TrimSpace(req.TenantID); t != "" {
 		httpReq.Header.Set("X-Scope-OrgID", t)
@@ -263,11 +271,12 @@ func (s *VictoriaLogsService) StoreJSONEvent(ctx context.Context, event map[stri
 	endpoint := s.selectEndpoint()
 	url := fmt.Sprintf("%s/insert/jsonline", endpoint)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonData))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
+    req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonData))
+    if err != nil {
+        return err
+    }
+    req.Header.Set("Content-Type", "application/json")
+    if s.username != "" { req.SetBasicAuth(s.username, s.password) }
 	if tenantID != "" {
 		req.Header.Set("AccountID", tenantID)
 	}
@@ -294,11 +303,12 @@ func (s *VictoriaLogsService) QueryPredictionEvents(ctx context.Context, query, 
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonData))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
+    req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonData))
+    if err != nil {
+        return nil, err
+    }
+    req.Header.Set("Content-Type", "application/json")
+    if s.username != "" { req.SetBasicAuth(s.username, s.password) }
 	if tenantID != "" {
 		req.Header.Set("AccountID", tenantID)
 	}
@@ -331,10 +341,23 @@ func (s *VictoriaLogsService) QueryPredictionEvents(ctx context.Context, query, 
 }
 
 func (s *VictoriaLogsService) selectEndpoint() string {
-	if len(s.endpoints) == 0 {
-		return ""
-	}
-	return s.endpoints[time.Now().Unix()%int64(len(s.endpoints))]
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    if len(s.endpoints) == 0 {
+        return ""
+    }
+    ep := s.endpoints[s.current%len(s.endpoints)]
+    s.current++
+    return ep
+}
+
+// ReplaceEndpoints swaps endpoints list (used by discovery)
+func (s *VictoriaLogsService) ReplaceEndpoints(eps []string) {
+    s.mu.Lock()
+    s.endpoints = append([]string(nil), eps...)
+    s.current = 0
+    s.mu.Unlock()
+    s.logger.Info("VictoriaLogs endpoints updated", "count", len(eps))
 }
 
 func (s *VictoriaLogsService) HealthCheck(ctx context.Context) error {
@@ -359,11 +382,12 @@ func (s *VictoriaLogsService) GetStreams(ctx context.Context, tenantID string, l
 	endpoint := s.selectEndpoint()
 	u := fmt.Sprintf("%s/select/logsql/labels", endpoint)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Accept", "application/json")
+    req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+    if err != nil {
+        return nil, err
+    }
+    req.Header.Set("Accept", "application/json")
+    if s.username != "" { req.SetBasicAuth(s.username, s.password) }
 	if tenantID != "" {
 		req.Header.Set("X-Scope-OrgID", tenantID)
 		req.Header.Set("AccountID", tenantID)
