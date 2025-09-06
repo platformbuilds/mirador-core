@@ -163,11 +163,36 @@ docker-build-native: ## Build native-arch image via buildx and load to local Doc
 
 dockerx-build: ## Build multi-arch image with buildx (no push)
 	@echo "🐳 Building multi-arch image $(IMAGE):$(VERSION) for $(DOCKER_PLATFORMS) ..."
-	docker buildx build --platform $(DOCKER_PLATFORMS) \
-	  --build-arg VERSION=$(VERSION) \
-	  --build-arg BUILD_TIME=$(BUILD_TIME) \
-	  --build-arg COMMIT_HASH=$(COMMIT_HASH) \
-	  -t $(IMAGE):$(VERSION) -t $(IMAGE):latest --load .
+	@if echo "$(DOCKER_PLATFORMS)" | grep -q ","; then \
+	  mkdir -p build; \
+	  echo "➡️  Detected multiple platforms; exporting OCI archive (Docker --load cannot import manifest lists)"; \
+	  docker buildx build --platform $(DOCKER_PLATFORMS) \
+	    --build-arg VERSION=$(VERSION) \
+	    --build-arg BUILD_TIME=$(BUILD_TIME) \
+	    --build-arg COMMIT_HASH=$(COMMIT_HASH) \
+	    -t $(IMAGE):$(VERSION) -t $(IMAGE):latest \
+	    --output=type=oci,dest=build/$(IMAGE_NAME)-$(VERSION).oci .; \
+	  echo "✅ Wrote multi-arch OCI archive: build/$(IMAGE_NAME)-$(VERSION).oci"; \
+	  echo "ℹ️  To publish a multi-arch manifest, run: make dockerx-push VERSION=$(VERSION)"; \
+	else \
+	  docker buildx build --platform $(DOCKER_PLATFORMS) \
+	    --build-arg VERSION=$(VERSION) \
+	    --build-arg BUILD_TIME=$(BUILD_TIME) \
+	    --build-arg COMMIT_HASH=$(COMMIT_HASH) \
+	    -t $(IMAGE):$(VERSION) -t $(IMAGE):latest --load .; \
+	fi
+
+.PHONY: dockerx-build-local-multi
+dockerx-build-local-multi: ## Build and load per-arch images locally (tags: -amd64, -arm64)
+	@echo "🐳 Building local per-arch images (amd64, arm64) ..."
+	docker buildx build --platform linux/amd64 \
+	  --build-arg VERSION=$(VERSION) --build-arg BUILD_TIME=$(BUILD_TIME) --build-arg COMMIT_HASH=$(COMMIT_HASH) \
+	  -t $(IMAGE):$(VERSION)-amd64 --load .
+	docker buildx build --platform linux/arm64 \
+	  --build-arg VERSION=$(VERSION) --build-arg BUILD_TIME=$(BUILD_TIME) --build-arg COMMIT_HASH=$(COMMIT_HASH) \
+	  -t $(IMAGE):$(VERSION)-arm64 --load .
+	@echo "✅ Built: $(IMAGE):$(VERSION)-amd64 and $(IMAGE):$(VERSION)-arm64"
+	@echo "ℹ️  To publish a combined manifest: docker buildx imagetools create -t $(IMAGE):$(VERSION) $(IMAGE):$(VERSION)-amd64 $(IMAGE):$(VERSION)-arm64"
 
 dockerx-push: ## Build and push multi-arch image with buildx
 	@echo "🐳 Building & pushing multi-arch image $(IMAGE):$(VERSION) for $(DOCKER_PLATFORMS) ..."

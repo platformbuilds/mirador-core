@@ -322,13 +322,18 @@ MIRADOR-CORE targets Go 1.23 and builds as a statically linked binary (CGO disab
 
 - Docker images:
   - Single-arch build (host arch): `make docker-build`
-  - Multi-arch build (no push): `make dockerx-build`
-  - Multi-arch build & push: `make dockerx-push`
+  - Native-arch build via buildx (loads into Docker): `make docker-build-native`
+  - Multi-arch build (no push): `make dockerx-build` (exports `build/mirador-core-<version>.oci` archive)
+  - Multi-arch build & push (amd64+arm64): `make dockerx-push`
+  - Local per-arch builds (loads into Docker): `make dockerx-build-local-multi` → tags `<repo>:<version>-amd64` and `...-arm64`
   - Full release (tests + multi-arch push): `make release`
 
 Notes
 - The Makefile injects versioning via `-ldflags` (version, commit, build time).
 - Regenerate protobuf stubs when proto files change: `make proto` (requires `protoc`, `protoc-gen-go`, `protoc-gen-go-grpc`).
+
+Rancher Desktop / Docker Desktop note
+- The Docker `--load` exporter cannot load multi-arch manifest lists into the local daemon. Use `make dockerx-build-local-multi` to load per-arch images, or `make dockerx-push` to publish a real multi-arch tag, or use `make dockerx-build` to export an OCI archive without pushing.
 
 ### Makefile Targets
 - `make setup`: generate protobufs and download modules (first-time setup).

@@ -52,13 +52,14 @@ Auth toggle (optional): You can disable auth for local testing by setting the co
 
 ```bash
 cd public/mirador-core/deployments/localdev
-docker compose -f mirador-core-docker-compose.yaml up -d
+# Build locally for native arch and start
+docker compose -f mirador-core-docker-compose.yaml up -d --build
 ```
 
 - MIRADOR-CORE: http://localhost:8080
 - Health: http://localhost:8080/health
 
-Tip: The `mirador-core` service is configured to `build` locally, which produces a native binary for your host (arm64 on Apple Silicon, amd64 on Intel/AMD). If you prefer to pull a published image instead, comment out the `build:` block and set `image: platformbuilds/mirador-core:<tag>`.
+Tip: The `mirador-core` service is configured to `build` locally, which produces a native binary for your host (arm64 on Apple Silicon, amd64 on Intel/AMD). If you prefer to pull a published image instead, comment out the `build:` block and set `image: platformbuilds/mirador-core:<multi-arch-tag>`. On Linux, if `host.docker.internal` doesn’t resolve, uncomment `extra_hosts: ["host.docker.internal:host-gateway"]` in the compose file.
 
 ## 4) Generate Synthetic OTEL Data (telemetrygen)
 
@@ -126,7 +127,14 @@ docker compose -f victoria-docker-compose.yaml down
 ```
 
 ## Notes & Tips
-- Linux networking: if `host.docker.internal` is not resolvable, prefer a single shared user-defined network for all compose stacks and address services by name (e.g., `victoriametrics:8428`).
+- Linux networking: if `host.docker.internal` is not resolvable, prefer a single shared user-defined network for all compose stacks and address services by name (e.g., `victoriametrics:8428`), or use `extra_hosts: ["host.docker.internal:host-gateway"]`.
 - Persisted data: Victoria state is stored in Docker named volumes (`vmdata`, `vldata`, `vtdata`). Remove them to reset:
   - `docker volume rm vmdata vldata vtdata` (only after all stacks are stopped).
 - MIRADOR-CORE config: local compose sets Victoria endpoints via env vars; adjust them if you move services to another network.
+
+### Multi-Arch Build Notes (Docker Desktop / Rancher Desktop)
+- Loading a single multi-arch image into the local Docker daemon is not supported (`--load` cannot import manifest lists).
+- To test locally:
+  - Build per-arch images and load: `make dockerx-build-local-multi VERSION=v2.1.3` → tags `...:v2.1.3-amd64` and `...:v2.1.3-arm64`.
+  - Or publish a real multi-arch tag to a registry: `make dockerx-push VERSION=v2.1.3` and use that tag in compose/Helm.
+  - Or export an OCI archive without pushing: `make dockerx-build VERSION=v2.1.3` → `build/mirador-core-v2.1.3.oci`.
