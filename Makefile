@@ -160,8 +160,7 @@ docker-build-native: ## Build native-arch image via buildx and load to local Doc
 	  --build-arg BUILD_TIME=$(BUILD_TIME) \
 	  --build-arg COMMIT_HASH=$(COMMIT_HASH) \
 	  -t $(IMAGE):$(VERSION) -t $(IMAGE):latest --load .
-
-.
+	
 .PHONY: buildx-ensure
 # Ensure a containerized buildx builder is active (required for OCI exporter and multi-arch)
 buildx-ensure:
