@@ -72,8 +72,9 @@ env:
     value: /etc/mirador/config.yaml
   - name: ENVIRONMENT
     value: production
-  # Add any extra env vars here
-  extra: []
+  # Add any extra env vars by appending list items below, e.g.:
+  # - name: FOO
+  #   value: bar
 
 envFrom: [] # e.g., [{ secretRef: { name: my-secrets } }]
 
