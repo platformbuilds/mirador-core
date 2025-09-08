@@ -1,0 +1,35 @@
+image: golang:1.23.12
+
+stages:
+  - build
+  - test
+  - vuln
+
+variables:
+  GOPROXY: "https://proxy.golang.org,direct"
+  GONOSUMDB: "*"
+  GOSUMDB: "sum.golang.org"
+
+before_script:
+  - go version
+  - go env
+
+build:
+  stage: build
+  script:
+    - go mod download
+    - go build ./...
+
+test:
+  stage: test
+  script:
+    - go test ./...
+
+vuln:
+  stage: vuln
+  script:
+    - go install golang.org/x/vuln/cmd/govulncheck@latest
+    - export PATH="$(go env GOPATH)/bin:$PATH"
+    - govulncheck ./...
+  allow_failure: true
+

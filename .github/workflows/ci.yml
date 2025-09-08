@@ -19,14 +19,10 @@ jobs:
           go-version: '1.23.12'
 
       - name: Download modules
-        working-directory: public/mirador-core
         run: go mod download
 
       - name: Build
-        working-directory: public/mirador-core
         run: go build ./...
 
       - name: Test
-        working-directory: public/mirador-core
         run: go test ./...
-
