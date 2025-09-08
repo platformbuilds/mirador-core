@@ -269,7 +269,21 @@ definitions:
 
 Placeholders indicate no definition has been provided yet and reference the schema APIs to create one.
 
+## Vulnerability Scanning
+
+- Run a local vulnerability scan using Go's official tool:
+  - `make vuln` (installs `govulncheck` if missing, then scans `./...`)
+- CI automatically runs `govulncheck` on pushes and PRs via `.github/workflows/govulncheck.yml`.
+- Notes:
+  - Requires network access to fetch vulnerability database.
+  - Scans source and modules to flag known CVEs and advisories.
+
 ## Helm Chart
+
+## CI Toolchain Version
+
+- CI uses Go 1.23.12 for build and tests (see `.github/workflows/ci.yml`).
+- Local development is recommended with Go 1.23.12 or newer 1.23.x.
 
 See `chart/README.md` for deployment via Helm, embedded Valkey, and the optional Vitess subchart (no operator). It also documents the backup CronJobs and how to pass vttablet backup flags.
 ```

@@ -121,6 +121,7 @@ tools:
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install github.com/swaggo/swag/cmd/swag@latest
+	go install golang.org/x/vuln/cmd/govulncheck@latest
 
 # Check if all tools are available
 check-tools:
@@ -134,6 +135,12 @@ check-tools:
 lint: proto
 	@echo "🔍 Running linters..."
 	golangci-lint run ./...
+
+.PHONY: vuln
+vuln:
+	@echo "🛡️  Running govulncheck vulnerability scan..."
+	@command -v govulncheck >/dev/null 2>&1 || { echo "Installing govulncheck..."; go install golang.org/x/vuln/cmd/govulncheck@latest; }
+	govulncheck ./...
 
 # Format code
 fmt:
