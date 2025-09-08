@@ -2,5 +2,8 @@ dependencies:
 - name: valkey
   repository: https://charts.bitnami.com/bitnami
   version: 2.4.7
-digest: sha256:14758e3962a046644be13ec35927690523cbde6188289b1dea7cedece5509b61
-generated: "2025-09-08T10:47:51.15005+05:30"
+- name: vitess-minimal
+  repository: file://charts/vitess-minimal
+  version: 0.1.0
+digest: sha256:d59a6593725103605c13c4aefd789fd3cd9447cf66816d86ca8a6fea057444cf
+generated: "2025-09-08T23:47:12.872778+05:30"
