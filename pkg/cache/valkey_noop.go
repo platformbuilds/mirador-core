@@ -91,3 +91,7 @@ func (n *noopValkeyCache) GetCachedQueryResult(ctx context.Context, queryHash st
     return n.Get(ctx, "query_cache:"+queryHash)
 }
 
+// HealthCheck returns an error to indicate no external Valkey connectivity.
+func (n *noopValkeyCache) HealthCheck(ctx context.Context) error {
+    return fmt.Errorf("valkey noop cache in use (external cache not connected)")
+}
