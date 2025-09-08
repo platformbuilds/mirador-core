@@ -35,10 +35,11 @@ func Load() (*Config, error) {
 		if err := tryRead(v); err != nil {
 			return nil, err
 		}
-	} else {
-		// 2) ./configs/config.<env>.yaml  or 3) ./configs/config.yaml
-		env := firstNonEmpty(os.Getenv("MIRADOR_ENV"), os.Getenv("ENV"), "development")
-		envPath := "./configs/config." + strings.ToLower(env) + ".yaml"
+    } else {
+        // 2) ./configs/config.<env>.yaml  or 3) ./configs/config.yaml
+        // Honor common env selectors in this order: MIRADOR_ENV, ENV, ENVIRONMENT
+        env := firstNonEmpty(os.Getenv("MIRADOR_ENV"), os.Getenv("ENV"), os.Getenv("ENVIRONMENT"), "development")
+        envPath := "./configs/config." + strings.ToLower(env) + ".yaml"
 
 		if fileExists(envPath) {
 			v.SetConfigFile(envPath)
@@ -239,9 +240,12 @@ func overrideWithEnvVars(v *viper.Viper) {
 		v.Set("grpc.alert_engine.endpoint", a)
 	}
 
-	if nodes := os.Getenv("VALLEY_CACHE_NODES"); nodes != "" {
-		v.Set("cache.nodes", splitCSV(nodes))
-	}
+    // Prefer VALKEY_CACHE_NODES; keep VALLEY_CACHE_NODES for backward compatibility
+    if nodes := os.Getenv("VALKEY_CACHE_NODES"); nodes != "" {
+        v.Set("cache.nodes", splitCSV(nodes))
+    } else if nodes := os.Getenv("VALLEY_CACHE_NODES"); nodes != "" {
+        v.Set("cache.nodes", splitCSV(nodes))
+    }
 	if ttl := os.Getenv("CACHE_TTL"); ttl != "" {
 		if i, err := strconv.Atoi(ttl); err == nil {
 			v.Set("cache.ttl", i)

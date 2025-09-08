@@ -77,6 +77,7 @@ services:
       - "9090:9090"
     environment:
       - ENVIRONMENT=development
+      - CONFIG_PATH=/configs/config.development.yaml
       - LOG_LEVEL=debug
       - VM_ENDPOINTS=http://victoriametrics:8428
       - VL_ENDPOINTS=http://victorialogs:9428
@@ -84,7 +85,7 @@ services:
       - PREDICT_ENGINE_GRPC=mock-predict-engine:9091
       - RCA_ENGINE_GRPC=mock-rca-engine:9092
       - ALERT_ENGINE_GRPC=mock-alert-engine:9093
-      - VALLEY_CACHE_NODES=redis-cluster:6379
+      - VALKEY_CACHE_NODES=redis-cluster:6379
     depends_on:
       - redis-cluster
       - victoriametrics

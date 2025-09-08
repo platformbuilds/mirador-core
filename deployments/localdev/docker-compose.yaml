@@ -83,6 +83,7 @@ services:
       - PORT=8080
       - LOG_LEVEL=debug
       - ENVIRONMENT=development
+      - CONFIG_PATH=/configs/config.development.yaml
       - AUTH_ENABLED=false
 
       # Point to local Victoria services (same compose network)
@@ -91,7 +92,7 @@ services:
       - VT_ENDPOINTS=http://victoriatraces:10428
 
       # Valkey (single-node)
-      - VALLEY_CACHE_NODES=valkey:6379
+      - VALKEY_CACHE_NODES=valkey:6379
       - CACHE_TTL=300
 
       # Auth + RBAC (dev)

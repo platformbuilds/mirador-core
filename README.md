@@ -153,7 +153,7 @@ export RCA_ENGINE_GRPC=rca-engine:9092
 export ALERT_ENGINE_GRPC=alert-engine:9093
 
 # Valkey Cluster caching
-export VALLEY_CACHE_NODES=redis-1:6379,redis-2:6379,redis-3:6379
+export VALKEY_CACHE_NODES=redis-1:6379,redis-2:6379,redis-3:6379
 export CACHE_TTL=300
 
 # Authentication

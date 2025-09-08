@@ -42,7 +42,7 @@ valkey:
     enabled: false
 ```
 
-The application’s `cache.nodes` will render to `"<release>-valkey-headless:6379"` when `valkey.enabled=true` (you can override service names using `valkey.serviceName`/`valkey.headlessServiceName`).
+The application’s `cache.nodes` will render to `"<release>-valkey-headless:6379"` when `valkey.enabled=true` (you can override service names using `valkey.serviceName`/`valkey.headlessServiceName`). In addition, the Deployment exports `VALKEY_CACHE_NODES=<release>-valkey-headless:6379` to force single-node mode in the app when using the embedded Valkey.
 
 ### Valkey Image Overrides
 
@@ -123,9 +123,13 @@ Refer to upstream chart notes: https://github.com/bitnami/charts/tree/main/bitna
 
 ### Wait for Valkey (Init Container)
 
-To prevent mirador-core from starting before the Valkey subchart is ready, an optional init container waits for `PONG` from Valkey using `redis-cli`.
+By default this chart does not add an extra image just to wait for Valkey.
+`waitFor.valkey.enabled` is `false` to avoid additional dependencies because
+mirador-core already tolerates late Valkey by using an in-memory cache and
+auto-reconnecting when Valkey becomes available.
 
-Values:
+If you still want a hard wait, enable the optional init container that pings
+Valkey using `redis-cli` from the Bitnami Redis image:
 
 ```yaml
 waitFor:
@@ -139,7 +143,7 @@ waitFor:
     intervalSeconds: 5
 ```
 
-Disable or tweak timeouts as needed. This is only added when `valkey.enabled=true`.
+This init container is only added when `valkey.enabled=true`.
 
 ### Production Hints
 - Use `valkey.architecture: replication` with persistence enabled:

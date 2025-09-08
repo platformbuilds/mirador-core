@@ -83,6 +83,11 @@ spec:
             - name: {{ .name }}
               value: {{ .value | quote }}
             {{- end }}
+            {{- /* Force single-node mode when Valkey subchart is enabled by explicitly setting VALKEY_CACHE_NODES */}}
+            {{- if .Values.valkey.enabled }}
+            - name: VALKEY_CACHE_NODES
+              value: "{{ include "mirador-core.valkeyHeadlessHost" . }}:6379"
+            {{- end }}
             {{- /* Optionally source REDIS_PASSWORD directly from valkey subchart secret */ -}}
             {{- if and .Values.valkey.enabled .Values.valkey.auth.enabled (not .Values.secrets.create) }}
             - name: REDIS_PASSWORD
