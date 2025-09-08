@@ -164,7 +164,7 @@ mirador:
   cache:
     # Cache nodes for Valkey/Redis. Leave empty when using the embedded Bitnami
     # Valkey subchart (valkey.enabled=true); the chart will auto-wire the
-    # service ("<release>-valkey:6379") into the rendered config.
+    # headless service ("<release>-valkey-headless:6379") into the rendered config.
     # Otherwise, specify your external Valkey/Redis endpoints here.
     nodes: []
     ttl: 300

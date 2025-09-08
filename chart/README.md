@@ -42,7 +42,7 @@ valkey:
     enabled: false
 ```
 
-The application’s `cache.nodes` will render to `"<release>-valkey-primary:6379"` when `valkey.enabled=true` (you can override service names using `valkey.serviceName`/`valkey.headlessServiceName`).
+The application’s `cache.nodes` will render to `"<release>-valkey-headless:6379"` when `valkey.enabled=true` (you can override service names using `valkey.serviceName`/`valkey.headlessServiceName`).
 
 ### Valkey Image Overrides
 

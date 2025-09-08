@@ -36,9 +36,9 @@ spec:
             - sh
             - -c
             - >-
-              echo "Waiting for Valkey at {{ include "mirador-core.valkeyServiceHost" . }}:6379";
+              echo "Waiting for Valkey at {{ include "mirador-core.valkeyHeadlessHost" . }}:6379";
               START=$(date +%s);
-              until redis-cli -h {{ include "mirador-core.valkeyServiceHost" . }} -p 6379 PING 2>/dev/null | grep -q PONG; do
+              until redis-cli -h {{ include "mirador-core.valkeyHeadlessHost" . }} -p 6379 PING 2>/dev/null | grep -q PONG; do
                 NOW=$(date +%s);
                 ELAPSED=$((NOW-START));
                 if [ $ELAPSED -ge {{ .Values.waitFor.valkey.timeoutSeconds }} ]; then

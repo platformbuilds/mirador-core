@@ -31,7 +31,8 @@ data:
     {{- /* Override cache.nodes when valkey subchart is enabled */ -}}
     {{- if .Values.valkey.enabled -}}
       {{- $_ := set $cfg "cache" (merge (dict) ($cfg.cache | default (dict))) -}}
-      {{- $_ := set $cfg.cache "nodes" (list (printf "%s:6379" (include "mirador-core.valkeyServiceHost" .))) -}}
+      {{- /* Use headless service for stable addressing in replication */ -}}
+      {{- $_ := set $cfg.cache "nodes" (list (printf "%s:6379" (include "mirador-core.valkeyHeadlessHost" .))) -}}
     {{- end -}}
 {{ toYaml $cfg | nindent 4 }}
 {{- end }}
