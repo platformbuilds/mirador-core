@@ -76,6 +76,9 @@ env:
   # - name: FOO
   #   value: bar
 
+# Optional extra environment variables (rendered after `env` items)
+extraEnv: []
+
 envFrom: [] # e.g., [{ secretRef: { name: my-secrets } }]
 
 # Optional: create an application Secret with common credentials that MIRADOR-CORE
