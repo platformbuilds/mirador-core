@@ -81,9 +81,9 @@ func (s *Server) setupMiddleware() {
         s.logger.Warn("Authentication is DISABLED by configuration; requests will use anonymous/default context")
     }
 
-	// OpenAPI specification endpoints
-	s.router.StaticFile("/api/openapi.yaml", "api/openapi.yaml")
-	s.router.GET("/api/openapi.json", handlers.GetOpenAPISpec)
+    // OpenAPI specification endpoints
+    s.router.StaticFile("/api/openapi.yaml", "api/openapi.yaml")
+    s.router.GET("/api/openapi.json", handlers.GetOpenAPISpec)
 
     // Swagger UI via gin-swagger (serves Swagger UI using external openapi.yaml)
     // Visit /swagger/index.html
@@ -94,19 +94,20 @@ func (s *Server) setupMiddleware() {
 }
 
 func (s *Server) setupRoutes() {
-	// Create health handler instance
-	healthHandler := handlers.NewHealthHandler(s.grpcClients, s.vmServices, s.logger)
+    // Create health handler instance
+    healthHandler := handlers.NewHealthHandlerWithCache(s.grpcClients, s.vmServices, s.cache, s.logger)
 
-	// Public health endpoints - now using handler instance methods
-	s.router.GET("/health", healthHandler.HealthCheck)
-	s.router.GET("/ready", healthHandler.ReadinessCheck)
+    // Public health endpoints - now using handler instance methods
+    s.router.GET("/health", healthHandler.HealthCheck)
+    s.router.GET("/ready", healthHandler.ReadinessCheck)
+    s.router.GET("/microservices/status", healthHandler.MicroservicesStatus)
 
 	// API v1 group (protected by RBAC)
 	v1 := s.router.Group("/api/v1")
 
-	// Back-compat: expose health under /api/v1 as well
-	v1.GET("/health", healthHandler.HealthCheck)
-	v1.GET("/ready", healthHandler.ReadinessCheck)
+    // Back-compat: expose health under /api/v1 as well
+    v1.GET("/health", healthHandler.HealthCheck)
+    v1.GET("/ready", healthHandler.ReadinessCheck)
 
     // MetricsQL endpoints (VictoriaMetrics integration)
     metricsHandler := handlers.NewMetricsQLHandler(s.vmServices.Metrics, s.cache, s.logger)

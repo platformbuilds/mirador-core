@@ -1,10 +1,10 @@
 package cache
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"time"
+    "context"
+    "encoding/json"
+    "fmt"
+    "time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/platformbuilds/mirador-core/internal/models"
@@ -56,6 +56,16 @@ func NewValkeyCluster(nodes []string, defaultTTL time.Duration) (ValkeyCluster, 
 		logger: logger.New("info"),
 		ttl:    defaultTTL,
 	}, nil
+}
+
+// HealthCheck pings the Valkey cluster.
+func (v *valkeyClusterImpl) HealthCheck(ctx context.Context) error {
+    if ctx == nil {
+        c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+        defer cancel()
+        ctx = c
+    }
+    return v.client.Ping(ctx).Err()
 }
 
 /* ---------------------------- generic cache ---------------------------- */

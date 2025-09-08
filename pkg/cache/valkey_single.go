@@ -133,3 +133,12 @@ func (v *valkeySingleImpl) GetCachedQueryResult(ctx context.Context, queryHash s
     return v.Get(ctx, key)
 }
 
+// HealthCheck pings the Valkey single-node instance.
+func (v *valkeySingleImpl) HealthCheck(ctx context.Context) error {
+    if ctx == nil {
+        c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+        defer cancel()
+        ctx = c
+    }
+    return v.client.Ping(ctx).Err()
+}

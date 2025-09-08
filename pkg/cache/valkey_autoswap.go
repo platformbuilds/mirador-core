@@ -136,6 +136,18 @@ func (a *autoSwapCache) GetCachedQueryResult(ctx context.Context, queryHash stri
     return out, retErr
 }
 
+// HealthCheck delegates to the current underlying cache if it implements HealthCheck.
+func (a *autoSwapCache) HealthCheck(ctx context.Context) error {
+    a.mu.RLock()
+    c := a.current
+    a.mu.RUnlock()
+    type cacheHealth interface{ HealthCheck(context.Context) error }
+    if hc, ok := c.(cacheHealth); ok {
+        return hc.HealthCheck(ctx)
+    }
+    return nil
+}
+
 // NewAutoSwapForSingle creates an auto-swapping cache that upgrades from
 // in-memory to a single-node Valkey client when reachable.
 func NewAutoSwapForSingle(addr string, db int, password string, ttl time.Duration, log logger.Logger, fallback ValkeyCluster) ValkeyCluster {
