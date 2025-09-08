@@ -82,7 +82,7 @@ extraEnv: []
 # Init waiters for dependent services
 waitFor:
   valkey:
-    enabled: true
+    enabled: false # default disabled to avoid pulling extra images
     # Image providing redis-cli to probe Valkey readiness
     image:
       repository: bitnami/redis
