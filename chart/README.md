@@ -42,7 +42,73 @@ valkey:
     enabled: false
 ```
 
-The application’s `cache.nodes` will render to `"<release>-valkey:6379"` when `valkey.enabled=true` (you can override service names using `valkey.serviceName`/`valkey.headlessServiceName`).
+The application’s `cache.nodes` will render to `"<release>-valkey-primary:6379"` when `valkey.enabled=true` (you can override service names using `valkey.serviceName`/`valkey.headlessServiceName`).
+
+### Valkey Image Overrides
+
+You can pin or override the Bitnami Valkey image used by the subchart via `values.yaml`:
+
+```yaml
+valkey:
+  enabled: true
+  # Image overrides (optional; subchart defaults are used if omitted)
+  image:
+    registry: docker.io
+    repository: bitnami/valkey
+    tag: "8.0.2"
+    # Recommended: pin a digest to satisfy Bitnami security checks
+    # and for supply-chain integrity
+    digest: "sha256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    pullPolicy: IfNotPresent
+    # pullSecrets:
+    #   - myRegistrySecret
+```
+
+Or via Helm CLI flags:
+
+```bash
+helm upgrade --install mirador-core ./chart \
+  --set valkey.enabled=true \
+  --set valkey.image.registry=docker.io \
+  --set valkey.image.repository=bitnami/valkey \
+  --set valkey.image.tag=8.0.2 \
+  --set valkey.image.pullPolicy=IfNotPresent
+```
+
+If you do not provide a digest and override the repository/tag, the Bitnami
+common library may require you to explicitly allow insecure images. You can
+either pin a digest (recommended) or set a global flag:
+
+```bash
+# Less secure: allow non-digested/custom images across subcharts
+helm upgrade --install mirador-core ./chart \
+  --set global.security.allowInsecureImages=true
+```
+
+You can also set it in `values.yaml`:
+
+```yaml
+global:
+  security:
+    allowInsecureImages: true
+```
+
+To scope this to the Valkey subchart only (without impacting other Bitnami
+dependencies), use the subchart-scoped global block:
+
+```yaml
+valkey:
+  global:
+    security:
+      allowInsecureImages: false # or true
+```
+
+CLI equivalent:
+
+```bash
+helm upgrade --install mirador-core ./chart \
+  --set valkey.global.security.allowInsecureImages=false
+```
 
 ### Bumping Valkey Version
 
@@ -54,6 +120,26 @@ The subchart version is declared in `values.yaml` at `valkey.version`. The Makef
   3. Commit changes (including `Chart.yaml` update and `charts/` lockfiles if present).
 
 Refer to upstream chart notes: https://github.com/bitnami/charts/tree/main/bitnami/valkey
+
+### Wait for Valkey (Init Container)
+
+To prevent mirador-core from starting before the Valkey subchart is ready, an optional init container waits for `PONG` from Valkey using `redis-cli`.
+
+Values:
+
+```yaml
+waitFor:
+  valkey:
+    enabled: true
+    image:
+      repository: bitnami/redis
+      tag: "7.2.5-debian-12-r0"
+      pullPolicy: IfNotPresent
+    timeoutSeconds: 120
+    intervalSeconds: 5
+```
+
+Disable or tweak timeouts as needed. This is only added when `valkey.enabled=true`.
 
 ### Production Hints
 - Use `valkey.architecture: replication` with persistence enabled:

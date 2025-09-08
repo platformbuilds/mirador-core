@@ -79,6 +79,20 @@ env:
 # Optional extra environment variables (rendered after `env` items)
 extraEnv: []
 
+# Init waiters for dependent services
+waitFor:
+  valkey:
+    enabled: true
+    # Image providing redis-cli to probe Valkey readiness
+    image:
+      repository: bitnami/redis
+      tag: "7.2.5-debian-12-r0"
+      pullPolicy: IfNotPresent
+    # Max seconds to wait before giving up (pod will restart per restartPolicy)
+    timeoutSeconds: 120
+    # Seconds between checks
+    intervalSeconds: 5
+
 envFrom: [] # e.g., [{ secretRef: { name: my-secrets } }]
 
 # Optional: create an application Secret with common credentials that MIRADOR-CORE
@@ -194,6 +208,24 @@ valkey:
   # Optional: override computed service names if your cluster renames resources
   # serviceName: my-valkey
   # headlessServiceName: my-valkey-headless
+  # Image overrides for the Bitnami Valkey subchart. Leave commented to use
+  # the subchart defaults. Uncomment to pin a custom image/repository/tag.
+  # image:
+  #   registry: docker.io
+  #   repository: bitnami/valkey
+  #   tag: "8.0.x"
+  #   # Recommended: pin to a digest to satisfy Bitnami security checks
+  #   # and avoid needing global.security.allowInsecureImages=true
+  #   digest: "sha256:<oci-image-digest>"
+  #   pullPolicy: IfNotPresent
+  #   # pullSecrets:
+  #   #   - myRegistrySecret
+  # Scope Bitnami "global" settings to the Valkey subchart only. This avoids
+  # affecting other Bitnami charts you may add later. Default keeps images
+  # strict (false). Set to true only if you override image without a digest.
+  global:
+    security:
+      allowInsecureImages: false
   architecture: standalone # set to 'replication' for production
   auth:
     enabled: false
@@ -233,6 +265,13 @@ probes:
     enabled: true
     path: /health
     initialDelaySeconds: 10
+# Global values passed to subcharts (e.g., Bitnami)
+# Note: Bitnami charts may enforce image provenance. When using custom images
+# without a digest, you can opt-in to allow them by setting this to true.
+# global:
+#   security:
+#     allowInsecureImages: true
+
     periodSeconds: 2
     timeoutSeconds: 5
     failureThreshold: 30
