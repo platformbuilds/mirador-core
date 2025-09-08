@@ -273,7 +273,7 @@ Placeholders indicate no definition has been provided yet and reference the sche
 
 - Run a local vulnerability scan using Go's official tool:
   - `make vuln` (installs `govulncheck` if missing, then scans `./...`)
-- CI automatically runs `govulncheck` on pushes and PRs via `.github/workflows/govulncheck.yml`.
+- CI runs `govulncheck` as part of `.github/workflows/ci.yml` after build and tests.
 - Notes:
   - Requires network access to fetch vulnerability database.
   - Scans source and modules to flag known CVEs and advisories.
