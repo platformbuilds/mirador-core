@@ -79,6 +79,30 @@ env:
 # Optional extra environment variables (rendered after `env` items)
 extraEnv: []
 
+# Vitess (VTGate) connection for schema definitions API
+vitess:
+  enabled: false
+  # VTGate host:port (MySQL protocol)
+  host: vtgate.mirador.svc.cluster.local
+  port: 15306
+  # Target keyspace and shard (Vitess will route by shard if needed)
+  keyspace: mirador
+  shard: "0"
+  # Authentication
+  user: ""          # e.g., app user (leave empty for dev)
+  password: ""      # inline for dev ONLY. Prefer using a Secret in prod.
+  # If using an existing Secret for password, set these and leave password empty
+  existingSecret: ""   # name of Secret containing db password
+  passwordKey: password # key within the Secret
+  # TLS for VTGate
+  tls: false
+  # Additional DSN params, e.g., { collation: utf8mb4_general_ci }
+  params: {}
+
+  # Optional: deploy a minimal Vitess stack as a subchart for dev/small
+  subchart:
+    enabled: false
+
 # Init waiters for dependent services
 waitFor:
   valkey:
@@ -120,6 +144,10 @@ mirador:
   environment: production
   log_level: info
   port: 8080
+  uploads:
+    # Maximum size (in bytes) for CSV bulk uploads (services/operations/metrics/logs)
+    # Defaults to 5 MiB when omitted.
+    bulk_max_bytes: 5242880
 
   database:
     victoria_metrics:

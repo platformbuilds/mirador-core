@@ -210,6 +210,433 @@ paths:
       responses:
         '200': { description: OK }
 
+  # Traces Schema (Services & Operations)
+  /schema/traces/services:
+    post:
+      summary: Upsert trace service definition
+      description: Create or update a trace service definition and record a new version.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenantId: { type: string }
+                service: { type: string }
+                purpose: { type: string }
+                owner: { type: string }
+                tags: { type: object }
+                author: { type: string }
+              required: [service]
+      responses:
+        '200': { description: OK }
+  /schema/traces/services/bulk:
+    post:
+      summary: Bulk upsert trace services via CSV
+      description: |
+        Upload a CSV to create/update trace service definitions.
+        CSV columns (header required; strict header mode):
+        - tenant_id (optional; defaults to request tenant)
+        - service (required)
+        - purpose, owner, tags_json, author
+        Security: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.
+        Limits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad Request }
+        '429': { description: Too Many Requests }
+  /schema/traces/services/{service}:
+    get:
+      summary: Get current trace service definition
+      parameters:
+        - in: path
+          name: service
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not found }
+  /schema/traces/services/{service}/versions:
+    get:
+      summary: List versions for a trace service
+      parameters:
+        - in: path
+          name: service
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /schema/traces/services/{service}/versions/{version}:
+    get:
+      summary: Get a specific version of a trace service definition
+      parameters:
+        - in: path
+          name: service
+          required: true
+          schema: { type: string }
+        - in: path
+          name: version
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not found }
+  /schema/traces/operations:
+    post:
+      summary: Upsert trace operation definition
+      description: Create or update a trace operation definition and record a new version.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenantId: { type: string }
+                service: { type: string }
+                operation: { type: string }
+                purpose: { type: string }
+                owner: { type: string }
+                tags: { type: object }
+                author: { type: string }
+              required: [service, operation]
+      responses:
+        '200': { description: OK }
+  /schema/traces/operations/bulk:
+    post:
+      summary: Bulk upsert trace operations via CSV
+      description: |
+        Upload a CSV to create/update trace operation definitions. Operations are scoped per service; rows referencing undefined services are rejected.
+        CSV columns (header required; strict header mode):
+        - tenant_id (optional; defaults to request tenant)
+        - service (required)
+        - operation (required)
+        - purpose, owner, tags_json, author
+        Security: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.
+        Limits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad Request }
+        '429': { description: Too Many Requests }
+  /schema/traces/services/{service}/operations/{operation}:
+    get:
+      summary: Get current trace operation definition
+      parameters:
+        - in: path
+          name: service
+          required: true
+          schema: { type: string }
+        - in: path
+          name: operation
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not found }
+  /schema/traces/services/{service}/operations/{operation}/versions:
+    get:
+      summary: List versions for a trace operation
+      parameters:
+        - in: path
+          name: service
+          required: true
+          schema: { type: string }
+        - in: path
+          name: operation
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /schema/traces/services/{service}/operations/{operation}/versions/{version}:
+    get:
+      summary: Get a specific version of a trace operation definition
+      parameters:
+        - in: path
+          name: service
+          required: true
+          schema: { type: string }
+        - in: path
+          name: operation
+          required: true
+          schema: { type: string }
+        - in: path
+          name: version
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not found }
+
+  /schema/metrics:
+    post:
+      summary: Upsert metric definition
+      description: Create or update a metric definition and record a new version.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [metric]
+              properties:
+                tenantId: { type: string }
+                metric: { type: string }
+                description: { type: string }
+                owner: { type: string }
+                tags: { type: object, additionalProperties: true }
+                author: { type: string }
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad Request }
+  /schema/metrics/bulk:
+    post:
+      summary: Bulk upsert metric and label definitions (CSV)
+      description: |
+        Upload a CSV to create/update metric and label definitions.
+        Security: payload limited to 5MiB, MIME allowlist, UTF‑8 validation, and CSV injection mitigations.
+
+        Columns (header required):
+
+        - tenant_id (optional; defaults to authenticated tenant)
+        - metric (required)
+        - description
+        - owner
+        - tags_json (JSON object)
+        - label
+        - label_type
+        - label_required (true/false/1/0/yes/no)
+        - label_allowed_json (JSON object)
+        - label_description
+        - author
+
+        Note: Use the sample endpoint below to generate a pre-filled template.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad Request }
+  /schema/metrics/bulk/sample:
+    get:
+      summary: Download sample CSV template
+      description: |
+        Generates a CSV with header and rows per metric/label to guide users.
+        - If `metrics` is omitted, the server enumerates all metric names (via `__name__`) and includes a row per discovered label.
+        - If `metrics` is provided (comma-separated), only those metrics are included.
+      parameters:
+        - in: query
+          name: metrics
+          required: false
+          schema: { type: string }
+          description: Comma-separated metric names to include in the sample
+      responses:
+        '200':
+          description: CSV
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+  /schema/metrics/{metric}:
+    get:
+      summary: Get metric definition
+      parameters:
+        - in: path
+          name: metric
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+
+  /schema/metrics/{metric}/versions:
+    get:
+      summary: List metric definition versions
+      parameters:
+        - in: path
+          name: metric
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        version: { type: integer }
+                        author: { type: string }
+                        created_at: { type: string, format: date-time }
+
+  /schema/metrics/{metric}/versions/{version}:
+    get:
+      summary: Get specific metric definition version
+      parameters:
+        - in: path
+          name: metric
+          required: true
+          schema: { type: string }
+        - in: path
+          name: version
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+        '404': { description: Not Found }
+
+  /schema/logs/fields:
+    post:
+      summary: Upsert log field definition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [field]
+              properties:
+                tenantId: { type: string }
+                field: { type: string }
+                type: { type: string }
+                description: { type: string }
+                tags: { type: object, additionalProperties: true }
+                examples: { type: object, additionalProperties: true }
+                author: { type: string }
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad Request }
+  /schema/logs/fields/bulk:
+    post:
+      summary: Bulk upsert log field definitions (CSV)
+      description: |
+        Upload a CSV to create/update log field definitions.
+        Security: 5MiB payload limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota.
+
+        Columns (header required):
+        - tenant_id (optional)
+        - field (required)
+        - type
+        - description
+        - tags_json (JSON object)
+        - examples_json (JSON object)
+        - author
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad Request }
+        '429': { description: Too Many Requests }
+  /schema/logs/fields/bulk/sample:
+    get:
+      summary: Download sample CSV template for log fields
+      description: Generates a CSV with header and one row per discovered log field.
+      responses:
+        '200':
+          description: CSV
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+  /schema/logs/fields/{field}:
+    get:
+      summary: Get log field definition
+      parameters:
+        - in: path
+          name: field
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+
+  /schema/logs/fields/{field}/versions:
+    get:
+      summary: List log field definition versions
+      parameters:
+        - in: path
+          name: field
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        version: { type: integer }
+                        author: { type: string }
+                        created_at: { type: string, format: date-time }
+
+  /schema/logs/fields/{field}/versions/{version}:
+    get:
+      summary: Get specific log field definition version
+      parameters:
+        - in: path
+          name: field
+          required: true
+          schema: { type: string }
+        - in: path
+          name: version
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+        '404': { description: Not Found }
+
   /rca/correlations:
     get:
       summary: Get active correlations
@@ -234,6 +661,10 @@ paths:
   /query:
     post:
       summary: MetricsQL instant query (VictoriaMetrics)
+      description: |
+        Executes an instant query against VictoriaMetrics. When `include_definitions` is enabled (default),
+        the response contains `definitions` sourced from the schema store (Vitess) including metric and
+        per-metric label definitions. Optional `label_keys` can limit which label keys are considered.
       requestBody:
         required: true
         content:
@@ -243,11 +674,56 @@ paths:
               properties:
                 query: { type: string }
                 time: { type: string }
+                include_definitions: { type: boolean, description: Include definitions in response (default true) }
+                label_keys:
+                  type: array
+                  items: { type: string }
+                  description: Restrict definitions to these label keys
       responses:
-        '200': { description: OK }
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                status: success
+                data:
+                  resultType: vector
+                  result:
+                    - metric:
+                        __name__: http_requests_total
+                        job: api
+                        instance: pod-1
+                      value: [1690003600, "1"]
+                metadata:
+                  executionTime: 12
+                  seriesCount: 1
+                  cached: false
+                  timestamp: 2025-09-08T10:00:00Z
+                definitions:
+                  metrics:
+                    http_requests_total:
+                      tenantId: t1
+                      metric: http_requests_total
+                      description: Total number of HTTP requests
+                      owner: team-observability
+                      tags: { domain: web }
+                  labels:
+                    http_requests_total:
+                      instance:
+                        tenantId: t1
+                        metric: http_requests_total
+                        label: instance
+                        type: string
+                        required: false
+                        description: The pod or host instance
+                      job:
+                        definition: No definition provided. Use /api/v1/schema/metrics to add label definition.
   /query_range:
     post:
       summary: MetricsQL range query (VictoriaMetrics)
+      description: |
+        Executes a range query. When `include_definitions` is enabled (default), the response contains
+        `definitions` for metrics and per-metric label keys. Use `label_keys` to limit keys.
       requestBody:
         required: true
         content:
@@ -259,8 +735,40 @@ paths:
                 start: { type: string }
                 end: { type: string }
                 step: { type: string }
+                include_definitions: { type: boolean, description: Include definitions in response (default true) }
+                label_keys:
+                  type: array
+                  items: { type: string }
+                  description: Restrict definitions to these label keys
       responses:
-        '200': { description: OK }
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                status: success
+                data:
+                  resultType: matrix
+                  result:
+                    - metric:
+                        __name__: http_requests_total
+                        job: api
+                        instance: pod-1
+                      values: [[1690000000,"1"],[1690000300,"2"]]
+                metadata:
+                  executionTime: 18
+                  dataPoints: 2
+                  timeRange: 1690000000 to 1690003600
+                  step: 30
+                definitions:
+                  metrics:
+                    http_requests_total:
+                      description: Total number of HTTP requests
+                  labels:
+                    http_requests_total:
+                      instance:
+                        type: string
+                        required: false
   /series:
     get:
       summary: Series listing

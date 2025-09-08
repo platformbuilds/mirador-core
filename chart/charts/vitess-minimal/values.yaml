@@ -1,0 +1,49 @@
+# Images
+images:
+  etcd: bitnami/etcd:3.5.12
+  vtctld: vitess/vtctldserver:v18.0.2
+  vtgate: vitess/vtgate:v18.0.2
+  vttablet: vitess/vttablet:v18.0.2
+
+topology:
+  cell: zone1
+  keyspace: mirador
+  # List of shards for the keyspace. Examples: ["0"] or ["-80","80-"]
+  shards:
+    - "0"
+
+resources: {}
+
+persistence:
+  size: 5Gi
+
+service:
+  vtgate:
+    type: ClusterIP
+    port: 15306
+
+# etcd subchart controls
+etcd:
+  enabled: true
+  replicaCount: 3
+  persistence:
+    enabled: true
+    size: 5Gi
+
+vtgate:
+  replicas: 2
+  resources: {}
+
+vttablet:
+  replicasPerShard: 2 # 1 PRIMARY + (replicasPerShard-1) REPLICA
+  resources: {}
+  mysql:
+    extraArgs: []
+
+# Backups via vtctldclient Backup (requires vttablet backup flags configured)
+backup:
+  enabled: false
+  schedule: "0 2 * * *" # daily at 02:00
+  vtctldClientImage: vitess/vtctldclient:v18.0.2
+  # additional arguments to vtctldclient (e.g., TLS options)
+  extraArgs: []

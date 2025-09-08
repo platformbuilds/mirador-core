@@ -13,6 +13,8 @@ type Config struct {
 	Integrations IntegrationsConfig `mapstructure:"integrations" yaml:"integrations"`
 	WebSocket    WebSocketConfig    `mapstructure:"websocket" yaml:"websocket"`
 	Monitoring   MonitoringConfig   `mapstructure:"monitoring" yaml:"monitoring"`
+	Vitess       VitessConfig       `mapstructure:"vitess" yaml:"vitess"`
+    Uploads      UploadsConfig      `mapstructure:"uploads" yaml:"uploads"`
 }
 
 // DatabaseConfig handles VictoriaMetrics ecosystem configuration
@@ -161,6 +163,12 @@ type EmailConfig struct {
 	Enabled     bool   `mapstructure:"enabled" yaml:"enabled"`
 }
 
+// UploadsConfig controls payload limits for uploads
+type UploadsConfig struct {
+    // BulkMaxBytes sets the maximum allowed size in bytes for bulk CSV uploads
+    BulkMaxBytes int64 `mapstructure:"bulk_max_bytes" yaml:"bulk_max_bytes"`
+}
+
 // WebSocketConfig handles real-time streaming configuration
 type WebSocketConfig struct {
 	Enabled         bool `mapstructure:"enabled" yaml:"enabled"`
@@ -178,4 +186,17 @@ type MonitoringConfig struct {
 	PrometheusEnabled bool   `mapstructure:"prometheus_enabled" yaml:"prometheus_enabled"`
 	TracingEnabled    bool   `mapstructure:"tracing_enabled" yaml:"tracing_enabled"`
 	JaegerEndpoint    string `mapstructure:"jaeger_endpoint" yaml:"jaeger_endpoint"`
+}
+
+// VitessConfig holds connection details to a Vitess VTGate (MySQL protocol)
+type VitessConfig struct {
+    Enabled   bool   `mapstructure:"enabled" yaml:"enabled"`
+    Host      string `mapstructure:"host" yaml:"host"`         // vtgate host or DNS name
+    Port      int    `mapstructure:"port" yaml:"port"`         // vtgate port, default 15306
+    Keyspace  string `mapstructure:"keyspace" yaml:"keyspace"` // e.g., mirador
+    Shard     string `mapstructure:"shard" yaml:"shard"`       // default "0"
+    User      string `mapstructure:"user" yaml:"user"`
+    Password  string `mapstructure:"password" yaml:"password"`
+    TLS       bool   `mapstructure:"tls" yaml:"tls"`
+    Params    map[string]string `mapstructure:"params" yaml:"params"` // optional addl DSN params
 }

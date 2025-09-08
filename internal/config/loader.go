@@ -200,7 +200,17 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("monitoring.enabled", true)
 	v.SetDefault("monitoring.metrics_path", "/metrics")
 	v.SetDefault("monitoring.prometheus_enabled", true)
-	v.SetDefault("monitoring.tracing_enabled", false)
+    v.SetDefault("monitoring.tracing_enabled", false)
+
+    // Uploads
+    v.SetDefault("uploads.bulk_max_bytes", int64(5<<20)) // 5 MiB default
+
+    // Vitess (disabled by default)
+    v.SetDefault("vitess.enabled", false)
+    v.SetDefault("vitess.host", "vtgate.mirador.svc.cluster.local")
+    v.SetDefault("vitess.port", 15306)
+    v.SetDefault("vitess.keyspace", "mirador")
+    v.SetDefault("vitess.shard", "0")
 }
 
 /* ---------------------------- legacy overrides --------------------------- */
@@ -280,10 +290,31 @@ func overrideWithEnvVars(v *viper.Viper) {
 		v.Set("integrations.ms_teams.webhook_url", teams)
 		v.Set("integrations.ms_teams.enabled", true)
 	}
-	if smtp := os.Getenv("SMTP_HOST"); smtp != "" {
-		v.Set("integrations.email.smtp_host", smtp)
-		v.Set("integrations.email.enabled", true)
-	}
+    if smtp := os.Getenv("SMTP_HOST"); smtp != "" {
+        v.Set("integrations.email.smtp_host", smtp)
+        v.Set("integrations.email.enabled", true)
+    }
+
+    // Vitess (VTGate) overrides
+    if host := os.Getenv("VITESS_HOST"); host != "" { v.Set("vitess.host", host) }
+    if port := os.Getenv("VITESS_PORT"); port != "" { if i, err := strconv.Atoi(port); err == nil { v.Set("vitess.port", i) } }
+    if ks := os.Getenv("VITESS_KEYSPACE"); ks != "" { v.Set("vitess.keyspace", ks) }
+    if shard := os.Getenv("VITESS_SHARD"); shard != "" { v.Set("vitess.shard", shard) }
+    if u := os.Getenv("VITESS_USER"); u != "" { v.Set("vitess.user", u) }
+    if p := os.Getenv("VITESS_PASSWORD"); p != "" { v.Set("vitess.password", p) }
+    if tls := os.Getenv("VITESS_TLS"); tls != "" { if b, err := strconv.ParseBool(tls); err == nil { v.Set("vitess.tls", b) } }
+
+    // Uploads (CSV bulk)
+    if s := os.Getenv("BULK_UPLOAD_MAX_BYTES"); s != "" {
+        if vbytes, err := strconv.ParseInt(s, 10, 64); err == nil && vbytes > 0 {
+            v.Set("uploads.bulk_max_bytes", vbytes)
+        }
+    }
+    if s := os.Getenv("BULK_UPLOAD_MAX_MIB"); s != "" {
+        if vmib, err := strconv.ParseInt(s, 10, 64); err == nil && vmib > 0 {
+            v.Set("uploads.bulk_max_bytes", vmib*(1<<20))
+        }
+    }
 }
 
 /* ------------------------------- validation ------------------------------ */

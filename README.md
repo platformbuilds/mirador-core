@@ -164,6 +164,114 @@ export RBAC_ENABLED=true
 # External integrations
 export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
 export TEAMS_WEBHOOK_URL=https://company.webhook.office.com/...
+
+### Vitess (Schema Definitions Store)
+
+MIRADOR-CORE can persist metric/log schema definitions in Vitess (VTGate/MySQL protocol).
+
+- Core envs:
+  - `VITESS_HOST` (vtgate host)
+  - `VITESS_PORT` (default 15306)
+  - `VITESS_KEYSPACE` (e.g., `mirador`)
+  - `VITESS_SHARD` (e.g., `0`)
+  - `VITESS_USER`, `VITESS_PASSWORD`
+  - `VITESS_TLS` (true/false)
+
+When using the Helm chart, set these under `vitess.*` in `values.yaml` (or enable the provided Vitess subchart for dev/small clusters).
+
+## Schema Definitions APIs
+
+These APIs allow defining metric definitions (and label definitions) and log field definitions for contextualization and future LLM use.
+
+Routes (under `/api/v1`):
+
+- Metrics definitions
+  - `POST /schema/metrics` — upsert metric definition
+    - Body: `{ tenantId?, metric, description?, owner?, tags?, author? }`
+  - `GET /schema/metrics/{metric}` — get current definition
+  - `GET /schema/metrics/{metric}/versions` — list version metadata
+  - `GET /schema/metrics/{metric}/versions/{version}` — fetch specific version payload
+  - `POST /schema/metrics/bulk` — bulk upsert via CSV (secure upload)
+    - Required header and columns:
+      - `tenant_id` (optional; defaults to request tenant)
+      - `metric` (required)
+      - `description`, `owner`, `tags_json`
+      - `label`, `label_type`, `label_required`, `label_allowed_json`, `label_description`
+      - `author`
+    - Security controls: 5MiB limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, in‑memory only (no disk writes)
+  - `GET /schema/metrics/bulk/sample` — download a sample CSV template
+    - Optional: `?metrics=http_requests_total,process_cpu_seconds_total` pre-fills rows for listed metrics with discovered label keys
+
+- Label definitions (for a metric)
+  - Included in the metric upsert flow; label CRUD can be added similarly if needed.
+
+- Log field definitions
+  - `POST /schema/logs/fields` — upsert log field definition
+    - Body: `{ tenantId?, field, type?, description?, tags?, examples?, author? }`
+  - `GET /schema/logs/fields/{field}` — get current definition
+  - `GET /schema/logs/fields/{field}/versions` — list versions
+  - `GET /schema/logs/fields/{field}/versions/{version}` — fetch version payload
+  - `POST /schema/logs/fields/bulk` — bulk upsert via CSV (secure upload)
+    - Columns: `tenant_id, field, type, description, tags_json, examples_json, author`
+    - Security: 5MiB limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota
+  - `GET /schema/logs/fields/bulk/sample` — download a sample CSV template (one row per discovered log field)
+
+- Traces schema (services & operations)
+  - Services
+    - `POST /schema/traces/services` — upsert trace service definition
+      - Body: `{ tenantId?, service, purpose?, owner?, tags?, author? }`
+    - `GET /schema/traces/services/{service}` — get current definition
+    - `GET /schema/traces/services/{service}/versions` — list version metadata
+    - `GET /schema/traces/services/{service}/versions/{version}` — fetch specific version payload
+    - `POST /schema/traces/services/bulk` — bulk upsert via CSV (secure upload)
+      - Columns: `tenant_id, service, purpose, owner, tags_json, author`
+      - Security: 5MiB limit, MIME allowlist + sniffing, UTF‑8 validation, CSV injection mitigation, header strict mode (reject unknown columns), 10k row cap, in‑memory only (no disk writes), per‑tenant daily quota (429)
+  - Operations
+    - `POST /schema/traces/operations` — upsert trace operation definition
+      - Body: `{ tenantId?, service, operation, purpose?, owner?, tags?, author? }`
+    - `GET /schema/traces/services/{service}/operations/{operation}` — get current definition
+    - `GET /schema/traces/services/{service}/operations/{operation}/versions` — list version metadata
+    - `GET /schema/traces/services/{service}/operations/{operation}/versions/{version}` — fetch specific version payload
+    - `POST /schema/traces/operations/bulk` — bulk upsert via CSV (secure upload)
+      - Columns: `tenant_id, service, operation, purpose, owner, tags_json, author`
+      - Security: 5MiB limit, MIME allowlist + sniffing, UTF‑8 validation, CSV injection mitigation, header strict mode (reject unknown columns), 10k row cap, in‑memory only (no disk writes), per‑tenant daily quota (429). Each row must reference an existing service (operations are per service).
+
+Configuration: Bulk CSV Upload Size Limit
+- Config key: `uploads.bulk_max_bytes` (bytes). Default 5 MiB.
+- Ways to set:
+  - Helm values (`chart/values.yaml` → `.Values.mirador.uploads.bulk_max_bytes`), templated into `/etc/mirador/config.yaml`.
+  - Env vars: `BULK_UPLOAD_MAX_BYTES` or `BULK_UPLOAD_MAX_MIB` (takes precedence over file).
+  - Local dev compose sets `BULK_UPLOAD_MAX_BYTES` by default; adjust as needed.
+
+## MetricsQL Enrichment (Definitions)
+
+The query endpoints can include definitions for metrics and labels, sourced from the schema store:
+
+- `POST /api/v1/query`
+- `POST /api/v1/query_range`
+
+Optional controls (body or query params):
+
+- `include_definitions` (bool, default true): return definitions when true.
+- `definitions_minimal` (bool, default false): only include metric-level definitions, skip label definitions.
+- `label_keys` (array in body or CSV in query): restrict label keys to consider.
+
+Response shape when enabled:
+
+```
+definitions:
+  metrics:
+    <metricName>: { ...MetricDef or placeholder... }
+  labels:
+    <metricName>:
+      <labelKey>: { ...LabelDef or placeholder... }
+```
+
+Placeholders indicate no definition has been provided yet and reference the schema APIs to create one.
+
+## Helm Chart
+
+See `chart/README.md` for deployment via Helm, embedded Valkey, and the optional Vitess subchart (no operator). It also documents the backup CronJobs and how to pass vttablet backup flags.
 ```
 
 ## Monitoring

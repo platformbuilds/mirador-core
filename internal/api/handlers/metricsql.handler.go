@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"crypto/sha256"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"time"
+    "crypto/sha256"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/platformbuilds/mirador-core/internal/metrics"
@@ -14,13 +14,22 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/utils"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
+    "github.com/platformbuilds/mirador-core/internal/repo"
+    "context"
 )
 
 type MetricsQLHandler struct {
-	metricsService *services.VictoriaMetricsService
-	cache          cache.ValkeyCluster
-	logger         logger.Logger
-	validator      *utils.QueryValidator
+    metricsService *services.VictoriaMetricsService
+    cache          cache.ValkeyCluster
+    logger         logger.Logger
+    validator      *utils.QueryValidator
+    schemaRepo     SchemaProvider
+}
+
+// SchemaProvider is the minimal interface the handler uses to fetch schema definitions.
+type SchemaProvider interface {
+    GetMetric(ctx context.Context, tenantID, metric string) (*repo.MetricDef, error)
+    GetMetricLabelDefs(ctx context.Context, tenantID, metric string, labels []string) (map[string]*repo.MetricLabelDef, error)
 }
 
 func NewMetricsQLHandler(metricsService *services.VictoriaMetricsService, cache cache.ValkeyCluster, logger logger.Logger) *MetricsQLHandler {
@@ -30,6 +39,12 @@ func NewMetricsQLHandler(metricsService *services.VictoriaMetricsService, cache 
         logger:         logger,
         validator:      utils.NewQueryValidator(),
     }
+}
+
+func NewMetricsQLHandlerWithSchema(metricsService *services.VictoriaMetricsService, cache cache.ValkeyCluster, logger logger.Logger, schema SchemaProvider) *MetricsQLHandler {
+    h := NewMetricsQLHandler(metricsService, cache, logger)
+    h.schemaRepo = schema
+    return h
 }
 
 // GET /api/v1/metrics/names - List metric names (__name__) from VictoriaMetrics
@@ -80,8 +95,17 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 		return
 	}
 
-	// Check Valkey cluster cache for query results
-	queryHash := generateQueryHash(request.Query, request.Time, tenantID)
+    // Include optional flags into cache key to avoid cross-pollution
+    includeDefs := true
+    if request.IncludeDefinitions != nil { includeDefs = *request.IncludeDefinitions }
+    if q := c.Query("include_definitions"); q != "" { if q == "0" || q == "false" { includeDefs = false } }
+    var labelKeys []string
+    if len(request.LabelKeys) > 0 { labelKeys = request.LabelKeys }
+    if lk := c.Query("label_keys"); lk != "" { labelKeys = append(labelKeys, lk) }
+
+    // Check Valkey cluster cache for query results
+    keySalt := fmt.Sprintf("defs=%t|labels=%v", includeDefs, labelKeys)
+    queryHash := generateQueryHash(request.Query+"|"+keySalt, request.Time, tenantID)
 	if cached, err := h.cache.GetCachedQueryResult(c.Request.Context(), queryHash); err == nil {
 		var cachedResult models.MetricsQLQueryResponse
 		if json.Unmarshal(cached, &cachedResult) == nil {
@@ -90,14 +114,15 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
 				"status": "success",
 				"data":   cachedResult.Data,
-				"metadata": gin.H{
-					"executionTime": cachedResult.ExecutionTime,
-					"cached":        true,
-					"cacheHit":      true,
-				},
-			})
-			return
-		}
+                "metadata": gin.H{
+                    "executionTime": cachedResult.ExecutionTime,
+                    "cached":        true,
+                    "cacheHit":      true,
+                },
+                "definitions": cachedResult.Definitions,
+            })
+            return
+        }
 	}
 	metrics.CacheRequestsTotal.WithLabelValues("get", "miss").Inc()
 
@@ -125,33 +150,49 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 
 	executionTime := time.Since(start)
 
-	// Cache successful results in Valkey cluster for faster fetch
-	if result.Status == "success" {
-		cacheResponse := models.MetricsQLQueryResponse{
-			Data:          result.Data,
-			ExecutionTime: executionTime.Milliseconds(),
-			Timestamp:     time.Now(),
-		}
-		h.cache.CacheQueryResult(c.Request.Context(), queryHash, cacheResponse, 2*time.Minute)
-		metrics.CacheRequestsTotal.WithLabelValues("set", "success").Inc()
-	}
+    // Cache successful results in Valkey cluster for faster fetch
+    if result.Status == "success" {
+        var defs map[string]interface{}
+        if includeDefs { defs = h.buildDefinitionsFiltered(c.Request.Context(), tenantID, result.Data, labelKeys) }
+        cacheResponse := models.MetricsQLQueryResponse{
+            Data:          result.Data,
+            ExecutionTime: executionTime.Milliseconds(),
+            Timestamp:     time.Now(),
+            Definitions:   defs,
+        }
+        h.cache.CacheQueryResult(c.Request.Context(), queryHash, cacheResponse, 2*time.Minute)
+        metrics.CacheRequestsTotal.WithLabelValues("set", "success").Inc()
+    }
 
 	// Record metrics
 	metrics.HTTPRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), "200", tenantID).Inc()
 	metrics.HTTPRequestDuration.WithLabelValues(c.Request.Method, c.FullPath(), tenantID).Observe(executionTime.Seconds())
 	metrics.QueryExecutionDuration.WithLabelValues("metricsql", tenantID).Observe(executionTime.Seconds())
 
-	c.Header("X-Cache", "MISS")
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data":   result.Data,
-		"metadata": gin.H{
-			"executionTime": executionTime.Milliseconds(),
-			"seriesCount":   result.SeriesCount,
-			"cached":        false,
-			"timestamp":     time.Now().Format(time.RFC3339),
-		},
-	})
+    // definitions_minimal: only include metric-level defs, skip per-metric label defs
+    minimal := false
+    if request.DefinitionsMinimal != nil { minimal = *request.DefinitionsMinimal }
+    if q := c.Query("definitions_minimal"); q != "" { if q == "1" || q == "true" { minimal = true } }
+    var defs map[string]interface{}
+    if includeDefs {
+        if minimal {
+            defs = h.buildMetricOnlyDefinitions(c.Request.Context(), tenantID, result.Data)
+        } else {
+            defs = h.buildDefinitionsFiltered(c.Request.Context(), tenantID, result.Data, labelKeys)
+        }
+    }
+    c.Header("X-Cache", "MISS")
+    c.JSON(http.StatusOK, gin.H{
+        "status": "success",
+        "data":   result.Data,
+        "metadata": gin.H{
+            "executionTime": executionTime.Milliseconds(),
+            "seriesCount":   result.SeriesCount,
+            "cached":        false,
+            "timestamp":     time.Now().Format(time.RFC3339),
+        },
+        "definitions": defs,
+    })
 }
 
 // POST /api/v1/query_range - Execute range MetricsQL query
@@ -196,19 +237,125 @@ func (h *MetricsQLHandler) ExecuteRangeQuery(c *gin.Context) {
 		return
 	}
 
-	executionTime := time.Since(start)
-	metrics.QueryExecutionDuration.WithLabelValues("metricsql_range", tenantID).Observe(executionTime.Seconds())
+    executionTime := time.Since(start)
+    metrics.QueryExecutionDuration.WithLabelValues("metricsql_range", tenantID).Observe(executionTime.Seconds())
 
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data":   result.Data,
-		"metadata": gin.H{
-			"executionTime": executionTime.Milliseconds(),
-			"dataPoints":    result.DataPointCount,
-			"timeRange":     fmt.Sprintf("%s to %s", request.Start, request.End),
-			"step":          request.Step,
-		},
-	})
+    includeDefs := true
+    if request.IncludeDefinitions != nil { includeDefs = *request.IncludeDefinitions }
+    if q := c.Query("include_definitions"); q != "" { if q == "0" || q == "false" { includeDefs = false } }
+    var labelKeys []string
+    if len(request.LabelKeys) > 0 { labelKeys = request.LabelKeys }
+    if lk := c.Query("label_keys"); lk != "" { labelKeys = append(labelKeys, lk) }
+    minimal := false
+    if request.DefinitionsMinimal != nil { minimal = *request.DefinitionsMinimal }
+    if q := c.Query("definitions_minimal"); q != "" { if q == "1" || q == "true" { minimal = true } }
+    var defs map[string]interface{}
+    if includeDefs {
+        if minimal {
+            defs = h.buildMetricOnlyDefinitions(c.Request.Context(), tenantID, result.Data)
+        } else {
+            defs = h.buildDefinitionsFiltered(c.Request.Context(), tenantID, result.Data, labelKeys)
+        }
+    }
+    c.JSON(http.StatusOK, gin.H{
+        "status": "success",
+        "data":   result.Data,
+        "metadata": gin.H{
+            "executionTime": executionTime.Milliseconds(),
+            "dataPoints":    result.DataPointCount,
+            "timeRange":     fmt.Sprintf("%s to %s", request.Start, request.End),
+            "step":          request.Step,
+        },
+        "definitions": defs,
+    })
+}
+
+// buildDefinitionsFiltered inspects VM data to extract metric names and label keys, optionally filters label keys, and returns definitions.
+func (h *MetricsQLHandler) buildDefinitionsFiltered(ctx context.Context, tenantID string, data interface{}, allowedLabelKeys []string) map[string]interface{} {
+    if h.schemaRepo == nil || data == nil { return nil }
+    metricsSet := map[string]struct{}{}
+    labelsPerMetric := map[string]map[string]struct{}{}
+    allowAll := len(allowedLabelKeys) == 0
+    allowed := map[string]struct{}{}
+    for _, k := range allowedLabelKeys { allowed[k] = struct{}{} }
+    if m, ok := data.(map[string]interface{}); ok {
+        if arr, ok := m["result"].([]interface{}); ok {
+            for _, it := range arr {
+                if series, ok := it.(map[string]interface{}); ok {
+                    if metr, ok := series["metric"].(map[string]interface{}); ok {
+                        if name, ok := metr["__name__"].(string); ok && name != "" {
+                            metricsSet[name] = struct{}{}
+                            if _, ok := labelsPerMetric[name]; !ok { labelsPerMetric[name] = map[string]struct{}{} }
+                            for k := range metr {
+                                if k == "__name__" { continue }
+                                if allowAll { labelsPerMetric[name][k] = struct{}{} } else { if _, ok := allowed[k]; ok { labelsPerMetric[name][k] = struct{}{} } }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // metric defs
+    metricDefs := map[string]interface{}{}
+    for name := range metricsSet {
+        if md, err := h.schemaRepo.GetMetric(ctx, tenantID, name); err == nil && md != nil {
+            metricDefs[name] = md
+        } else {
+            metricDefs[name] = map[string]string{"definition": "No definition provided. Use /api/v1/schema/metrics to add one."}
+        }
+    }
+    // label defs per metric
+    labelsDefsPerMetric := map[string]interface{}{}
+    for metricName := range metricsSet {
+        lblset := labelsPerMetric[metricName]
+        if len(lblset) == 0 { continue }
+        names := make([]string, 0, len(lblset))
+        for l := range lblset { names = append(names, l) }
+        mdefs, err := h.schemaRepo.GetMetricLabelDefs(ctx, tenantID, metricName, names)
+        if err != nil { continue }
+        inner := map[string]interface{}{}
+        for _, ln := range names {
+            if d, ok := mdefs[ln]; ok {
+                inner[ln] = d
+            } else {
+                inner[ln] = map[string]string{"definition": "No definition provided. Use /api/v1/schema/metrics to add label definition."}
+            }
+        }
+        labelsDefsPerMetric[metricName] = inner
+    }
+    return map[string]interface{}{
+        "metrics": metricDefs,
+        "labels":  labelsDefsPerMetric,
+    }
+}
+
+// buildMetricOnlyDefinitions extracts metric names and returns only metric-level definitions.
+func (h *MetricsQLHandler) buildMetricOnlyDefinitions(ctx context.Context, tenantID string, data interface{}) map[string]interface{} {
+    if h.schemaRepo == nil || data == nil { return nil }
+    metricsSet := map[string]struct{}{}
+    if m, ok := data.(map[string]interface{}); ok {
+        if arr, ok := m["result"].([]interface{}); ok {
+            for _, it := range arr {
+                if series, ok := it.(map[string]interface{}); ok {
+                    if metr, ok := series["metric"].(map[string]interface{}); ok {
+                        if name, ok := metr["__name__"].(string); ok && name != "" { metricsSet[name] = struct{}{} }
+                    }
+                }
+            }
+        }
+    }
+    metricDefs := map[string]interface{}{}
+    for name := range metricsSet {
+        if md, err := h.schemaRepo.GetMetric(ctx, tenantID, name); err == nil && md != nil {
+            metricDefs[name] = md
+        } else {
+            metricDefs[name] = map[string]string{"definition": "No definition provided. Use /api/v1/schema/metrics to add one."}
+        }
+    }
+    return map[string]interface{}{
+        "metrics": metricDefs,
+    }
 }
 
 func generateQueryHash(query, timeParam, tenantID string) string {
