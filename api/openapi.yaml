@@ -8,12 +8,18 @@ info:
     email: rv@platformbuilds.org
 
 servers:
-  - url: http://localhost:8080/api/v1
-    description: Development API v1
-  - url: https://mirador-core.company.com/api/v1
-    description: Production API v1
-  - url: http://localhost:8080
-    description: Development root (health, docs)
+  - url: "{scheme}://{host}{basePath}"
+    description: Configurable server (edit variables in Swagger UI)
+    variables:
+      scheme:
+        enum: [http, https]
+        default: https
+      host:
+        default: localhost:8080
+        description: Hostname:port of mirador-core
+      basePath:
+        default: /api/v1
+        description: Base path for API routes (use "/" for root-only endpoints)
 
 components:
   securitySchemes:
