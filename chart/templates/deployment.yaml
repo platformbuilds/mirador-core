@@ -51,7 +51,7 @@ spec:
             - name: {{ .name }}
               value: {{ .value | quote }}
             {{- end }}
-            {{- range .Values.env.extra }}
+            {{- range .Values.extraEnv }}
             - name: {{ .name }}
               value: {{ .value | quote }}
             {{- end }}
