@@ -81,6 +81,18 @@ components:
           type: string
           enum: [metrics, logs, traces]
 
+    FlameNode:
+      type: object
+      properties:
+        name: { type: string }
+        value: { type: integer, description: Duration in ms }
+        spanId: { type: string }
+        service: { type: string }
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlameNode'
+
 security:
   - BearerAuth: []
 
@@ -560,19 +572,6 @@ paths:
                   status: { type: string }
                   data: { $ref: '#/components/schemas/FlameNode' }
 
-components:
-  schemas:
-    FlameNode:
-      type: object
-      properties:
-        name: { type: string }
-        value: { type: integer, description: Duration in ms }
-        spanId: { type: string }
-        service: { type: string }
-        children:
-          type: array
-          items:
-            $ref: '#/components/schemas/FlameNode'
   /traces/search:
     post:
       summary: Search traces
@@ -686,3 +685,5 @@ components:
       summary: Predictions stream (WebSocket)
       responses:
         '101': { description: Switching Protocols }
+
+# [Cleaned] Duplicate components + misplaced path items were removed here.

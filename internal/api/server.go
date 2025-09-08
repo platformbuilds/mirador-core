@@ -102,6 +102,11 @@ func (s *Server) setupRoutes() {
     s.router.GET("/ready", healthHandler.ReadinessCheck)
     s.router.GET("/microservices/status", healthHandler.MicroservicesStatus)
 
+    // Root redirect to Swagger UI for convenience
+    s.router.GET("/", func(c *gin.Context) {
+        c.Redirect(http.StatusFound, "/swagger/index.html")
+    })
+
 	// API v1 group (protected by RBAC)
 	v1 := s.router.Group("/api/v1")
 

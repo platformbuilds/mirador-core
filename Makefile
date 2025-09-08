@@ -161,19 +161,34 @@ docker-build-native: ## Build native-arch image via buildx and load to local Doc
 	  --build-arg COMMIT_HASH=$(COMMIT_HASH) \
 	  -t $(IMAGE):$(VERSION) -t $(IMAGE):latest --load .
 
-dockerx-build: ## Build multi-arch image with buildx (no push)
+.
+.PHONY: buildx-ensure
+# Ensure a containerized buildx builder is active (required for OCI exporter and multi-arch)
+buildx-ensure:
+	@DRIVER=$$(docker buildx inspect 2>/dev/null | awk '/^Driver:/ {print $$2}'); \
+	if [ -z "$$DRIVER" ] || [ "$$DRIVER" = "docker" ]; then \
+	  echo "🔧 Initializing containerized buildx builder (miradorx) ..."; \
+	  docker buildx create --use --name miradorx --driver docker-container >/dev/null 2>&1 || docker buildx use miradorx; \
+	  docker buildx inspect --bootstrap >/dev/null 2>&1 || true; \
+	fi
+
+dockerx-build: buildx-ensure ## Build multi-arch image with buildx (no push)
 	@echo "🐳 Building multi-arch image $(IMAGE):$(VERSION) for $(DOCKER_PLATFORMS) ..."
 	@if echo "$(DOCKER_PLATFORMS)" | grep -q ","; then \
 	  mkdir -p build; \
 	  echo "➡️  Detected multiple platforms; exporting OCI archive (Docker --load cannot import manifest lists)"; \
-	  docker buildx build --platform $(DOCKER_PLATFORMS) \
-	    --build-arg VERSION=$(VERSION) \
-	    --build-arg BUILD_TIME=$(BUILD_TIME) \
-	    --build-arg COMMIT_HASH=$(COMMIT_HASH) \
-	    -t $(IMAGE):$(VERSION) -t $(IMAGE):latest \
-	    --output=type=oci,dest=build/$(IMAGE_NAME)-$(VERSION).oci .; \
-	  echo "✅ Wrote multi-arch OCI archive: build/$(IMAGE_NAME)-$(VERSION).oci"; \
-	  echo "ℹ️  To publish a multi-arch manifest, run: make dockerx-push VERSION=$(VERSION)"; \
+	  if docker buildx build --platform $(DOCKER_PLATFORMS) \
+	      --build-arg VERSION=$(VERSION) \
+	      --build-arg BUILD_TIME=$(BUILD_TIME) \
+	      --build-arg COMMIT_HASH=$(COMMIT_HASH) \
+	      -t $(IMAGE):$(VERSION) -t $(IMAGE):latest \
+	      --output=type=oci,dest=build/$(IMAGE_NAME)-$(VERSION).oci .; then \
+	    echo "✅ Wrote multi-arch OCI archive: build/$(IMAGE_NAME)-$(VERSION).oci"; \
+	    echo "ℹ️  To publish a multi-arch manifest, run: make dockerx-push VERSION=$(VERSION)"; \
+	  else \
+	    echo "❌ Failed to export OCI archive. Ensure your buildx driver supports OCI exporter."; \
+	    exit 1; \
+	  fi; \
 	else \
 	  docker buildx build --platform $(DOCKER_PLATFORMS) \
 	    --build-arg VERSION=$(VERSION) \
@@ -194,7 +209,7 @@ dockerx-build-local-multi: ## Build and load per-arch images locally (tags: -amd
 	@echo "✅ Built: $(IMAGE):$(VERSION)-amd64 and $(IMAGE):$(VERSION)-arm64"
 	@echo "ℹ️  To publish a combined manifest: docker buildx imagetools create -t $(IMAGE):$(VERSION) $(IMAGE):$(VERSION)-amd64 $(IMAGE):$(VERSION)-arm64"
 
-dockerx-push: ## Build and push multi-arch image with buildx
+dockerx-push: buildx-ensure ## Build and push multi-arch image with buildx
 	@echo "🐳 Building & pushing multi-arch image $(IMAGE):$(VERSION) for $(DOCKER_PLATFORMS) ..."
 	docker buildx build --platform $(DOCKER_PLATFORMS) \
 	  --build-arg VERSION=$(VERSION) \
