@@ -69,3 +69,7 @@ monitoring:
   enabled: true
   prometheus_enabled: true
   tracing_enabled: true
+
+uploads:
+  # Configurable bulk CSV upload limit (bytes). Default is 5 MiB if omitted.
+  bulk_max_bytes: 5242880

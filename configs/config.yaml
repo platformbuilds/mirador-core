@@ -166,4 +166,8 @@ monitoring:
   metrics_path: "/metrics"
   prometheus_enabled: true
   tracing_enabled: false
+
+uploads:
+  # Bulk CSV upload limit (bytes); default 5 MiB.
+  bulk_max_bytes: 5242880
   jaeger_endpoint: "http://jaeger:14268/api/traces"

@@ -16,17 +16,17 @@ import (
 )
 
 type TracesHandler struct {
-	tracesService *services.VictoriaTracesService
-	cache         cache.ValkeyCluster
-	logger        logger.Logger
+    tracesService *services.VictoriaTracesService
+    cache         cache.ValkeyCluster
+    logger        logger.Logger
 }
 
 func NewTracesHandler(tracesService *services.VictoriaTracesService, cache cache.ValkeyCluster, logger logger.Logger) *TracesHandler {
-	return &TracesHandler{
-		tracesService: tracesService,
-		cache:         cache,
-		logger:        logger,
-	}
+    return &TracesHandler{
+        tracesService: tracesService,
+        cache:         cache,
+        logger:        logger,
+    }
 }
 
 // GET /api/v1/traces/services - List all services (Jaeger-compatible)
@@ -209,6 +209,8 @@ func (h *TracesHandler) GetOperations(c *gin.Context) {
 		"data": operations,
 	})
 }
+
+// -------------------- Endpoints --------------------
 
 // GET /api/v1/traces/:traceId/flamegraph - D3-friendly flame graph for a single trace
 func (h *TracesHandler) GetFlameGraph(c *gin.Context) {

@@ -12,8 +12,10 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/api"
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
-	"github.com/platformbuilds/mirador-core/internal/services"
-	"github.com/platformbuilds/mirador-core/pkg/cache"
+    "github.com/platformbuilds/mirador-core/internal/services"
+    storage_vitess "github.com/platformbuilds/mirador-core/internal/storage/vitess"
+    "github.com/platformbuilds/mirador-core/internal/repo"
+    "github.com/platformbuilds/mirador-core/pkg/cache"
     "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -88,8 +90,21 @@ func main() {
 		logger.Fatal("Failed to initialize VictoriaMetrics services", "error", err)
 	}
 
+    // Initialize Vitess (optional)
+    var schemaRepo *repo.SchemaRepo
+    if cfg.Vitess.Enabled {
+        vt, err := storage_vitess.Connect(cfg.Vitess)
+        if err != nil {
+            logger.Fatal("Failed to connect to Vitess", "error", err)
+        }
+        // Close on shutdown
+        defer vt.Close()
+        schemaRepo = repo.NewSchemaRepo(vt.DB)
+        logger.Info("Vitess connected via VTGate", "host", cfg.Vitess.Host, "keyspace", cfg.Vitess.Keyspace)
+    }
+
     // Initialize API server
-    apiServer := api.NewServer(cfg, logger, valleyCache, grpcClients, vmServices)
+    apiServer := api.NewServer(cfg, logger, valleyCache, grpcClients, vmServices, schemaRepo)
 
     // Setup graceful shutdown
     ctx, cancel := context.WithCancel(context.Background())

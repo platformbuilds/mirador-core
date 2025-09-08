@@ -13,6 +13,7 @@ import (
     "github.com/platformbuilds/mirador-core/internal/grpc/clients"
     "github.com/platformbuilds/mirador-core/internal/monitoring"
     "github.com/platformbuilds/mirador-core/internal/services"
+    "github.com/platformbuilds/mirador-core/internal/repo"
     "github.com/platformbuilds/mirador-core/pkg/cache"
     "github.com/platformbuilds/mirador-core/pkg/logger"
     swaggerFiles "github.com/swaggo/files"
@@ -25,6 +26,7 @@ type Server struct {
 	cache       cache.ValkeyCluster
 	grpcClients *clients.GRPCClients
 	vmServices  *services.VictoriaMetricsServices
+	schemaRepo  interface{} // lazily typed to avoid import cycles; assigned in main
 	router      *gin.Engine
 	httpServer  *http.Server
 }
@@ -35,6 +37,7 @@ func NewServer(
 	valleyCache cache.ValkeyCluster,
 	grpcClients *clients.GRPCClients,
 	vmServices *services.VictoriaMetricsServices,
+	schemaRepo interface{},
 ) *Server {
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -48,6 +51,7 @@ func NewServer(
 		cache:       valleyCache,
 		grpcClients: grpcClients,
 		vmServices:  vmServices,
+		schemaRepo:  schemaRepo,
 		router:      router,
 	}
 
@@ -108,14 +112,19 @@ func (s *Server) setupRoutes() {
     })
 
 	// API v1 group (protected by RBAC)
-	v1 := s.router.Group("/api/v1")
+    v1 := s.router.Group("/api/v1")
 
     // Back-compat: expose health under /api/v1 as well
     v1.GET("/health", healthHandler.HealthCheck)
     v1.GET("/ready", healthHandler.ReadinessCheck)
 
     // MetricsQL endpoints (VictoriaMetrics integration)
-    metricsHandler := handlers.NewMetricsQLHandler(s.vmServices.Metrics, s.cache, s.logger)
+    var metricsHandler *handlers.MetricsQLHandler
+    if r, ok := s.schemaRepo.(*repo.SchemaRepo); ok && r != nil {
+        metricsHandler = handlers.NewMetricsQLHandlerWithSchema(s.vmServices.Metrics, s.cache, s.logger, r)
+    } else {
+        metricsHandler = handlers.NewMetricsQLHandler(s.vmServices.Metrics, s.cache, s.logger)
+    }
     v1.POST("/query", metricsHandler.ExecuteQuery)
     v1.POST("/query_range", metricsHandler.ExecuteRangeQuery)
     v1.GET("/series", metricsHandler.GetSeries)
@@ -145,9 +154,9 @@ func (s *Server) setupRoutes() {
 	v1.GET("/logs/tail", d3Logs.TailWS) // WebSocket upgrade for tailing logs
 
 	// VictoriaTraces endpoints (Jaeger-compatible HTTP API)
-	tracesHandler := handlers.NewTracesHandler(s.vmServices.Traces, s.cache, s.logger)
-	v1.GET("/traces/services", tracesHandler.GetServices)
-	v1.GET("/traces/services/:service/operations", tracesHandler.GetOperations)
+    tracesHandler := handlers.NewTracesHandler(s.vmServices.Traces, s.cache, s.logger)
+    v1.GET("/traces/services", tracesHandler.GetServices)
+    v1.GET("/traces/services/:service/operations", tracesHandler.GetOperations)
     v1.GET("/traces/:traceId", tracesHandler.GetTrace)
     v1.GET("/traces/:traceId/flamegraph", tracesHandler.GetFlameGraph)
     v1.POST("/traces/search", tracesHandler.SearchTraces)
@@ -187,11 +196,41 @@ func (s *Server) setupRoutes() {
 	v1.POST("/rbac/roles", rbacHandler.CreateRole)
 	v1.PUT("/rbac/users/:userId/roles", rbacHandler.AssignUserRoles)
 
-	// WebSocket streams (metrics, alerts, predictions)
-	ws := handlers.NewWebSocketHandler(s.logger)
-	v1.GET("/ws/metrics", ws.HandleMetricsStream)
-	v1.GET("/ws/alerts", ws.HandleAlertsStream)
-	v1.GET("/ws/predictions", ws.HandlePredictionsStream)
+    // WebSocket streams (metrics, alerts, predictions)
+    ws := handlers.NewWebSocketHandler(s.logger)
+    v1.GET("/ws/metrics", ws.HandleMetricsStream)
+    v1.GET("/ws/alerts", ws.HandleAlertsStream)
+    v1.GET("/ws/predictions", ws.HandlePredictionsStream)
+
+    // Schema definitions (Vitess-backed)
+    if s.config.Vitess.Enabled && s.schemaRepo != nil {
+        if r, ok := s.schemaRepo.(*repo.SchemaRepo); ok {
+            schemaHandler := handlers.NewSchemaHandler(r, s.vmServices.Metrics, s.vmServices.Logs, s.cache, s.logger, s.config.Uploads.BulkMaxBytes)
+            v1.POST("/schema/metrics", schemaHandler.UpsertMetric)
+            v1.POST("/schema/metrics/bulk", schemaHandler.BulkUpsertMetricsCSV)
+            v1.GET("/schema/metrics/bulk/sample", schemaHandler.SampleCSV)
+            v1.GET("/schema/metrics/:metric", schemaHandler.GetMetric)
+            v1.GET("/schema/metrics/:metric/versions", schemaHandler.ListMetricVersions)
+            v1.POST("/schema/logs/fields", schemaHandler.UpsertLogField)
+            v1.POST("/schema/logs/fields/bulk", schemaHandler.BulkUpsertLogFieldsCSV)
+            v1.GET("/schema/logs/fields/bulk/sample", schemaHandler.SampleCSVLogFields)
+            v1.GET("/schema/logs/fields/:field", schemaHandler.GetLogField)
+            v1.GET("/schema/logs/fields/:field/versions", schemaHandler.ListLogFieldVersions)
+            v1.GET("/schema/logs/fields/:field/versions/:version", schemaHandler.GetLogFieldVersion)
+            v1.GET("/schema/metrics/:metric/versions/:version", schemaHandler.GetMetricVersion)
+            // Traces: services and operations schema
+            v1.POST("/schema/traces/services", schemaHandler.UpsertTraceService)
+            v1.POST("/schema/traces/services/bulk", schemaHandler.BulkUpsertTraceServicesCSV)
+            v1.GET("/schema/traces/services/:service", schemaHandler.GetTraceService)
+            v1.GET("/schema/traces/services/:service/versions", schemaHandler.ListTraceServiceVersions)
+            v1.GET("/schema/traces/services/:service/versions/:version", schemaHandler.GetTraceServiceVersion)
+            v1.POST("/schema/traces/operations", schemaHandler.UpsertTraceOperation)
+            v1.POST("/schema/traces/operations/bulk", schemaHandler.BulkUpsertTraceOperationsCSV)
+            v1.GET("/schema/traces/services/:service/operations/:operation", schemaHandler.GetTraceOperation)
+            v1.GET("/schema/traces/services/:service/operations/:operation/versions", schemaHandler.ListTraceOperationVersions)
+            v1.GET("/schema/traces/services/:service/operations/:operation/versions/:version", schemaHandler.GetTraceOperationVersion)
+        }
+    }
 }
 
 func (s *Server) Start(ctx context.Context) error {

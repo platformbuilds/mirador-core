@@ -25,18 +25,25 @@ type VictoriaMetricsResponse struct {
 }
 
 type MetricsQLQueryRequest struct {
-	Query    string `json:"query" binding:"required"`
-	Time     string `json:"time,omitempty"`
-	Timeout  string `json:"timeout,omitempty"`
-	TenantID string `json:"-"` // Set by middleware
+    Query    string `json:"query" binding:"required"`
+    Time     string `json:"time,omitempty"`
+    Timeout  string `json:"timeout,omitempty"`
+    TenantID string `json:"-"` // Set by middleware
+    // Optional: include definitions and restrict label keys
+    IncludeDefinitions *bool    `json:"include_definitions,omitempty"`
+    DefinitionsMinimal *bool    `json:"definitions_minimal,omitempty"`
+    LabelKeys          []string `json:"label_keys,omitempty"`
 }
 
 type MetricsQLRangeQueryRequest struct {
-	Query    string `json:"query" binding:"required"`
-	Start    string `json:"start" binding:"required"`
-	End      string `json:"end" binding:"required"`
-	Step     string `json:"step" binding:"required"`
-	TenantID string `json:"-"`
+    Query    string `json:"query" binding:"required"`
+    Start    string `json:"start" binding:"required"`
+    End      string `json:"end" binding:"required"`
+    Step     string `json:"step" binding:"required"`
+    TenantID string `json:"-"`
+    IncludeDefinitions *bool    `json:"include_definitions,omitempty"`
+    DefinitionsMinimal *bool    `json:"definitions_minimal,omitempty"`
+    LabelKeys          []string `json:"label_keys,omitempty"`
 }
 
 type MetricsQLQueryResult struct {
@@ -53,9 +60,10 @@ type MetricsQLRangeQueryResult struct {
 }
 
 type MetricsQLQueryResponse struct {
-	Data          interface{} `json:"data"`
-	ExecutionTime int64       `json:"execution_time"`
-	Timestamp     time.Time   `json:"timestamp"`
+    Data          interface{} `json:"data"`
+    ExecutionTime int64       `json:"execution_time"`
+    Timestamp     time.Time   `json:"timestamp"`
+    Definitions  interface{} `json:"definitions,omitempty"`
 }
 
 type SeriesRequest struct {

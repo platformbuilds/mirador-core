@@ -194,7 +194,7 @@ func (suite *APITestSuite) SetupSuite() {
 	// ****************
 
 	// Start server
-	suite.server = api.NewServer(cfg, log, mockCache, mockGRPCClients, mockVMServices)
+    suite.server = api.NewServer(cfg, log, mockCache, mockGRPCClients, mockVMServices, nil)
 	suite.testServer = httptest.NewServer(suite.server.Handler())
 	suite.client = &http.Client{Timeout: 10 * time.Second}
 }

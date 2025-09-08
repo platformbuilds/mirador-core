@@ -42,4 +42,10 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- else -}}
 {{ printf "%s-valkey-headless" .Release.Name }}
 {{- end -}}
+
+{{/* Vitess vtgate host helper for the subchart (if enabled) */}}
+{{- define "mirador-core.vitessVtgateHost" -}}
+{{- /* Subchart fullname will be <release>-vitess-minimal */ -}}
+{{ printf "%s-vitess-minimal-vtgate" .Release.Name }}
+{{- end -}}
 {{- end -}}

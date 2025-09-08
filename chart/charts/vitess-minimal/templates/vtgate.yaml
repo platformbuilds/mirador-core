@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "vitess-minimal.fullname" . }}-vtgate
+spec:
+  type: {{ .Values.service.vtgate.type }}
+  ports:
+    - name: mysql
+      port: {{ .Values.service.vtgate.port }}
+      targetPort: 15306
+  selector:
+    app.kubernetes.io/name: {{ include "vitess-minimal.name" . }}
+    app.kubernetes.io/component: vtgate
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "vitess-minimal.fullname" . }}-vtgate
+spec:
+  replicas: {{ .Values.vtgate.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "vitess-minimal.name" . }}
+      app.kubernetes.io/component: vtgate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "vitess-minimal.name" . }}
+        app.kubernetes.io/component: vtgate
+    spec:
+      containers:
+        - name: vtgate
+          image: {{ .Values.images.vtgate }}
+          args:
+            - "--topo_implementation=etcd2"
+            - "--topo_global_server_address={{ include \"vitess-minimal.etcdClientHost\" . }}:2379"
+            - "--topo_global_root=/vitess/global"
+            - "--tablet_types_to_wait=PRIMARY,REPLICA,RDONLY"
+            - "--mysql_server_port=15306"
+          ports:
+            - containerPort: 15306
+          livenessProbe:
+            tcpSocket: { port: 15306 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket: { port: 15306 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "vitess-minimal.fullname" . }}-vtgate-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "vitess-minimal.name" . }}
+      app.kubernetes.io/component: vtgate

@@ -34,6 +34,13 @@ data:
       {{- /* Use headless service for stable addressing in replication */ -}}
       {{- $_ := set $cfg.cache "nodes" (list (printf "%s:6379" (include "mirador-core.valkeyHeadlessHost" .))) -}}
     {{- end -}}
+    {{- /* Ensure uploads limit from values exists in config */ -}}
+    {{- if not (hasKey $cfg "uploads") -}}
+      {{- $_ := set $cfg "uploads" (dict) -}}
+    {{- end -}}
+    {{- if and (hasKey .Values.mirador "uploads") (hasKey .Values.mirador.uploads "bulk_max_bytes") -}}
+      {{- $_ := set $cfg.uploads "bulk_max_bytes" .Values.mirador.uploads.bulk_max_bytes -}}
+    {{- end -}}
 {{ toYaml $cfg | nindent 4 }}
 {{- end }}
 

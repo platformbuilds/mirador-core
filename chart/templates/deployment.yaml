@@ -79,6 +79,36 @@ spec:
             - name: {{ .name }}
               value: {{ .value | quote }}
             {{- end }}
+            {{- /* Vitess VTGate configuration */}}
+            {{- if .Values.vitess.enabled }}
+            - name: VITESS_HOST
+              value: {{ (or .Values.vitess.host (include "mirador-core.vitessVtgateHost" .)) | quote }}
+            - name: VITESS_PORT
+              value: {{ .Values.vitess.port | quote }}
+            - name: VITESS_KEYSPACE
+              value: {{ .Values.vitess.keyspace | quote }}
+            - name: VITESS_SHARD
+              value: {{ .Values.vitess.shard | quote }}
+            {{- if .Values.vitess.user }}
+            - name: VITESS_USER
+              value: {{ .Values.vitess.user | quote }}
+            {{- end }}
+            {{- if .Values.vitess.existingSecret }}
+            - name: VITESS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vitess.existingSecret }}
+                  key: {{ default "password" .Values.vitess.passwordKey }}
+            {{- else if .Values.vitess.password }}
+            - name: VITESS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mirador-core.fullname" . }}-vitess
+                  key: password
+            {{- end }}
+            - name: VITESS_TLS
+              value: {{ .Values.vitess.tls | quote }}
+            {{- end }}
             {{- range .Values.extraEnv }}
             - name: {{ .name }}
               value: {{ .value | quote }}
