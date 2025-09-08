@@ -24,15 +24,15 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 
 {{/*
-  Valkey service helpers. By default, assume Bitnami Valkey subchart service name is
-  "<release>-valkey". Allow override via .Values.valkey.serviceName. For headless
-  cluster service, "<release>-valkey-headless" can be used.
+  Valkey service helpers. Bitnami Valkey exposes services named
+  "<release>-valkey-primary" and "<release>-valkey-headless" by default.
+  Allow override via .Values.valkey.serviceName / headlessServiceName.
 */}}
 {{- define "mirador-core.valkeyServiceHost" -}}
 {{- if .Values.valkey.serviceName -}}
 {{ .Values.valkey.serviceName }}
 {{- else -}}
-{{ printf "%s-valkey" .Release.Name }}
+{{ printf "%s-valkey-primary" .Release.Name }}
 {{- end -}}
 {{- end -}}
 

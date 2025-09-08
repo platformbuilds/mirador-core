@@ -26,6 +26,30 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      {{- /* Optional initContainer: wait for Valkey subchart to be ready */}}
+      {{- if and .Values.waitFor.valkey.enabled .Values.valkey.enabled }}
+      initContainers:
+        - name: wait-for-valkey
+          image: "{{ .Values.waitFor.valkey.image.repository }}:{{ .Values.waitFor.valkey.image.tag }}"
+          imagePullPolicy: {{ .Values.waitFor.valkey.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - >-
+              echo "Waiting for Valkey at {{ include "mirador-core.valkeyServiceHost" . }}:6379";
+              START=$(date +%s);
+              until redis-cli -h {{ include "mirador-core.valkeyServiceHost" . }} -p 6379 PING 2>/dev/null | grep -q PONG; do
+                NOW=$(date +%s);
+                ELAPSED=$((NOW-START));
+                if [ $ELAPSED -ge {{ .Values.waitFor.valkey.timeoutSeconds }} ]; then
+                  echo "Timeout waiting for Valkey after $ELAPSED seconds";
+                  exit 1;
+                fi;
+                echo "Valkey not ready yet... ($ELAPSED s)";
+                sleep {{ .Values.waitFor.valkey.intervalSeconds }};
+              done;
+              echo "Valkey is ready.";
+      {{- end }}
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.imagePullSecrets | nindent 8 }}
