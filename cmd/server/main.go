@@ -5,6 +5,7 @@ import (
     "log"
     "os"
     "os/signal"
+    "strings"
     "syscall"
     "time"
 
@@ -47,12 +48,28 @@ func main() {
             logger.Info("Valkey single-node cache initialized", "addr", cfg.Cache.Nodes[0])
         }
     } else {
-        // Try immediate cluster connect; on failure, start with noop and auto-swap in background
+        // Prefer cluster when multiple nodes provided; if the target is a standalone instance
+        // (common in development), detect the specific error and fall back to single-node.
         valleyCache, err = cache.NewValkeyCluster(cfg.Cache.Nodes, time.Duration(cfg.Cache.TTL)*time.Second)
         if err != nil {
-            logger.Warn("Valkey cluster unavailable; starting with in-memory cache (auto-reconnect enabled)", "error", err)
-            fallback := cache.NewNoopValkeyCache(logger)
-            valleyCache = cache.NewAutoSwapForCluster(cfg.Cache.Nodes, time.Duration(cfg.Cache.TTL)*time.Second, logger, fallback)
+            if strings.Contains(strings.ToLower(err.Error()), "cluster support disabled") {
+                logger.Warn("Valkey reports cluster support disabled; falling back to single-node mode", "nodes", cfg.Cache.Nodes)
+                // Try single-node on the first address; if that fails, use noop with auto-swap-to-single
+                if len(cfg.Cache.Nodes) > 0 {
+                    if single, sErr := cache.NewValkeySingle(cfg.Cache.Nodes[0], cfg.Cache.DB, cfg.Cache.Password, time.Duration(cfg.Cache.TTL)*time.Second); sErr == nil {
+                        valleyCache = single
+                        logger.Info("Valkey single-node cache initialized via fallback", "addr", cfg.Cache.Nodes[0])
+                    } else {
+                        logger.Warn("Valkey single-node fallback unavailable; starting with in-memory cache (auto-reconnect to single)", "error", sErr)
+                        fallback := cache.NewNoopValkeyCache(logger)
+                        valleyCache = cache.NewAutoSwapForSingle(cfg.Cache.Nodes[0], cfg.Cache.DB, cfg.Cache.Password, time.Duration(cfg.Cache.TTL)*time.Second, logger, fallback)
+                    }
+                }
+            } else {
+                logger.Warn("Valkey cluster unavailable; starting with in-memory cache (auto-reconnect to cluster)", "error", err)
+                fallback := cache.NewNoopValkeyCache(logger)
+                valleyCache = cache.NewAutoSwapForCluster(cfg.Cache.Nodes, time.Duration(cfg.Cache.TTL)*time.Second, logger, fallback)
+            }
         } else {
             logger.Info("Valkey cluster cache initialized", "nodes", len(cfg.Cache.Nodes))
         }
