@@ -363,3 +363,7 @@ vitess-minimal:
 # Bitnami etcd subchart values (mirrors vitess-embedded.etcd via YAML anchor)
 etcd:
   <<: *vitessEmbeddedEtcd
+  # Do not deploy a separate top-level etcd by default; the Vitess subchart
+  # includes its own etcd dependency. Enable only if you want a standalone
+  # etcd managed at the parent level.
+  enabled: false
