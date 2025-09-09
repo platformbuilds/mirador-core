@@ -10,7 +10,11 @@ dependencies:
     repository: https://charts.bitnami.com/bitnami
     version: ^2.0.0
     condition: valkey.enabled
+  - name: etcd
+    repository: https://charts.bitnami.com/bitnami
+    version: ^10.0.0
+    condition: vitess-embedded.etcd.enabled
   - name: vitess-minimal
     repository: file://charts/vitess-minimal
     version: 0.1.0
-    condition: vitess.subchart.enabled
+    condition: vitess-embedded.enabled
