@@ -19,7 +19,7 @@ spec:
             - name: vtctldclient
               image: {{ $.Values.backup.vtctldClientImage }}
               args:
-                - "--server={{ include \"vitess-minimal.fullname\" $ }}-vtctld:15000"
+                - "--server={{ include "vitess-minimal.fullname" $ }}-vtctld:15000"
                 {{- range $a := $.Values.backup.extraArgs }}
                 - {{ $a | quote }}
                 {{- end }}
@@ -27,4 +27,3 @@ spec:
                 - "{{ $.Values.topology.keyspace }}/{{ $shard }}"
 {{- end }}
 {{- end }}
-

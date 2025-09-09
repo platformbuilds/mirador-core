@@ -79,27 +79,27 @@ spec:
             - name: {{ .name }}
               value: {{ .value | quote }}
             {{- end }}
-            {{- /* Vitess VTGate configuration */}}
-            {{- if .Values.vitess.enabled }}
+            {{- /* Vitess VTGate configuration: external or embedded */}}
+            {{- if or ((index .Values "vitess-external").enabled) ((index .Values "vitess-embedded").enabled) }}
             - name: VITESS_HOST
-              value: {{ (or .Values.vitess.host (include "mirador-core.vitessVtgateHost" .)) | quote }}
+              value: {{ (or (index (index .Values "vitess-external") "host") (include "mirador-core.vitessVtgateHost" .)) | quote }}
             - name: VITESS_PORT
-              value: {{ .Values.vitess.port | quote }}
+              value: {{ (index (index .Values "vitess-external") "port") | quote }}
             - name: VITESS_KEYSPACE
-              value: {{ .Values.vitess.keyspace | quote }}
+              value: {{ (index (index .Values "vitess-external") "keyspace") | quote }}
             - name: VITESS_SHARD
-              value: {{ .Values.vitess.shard | quote }}
-            {{- if .Values.vitess.user }}
+              value: {{ (index (index .Values "vitess-external") "shard") | quote }}
+            {{- if (index (index .Values "vitess-external") "user") }}
             - name: VITESS_USER
-              value: {{ .Values.vitess.user | quote }}
+              value: {{ (index (index .Values "vitess-external") "user") | quote }}
             {{- end }}
-            {{- if .Values.vitess.existingSecret }}
+            {{- if (index (index .Values "vitess-external") "existingSecret") }}
             - name: VITESS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.vitess.existingSecret }}
-                  key: {{ default "password" .Values.vitess.passwordKey }}
-            {{- else if .Values.vitess.password }}
+                  name: {{ (index (index .Values "vitess-external") "existingSecret") }}
+                  key: {{ default "password" (index (index .Values "vitess-external") "passwordKey") }}
+            {{- else if (index (index .Values "vitess-external") "password") }}
             - name: VITESS_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -107,7 +107,7 @@ spec:
                   key: password
             {{- end }}
             - name: VITESS_TLS
-              value: {{ .Values.vitess.tls | quote }}
+              value: {{ (index (index .Values "vitess-external") "tls") | quote }}
             {{- end }}
             {{- range .Values.extraEnv }}
             - name: {{ .name }}

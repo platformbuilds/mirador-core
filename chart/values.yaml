@@ -79,8 +79,8 @@ env:
 # Optional extra environment variables (rendered after `env` items)
 extraEnv: []
 
-# Vitess (VTGate) connection for schema definitions API
-vitess:
+# Vitess external (VTGate) connection for schema definitions API
+vitess-external:
   enabled: false
   # VTGate host:port (MySQL protocol)
   host: vtgate.mirador.svc.cluster.local
@@ -99,9 +99,47 @@ vitess:
   # Additional DSN params, e.g., { collation: utf8mb4_general_ci }
   params: {}
 
-  # Optional: deploy a minimal Vitess stack as a subchart for dev/small
-  subchart:
+# Vitess embedded (subchart) full configuration (bridged to vitess-minimal)
+vitess-embedded: &vitessEmbedded
+  enabled: false
+  images:
+    etcd: bitnami/etcd:3.5.12
+    vtctld: vitess/vtctldserver:v18.0.2
+    vtgate: vitess/vtgate:v18.0.2
+    vttablet: vitess/vttablet:v18.0.2
+  topology:
+    cell: zone1
+    keyspace: mirador
+    shards:
+      - "0"
+  resources: {}
+  persistence:
+    size: 5Gi
+    # storageClass: standard
+  service:
+    vtgate:
+      type: ClusterIP
+      port: 15306
+  etcd:
+    enabled: true
+    replicaCount: 3
+    persistence:
+      enabled: true
+      size: 5Gi
+      # storageClass: standard
+  vtgate:
+    replicas: 2
+    resources: {}
+  vttablet:
+    replicasPerShard: 2
+    resources: {}
+    mysql:
+      extraArgs: []
+  backup:
     enabled: false
+    schedule: "0 2 * * *"
+    vtctldClientImage: vitess/vtctldclient:v18.0.2
+    extraArgs: []
 
 # Init waiters for dependent services
 waitFor:
@@ -303,3 +341,6 @@ probes:
     periodSeconds: 2
     timeoutSeconds: 5
     failureThreshold: 30
+# Bridge values for the vitess-minimal subchart (do not edit here; set vitess-embedded)
+vitess-minimal:
+  <<: *vitessEmbedded

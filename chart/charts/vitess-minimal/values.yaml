@@ -16,6 +16,8 @@ resources: {}
 
 persistence:
   size: 5Gi
+  # Optional: set a specific StorageClass for vttablet PVCs
+  # storageClass: standard
 
 service:
   vtgate:
@@ -29,6 +31,8 @@ etcd:
   persistence:
     enabled: true
     size: 5Gi
+    # Optional: set a specific StorageClass for etcd PVCs
+    # storageClass: standard
 
 vtgate:
   replicas: 2

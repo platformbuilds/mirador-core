@@ -33,7 +33,7 @@ spec:
           image: {{ .Values.images.vtgate }}
           args:
             - "--topo_implementation=etcd2"
-            - "--topo_global_server_address={{ include \"vitess-minimal.etcdClientHost\" . }}:2379"
+            - "--topo_global_server_address={{ include "vitess-minimal.etcdClientHost" . }}:2379"
             - "--topo_global_root=/vitess/global"
             - "--tablet_types_to_wait=PRIMARY,REPLICA,RDONLY"
             - "--mysql_server_port=15306"
