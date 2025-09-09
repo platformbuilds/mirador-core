@@ -104,7 +104,7 @@ vitess-embedded: &vitessEmbedded
   enabled: false
   images:
     etcd: bitnami/etcd:3.5.12
-    vtctld: vitess/vtctldserver:v18.0.2
+    vtctld: vitess/vtctld:v18.0.2
     vtgate: vitess/vtgate:v18.0.2
     vttablet: vitess/vttablet:v18.0.2
   topology:
@@ -115,7 +115,7 @@ vitess-embedded: &vitessEmbedded
   resources: {}
   persistence:
     size: 5Gi
-    # storageClass: standard
+    storageClass: standard
   service:
     vtgate:
       type: ClusterIP
@@ -126,7 +126,7 @@ vitess-embedded: &vitessEmbedded
     persistence:
       enabled: true
       size: 5Gi
-      # storageClass: standard
+      storageClass: standard
   vtgate:
     replicas: 2
     resources: {}
