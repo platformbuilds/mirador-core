@@ -103,7 +103,9 @@ vitess-external:
 vitess-embedded: &vitessEmbedded
   enabled: false
   images:
-    etcd: bitnami/etcd:3.5.12
+    # Etcd image used for documentation/reference; the running etcd comes from the
+    # Bitnami subchart below (see vitess-embedded.etcd.image).
+    etcd: bitnami/etcd:3.5.17-debian-12-r3
     vtctld: vitess/vtctld:v18.0.2
     vtgate: vitess/vtgate:v18.0.2
     vttablet: vitess/vttablet:v18.0.2
@@ -123,10 +125,23 @@ vitess-embedded: &vitessEmbedded
   etcd: &vitessEmbeddedEtcd
     enabled: true
     replicaCount: 3
+    # Override the Bitnami etcd subchart image to the latest tested tag
+    image:
+      registry: docker.io
+      repository: bitnami/etcd
+      tag: 3.5.17-debian-12-r3
+      pullPolicy: IfNotPresent
     persistence:
       enabled: true
       size: 5Gi
       storageClass: standard
+    # If you wish to avoid Bitnami images (may require additional flags/compat), you can
+    # override the image repository and tag below. Note Bitnami chart defaults/features may
+    # assume their own image. Use with caution.
+    # image:
+    #   registry: ""
+    #   repository: gcr.io/etcd-development/etcd
+    #   tag: v3.5.17
   vtgate:
     replicas: 2
     resources: {}
