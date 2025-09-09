@@ -1,7 +1,7 @@
 # Images
 images:
   etcd: bitnami/etcd:3.5.12
-  vtctld: vitess/vtctldserver:v18.0.2
+  vtctld: vitess/vtctld:v18.0.2
   vtgate: vitess/vtgate:v18.0.2
   vttablet: vitess/vttablet:v18.0.2
 
