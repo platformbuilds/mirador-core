@@ -120,7 +120,7 @@ vitess-embedded: &vitessEmbedded
     vtgate:
       type: ClusterIP
       port: 15306
-  etcd:
+  etcd: &vitessEmbeddedEtcd
     enabled: true
     replicaCount: 3
     persistence:
@@ -344,3 +344,7 @@ probes:
 # Bridge values for the vitess-minimal subchart (do not edit here; set vitess-embedded)
 vitess-minimal:
   <<: *vitessEmbedded
+
+# Bitnami etcd subchart values (mirrors vitess-embedded.etcd via YAML anchor)
+etcd:
+  <<: *vitessEmbeddedEtcd
