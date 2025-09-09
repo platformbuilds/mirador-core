@@ -131,34 +131,49 @@ for dev/small environments. It includes:
 - vtgate — MySQL protocol router (replicas)
 - vttablet — StatefulSets per shard (PRIMARY + REPLICA tablets)
 
-Enable the Vitess subchart and auto‑wire the app to its vtgate:
+Enable Vitess (external) or the embedded Vitess subchart and auto‑wire the app to vtgate:
 
 ```yaml
-vitess:
+vitess-external:
   enabled: true
-  # Leave host empty to auto‑wire when subchart is on
-  host: ""
+  host: vtgate.mirador.svc.cluster.local
   port: 15306
   keyspace: mirador
   shard: "0"
   user: ""
-  # For dev only — prefer Secrets in prod
   password: ""
-  subchart:
-    enabled: true
+
+vitess-embedded:
+  enabled: true
 ```
 
-Vitess subchart values (charts/vitess-minimal/values.yaml):
+Vitess embedded values (mirrored into vitess-minimal subchart):
 
 - `topology.keyspace`: keyspace name (default `mirador`)
 - `topology.shards`: list of shard names (e.g., `["0"]` or `["-80","80-"]`)
 - `vtgate.replicas`: vtgate deployment replicas (default 2)
 - `vttablet.replicasPerShard`: tablets per shard (default 2 → PRIMARY+1 REPLICA)
 - `persistence.size`: PVC size for tablets (default 5Gi)
+- `persistence.storageClass`: optional StorageClass for vttablet PVCs (default unset)
 - `etcd.enabled`: enable Bitnami etcd (default true), `etcd.replicaCount: 3`
+  - `etcd.persistence.storageClass`: optional StorageClass for etcd PVCs (default unset)
 
 The application env `VITESS_HOST` resolves to `<release>-vitess-minimal-vtgate`
 when `vitess.subchart.enabled=true` and `vitess.host` is empty.
+
+#### Setting StorageClass from parent chart
+
+You can configure the StorageClass for the Vitess subchart directly in this
+parent chart's `values.yaml` under the `vitess-minimal` key:
+
+```yaml
+vitess-minimal:
+  persistence:
+    storageClass: fast-ssd   # for vttablet PVCs
+  etcd:
+    persistence:
+      storageClass: standard # for etcd PVCs
+```
 
 ### Vitess Credentials
 
