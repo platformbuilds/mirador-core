@@ -663,7 +663,7 @@ paths:
       summary: MetricsQL instant query (VictoriaMetrics)
       description: |
         Executes an instant query against VictoriaMetrics. When `include_definitions` is enabled (default),
-        the response contains `definitions` sourced from the schema store (Vitess) including metric and
+        the response contains `definitions` sourced from the schema store (Weaviate) including metric and
         per-metric label definitions. Optional `label_keys` can limit which label keys are considered.
       requestBody:
         required: true

@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "weaviate.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "weaviate.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  serviceName: {{ include "weaviate.fullname" . }}
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "weaviate.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "weaviate.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: weaviate
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 7100
+              name: gossip
+            - containerPort: 7101
+              name: data
+          env:
+            - name: QUERY_DEFAULTS_LIMIT
+              value: {{ .Values.env.QUERY_DEFAULTS_LIMIT | default "25" | quote }}
+            - name: AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
+              value: {{ .Values.env.AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED | default "true" | quote }}
+            - name: DEFAULT_VECTORIZER_MODULE
+              value: {{ .Values.env.DEFAULT_VECTORIZER_MODULE | default "none" | quote }}
+            - name: ENABLE_MODULES
+              value: {{ .Values.enableModules | quote }}
+            - name: PERSISTENCE_DATA_PATH
+              value: {{ .Values.env.PERSISTENCE_DATA_PATH | default "/var/lib/weaviate" | quote }}
+            - name: CLUSTER_GOSSIP_BIND_PORT
+              value: {{ .Values.env.CLUSTER_GOSSIP_BIND_PORT | default "7100" | quote }}
+            - name: CLUSTER_DATA_BIND_PORT
+              value: {{ .Values.env.CLUSTER_DATA_BIND_PORT | default "7101" | quote }}
+            - name: GOMAXPROCS
+              value: {{ .Values.env.GOMAXPROCS | default "0" | quote }}
+            - name: OPENAI_APIKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "weaviate.fullname" . }}-providers
+                  key: openai
+                  optional: true
+            - name: COHERE_APIKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "weaviate.fullname" . }}-providers
+                  key: cohere
+                  optional: true
+            - name: HUGGINGFACE_APIKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "weaviate.fullname" . }}-providers
+                  key: huggingface
+                  optional: true
+          livenessProbe:
+            httpGet:
+              path: /v1/.well-known/live
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /v1/.well-known/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.env.PERSISTENCE_DATA_PATH | default "/var/lib/weaviate" | quote }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "weaviate.fullname" . }}-data
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "weaviate.fullname" . }}-data
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size }}
+  {{- if .Values.persistence.storageClass }}
+  storageClassName: {{ .Values.persistence.storageClass | quote }}
+  {{- end }}
+

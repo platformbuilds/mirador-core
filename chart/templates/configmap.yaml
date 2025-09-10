@@ -41,6 +41,18 @@ data:
     {{- if and (hasKey .Values.mirador "uploads") (hasKey .Values.mirador.uploads "bulk_max_bytes") -}}
       {{- $_ := set $cfg.uploads "bulk_max_bytes" .Values.mirador.uploads.bulk_max_bytes -}}
     {{- end -}}
+    {{- /* If Weaviate subchart is enabled, override host to the in-cluster Service */ -}}
+    {{- if .Values.weaviate.enabled -}}
+      {{- $_ := set $cfg "weaviate" (merge (dict) ($cfg.weaviate | default (dict))) -}}
+      {{- $_ := set $cfg.weaviate "enabled" true -}}
+      {{- $_ := set $cfg.weaviate "host" (include "mirador-core.weaviateServiceHost" .) -}}
+      {{- if not (hasKey $cfg.weaviate "scheme") -}}
+        {{- $_ := set $cfg.weaviate "scheme" "http" -}}
+      {{- end -}}
+      {{- if not (hasKey $cfg.weaviate "port") -}}
+        {{- $_ := set $cfg.weaviate "port" 8080 -}}
+      {{- end -}}
+    {{- end -}}
 {{ toYaml $cfg | nindent 4 }}
 {{- end }}
 

@@ -205,12 +205,13 @@ func setDefaults(v *viper.Viper) {
     // Uploads
     v.SetDefault("uploads.bulk_max_bytes", int64(5<<20)) // 5 MiB default
 
-    // Vitess (disabled by default)
-    v.SetDefault("vitess.enabled", false)
-    v.SetDefault("vitess.host", "vtgate.mirador.svc.cluster.local")
-    v.SetDefault("vitess.port", 15306)
-    v.SetDefault("vitess.keyspace", "mirador")
-    v.SetDefault("vitess.shard", "0")
+    
+
+    // Weaviate (disabled by default)
+    v.SetDefault("weaviate.enabled", false)
+    v.SetDefault("weaviate.scheme", "http")
+    v.SetDefault("weaviate.host", "weaviate.mirador.svc.cluster.local")
+    v.SetDefault("weaviate.port", 8080)
 }
 
 /* ---------------------------- legacy overrides --------------------------- */
@@ -295,14 +296,15 @@ func overrideWithEnvVars(v *viper.Viper) {
         v.Set("integrations.email.enabled", true)
     }
 
-    // Vitess (VTGate) overrides
-    if host := os.Getenv("VITESS_HOST"); host != "" { v.Set("vitess.host", host) }
-    if port := os.Getenv("VITESS_PORT"); port != "" { if i, err := strconv.Atoi(port); err == nil { v.Set("vitess.port", i) } }
-    if ks := os.Getenv("VITESS_KEYSPACE"); ks != "" { v.Set("vitess.keyspace", ks) }
-    if shard := os.Getenv("VITESS_SHARD"); shard != "" { v.Set("vitess.shard", shard) }
-    if u := os.Getenv("VITESS_USER"); u != "" { v.Set("vitess.user", u) }
-    if p := os.Getenv("VITESS_PASSWORD"); p != "" { v.Set("vitess.password", p) }
-    if tls := os.Getenv("VITESS_TLS"); tls != "" { if b, err := strconv.ParseBool(tls); err == nil { v.Set("vitess.tls", b) } }
+    
+
+    // Weaviate overrides
+    if wh := os.Getenv("WEAVIATE_HOST"); wh != "" { v.Set("weaviate.host", wh) }
+    if wp := os.Getenv("WEAVIATE_PORT"); wp != "" { if i, err := strconv.Atoi(wp); err == nil { v.Set("weaviate.port", i) } }
+    if ws := os.Getenv("WEAVIATE_SCHEME"); ws != "" { v.Set("weaviate.scheme", ws) }
+    if wk := os.Getenv("WEAVIATE_API_KEY"); wk != "" { v.Set("weaviate.api_key", wk) }
+    if wc := os.Getenv("WEAVIATE_CONSISTENCY"); wc != "" { v.Set("weaviate.consistency", wc) }
+    if we := os.Getenv("WEAVIATE_ENABLED"); we != "" { if b, err := strconv.ParseBool(we); err == nil { v.Set("weaviate.enabled", b) } }
 
     // Uploads (CSV bulk)
     if s := os.Getenv("BULK_UPLOAD_MAX_BYTES"); s != "" {

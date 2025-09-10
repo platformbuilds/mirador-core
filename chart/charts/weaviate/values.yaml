@@ -1,0 +1,27 @@
+image:
+  repository: cr.weaviate.io/semitechnologies/weaviate
+  tag: 1.25.4
+  pullPolicy: IfNotPresent
+
+replicas: 1
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources: {}
+
+persistence:
+  enabled: true
+  size: 20Gi
+  storageClass: ""
+
+enableModules: "bm25"
+
+apiKeys:
+  openai: ""
+  cohere: ""
+  huggingface: ""
+
+env: {}
+

@@ -14,7 +14,7 @@ func TestNewServer_Constructs(t *testing.T) {
     cfg := &config.Config{}
     cfg.Environment = "development"
     cfg.Cache.Nodes = []string{"localhost:6379"}
-    // No Vitess (schemaRepo nil)
+    // No schema store configured (schemaRepo nil)
 
     log := logger.New("error")
     valley := cache.NewNoopValkeyCache(log)

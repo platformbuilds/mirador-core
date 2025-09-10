@@ -165,19 +165,16 @@ export RBAC_ENABLED=true
 export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
 export TEAMS_WEBHOOK_URL=https://company.webhook.office.com/...
 
-### Vitess (Schema Definitions Store)
+### Weaviate (Schema Definitions Store)
 
-MIRADOR-CORE can persist metric/log schema definitions in Vitess (VTGate/MySQL protocol).
+MIRADOR-CORE persists metric/log/trace schema definitions in Weaviate.
 
 - Core envs:
-  - `VITESS_HOST` (vtgate host)
-  - `VITESS_PORT` (default 15306)
-  - `VITESS_KEYSPACE` (e.g., `mirador`)
-  - `VITESS_SHARD` (e.g., `0`)
-  - `VITESS_USER`, `VITESS_PASSWORD`
-  - `VITESS_TLS` (true/false)
-
-When using the Helm chart, set these under `vitess.*` in `values.yaml` (or enable the provided Vitess subchart for dev/small clusters).
+  - `WEAVIATE_ENABLED` (true/false)
+  - `WEAVIATE_HOST` (service DNS or host)
+  - `WEAVIATE_PORT` (default 8080)
+  - `WEAVIATE_SCHEME` (http|https)
+  - `WEAVIATE_API_KEY` (optional)
 
 ## Schema Definitions APIs
 
@@ -285,7 +282,7 @@ Placeholders indicate no definition has been provided yet and reference the sche
 - CI uses Go 1.23.12 for build and tests (see `.github/workflows/ci.yml`).
 - Local development is recommended with Go 1.23.12 or newer 1.23.x.
 
-See `chart/README.md` for deployment via Helm, embedded Valkey, and the optional Vitess subchart (no operator). It also documents the backup CronJobs and how to pass vttablet backup flags.
+See `chart/README.md` for deployment via Helm, embedded Valkey, and the Weaviate subchart.
 ```
 
 ## Monitoring

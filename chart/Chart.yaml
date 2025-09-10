@@ -10,11 +10,7 @@ dependencies:
     repository: https://charts.bitnami.com/bitnami
     version: ^2.0.0
     condition: valkey.enabled
-  - name: etcd
-    repository: https://charts.bitnami.com/bitnami
-    version: ^10.0.0
-    condition: etcd.enabled
-  - name: vitess-minimal
-    repository: file://charts/vitess-minimal
-    version: 0.1.1
-    condition: vitess-embedded.enabled
+  - name: weaviate
+    repository: file://charts/weaviate
+    version: 0.1.0
+    condition: weaviate.enabled

@@ -1,0 +1,7 @@
+apiVersion: v2
+name: weaviate
+description: Minimal Weaviate subchart (single-node) for development / initial migration
+type: application
+version: 0.1.0
+appVersion: "1.25.4"
+

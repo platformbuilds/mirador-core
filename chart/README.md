@@ -121,102 +121,17 @@ The subchart version is declared in `values.yaml` at `valkey.version`. The Makef
 
 Refer to upstream chart notes: https://github.com/bitnami/charts/tree/main/bitnami/valkey
 
-## Vitess Subchart (No Operator)
+## Weaviate Subchart
 
-This chart can deploy a minimal but production‑leaning Vitess stack without an operator
-for dev/small environments. It includes:
-
-- etcd (Bitnami subchart) — 3 nodes by default
-- vtctld — Vitess control plane HTTP/gRPC
-- vtgate — MySQL protocol router (replicas)
-- vttablet — StatefulSets per shard (PRIMARY + REPLICA tablets)
-
-Enable Vitess (external) or the embedded Vitess subchart and auto‑wire the app to vtgate:
+This chart can deploy a Weaviate instance to back schema definitions and AI/RAG features.
+Enable via values:
 
 ```yaml
-vitess-external:
+weaviate:
   enabled: true
-  host: vtgate.mirador.svc.cluster.local
-  port: 15306
-  keyspace: mirador
-  shard: "0"
-  user: ""
-  password: ""
-
-vitess-embedded:
-  enabled: true
-```
-
-Vitess embedded values (mirrored into vitess-minimal subchart):
-
-- `topology.keyspace`: keyspace name (default `mirador`)
-- `topology.shards`: list of shard names (e.g., `["0"]` or `["-80","80-"]`)
-- `vtgate.replicas`: vtgate deployment replicas (default 2)
-- `vttablet.replicasPerShard`: tablets per shard (default 2 → PRIMARY+1 REPLICA)
-- `persistence.size`: PVC size for tablets (default 5Gi)
-- `persistence.storageClass`: optional StorageClass for vttablet PVCs (default unset)
-- `etcd.enabled`: enable Bitnami etcd (default true), `etcd.replicaCount: 3`
-  - `etcd.persistence.storageClass`: optional StorageClass for etcd PVCs (default unset)
-
-The application env `VITESS_HOST` resolves to `<release>-vitess-minimal-vtgate`
-when `vitess.subchart.enabled=true` and `vitess.host` is empty.
-
-#### Setting StorageClass from parent chart
-
-You can configure the StorageClass for the Vitess subchart directly in this
-parent chart's `values.yaml` under the `vitess-minimal` key:
-
-```yaml
-vitess-minimal:
   persistence:
-    storageClass: fast-ssd   # for vttablet PVCs
-  etcd:
-    persistence:
-      storageClass: standard # for etcd PVCs
-```
-
-### Vitess Credentials
-
-Set credentials via a Secret (recommended):
-
-```yaml
-vitess:
-  enabled: true
-  existingSecret: my-vitess-secret
-  passwordKey: password
-  user: appuser
-```
-
-If `vitess.password` is set in values (dev only), the chart auto‑creates
-`<release>-mirador-core-vitess` with the password and wires it to the pod env.
-
-### Backups
-
-The subchart provides a simple backup CronJob that calls `vtctldclient Backup` per shard.
-You must configure vttablet backup flags (e.g., S3) via `vttablet.mysql.extraArgs`.
-
-Enable backups and set schedule:
-
-```yaml
-vitess:
-  subchart:
     enabled: true
-
-vitess-minimal:
-  backup:
-    enabled: true
-    schedule: "0 2 * * *"
-    vtctldClientImage: vitess/vtctldclient:v18.0.2
-    extraArgs: []
-
-  # Pass backup storage flags to vttablet (example for S3 w/ xtrabackup)
-  vttablet:
-    mysql:
-      extraArgs:
-        - "--backup_storage_implementation=s3"
-        - "--s3_backup_aws_region=us-east-1"
-        - "--s3_backup_bucket=my-vitess-backups"
-        # If credentials are needed, mount as env/secret and pass driver flags accordingly
+    size: 20Gi
 ```
 
 Notes:
