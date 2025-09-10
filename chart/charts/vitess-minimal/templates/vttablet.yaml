@@ -33,11 +33,19 @@ spec:
       containers:
         - name: vttablet
           image: {{ include "vitess-minimal.renderImage" (dict "image" $.Values.images.vttablet "Values" $.Values) }}
+          # Ensure the vttablet binary is invoked explicitly; some images lack ENTRYPOINT
+          command:
+            - "/vt/bin/vttablet"
+          env:
+            - name: VTROOT
+              value: "/vt"
+            - name: VTDATAROOT
+              value: "/vt/vtdataroot"
           args:
             - "--topo_implementation=etcd2"
             - "--topo_global_server_address={{ include "vitess-minimal.etcdClientHost" $ }}:2379"
             - "--topo_global_root=/vitess/global"
-            - "--init_db_sql_file=/vt/init_db.sql"
+            - "--init_db_sql_file=/vt/config/init_db.sql"
             - "--tablet_dir=tablet"
             - "--log_dir=/vt/logs"
             - "--port=15002"
@@ -49,9 +57,15 @@ spec:
             {{- range $.Values.vttablet.mysql.extraArgs }}
             - {{ . | quote }}
             {{- end }}
+            - "--syslog=false"
           volumeMounts:
             - name: data
               mountPath: /vt/vtdataroot
+            {{- if $.Values.vttablet.mysql.initDb.enabled }}
+            - name: initdb
+              mountPath: /vt/config
+              readOnly: true
+            {{- end }}
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -99,11 +113,19 @@ spec:
       containers:
         - name: vttablet
           image: {{ include "vitess-minimal.renderImage" (dict "image" $.Values.images.vttablet "Values" $.Values) }}
+          # Ensure the vttablet binary is invoked explicitly; some images lack ENTRYPOINT
+          command:
+            - "/vt/bin/vttablet"
+          env:
+            - name: VTROOT
+              value: "/vt"
+            - name: VTDATAROOT
+              value: "/vt/vtdataroot"
           args:
             - "--topo_implementation=etcd2"
             - "--topo_global_server_address={{ include "vitess-minimal.etcdClientHost" $ }}:2379"
             - "--topo_global_root=/vitess/global"
-            - "--init_db_sql_file=/vt/init_db.sql"
+            - "--init_db_sql_file=/vt/config/init_db.sql"
             - "--tablet_dir=tablet"
             - "--log_dir=/vt/logs"
             - "--port=15002"
@@ -115,9 +137,15 @@ spec:
             {{- range $.Values.vttablet.mysql.extraArgs }}
             - {{ . | quote }}
             {{- end }}
+            - "--syslog=false"
           volumeMounts:
             - name: data
               mountPath: /vt/vtdataroot
+            {{- if $.Values.vttablet.mysql.initDb.enabled }}
+            - name: initdb
+              mountPath: /vt/config
+              readOnly: true
+            {{- end }}
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -132,3 +160,15 @@ spec:
 {{- end }}
 ---
 {{- end }}
+      {{- if $.Values.vttablet.mysql.initDb.enabled }}
+      volumes:
+        - name: initdb
+          configMap:
+            name: {{ include "vitess-minimal.fullname" $ }}-vttablet-initdb
+      {{- end }}
+      {{- if $.Values.vttablet.mysql.initDb.enabled }}
+      volumes:
+        - name: initdb
+          configMap:
+            name: {{ include "vitess-minimal.fullname" $ }}-vttablet-initdb
+      {{- end }}
