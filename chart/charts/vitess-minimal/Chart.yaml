@@ -2,7 +2,7 @@ apiVersion: v2
 name: vitess-minimal
 description: Minimal Vitess (etcd + vtctld + vtgate + single vttablet) for dev/small
 type: application
-version: 0.1.0
+version: 0.1.1
 appVersion: "18.0"
 dependencies:
   - name: etcd

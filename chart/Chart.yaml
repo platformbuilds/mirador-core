@@ -16,5 +16,5 @@ dependencies:
     condition: etcd.enabled
   - name: vitess-minimal
     repository: file://charts/vitess-minimal
-    version: 0.1.0
+    version: 0.1.1
     condition: vitess-embedded.enabled
