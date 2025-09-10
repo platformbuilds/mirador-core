@@ -27,9 +27,13 @@ spec:
         app.kubernetes.io/name: {{ include "vitess-minimal.name" . }}
         app.kubernetes.io/component: vtctld
     spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
       containers:
         - name: vtctld
-          image: {{ .Values.images.vtctld }}
+          image: {{ include "vitess-minimal.renderImage" (dict "image" .Values.images.vtctld "Values" .Values) }}
           args:
             - "--topo_implementation=etcd2"
             - "--topo_global_server_address={{ include "vitess-minimal.etcdClientHost" . }}:2379"

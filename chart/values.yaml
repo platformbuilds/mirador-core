@@ -127,10 +127,11 @@ vitess-embedded: &vitessEmbedded
     replicaCount: 3
     # Override the Bitnami etcd subchart image to the latest tested tag
     image:
-      registry: docker.io
+      registry: "" # leave empty to allow global.imageRegistry to take effect
       repository: bitnami/etcd
       tag: 3.5.17-debian-12-r3
       pullPolicy: IfNotPresent
+      pullSecrets: []
     persistence:
       enabled: true
       size: 5Gi
@@ -366,4 +367,10 @@ etcd:
   # Do not deploy a separate top-level etcd by default; the Vitess subchart
   # includes its own etcd dependency. Enable only if you want a standalone
   # etcd managed at the parent level.
+global:
+  # Optional: set a global registry prefix for all images (e.g., your internal mirror)
+  # Examples: "repo.npci.org.in", "my-registry.local:5000"
+  imageRegistry: ""
+  # Optional: global imagePullSecrets applied by subcharts that support it
+  imagePullSecrets: []
   enabled: false
