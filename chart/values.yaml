@@ -369,7 +369,7 @@ etcd:
   # etcd managed at the parent level.
 global:
   # Optional: set a global registry prefix for all images (e.g., your internal mirror)
-  # Examples: "repo.npci.org.in", "my-registry.local:5000"
+  # Examples: "my-registry.local:5000"
   imageRegistry: ""
   # Optional: global imagePullSecrets applied by subcharts that support it
   imagePullSecrets: []
