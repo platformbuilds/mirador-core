@@ -49,6 +49,9 @@ vttablet:
     extraArgs: []
     initDb:
       enabled: true
+      # Some Vitess versions do not support passing the init SQL via
+      # vttablet flag. Leave this false unless your image supports it.
+      useFlag: false
       sql: |
         -- Minimal MySQL configuration for Vitess tablets
         SET GLOBAL sql_mode='NO_ENGINE_SUBSTITUTION';

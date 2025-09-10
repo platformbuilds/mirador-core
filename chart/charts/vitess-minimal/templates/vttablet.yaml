@@ -45,7 +45,11 @@ spec:
             - "--topo_implementation=etcd2"
             - "--topo_global_server_address={{ include "vitess-minimal.etcdClientHost" $ }}:2379"
             - "--topo_global_root=/vitess/global"
+            {{- if $.Values.vttablet.mysql.initDb.enabled }}
+            {{- if $.Values.vttablet.mysql.initDb.useFlag }}
             - "--init_db_sql_file=/vt/config/init_db.sql"
+            {{- end }}
+            {{- end }}
             - "--tablet_dir=tablet"
             - "--log_dir=/vt/logs"
             - "--port=15002"
@@ -131,7 +135,11 @@ spec:
             - "--topo_implementation=etcd2"
             - "--topo_global_server_address={{ include "vitess-minimal.etcdClientHost" $ }}:2379"
             - "--topo_global_root=/vitess/global"
+            {{- if $.Values.vttablet.mysql.initDb.enabled }}
+            {{- if $.Values.vttablet.mysql.initDb.useFlag }}
             - "--init_db_sql_file=/vt/config/init_db.sql"
+            {{- end }}
+            {{- end }}
             - "--tablet_dir=tablet"
             - "--log_dir=/vt/logs"
             - "--port=15002"
