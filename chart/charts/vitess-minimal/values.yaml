@@ -37,10 +37,14 @@ etcd:
 vtgate:
   replicas: 2
   resources: {}
+  # Override vtgate executable path if your image differs
+  command: "/vt/bin/vtgate"
 
 vttablet:
   replicasPerShard: 2 # 1 PRIMARY + (replicasPerShard-1) REPLICA
   resources: {}
+  # Override vttablet executable path if your image differs
+  command: "/vt/bin/vttablet"
   mysql:
     extraArgs: []
     initDb:
@@ -58,6 +62,8 @@ vttablet:
 # a ConfigMap is mounted at /vt/vtconfig.yaml and the container
 # working directory is set to /vt so vtctld discovers it.
 vtctld:
+  # Override vtctld executable path if your image differs
+  command: "/vt/bin/vtctld"
   config:
     enabled: false
     data: |

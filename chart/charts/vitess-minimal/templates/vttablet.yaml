@@ -35,7 +35,7 @@ spec:
           image: {{ include "vitess-minimal.renderImage" (dict "image" $.Values.images.vttablet "Values" $.Values) }}
           # Ensure the vttablet binary is invoked explicitly; some images lack ENTRYPOINT
           command:
-            - "/vt/bin/vttablet"
+            - {{ ($.Values.vttablet.command | default "/vt/bin/vttablet") | quote }}
           env:
             - name: VTROOT
               value: "/vt"
@@ -121,7 +121,7 @@ spec:
           image: {{ include "vitess-minimal.renderImage" (dict "image" $.Values.images.vttablet "Values" $.Values) }}
           # Ensure the vttablet binary is invoked explicitly; some images lack ENTRYPOINT
           command:
-            - "/vt/bin/vttablet"
+            - {{ ($.Values.vttablet.command | default "/vt/bin/vttablet") | quote }}
           env:
             - name: VTROOT
               value: "/vt"

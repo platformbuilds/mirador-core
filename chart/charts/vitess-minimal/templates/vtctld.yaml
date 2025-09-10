@@ -47,7 +47,7 @@ spec:
           # Some vtctld images may not define an ENTRYPOINT. Set command explicitly
           # so Kubernetes executes the vtctld binary and passes Helm-provided args.
           command:
-            - "/vt/bin/vtctld"
+            - {{ (.Values.vtctld.command | default "/vt/bin/vtctld") | quote }}
           args:
             - "--topo_implementation=etcd2"
             - "--topo_global_server_address={{ include "vitess-minimal.etcdClientHost" . }}:2379"

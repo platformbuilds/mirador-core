@@ -37,7 +37,7 @@ spec:
           image: {{ include "vitess-minimal.renderImage" (dict "image" .Values.images.vtgate "Values" .Values) }}
           # Ensure the vtgate binary is invoked explicitly; some images lack ENTRYPOINT
           command:
-            - "/vt/bin/vtgate"
+            - {{ (.Values.vtgate.command | default "/vt/bin/vtgate") | quote }}
           args:
             - "--topo_implementation=etcd2"
             - "--topo_global_server_address={{ include "vitess-minimal.etcdClientHost" . }}:2379"
