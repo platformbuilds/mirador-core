@@ -2,6 +2,16 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "vitess-minimal.fullname" . }}-vtctld
+{{- if .Values.vtctld.config.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vitess-minimal.fullname" . }}-vtctld-config
+data:
+  vtconfig.yaml: |
+{{ .Values.vtctld.config.data | indent 4 }}
+{{- end }}
 spec:
   type: ClusterIP
   ports:
@@ -42,5 +52,19 @@ spec:
             - "--topo_implementation=etcd2"
             - "--topo_global_server_address={{ include "vitess-minimal.etcdClientHost" . }}:2379"
             - "--topo_global_root=/vitess/global"
+            - "--syslog=false"
+          {{- if .Values.vtctld.config.enabled }}
+          workingDir: /vt
+          volumeMounts:
+            - name: vtctld-config
+              mountPath: /vt
+              readOnly: true
+          {{- end }}
           ports:
             - containerPort: 15000
+      {{- if .Values.vtctld.config.enabled }}
+      volumes:
+        - name: vtctld-config
+          configMap:
+            name: {{ include "vitess-minimal.fullname" . }}-vtctld-config
+      {{- end }}

@@ -43,6 +43,28 @@ vttablet:
   resources: {}
   mysql:
     extraArgs: []
+    initDb:
+      enabled: true
+      sql: |
+        -- Minimal MySQL configuration for Vitess tablets
+        SET GLOBAL sql_mode='NO_ENGINE_SUBSTITUTION';
+        SET GLOBAL innodb_strict_mode=OFF;
+        SET GLOBAL enforce_gtid_consistency=ON;
+        SET GLOBAL gtid_mode=ON;
+        SET GLOBAL log_bin_trust_function_creators=ON;
+
+# Optional: provide a minimal vtctld viper config to silence
+# "Config File \"vtconfig\" Not Found" warnings. When enabled,
+# a ConfigMap is mounted at /vt/vtconfig.yaml and the container
+# working directory is set to /vt so vtctld discovers it.
+vtctld:
+  config:
+    enabled: false
+    data: |
+      # vtctld configuration (optional)
+      # This file can be left empty to silence the
+      # "Config File \"vtconfig\" Not Found" warning.
+      # Add key: value pairs if you want to override defaults.
 
 # Backups via vtctldclient Backup (requires vttablet backup flags configured)
 backup:

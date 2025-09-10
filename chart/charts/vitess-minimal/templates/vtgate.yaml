@@ -44,6 +44,7 @@ spec:
             - "--topo_global_root=/vitess/global"
             - "--tablet_types_to_wait=PRIMARY,REPLICA,RDONLY"
             - "--mysql_server_port=15306"
+            - "--syslog=false"
           ports:
             - containerPort: 15306
           livenessProbe:
