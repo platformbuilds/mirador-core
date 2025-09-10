@@ -66,6 +66,12 @@ spec:
               mountPath: /vt/config
               readOnly: true
             {{- end }}
+      {{- if $.Values.vttablet.mysql.initDb.enabled }}
+      volumes:
+        - name: initdb
+          configMap:
+            name: {{ include "vitess-minimal.fullname" $ }}-vttablet-initdb
+      {{- end }}
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -146,6 +152,12 @@ spec:
               mountPath: /vt/config
               readOnly: true
             {{- end }}
+      {{- if $.Values.vttablet.mysql.initDb.enabled }}
+      volumes:
+        - name: initdb
+          configMap:
+            name: {{ include "vitess-minimal.fullname" $ }}-vttablet-initdb
+      {{- end }}
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -160,15 +172,3 @@ spec:
 {{- end }}
 ---
 {{- end }}
-      {{- if $.Values.vttablet.mysql.initDb.enabled }}
-      volumes:
-        - name: initdb
-          configMap:
-            name: {{ include "vitess-minimal.fullname" $ }}-vttablet-initdb
-      {{- end }}
-      {{- if $.Values.vttablet.mysql.initDb.enabled }}
-      volumes:
-        - name: initdb
-          configMap:
-            name: {{ include "vitess-minimal.fullname" $ }}-vttablet-initdb
-      {{- end }}
