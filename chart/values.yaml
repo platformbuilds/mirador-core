@@ -125,6 +125,9 @@ vitess-embedded: &vitessEmbedded
   etcd: &vitessEmbeddedEtcd
     enabled: true
     replicaCount: 3
+    global:
+      security:
+        allowInsecureImages: false # Enable this when using a private registry
     # Override the Bitnami etcd subchart image to the latest tested tag
     image:
       registry: "" # leave empty to allow global.imageRegistry to take effect
