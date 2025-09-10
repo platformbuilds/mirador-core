@@ -1,19 +1,19 @@
 package config
 
 type Config struct {
-	Environment string `mapstructure:"environment" yaml:"environment"`
-	Port        int    `mapstructure:"port" yaml:"port"`
-	LogLevel    string `mapstructure:"log_level" yaml:"log_level"`
+    Environment string `mapstructure:"environment" yaml:"environment"`
+    Port        int    `mapstructure:"port" yaml:"port"`
+    LogLevel    string `mapstructure:"log_level" yaml:"log_level"`
 
-	Database     DatabaseConfig     `mapstructure:"database" yaml:"database"`
-	GRPC         GRPCConfig         `mapstructure:"grpc" yaml:"grpc"`
-	Auth         AuthConfig         `mapstructure:"auth" yaml:"auth"`
-	Cache        CacheConfig        `mapstructure:"cache" yaml:"cache"`
-	CORS         CORSConfig         `mapstructure:"cors" yaml:"cors"`
-	Integrations IntegrationsConfig `mapstructure:"integrations" yaml:"integrations"`
-	WebSocket    WebSocketConfig    `mapstructure:"websocket" yaml:"websocket"`
-	Monitoring   MonitoringConfig   `mapstructure:"monitoring" yaml:"monitoring"`
-	Vitess       VitessConfig       `mapstructure:"vitess" yaml:"vitess"`
+    Database     DatabaseConfig     `mapstructure:"database" yaml:"database"`
+    GRPC         GRPCConfig         `mapstructure:"grpc" yaml:"grpc"`
+    Auth         AuthConfig         `mapstructure:"auth" yaml:"auth"`
+    Cache        CacheConfig        `mapstructure:"cache" yaml:"cache"`
+    CORS         CORSConfig         `mapstructure:"cors" yaml:"cors"`
+    Integrations IntegrationsConfig `mapstructure:"integrations" yaml:"integrations"`
+    WebSocket    WebSocketConfig    `mapstructure:"websocket" yaml:"websocket"`
+    Monitoring   MonitoringConfig   `mapstructure:"monitoring" yaml:"monitoring"`
+    Weaviate     WeaviateConfig     `mapstructure:"weaviate" yaml:"weaviate"`
     Uploads      UploadsConfig      `mapstructure:"uploads" yaml:"uploads"`
 }
 
@@ -188,15 +188,14 @@ type MonitoringConfig struct {
 	JaegerEndpoint    string `mapstructure:"jaeger_endpoint" yaml:"jaeger_endpoint"`
 }
 
-// VitessConfig holds connection details to a Vitess VTGate (MySQL protocol)
-type VitessConfig struct {
-    Enabled   bool   `mapstructure:"enabled" yaml:"enabled"`
-    Host      string `mapstructure:"host" yaml:"host"`         // vtgate host or DNS name
-    Port      int    `mapstructure:"port" yaml:"port"`         // vtgate port, default 15306
-    Keyspace  string `mapstructure:"keyspace" yaml:"keyspace"` // e.g., mirador
-    Shard     string `mapstructure:"shard" yaml:"shard"`       // default "0"
-    User      string `mapstructure:"user" yaml:"user"`
-    Password  string `mapstructure:"password" yaml:"password"`
-    TLS       bool   `mapstructure:"tls" yaml:"tls"`
-    Params    map[string]string `mapstructure:"params" yaml:"params"` // optional addl DSN params
+
+// WeaviateConfig holds connection details for Weaviate HTTP API
+type WeaviateConfig struct {
+    Enabled bool   `mapstructure:"enabled" yaml:"enabled"`
+    Scheme  string `mapstructure:"scheme" yaml:"scheme"` // http or https
+    Host    string `mapstructure:"host" yaml:"host"`     // DNS name or host
+    Port    int    `mapstructure:"port" yaml:"port"`     // default 8080
+    APIKey  string `mapstructure:"api_key" yaml:"api_key"`
+    // Optional: per-request consistency/replication knobs (passed via headers/params)
+    Consistency string `mapstructure:"consistency" yaml:"consistency"`
 }

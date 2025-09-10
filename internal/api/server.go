@@ -26,18 +26,18 @@ type Server struct {
 	cache       cache.ValkeyCluster
 	grpcClients *clients.GRPCClients
 	vmServices  *services.VictoriaMetricsServices
-	schemaRepo  interface{} // lazily typed to avoid import cycles; assigned in main
+    schemaRepo  repo.SchemaStore
 	router      *gin.Engine
 	httpServer  *http.Server
 }
 
 func NewServer(
-	cfg *config.Config,
-	log logger.Logger,
-	valleyCache cache.ValkeyCluster,
-	grpcClients *clients.GRPCClients,
-	vmServices *services.VictoriaMetricsServices,
-	schemaRepo interface{},
+    cfg *config.Config,
+    log logger.Logger,
+    valleyCache cache.ValkeyCluster,
+    grpcClients *clients.GRPCClients,
+    vmServices *services.VictoriaMetricsServices,
+    schemaRepo repo.SchemaStore,
 ) *Server {
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -120,8 +120,8 @@ func (s *Server) setupRoutes() {
 
     // MetricsQL endpoints (VictoriaMetrics integration)
     var metricsHandler *handlers.MetricsQLHandler
-    if r, ok := s.schemaRepo.(*repo.SchemaRepo); ok && r != nil {
-        metricsHandler = handlers.NewMetricsQLHandlerWithSchema(s.vmServices.Metrics, s.cache, s.logger, r)
+    if s.schemaRepo != nil {
+        metricsHandler = handlers.NewMetricsQLHandlerWithSchema(s.vmServices.Metrics, s.cache, s.logger, s.schemaRepo)
     } else {
         metricsHandler = handlers.NewMetricsQLHandler(s.vmServices.Metrics, s.cache, s.logger)
     }
@@ -202,10 +202,9 @@ func (s *Server) setupRoutes() {
     v1.GET("/ws/alerts", ws.HandleAlertsStream)
     v1.GET("/ws/predictions", ws.HandlePredictionsStream)
 
-    // Schema definitions (Vitess-backed)
-    if s.config.Vitess.Enabled && s.schemaRepo != nil {
-        if r, ok := s.schemaRepo.(*repo.SchemaRepo); ok {
-            schemaHandler := handlers.NewSchemaHandler(r, s.vmServices.Metrics, s.vmServices.Logs, s.cache, s.logger, s.config.Uploads.BulkMaxBytes)
+    // Schema definitions (Weaviate-backed once enabled)
+    if s.schemaRepo != nil {
+            schemaHandler := handlers.NewSchemaHandler(s.schemaRepo, s.vmServices.Metrics, s.vmServices.Logs, s.cache, s.logger, s.config.Uploads.BulkMaxBytes)
             v1.POST("/schema/metrics", schemaHandler.UpsertMetric)
             v1.POST("/schema/metrics/bulk", schemaHandler.BulkUpsertMetricsCSV)
             v1.GET("/schema/metrics/bulk/sample", schemaHandler.SampleCSV)
@@ -229,7 +228,6 @@ func (s *Server) setupRoutes() {
             v1.GET("/schema/traces/services/:service/operations/:operation", schemaHandler.GetTraceOperation)
             v1.GET("/schema/traces/services/:service/operations/:operation/versions", schemaHandler.ListTraceOperationVersions)
             v1.GET("/schema/traces/services/:service/operations/:operation/versions/:version", schemaHandler.GetTraceOperationVersion)
-        }
     }
 }
 

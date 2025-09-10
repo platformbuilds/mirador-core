@@ -61,21 +61,26 @@ services:
       timeout: 3s
       retries: 10
 
-  # Vitess (DEV): use MariaDB/MySQL to simulate VTGate (MySQL protocol)
-  # For true Vitess, point to an external VTGate instead.
-  vitess-mysql:
-    image: mariadb:11
-    container_name: vitess-mysql
-    environment:
-      - MARIADB_ROOT_PASSWORD=devpass
-      - MARIADB_DATABASE=mirador
+  # Weaviate (DEV): local vector DB for schema store
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.25.4
+    container_name: weaviate
     ports:
-      - "3306:3306"
+      - "8081:8080"  # host:container
+    environment:
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      DEFAULT_VECTORIZER_MODULE: "none"
+      QUERY_DEFAULTS_LIMIT: "25"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      CLUSTER_GOSSIP_BIND_PORT: "7100"
+      CLUSTER_DATA_BIND_PORT: "7101"
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$$MARIADB_ROOT_PASSWORD --silent"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/v1/.well-known/ready"]
       interval: 5s
-      timeout: 5s
-      retries: 20
+      timeout: 3s
+      retries: 30
+    volumes:
+      - weavdata:/var/lib/weaviate
 
   # MIRADOR-CORE (builds natively for host arch)
   mirador-core:
@@ -89,7 +94,7 @@ services:
     depends_on:
       valkey:
         condition: service_healthy
-      vitess-mysql:
+      weaviate:
         condition: service_healthy
     ports:
       - "8080:8080"
@@ -106,14 +111,11 @@ services:
       # Bulk CSV upload max size (bytes). Alternatively set BULK_UPLOAD_MAX_MIB
       - BULK_UPLOAD_MAX_BYTES=5242880
 
-      # Vitess (DEV): point to local MariaDB (acts like VTGate for our schema tables)
-      - VITESS_HOST=vitess-mysql
-      - VITESS_PORT=3306
-      - VITESS_KEYSPACE=mirador
-      - VITESS_SHARD=0
-      - VITESS_USER=root
-      - VITESS_PASSWORD=devpass
-      - VITESS_TLS=false
+      # Weaviate (DEV)
+      - WEAVIATE_HOST=weaviate
+      - WEAVIATE_PORT=8080
+      - WEAVIATE_SCHEME=http
+      - WEAVIATE_ENABLED=true
 
       # Point to local Victoria services (same compose network)
       - VM_ENDPOINTS=http://victoriametrics:8428
@@ -138,3 +140,4 @@ volumes:
   vmdata: {}
   vldata: {}
   vtdata: {}
+  weavdata: {}

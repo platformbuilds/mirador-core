@@ -13,7 +13,7 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
     "github.com/platformbuilds/mirador-core/internal/services"
-    storage_vitess "github.com/platformbuilds/mirador-core/internal/storage/vitess"
+    storage_weaviate "github.com/platformbuilds/mirador-core/internal/storage/weaviate"
     "github.com/platformbuilds/mirador-core/internal/repo"
     "github.com/platformbuilds/mirador-core/pkg/cache"
     "github.com/platformbuilds/mirador-core/pkg/logger"
@@ -90,21 +90,28 @@ func main() {
 		logger.Fatal("Failed to initialize VictoriaMetrics services", "error", err)
 	}
 
-    // Initialize Vitess (optional)
-    var schemaRepo *repo.SchemaRepo
-    if cfg.Vitess.Enabled {
-        vt, err := storage_vitess.Connect(cfg.Vitess)
-        if err != nil {
-            logger.Fatal("Failed to connect to Vitess", "error", err)
+    // Initialize schema store (Weaviate)
+    var schemaStore repo.SchemaStore
+    if cfg.Weaviate.Enabled {
+        wv := storage_weaviate.New(cfg.Weaviate)
+        ctxPing, cancelPing := context.WithTimeout(context.Background(), 5*time.Second)
+        if err := wv.Ready(ctxPing); err != nil {
+            cancelPing()
+            logger.Fatal("Weaviate not ready", "baseURL", wv.BaseURL, "error", err)
         }
-        // Close on shutdown
-        defer vt.Close()
-        schemaRepo = repo.NewSchemaRepo(vt.DB)
-        logger.Info("Vitess connected via VTGate", "host", cfg.Vitess.Host, "keyspace", cfg.Vitess.Keyspace)
+        cancelPing()
+        logger.Info("Weaviate ready", "baseURL", wv.BaseURL)
+        wrepo := repo.NewWeaviateRepo(wv)
+        if err := wrepo.EnsureSchema(context.Background()); err != nil {
+            logger.Warn("Weaviate schema ensure failed", "error", err)
+        }
+        schemaStore = wrepo
     }
 
+    // No legacy DB fallback; expect Weaviate
+
     // Initialize API server
-    apiServer := api.NewServer(cfg, logger, valleyCache, grpcClients, vmServices, schemaRepo)
+    apiServer := api.NewServer(cfg, logger, valleyCache, grpcClients, vmServices, schemaStore)
 
     // Setup graceful shutdown
     ctx, cancel := context.WithCancel(context.Background())

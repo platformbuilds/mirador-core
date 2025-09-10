@@ -19,7 +19,7 @@ import (
 )
 
 type SchemaHandler struct {
-    repo           *repo.SchemaRepo
+    repo           repo.SchemaStore
     metricsService *services.VictoriaMetricsService
     logsService    *services.VictoriaLogsService
     cache          cache.ValkeyCluster
@@ -27,7 +27,7 @@ type SchemaHandler struct {
     maxUploadBytes int64
 }
 
-func NewSchemaHandler(r *repo.SchemaRepo, ms *services.VictoriaMetricsService, ls *services.VictoriaLogsService, cache cache.ValkeyCluster, l logger.Logger, maxUploadBytes int64) *SchemaHandler {
+func NewSchemaHandler(r repo.SchemaStore, ms *services.VictoriaMetricsService, ls *services.VictoriaLogsService, cache cache.ValkeyCluster, l logger.Logger, maxUploadBytes int64) *SchemaHandler {
     if maxUploadBytes <= 0 { maxUploadBytes = 5 << 20 }
     return &SchemaHandler{repo: r, metricsService: ms, logsService: ls, cache: cache, logger: l, maxUploadBytes: maxUploadBytes}
 }

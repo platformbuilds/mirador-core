@@ -44,8 +44,8 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 {{- end -}}
 
-{{/* Vitess vtgate host helper for the subchart (if enabled) */}}
-{{- define "mirador-core.vitessVtgateHost" -}}
-{{- /* Subchart fullname will be <release>-vitess-minimal */ -}}
-{{ printf "%s-vitess-minimal-vtgate" .Release.Name }}
+
+{{/* Weaviate service host (if subchart enabled) */}}
+{{- define "mirador-core.weaviateServiceHost" -}}
+{{ printf "%s-weaviate" .Release.Name }}
 {{- end -}}

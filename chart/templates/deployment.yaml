@@ -79,36 +79,7 @@ spec:
             - name: {{ .name }}
               value: {{ .value | quote }}
             {{- end }}
-            {{- /* Vitess VTGate configuration: external or embedded */}}
-            {{- if or ((index .Values "vitess-external").enabled) ((index .Values "vitess-embedded").enabled) }}
-            - name: VITESS_HOST
-              value: {{ (or (index (index .Values "vitess-external") "host") (include "mirador-core.vitessVtgateHost" .)) | quote }}
-            - name: VITESS_PORT
-              value: {{ (index (index .Values "vitess-external") "port") | quote }}
-            - name: VITESS_KEYSPACE
-              value: {{ (index (index .Values "vitess-external") "keyspace") | quote }}
-            - name: VITESS_SHARD
-              value: {{ (index (index .Values "vitess-external") "shard") | quote }}
-            {{- if (index (index .Values "vitess-external") "user") }}
-            - name: VITESS_USER
-              value: {{ (index (index .Values "vitess-external") "user") | quote }}
-            {{- end }}
-            {{- if (index (index .Values "vitess-external") "existingSecret") }}
-            - name: VITESS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ (index (index .Values "vitess-external") "existingSecret") }}
-                  key: {{ default "password" (index (index .Values "vitess-external") "passwordKey") }}
-            {{- else if (index (index .Values "vitess-external") "password") }}
-            - name: VITESS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "mirador-core.fullname" . }}-vitess
-                  key: password
-            {{- end }}
-            - name: VITESS_TLS
-              value: {{ (index (index .Values "vitess-external") "tls") | quote }}
-            {{- end }}
+            {{- /* App uses Weaviate via config (no Vitess envs) */}}
             {{- range .Values.extraEnv }}
             - name: {{ .name }}
               value: {{ .value | quote }}
