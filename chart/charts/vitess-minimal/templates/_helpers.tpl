@@ -2,6 +2,17 @@
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{/* Render an image string with optional global registry prefix */}}
+{{- define "vitess-minimal.renderImage" -}}
+{{- $img := .image -}}
+{{- $vals := .Values -}}
+{{- $reg := "" -}}
+{{- if $vals.global }}
+  {{- $reg = $vals.global.imageRegistry | default "" -}}
+{{- end -}}
+{{- if $reg }}{{ printf "%s/%s" $reg $img }}{{ else }}{{ $img }}{{ end -}}
+{{- end -}}
+
 {{- define "vitess-minimal.etcdClientHost" -}}
 {{- if .Values.etcd.clientHost -}}
 {{ .Values.etcd.clientHost }}

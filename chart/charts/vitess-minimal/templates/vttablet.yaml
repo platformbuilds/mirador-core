@@ -26,9 +26,13 @@ spec:
         app.kubernetes.io/name: {{ include "vitess-minimal.name" $ }}
         app.kubernetes.io/component: vttablet-primary-{{ $idx }}
     spec:
+      {{- if $.Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml $.Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
       containers:
         - name: vttablet
-          image: {{ $.Values.images.vttablet }}
+          image: {{ include "vitess-minimal.renderImage" (dict "image" $.Values.images.vttablet "Values" $.Values) }}
           args:
             - "--topo_implementation=etcd2"
             - "--topo_global_server_address={{ include "vitess-minimal.etcdClientHost" $ }}:2379"
@@ -88,9 +92,13 @@ spec:
         app.kubernetes.io/name: {{ include "vitess-minimal.name" $ }}
         app.kubernetes.io/component: vttablet-replica-{{ $idx }}
     spec:
+      {{- if $.Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml $.Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
       containers:
         - name: vttablet
-          image: {{ $.Values.images.vttablet }}
+          image: {{ include "vitess-minimal.renderImage" (dict "image" $.Values.images.vttablet "Values" $.Values) }}
           args:
             - "--topo_implementation=etcd2"
             - "--topo_global_server_address={{ include "vitess-minimal.etcdClientHost" $ }}:2379"
