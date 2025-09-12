@@ -21,16 +21,19 @@ func (t *httpTransport) Ready(ctx context.Context) error { return t.c.Ready(ctx)
 
 func (t *httpTransport) EnsureClasses(ctx context.Context, classDefs []map[string]any) error {
     // GET /v1/schema then POST each missing class
+    // Per Weaviate REST docs: Add a class = POST /v1/schema with the class object
     var cur struct{ Classes []struct{ Class string } `json:"classes"` }
     if err := t.doJSON(ctx, http.MethodGet, "/v1/schema", nil, &cur); err != nil { return err }
     have := map[string]struct{}{}
     for _, c := range cur.Classes { have[c.Class] = struct{}{} }
     for _, def := range classDefs {
-        if name, _ := def["class"].(string); name != "" {
-            if _, ok := have[name]; ok { continue }
+        name, _ := def["class"].(string)
+        if name == "" { continue }
+        if _, ok := have[name]; ok { continue }
+        // Create missing class (POST /v1/schema)
+        if err := t.doJSON(ctx, http.MethodPost, "/v1/schema", def, nil); err != nil {
+            return fmt.Errorf("create class %q failed: %w", name, err)
         }
-        // Weaviate expects POST /v1/schema/classes to create a single class
-        if err := t.doJSON(ctx, http.MethodPost, "/v1/schema/classes", def, nil); err != nil { return err }
     }
     return nil
 }

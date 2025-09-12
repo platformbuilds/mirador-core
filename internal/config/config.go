@@ -200,4 +200,6 @@ type WeaviateConfig struct {
     Consistency string `mapstructure:"consistency" yaml:"consistency"`
     // UseOfficial toggles the official weaviate-go-client when available.
     UseOfficial bool `mapstructure:"use_official" yaml:"use_official"`
+    // NestedKeys predeclares nestedProperties for object fields like tags/examples/etc.
+    NestedKeys []string `mapstructure:"nested_keys" yaml:"nested_keys"`
 }
