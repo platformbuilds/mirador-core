@@ -1,0 +1,9 @@
+dependencies:
+- name: valkey
+  repository: https://charts.bitnami.com/bitnami
+  version: 2.4.7
+- name: weaviate
+  repository: file://charts/weaviate
+  version: 0.1.0
+digest: sha256:f9a567071e8fb5b5baca87f83073897899b58ee920618b7ac083a26b69c0e584
+generated: "2025-09-10T17:51:51.939519+05:30"

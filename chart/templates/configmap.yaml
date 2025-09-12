@@ -53,6 +53,11 @@ data:
         {{- $_ := set $cfg.weaviate "port" 8080 -}}
       {{- end -}}
     {{- end -}}
+    {{- /* Propagate use_official flag if present in values */ -}}
+    {{- if and (hasKey .Values.mirador "weaviate") (hasKey .Values.mirador.weaviate "use_official") -}}
+      {{- $_ := set $cfg "weaviate" (merge (dict) ($cfg.weaviate | default (dict))) -}}
+      {{- $_ := set $cfg.weaviate "use_official" .Values.mirador.weaviate.use_official -}}
+    {{- end -}}
 {{ toYaml $cfg | nindent 4 }}
 {{- end }}
 

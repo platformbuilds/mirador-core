@@ -212,6 +212,7 @@ func setDefaults(v *viper.Viper) {
     v.SetDefault("weaviate.scheme", "http")
     v.SetDefault("weaviate.host", "weaviate.mirador.svc.cluster.local")
     v.SetDefault("weaviate.port", 8080)
+    v.SetDefault("weaviate.use_official", false)
 }
 
 /* ---------------------------- legacy overrides --------------------------- */
@@ -305,6 +306,7 @@ func overrideWithEnvVars(v *viper.Viper) {
     if wk := os.Getenv("WEAVIATE_API_KEY"); wk != "" { v.Set("weaviate.api_key", wk) }
     if wc := os.Getenv("WEAVIATE_CONSISTENCY"); wc != "" { v.Set("weaviate.consistency", wc) }
     if we := os.Getenv("WEAVIATE_ENABLED"); we != "" { if b, err := strconv.ParseBool(we); err == nil { v.Set("weaviate.enabled", b) } }
+    if wo := os.Getenv("WEAVIATE_USE_OFFICIAL"); wo != "" { if b, err := strconv.ParseBool(wo); err == nil { v.Set("weaviate.use_official", b) } }
 
     // Uploads (CSV bulk)
     if s := os.Getenv("BULK_UPLOAD_MAX_BYTES"); s != "" {

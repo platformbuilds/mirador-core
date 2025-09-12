@@ -93,15 +93,19 @@ func main() {
     // Initialize schema store (Weaviate)
     var schemaStore repo.SchemaStore
     if cfg.Weaviate.Enabled {
-        wv := storage_weaviate.New(cfg.Weaviate)
+        // Construct transport (HTTP by default; official client when built with tags)
+        t, terr := storage_weaviate.NewTransportFromConfig(cfg.Weaviate)
+        if terr != nil {
+            logger.Fatal("Failed to init Weaviate transport", "error", terr)
+        }
         ctxPing, cancelPing := context.WithTimeout(context.Background(), 5*time.Second)
-        if err := wv.Ready(ctxPing); err != nil {
+        if err := storage_weaviate.Ready(ctxPing, t); err != nil {
             cancelPing()
-            logger.Fatal("Weaviate not ready", "baseURL", wv.BaseURL, "error", err)
+            logger.Fatal("Weaviate not ready", "error", err)
         }
         cancelPing()
-        logger.Info("Weaviate ready", "baseURL", wv.BaseURL)
-        wrepo := repo.NewWeaviateRepo(wv)
+        logger.Info("Weaviate ready")
+        wrepo := repo.NewWeaviateRepoFromTransport(t)
         if err := wrepo.EnsureSchema(context.Background()); err != nil {
             logger.Warn("Weaviate schema ensure failed", "error", err)
         }

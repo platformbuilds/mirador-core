@@ -20,7 +20,7 @@ ENV GODEBUG=netdns=go \
 # Cache go modules and build cache (requires BuildKit)
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go mod download
+    go mod tidy && go mod download
 
 # Copy source code
 COPY . .
