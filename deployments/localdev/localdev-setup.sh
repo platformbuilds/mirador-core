@@ -32,7 +32,7 @@ services:
 EOF
   docker compose -f "$here/docker-compose.yaml" -f "$override_file" up -d
 else
-  docker compose -f "$here/docker-compose.yaml" up -d --build
+  docker compose -f "$here/docker-compose.yaml" up -d --build 
 fi
 
 echo "Waiting for MIRADOR-CORE to be healthy (http://localhost:8080/health)..."
