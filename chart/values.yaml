@@ -5,7 +5,7 @@ replicaCount: 3
 image:
   repository: platformbuilds/mirador-core
   # Use a multi-arch tag (linux/amd64 + linux/arm64) so nodes pull the correct architecture automatically
-  tag: v2.1.3
+  tag: v3.0.0
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
@@ -181,6 +181,7 @@ mirador:
     host: weaviate.mirador.svc.cluster.local
     port: 8080
     api_key: ""
+    use_official: false
       
 alertRules:
   enabled: true

@@ -70,6 +70,7 @@ if [[ "$GEN_TEL" =~ ^[Yy]$ ]]; then
 
   if command -v telemetrygen >/dev/null 2>&1; then
     echo "\nPumping traces (30s @ 5 rps) to OTLP gRPC 4317..."
+    otelgen --otel-exporter-otlp-endpoint localhost:4317 --insecure --duration 30 --rate 50 traces multi
     telemetrygen traces --otlp-endpoint localhost:4317 --otlp-insecure --duration 30s --rate 5 || true
 
     echo "\nPumping metrics (30s @ 100 rps) to OTLP gRPC 4317..."

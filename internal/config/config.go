@@ -198,4 +198,6 @@ type WeaviateConfig struct {
     APIKey  string `mapstructure:"api_key" yaml:"api_key"`
     // Optional: per-request consistency/replication knobs (passed via headers/params)
     Consistency string `mapstructure:"consistency" yaml:"consistency"`
+    // UseOfficial toggles the official weaviate-go-client when available.
+    UseOfficial bool `mapstructure:"use_official" yaml:"use_official"`
 }
