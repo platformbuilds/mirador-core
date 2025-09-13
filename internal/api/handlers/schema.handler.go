@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -445,7 +444,277 @@ func (h *SchemaHandler) BulkUpsertTraceServicesCSV(c *gin.Context) {
 	for i, col := range headerRow {
 		idx[strings.ToLower(strings.TrimSpace(col))] = i
 	}
-	// Strict header allowlist
+	// Strict header allowlist for trace services
+	allowed := map[string]struct{}{"tenant_id": {}, "service": {}, "purpose": {}, "owner": {}, "tags_json": {}, "author": {}}
+	for k := range idx {
+		if _, ok := allowed[k]; !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown column: " + k})
+			return
+		}
+	}
+	required := []string{"service"}
+	for _, col := range required {
+		if _, ok := idx[col]; !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: " + col})
+			return
+		}
+	}
+
+	tenantOverride := c.GetString("tenant_id")
+	count := 0
+	var rowErrs []string
+
+	// Limit rows to prevent abuse
+	const maxRows = 10000
+	rows := 0
+	for {
+		rec, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			rowErrs = append(rowErrs, "read error")
+			continue
+		}
+		rows++
+		if rows > maxRows {
+			rowErrs = append(rowErrs, "row limit exceeded")
+			break
+		}
+		// Validate UTF-8 and sanitize to mitigate CSV injection
+		for i := range rec {
+			if !utf8.ValidString(rec[i]) {
+				rec[i] = sanitizeCSVCell(rec[i])
+			}
+			rec[i] = sanitizeCSVCell(rec[i])
+		}
+		get := func(name string) string {
+			if j, ok := idx[name]; ok && j < len(rec) {
+				return strings.TrimSpace(rec[j])
+			}
+			return ""
+		}
+		tenant := get("tenant_id")
+		if tenant == "" {
+			tenant = tenantOverride
+		}
+		service := get("service")
+		if service == "" {
+			rowErrs = append(rowErrs, "missing service")
+			continue
+		}
+		purpose := get("purpose")
+		owner := get("owner")
+		tags := get("tags_json")
+		author := get("author")
+
+		// Use the new helper function to parse tags
+		tagsObj := parseTagsFromCSV(tags)
+
+		if err := h.repo.UpsertTraceServiceWithAuthor(c.Request.Context(), tenant, service, purpose, owner, tagsObj, author); err != nil {
+			rowErrs = append(rowErrs, "service upsert failed: "+service)
+		} else {
+			count++
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "services_upserted": count, "errors": rowErrs, "file": header.Filename})
+}
+
+// BulkUpsertTraceOperationsCSV ingests operation definitions; enforces service scoping.
+// Columns: tenant_id, service (required), operation (required), purpose, owner, tags_json, author
+func (h *SchemaHandler) BulkUpsertTraceOperationsCSV(c *gin.Context) {
+	if limited := h.enforceQuota(c, "traces_operations", 20); limited {
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, h.maxUploadBytes)
+	if err := c.Request.ParseMultipartForm(6 << 20); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid multipart form or file too large"})
+		return
+	}
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
+		return
+	}
+	defer file.Close()
+	allowedCT := map[string]struct{}{"text/csv": {}, "application/vnd.ms-excel": {}, "text/plain": {}}
+	if ct := header.Header.Get("Content-Type"); ct != "" {
+		if _, ok := allowedCT[strings.ToLower(ct)]; !ok { /* sniff below */
+		}
+	}
+	var sniff [512]byte
+	n, _ := file.Read(sniff[:])
+	if det := http.DetectContentType(sniff[:n]); det != "application/octet-stream" {
+		if _, ok := allowedCT[det]; !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported content type"})
+			return
+		}
+	}
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read file"})
+		return
+	}
+	r := csv.NewReader(file)
+	r.TrimLeadingSpace = true
+	headerRow, err := r.Read()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "empty csv"})
+		return
+	}
+	if len(headerRow) > 32 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "too many columns"})
+		return
+	}
+	for _, col := range headerRow {
+		if !utf8.ValidString(col) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid utf-8 in header"})
+			return
+		}
+	}
+	idx := map[string]int{}
+	for i, col := range headerRow {
+		idx[strings.ToLower(strings.TrimSpace(col))] = i
+	}
+	allowed := map[string]struct{}{"tenant_id": {}, "service": {}, "operation": {}, "purpose": {}, "owner": {}, "tags_json": {}, "author": {}}
+	for k := range idx {
+		if _, ok := allowed[k]; !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown column: " + k})
+			return
+		}
+	}
+	if _, ok := idx["service"]; !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: service"})
+		return
+	}
+	if _, ok := idx["operation"]; !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: operation"})
+		return
+	}
+	tenantOverride := c.GetString("tenant_id")
+	count := 0
+	var errs []string
+	const maxRows = 10000
+	rows := 0
+	for {
+		rec, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			errs = append(errs, "read error")
+			continue
+		}
+		rows++
+		if rows > maxRows {
+			errs = append(errs, "row limit exceeded")
+			break
+		}
+		for i := range rec {
+			if !utf8.ValidString(rec[i]) {
+				rec[i] = sanitizeCSVCell(rec[i])
+			}
+			rec[i] = sanitizeCSVCell(rec[i])
+		}
+		get := func(k string) string {
+			if j, ok := idx[k]; ok && j < len(rec) {
+				return strings.TrimSpace(rec[j])
+			}
+			return ""
+		}
+		tenant := get("tenant_id")
+		if tenant == "" {
+			tenant = tenantOverride
+		}
+		service := get("service")
+		operation := get("operation")
+		if service == "" || operation == "" {
+			errs = append(errs, "missing service/operation")
+			continue
+		}
+		// Ensure service exists to maintain sanity that operations are per service
+		if _, err := h.repo.GetTraceService(c.Request.Context(), tenant, service); err != nil {
+			errs = append(errs, "undefined service: "+service)
+			continue
+		}
+		purpose := get("purpose")
+		owner := get("owner")
+		tags := get("tags_json")
+		author := get("author")
+
+		// Use the new helper function to parse tags
+		tagsObj := parseTagsFromCSV(tags)
+
+		if err := h.repo.UpsertTraceOperationWithAuthor(c.Request.Context(), tenant, service, operation, purpose, owner, tagsObj, author); err != nil {
+			errs = append(errs, "operation upsert failed: "+service+":"+operation)
+		} else {
+			count++
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "operations_upserted": count, "errors": errs, "file": header.Filename})
+}
+
+// BulkUpsertMetricsCSV ingests metric and label definitions in CSV format.
+// Security: MIME check, size limit, in-memory processing only, no disk writes.
+// CSV Columns:
+// tenant_id, metric, description, owner, tags_json, label, label_type, label_required, label_allowed_json, label_description, author
+func (h *SchemaHandler) BulkUpsertMetricsCSV(c *gin.Context) {
+	// Per-tenant daily quota (default 20/day)
+	if limited := h.enforceQuota(c, "metrics", 20); limited {
+		return
+	}
+	// Limit payload size to 5MiB
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, h.maxUploadBytes)
+
+	// Parse multipart form (limit memory usage)
+	if err := c.Request.ParseMultipartForm(6 << 20); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid multipart form or file too large"})
+		return
+	}
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
+		return
+	}
+	defer file.Close()
+
+	// Accept common CSV types
+	allowedCT := map[string]struct{}{"text/csv": {}, "application/vnd.ms-excel": {}, "text/plain": {}}
+	// Check header content type but don't reject yet - some browsers send incorrect MIME types
+	// Sniff first 512 bytes
+	var sniff [512]byte
+	n, _ := file.Read(sniff[:])
+	detected := http.DetectContentType(sniff[:n])
+	if _, ok := allowedCT[detected]; !ok && detected != "application/octet-stream" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported content type"})
+		return
+	}
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read file"})
+		return
+	}
+
+	reader := csv.NewReader(file)
+	reader.TrimLeadingSpace = true
+	headerRow, err := reader.Read()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "empty csv"})
+		return
+	}
+	if len(headerRow) > 64 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "too many columns"})
+		return
+	}
+	for _, col := range headerRow {
+		if !utf8.ValidString(col) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid utf-8 in header"})
+			return
+		}
+	}
+	idx := make(map[string]int)
+	for i, col := range headerRow {
+		idx[strings.ToLower(strings.TrimSpace(col))] = i
+	}
+	// Strict header allowlist for metrics
 	allowed := map[string]struct{}{"tenant_id": {}, "metric": {}, "description": {}, "owner": {}, "tags_json": {}, "label": {}, "label_type": {}, "label_required": {}, "label_allowed_json": {}, "label_description": {}, "author": {}}
 	for k := range idx {
 		if _, ok := allowed[k]; !ok {
@@ -540,7 +809,7 @@ func (h *SchemaHandler) BulkUpsertTraceServicesCSV(c *gin.Context) {
 	for _, mr := range metricsSeen {
 		// Use the new helper function to parse tags
 		tagsObj := parseTagsFromCSV(mr.tags)
-		
+
 		m := repo.MetricDef{TenantID: mr.tenant, Metric: mr.metric, Description: mr.desc, Owner: mr.owner, Tags: tagsObj, UpdatedAt: time.Now()}
 		if err := h.repo.UpsertMetric(c.Request.Context(), m, mr.author); err != nil {
 			rowErrs = append(rowErrs, "metric upsert failed for "+mr.metric)
@@ -716,11 +985,11 @@ func (h *SchemaHandler) BulkUpsertLogFieldsCSV(c *gin.Context) {
 		tags := get("tags_json")
 		examples := get("examples_json")
 		author := get("author")
-		
+
 		// Use the new helper function to parse tags and examples
 		tagsObj := parseTagsFromCSV(tags)
 		exObj := parseTagsFromCSV(examples)
-		
+
 		f := repo.LogFieldDef{TenantID: tenant, Field: field, Type: typ, Description: desc, Tags: tagsObj, Examples: exObj, UpdatedAt: time.Now()}
 		if err := h.repo.UpsertLogField(c.Request.Context(), f, author); err != nil {
 			rowErrs = append(rowErrs, "field upsert failed: "+field)
@@ -816,258 +1085,4 @@ func sanitizeCSVCell(s string) string {
 		return "'" + s
 	}
 	return s
-}Seek(0, io.SeekStart); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read file"})
-		return
-	}
-	r := csv.NewReader(file)
-	r.TrimLeadingSpace = true
-	header_row, err := r.Read()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "unable to read CSV header"})
-		return
-	}
-	expectedHeaders := []string{"tenant_id", "service", "purpose", "owner", "tags_json", "author"}
-	for _, h := range header_row {
-		if !slices.Contains(expectedHeaders, h) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown column: " + h})
-			return
-		}
-	}
-	idx := make(map[string]int)
-	for i, h := range header_row {
-		idx[h] = i
-	}
-	if _, ok := idx["service"]; !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing required column: service"})
-		return
-	}
-	tenantOverride := c.GetString("tenant_id")
-	count, rows := 0, 0
-	maxRows := 10000
-	errs := []string{}
-	for {
-		rec, err := r.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			errs = append(errs, "read error")
-			continue
-		}
-		rows++
-		if rows > maxRows {
-			errs = append(errs, "row limit exceeded")
-			break
-		}
-		for i := range rec {
-			if !utf8.ValidString(rec[i]) {
-				rec[i] = sanitizeCSVCell(rec[i])
-			}
-			rec[i] = sanitizeCSVCell(rec[i])
-		}
-		get := func(k string) string {
-			if j, ok := idx[k]; ok && j < len(rec) {
-				return strings.TrimSpace(rec[j])
-			}
-			return ""
-		}
-		tenant := get("tenant_id")
-		if tenant == "" {
-			tenant = tenantOverride
-		}
-		service := get("service")
-		if service == "" {
-			errs = append(errs, "missing service")
-			continue
-		}
-		purpose := get("purpose")
-		owner := get("owner")
-		tags := get("tags_json")
-		author := get("author")
-
-		// Use the new helper function to parse tags
-		tagsObj := parseTagsFromCSV(tags)
-
-		if err := h.repo.UpsertTraceServiceWithAuthor(c.Request.Context(), tenant, service, purpose, owner, tagsObj, author); err != nil {
-			errs = append(errs, "service upsert failed: "+service)
-		} else {
-			count++
-		}
-	}
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "services_upserted": count, "errors": errs, "file": header.Filename})
 }
-
-// BulkUpsertTraceOperationsCSV ingests operation definitions; enforces service scoping.
-// Columns: tenant_id, service (required), operation (required), purpose, owner, tags_json, author
-func (h *SchemaHandler) BulkUpsertTraceOperationsCSV(c *gin.Context) {
-	if limited := h.enforceQuota(c, "traces_operations", 20); limited {
-		return
-	}
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, h.maxUploadBytes)
-	if err := c.Request.ParseMultipartForm(6 << 20); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid multipart form or file too large"})
-		return
-	}
-	file, header, err := c.Request.FormFile("file")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
-		return
-	}
-	defer file.Close()
-	allowedCT := map[string]struct{}{"text/csv": {}, "application/vnd.ms-excel": {}, "text/plain": {}}
-	if ct := header.Header.Get("Content-Type"); ct != "" {
-		if _, ok := allowedCT[strings.ToLower(ct)]; !ok { /* sniff below */
-		}
-	}
-	var sniff [512]byte
-	n, _ := file.Read(sniff[:])
-	if det := http.DetectContentType(sniff[:n]); det != "application/octet-stream" {
-		if _, ok := allowedCT[det]; !ok {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported content type"})
-			return
-		}
-	}
-	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read file"})
-		return
-	}
-	r := csv.NewReader(file)
-	r.TrimLeadingSpace = true
-	headerRow, err := r.Read()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "empty csv"})
-		return
-	}
-	if len(headerRow) > 32 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "too many columns"})
-		return
-	}
-	for _, col := range headerRow {
-		if !utf8.ValidString(col) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid utf-8 in header"})
-			return
-		}
-	}
-	idx := map[string]int{}
-	for i, col := range headerRow {
-		idx[strings.ToLower(strings.TrimSpace(col))] = i
-	}
-	allowed := map[string]struct{}{"tenant_id": {}, "service": {}, "operation": {}, "purpose": {}, "owner": {}, "tags_json": {}, "author": {}}
-	for k := range idx {
-		if _, ok := allowed[k]; !ok {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown column: " + k})
-			return
-		}
-	}
-	if _, ok := idx["service"]; !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: service"})
-		return
-	}
-	if _, ok := idx["operation"]; !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: operation"})
-		return
-	}
-	tenantOverride := c.GetString("tenant_id")
-	count := 0
-	var errs []string
-	const maxRows = 10000
-	rows := 0
-	for {
-		rec, err := r.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			errs = append(errs, "read error")
-			continue
-		}
-		rows++
-		if rows > maxRows {
-			errs = append(errs, "row limit exceeded")
-			break
-		}
-		for i := range rec {
-			if !utf8.ValidString(rec[i]) {
-				rec[i] = sanitizeCSVCell(rec[i])
-			}
-			rec[i] = sanitizeCSVCell(rec[i])
-		}
-		get := func(k string) string {
-			if j, ok := idx[k]; ok && j < len(rec) {
-				return strings.TrimSpace(rec[j])
-			}
-			return ""
-		}
-		tenant := get("tenant_id")
-		if tenant == "" {
-			tenant = tenantOverride
-		}
-		service := get("service")
-		operation := get("operation")
-		if service == "" || operation == "" {
-			errs = append(errs, "missing service/operation")
-			continue
-		}
-		// Ensure service exists to maintain sanity that operations are per service
-		if _, err := h.repo.GetTraceService(c.Request.Context(), tenant, service); err != nil {
-			errs = append(errs, "undefined service: "+service)
-			continue
-		}
-		purpose := get("purpose")
-		owner := get("owner")
-		tags := get("tags_json")
-		author := get("author")
-		
-		// Use the new helper function to parse tags
-		tagsObj := parseTagsFromCSV(tags)
-		
-		if err := h.repo.UpsertTraceOperationWithAuthor(c.Request.Context(), tenant, service, operation, purpose, owner, tagsObj, author); err != nil {
-			errs = append(errs, "operation upsert failed: "+service+":"+operation)
-		} else {
-			count++
-		}
-	}
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "operations_upserted": count, "errors": errs, "file": header.Filename})
-}
-
-// BulkUpsertMetricsCSV ingests metric and label definitions in CSV format.
-// Security: MIME check, size limit, in-memory processing only, no disk writes.
-// CSV Columns:
-// tenant_id, metric, description, owner, tags_json, label, label_type, label_required, label_allowed_json, label_description, author
-func (h *SchemaHandler) BulkUpsertMetricsCSV(c *gin.Context) {
-	// Per-tenant daily quota (default 20/day)
-	if limited := h.enforceQuota(c, "metrics", 20); limited {
-		return
-	}
-	// Limit payload size to 5MiB
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, h.maxUploadBytes)
-
-	// Parse multipart form (limit memory usage)
-	if err := c.Request.ParseMultipartForm(6 << 20); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid multipart form or file too large"})
-		return
-	}
-	file, header, err := c.Request.FormFile("file")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
-		return
-	}
-	defer file.Close()
-
-	// Basic MIME check via header + sniff
-	ct := header.Header.Get("Content-Type")
-	// Accept common CSV types
-	allowedCT := map[string]struct{}{"text/csv": {}, "application/vnd.ms-excel": {}, "text/plain": {}}
-	if _, ok := allowedCT[strings.ToLower(ct)]; !ok && ct != "" {
-		// continue; some browsers set octet-stream; we'll sniff
-	}
-	// Sniff first 512 bytes
-	var sniff [512]byte
-	n, _ := file.Read(sniff[:])
-	detected := http.DetectContentType(sniff[:n])
-	if _, ok := allowedCT[detected]; !ok && detected != "application/octet-stream" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported content type"})
-		return
-	}
-	if _, err := file.
