@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
-	"net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -107,51 +106,6 @@ func uuidV5(ns [16]byte, name string) string {
 
 // doJSON removed; handled by transport
 
-// EnsureSchema creates the required classes if they don't exist.
-func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
-	// Define all classes that need to be created
-	classDefinitions := []struct {
-		name string
-		def  map[string]any
-	}{
-		// Primary classes first (referenced by version classes)
-		{"Label", class("Label", props(
-			text("tenantId"), text("metric"), text("name"), text("definition"), text("type"),
-			boolp("required"), object("allowedValues"), intp("version"), date("updatedAt"),
-		))},
-		{"Metric", class("Metric", props(
-			text("tenantId"), text("name"), text("definition"), text("owner"), object("tags"),
-			text("unit"), text("source"), intp("version"), date("updatedAt"),
-			refp("labels", "Label"),
-		))},
-		{"LogField", class("LogField", props(
-			text("tenantId"), text("name"), text("type"), text("definition"),
-			object("tags"), object("examples"), intp("version"), date("updatedAt"),
-		))},
-		{"Service", class("Service", props(
-			text("tenantId"), text("name"), text("definition"), text("purpose"), text("owner"), object("tags"), intp("version"), date("updatedAt"),
-		))},
-		{"Operation", class("Operation", props(
-			text("tenantId"), text("service"), text("name"), text("definition"), text("purpose"), text("owner"), object("tags"), intp("version"), date("updatedAt"),
-		))},
-		// Version classes with proper payload schemas
-		{"MetricVersion", class("MetricVersion", props(text("tenantId"), text("name"), intp("version"), metricVersionPayload(), text("author"), date("createdAt")))},
-		{"LabelVersion", class("LabelVersion", props(text("tenantId"), text("metric"), text("name"), intp("version"), labelVersionPayload(), text("author"), date("createdAt")))},
-		{"LogFieldVersion", class("LogFieldVersion", props(text("tenantId"), text("name"), intp("version"), logFieldVersionPayload(), text("author"), date("createdAt")))},
-		{"ServiceVersion", class("ServiceVersion", props(text("tenantId"), text("name"), intp("version"), serviceVersionPayload(), text("author"), date("createdAt")))},
-		{"OperationVersion", class("OperationVersion", props(text("tenantId"), text("service"), text("name"), intp("version"), operationVersionPayload(), text("author"), date("createdAt")))},
-	}
-
-	// Create classes individually to better handle failures
-	for _, classDef := range classDefinitions {
-		if err := r.ensureClass(ctx, classDef.name, classDef.def); err != nil {
-			return fmt.Errorf("failed to create class %s: %w", classDef.name, err)
-		}
-	}
-
-	return nil
-}
-
 // ensureClass creates a single class, checking if it exists first
 func (r *WeaviateRepo) ensureClass(ctx context.Context, className string, classDef map[string]any) error {
 	// Check if class already exists by attempting to get its schema
@@ -175,16 +129,14 @@ func (r *WeaviateRepo) ensureClass(ctx context.Context, className string, classD
 
 // classExists checks if a class exists using REST API instead of GraphQL
 func (r *WeaviateRepo) classExists(ctx context.Context, className string) (bool, error) {
-	// Use REST API GET /v1/schema to check if class exists
-	// This works even when no schema exists yet
 	var schema struct {
 		Classes []struct {
 			Class string `json:"class"`
 		} `json:"classes"`
 	}
 
-	// Get the current schema
-	if err := r.t.(*httpTransport).doJSON(ctx, http.MethodGet, "/v1/schema", nil, &schema); err != nil {
+	// Use the Transport interface method instead of type assertion
+	if err := r.t.GetSchema(ctx, &schema); err != nil {
 		// If we can't get the schema, assume class doesn't exist
 		// This handles the case where Weaviate is running but has no schema
 		if strings.Contains(err.Error(), "422") || strings.Contains(err.Error(), "no schema") {
@@ -241,100 +193,6 @@ func object(name string) map[string]any {
 		"name":             name,
 		"dataType":         []string{"object"},
 		"nestedProperties": []any{map[string]any{"name": "note", "dataType": []string{"text"}}},
-	}
-}
-
-// Service version payload with all required fields
-func serviceVersionPayload() map[string]any {
-	return map[string]any{
-		"name":     "payload",
-		"dataType": []string{"object"},
-		"nestedProperties": []any{
-			map[string]any{"name": "tenantId", "dataType": []string{"text"}},
-			map[string]any{"name": "name", "dataType": []string{"text"}},
-			map[string]any{"name": "definition", "dataType": []string{"text"}},
-			map[string]any{"name": "purpose", "dataType": []string{"text"}},
-			map[string]any{"name": "owner", "dataType": []string{"text"}},
-			map[string]any{"name": "tags", "dataType": []string{"object"}},
-			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
-		},
-	}
-}
-
-// Operation version payload with all required fields
-func operationVersionPayload() map[string]any {
-	return map[string]any{
-		"name":     "payload",
-		"dataType": []string{"object"},
-		"nestedProperties": []any{
-			map[string]any{"name": "tenantId", "dataType": []string{"text"}},
-			map[string]any{"name": "service", "dataType": []string{"text"}},
-			map[string]any{"name": "name", "dataType": []string{"text"}},
-			map[string]any{"name": "definition", "dataType": []string{"text"}},
-			map[string]any{"name": "purpose", "dataType": []string{"text"}},
-			map[string]any{"name": "owner", "dataType": []string{"text"}},
-			map[string]any{
-				"name":     "tags",
-				"dataType": []string{"object"},
-				"nestedProperties": []any{
-					map[string]any{"name": "note", "dataType": []string{"text"}},
-				},
-			},
-			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
-		},
-	}
-}
-
-// Metric version payload with all required fields
-func metricVersionPayload() map[string]any {
-	return map[string]any{
-		"name":     "payload",
-		"dataType": []string{"object"},
-		"nestedProperties": []any{
-			map[string]any{"name": "tenantId", "dataType": []string{"text"}},
-			map[string]any{"name": "name", "dataType": []string{"text"}},
-			map[string]any{"name": "definition", "dataType": []string{"text"}},
-			map[string]any{"name": "owner", "dataType": []string{"text"}},
-			map[string]any{
-				"name":     "tags",
-				"dataType": []string{"object"},
-				"nestedProperties": []any{
-					map[string]any{"name": "note", "dataType": []string{"text"}},
-				},
-			},
-			map[string]any{"name": "unit", "dataType": []string{"text"}},
-			map[string]any{"name": "source", "dataType": []string{"text"}},
-			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
-		},
-	}
-}
-
-// Log field version payload with all required fields
-func logFieldVersionPayload() map[string]any {
-	return map[string]any{
-		"name":     "payload",
-		"dataType": []string{"object"},
-		"nestedProperties": []any{
-			map[string]any{"name": "tenantId", "dataType": []string{"text"}},
-			map[string]any{"name": "name", "dataType": []string{"text"}},
-			map[string]any{"name": "type", "dataType": []string{"text"}},
-			map[string]any{"name": "definition", "dataType": []string{"text"}},
-			map[string]any{
-				"name":     "tags",
-				"dataType": []string{"object"},
-				"nestedProperties": []any{
-					map[string]any{"name": "note", "dataType": []string{"text"}},
-				},
-			},
-			map[string]any{
-				"name":     "examples",
-				"dataType": []string{"object"},
-				"nestedProperties": []any{
-					map[string]any{"name": "note", "dataType": []string{"text"}},
-				},
-			},
-			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
-		},
 	}
 }
 
@@ -766,4 +624,136 @@ func (r *WeaviateRepo) maxVersion(ctx context.Context, class string, eq map[stri
 		return 1, nil
 	}
 	return rows[0].Version + 1, nil
+}
+
+// New Code
+// Updated Weaviate schema functions in internal/repo/schema_weaviate.go
+
+// stringDict returns a property definition for a dictionary of strings (key-value pairs).
+// This replaces the generic object() function for tags fields specifically.
+func stringDict(name string) map[string]any {
+	return map[string]any{
+		"name":     name,
+		"dataType": []string{"object"},
+		"nestedProperties": []any{
+			// Allow any string key with string value - Weaviate will accept dynamic keys
+			map[string]any{"name": "_key", "dataType": []string{"text"}},
+			map[string]any{"name": "_value", "dataType": []string{"text"}},
+		},
+	}
+}
+
+// Service version payload with string dictionary tags
+func serviceVersionPayload() map[string]any {
+	return map[string]any{
+		"name":     "payload",
+		"dataType": []string{"object"},
+		"nestedProperties": []any{
+			map[string]any{"name": "tenantId", "dataType": []string{"text"}},
+			map[string]any{"name": "name", "dataType": []string{"text"}},
+			map[string]any{"name": "definition", "dataType": []string{"text"}},
+			map[string]any{"name": "purpose", "dataType": []string{"text"}},
+			map[string]any{"name": "owner", "dataType": []string{"text"}},
+			stringDict("tags"), // Use string dictionary for tags
+			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
+		},
+	}
+}
+
+// Operation version payload with string dictionary tags
+func operationVersionPayload() map[string]any {
+	return map[string]any{
+		"name":     "payload",
+		"dataType": []string{"object"},
+		"nestedProperties": []any{
+			map[string]any{"name": "tenantId", "dataType": []string{"text"}},
+			map[string]any{"name": "service", "dataType": []string{"text"}},
+			map[string]any{"name": "name", "dataType": []string{"text"}},
+			map[string]any{"name": "definition", "dataType": []string{"text"}},
+			map[string]any{"name": "purpose", "dataType": []string{"text"}},
+			map[string]any{"name": "owner", "dataType": []string{"text"}},
+			stringDict("tags"), // Use string dictionary for tags
+			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
+		},
+	}
+}
+
+// Metric version payload with string dictionary tags
+func metricVersionPayload() map[string]any {
+	return map[string]any{
+		"name":     "payload",
+		"dataType": []string{"object"},
+		"nestedProperties": []any{
+			map[string]any{"name": "tenantId", "dataType": []string{"text"}},
+			map[string]any{"name": "name", "dataType": []string{"text"}},
+			map[string]any{"name": "definition", "dataType": []string{"text"}},
+			map[string]any{"name": "owner", "dataType": []string{"text"}},
+			stringDict("tags"), // Use string dictionary for tags
+			map[string]any{"name": "unit", "dataType": []string{"text"}},
+			map[string]any{"name": "source", "dataType": []string{"text"}},
+			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
+		},
+	}
+}
+
+// Log field version payload with string dictionary tags and examples
+func logFieldVersionPayload() map[string]any {
+	return map[string]any{
+		"name":     "payload",
+		"dataType": []string{"object"},
+		"nestedProperties": []any{
+			map[string]any{"name": "tenantId", "dataType": []string{"text"}},
+			map[string]any{"name": "name", "dataType": []string{"text"}},
+			map[string]any{"name": "type", "dataType": []string{"text"}},
+			map[string]any{"name": "definition", "dataType": []string{"text"}},
+			stringDict("tags"),     // Use string dictionary for tags
+			stringDict("examples"), // Use string dictionary for examples
+			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
+		},
+	}
+}
+
+// Update the main classes to use stringDict for tags as well
+func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
+	// Define all classes that need to be created
+	classDefinitions := []struct {
+		name string
+		def  map[string]any
+	}{
+		// Primary classes first (referenced by version classes)
+		{"Label", class("Label", props(
+			text("tenantId"), text("metric"), text("name"), text("definition"), text("type"),
+			boolp("required"), object("allowedValues"), intp("version"), date("updatedAt"),
+		))},
+		{"Metric", class("Metric", props(
+			text("tenantId"), text("name"), text("definition"), text("owner"), stringDict("tags"), // Updated to stringDict
+			text("unit"), text("source"), intp("version"), date("updatedAt"),
+			refp("labels", "Label"),
+		))},
+		{"LogField", class("LogField", props(
+			text("tenantId"), text("name"), text("type"), text("definition"),
+			stringDict("tags"), stringDict("examples"), intp("version"), date("updatedAt"), // Updated to stringDict
+		))},
+		{"Service", class("Service", props(
+			text("tenantId"), text("name"), text("definition"), text("purpose"), text("owner"), stringDict("tags"), intp("version"), date("updatedAt"), // Updated to stringDict
+		))},
+		{"Operation", class("Operation", props(
+			text("tenantId"), text("service"), text("name"), text("definition"), text("purpose"), text("owner"), stringDict("tags"), intp("version"), date("updatedAt"), // Updated to stringDict
+		))},
+		// Version classes with proper payload schemas
+		{"MetricVersion", class("MetricVersion", props(text("tenantId"), text("name"), intp("version"), metricVersionPayload(), text("author"), date("createdAt")))},
+		{"LabelVersion", class("LabelVersion", props(text("tenantId"), text("metric"), text("name"), intp("version"), labelVersionPayload(), text("author"), date("createdAt")))},
+		{"LogFieldVersion", class("LogFieldVersion", props(text("tenantId"), text("name"), intp("version"), logFieldVersionPayload(), text("author"), date("createdAt")))},
+		{"ServiceVersion", class("ServiceVersion", props(text("tenantId"), text("name"), intp("version"), serviceVersionPayload(), text("author"), date("createdAt")))},
+		{"OperationVersion", class("OperationVersion", props(text("tenantId"), text("service"), text("name"), intp("version"), operationVersionPayload(), text("author"), date("createdAt")))},
+	}
+
+	// Create classes individually to better handle failures
+	for _, classDef := range classDefinitions {
+		if err := r.ensureClass(ctx, classDef.name, classDef.def); err != nil {
+			return fmt.Errorf("failed to create class %s: %w", classDef.name, err)
+		}
+	}
+
+	return nil
 }

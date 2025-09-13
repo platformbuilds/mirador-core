@@ -13,7 +13,7 @@ servers:
     variables:
       scheme:
         enum: [http, https]
-        default: https
+        default: http
       host:
         default: localhost:8080
         description: Hostname:port of mirador-core
@@ -220,17 +220,19 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                tenantId: { type: string }
-                service: { type: string }
-                purpose: { type: string }
-                owner: { type: string }
-                tags: { type: object }
-                author: { type: string }
-              required: [service]
+              $ref: '#/components/schemas/TraceServiceRequest'
+            example:
+              service: "otelgen"
+              purpose: "this is a test service created by otelgen tool"
+              owner: "aarvee"
+              tags:
+                environment: "development"
+                team: "observability"
+                version: "1.0.0"
+              author: "aarvee"
       responses:
         '200': { description: OK }
+        '400': { description: Bad Request }
   /schema/traces/services/bulk:
     post:
       summary: Bulk upsert trace services via CSV
@@ -301,18 +303,20 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                tenantId: { type: string }
-                service: { type: string }
-                operation: { type: string }
-                purpose: { type: string }
-                owner: { type: string }
-                tags: { type: object }
-                author: { type: string }
-              required: [service, operation]
+              $ref: '#/components/schemas/TraceOperationRequest'
+            example:
+              service: "otelgen"
+              operation: "handle_request"
+              purpose: "handles incoming HTTP requests"
+              owner: "aarvee"
+              tags:
+                method: "POST"
+                endpoint: "/api/v1/data"
+                timeout: "30s"
+              author: "aarvee"
       responses:
         '200': { description: OK }
+        '400': { description: Bad Request }
   /schema/traces/operations/bulk:
     post:
       summary: Bulk upsert trace operations via CSV
@@ -1200,4 +1204,134 @@ paths:
       responses:
         '101': { description: Switching Protocols }
 
-# [Cleaned] Duplicate components + misplaced path items were removed here.
+# Trace Service Schema
+TraceServiceRequest:
+  type: object
+  properties:
+    tenantId: 
+      type: string
+      description: Optional tenant ID (defaults to request tenant)
+    service: 
+      type: string
+      description: Service name
+    purpose: 
+      type: string
+      description: Service purpose/description
+    owner: 
+      type: string
+      description: Service owner
+    tags: 
+      type: object
+      additionalProperties:
+        type: string
+      description: Key-value pairs where both keys and values are strings
+      example:
+        environment: "production"
+        team: "platform"
+        version: "1.2.3"
+    author: 
+      type: string
+      description: Author of this change
+  required: [service]
+
+# Trace Operation Schema  
+TraceOperationRequest:
+  type: object
+  properties:
+    tenantId: 
+      type: string
+      description: Optional tenant ID (defaults to request tenant)
+    service: 
+      type: string
+      description: Service name
+    operation: 
+      type: string
+      description: Operation name
+    purpose: 
+      type: string
+      description: Operation purpose/description
+    owner: 
+      type: string
+      description: Operation owner
+    tags: 
+      type: object
+      additionalProperties:
+        type: string
+      description: Key-value pairs where both keys and values are strings
+      example:
+        endpoint: "/api/v1/users"
+        method: "GET"
+        timeout: "30s"
+    author: 
+      type: string
+      description: Author of this change
+  required: [service, operation]
+
+# Metric Schema
+MetricRequest:
+  type: object
+  properties:
+    tenantId: 
+      type: string
+      description: Optional tenant ID (defaults to request tenant)
+    metric: 
+      type: string
+      description: Metric name
+    description: 
+      type: string
+      description: Metric description
+    owner: 
+      type: string
+      description: Metric owner
+    tags: 
+      type: object
+      additionalProperties:
+        type: string
+      description: Key-value pairs where both keys and values are strings
+      example:
+        category: "performance"
+        unit: "seconds"
+        source: "prometheus"
+    author: 
+      type: string
+      description: Author of this change
+  required: [metric]
+
+# Log Field Schema
+LogFieldRequest:
+  type: object
+  properties:
+    tenantId: 
+      type: string
+      description: Optional tenant ID (defaults to request tenant)
+    field: 
+      type: string
+      description: Log field name
+    type: 
+      type: string
+      description: Field data type
+    description: 
+      type: string
+      description: Field description
+    tags: 
+      type: object
+      additionalProperties:
+        type: string
+      description: Key-value pairs where both keys and values are strings
+      example:
+        category: "security"
+        format: "json"
+        indexed: "true"
+    examples: 
+      type: object
+      additionalProperties:
+        type: string
+      description: Example values as key-value string pairs
+      example:
+        normal: "INFO"
+        error: "ERROR"
+        debug: "DEBUG"
+    author: 
+      type: string
+      description: Author of this change
+  required: [field]
