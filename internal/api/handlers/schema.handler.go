@@ -237,12 +237,12 @@ func (h *SchemaHandler) GetLogFieldVersion(c *gin.Context) {
 // ---------- Traces: Services and Operations (CRUD + Versions) ----------
 
 type upsertTraceServiceReq struct {
-	TenantID string            `json:"tenantId"`
-	Service  string            `json:"service"`
-	Purpose  string            `json:"purpose"`
-	Owner    string            `json:"owner"`
-	Tags     map[string]string `json:"tags"` // Changed from map[string]interface{} to map[string]string
-	Author   string            `json:"author"`
+	TenantID string   `json:"tenantId"`
+	Service  string   `json:"service"`
+	Purpose  string   `json:"purpose"`
+	Owner    string   `json:"owner"`
+	Tags     []string `json:"tags"` // Changed from map[string]interface{} to map[string]string
+	Author   string   `json:"author"`
 }
 
 func (h *SchemaHandler) UpsertTraceService(c *gin.Context) {
@@ -255,10 +255,10 @@ func (h *SchemaHandler) UpsertTraceService(c *gin.Context) {
 		req.TenantID = c.GetString("tenant_id")
 	}
 
-	// Convert map[string]string to map[string]any for repository
-	tags := make(map[string]any)
-	for k, v := range req.Tags {
-		tags[k] = v
+	// Convert []string to map[string]any for repository compatibility
+	// Store the array as a single key-value pair
+	tags := map[string]any{
+		"list": req.Tags, // Store the []string as a value
 	}
 
 	if err := h.repo.UpsertTraceServiceWithAuthor(c.Request.Context(), req.TenantID, req.Service, req.Purpose, req.Owner, tags, req.Author); err != nil {

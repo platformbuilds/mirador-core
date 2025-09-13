@@ -19,6 +19,10 @@ type WeaviateRepo struct {
 	ensured bool
 }
 
+func stringArray(name string) map[string]any {
+	return map[string]any{"name": name, "dataType": []string{"text[]"}}
+}
+
 func NewWeaviateRepo(c *storageweaviate.Client) *WeaviateRepo {
 	return &WeaviateRepo{t: storageweaviate.NewHTTPTransport(c)}
 }
@@ -654,7 +658,7 @@ func serviceVersionPayload() map[string]any {
 			map[string]any{"name": "definition", "dataType": []string{"text"}},
 			map[string]any{"name": "purpose", "dataType": []string{"text"}},
 			map[string]any{"name": "owner", "dataType": []string{"text"}},
-			stringDict("tags"), // Use string dictionary for tags
+			stringArray("tags"), // Use string dictionary for tags
 			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
 		},
 	}
@@ -672,7 +676,7 @@ func operationVersionPayload() map[string]any {
 			map[string]any{"name": "definition", "dataType": []string{"text"}},
 			map[string]any{"name": "purpose", "dataType": []string{"text"}},
 			map[string]any{"name": "owner", "dataType": []string{"text"}},
-			stringDict("tags"), // Use string dictionary for tags
+			stringArray("tags"), // Use string dictionary for tags
 			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
 		},
 	}
@@ -688,7 +692,7 @@ func metricVersionPayload() map[string]any {
 			map[string]any{"name": "name", "dataType": []string{"text"}},
 			map[string]any{"name": "definition", "dataType": []string{"text"}},
 			map[string]any{"name": "owner", "dataType": []string{"text"}},
-			stringDict("tags"), // Use string dictionary for tags
+			stringArray("tags"), // Use string dictionary for tags
 			map[string]any{"name": "unit", "dataType": []string{"text"}},
 			map[string]any{"name": "source", "dataType": []string{"text"}},
 			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
@@ -706,7 +710,7 @@ func logFieldVersionPayload() map[string]any {
 			map[string]any{"name": "name", "dataType": []string{"text"}},
 			map[string]any{"name": "type", "dataType": []string{"text"}},
 			map[string]any{"name": "definition", "dataType": []string{"text"}},
-			stringDict("tags"),     // Use string dictionary for tags
+			stringArray("tags"),    // Use string dictionary for tags
 			stringDict("examples"), // Use string dictionary for examples
 			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
 		},
@@ -726,19 +730,19 @@ func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
 			boolp("required"), object("allowedValues"), intp("version"), date("updatedAt"),
 		))},
 		{"Metric", class("Metric", props(
-			text("tenantId"), text("name"), text("definition"), text("owner"), stringDict("tags"), // Updated to stringDict
+			text("tenantId"), text("name"), text("definition"), text("owner"), stringArray("tags"), // Updated to stringDict
 			text("unit"), text("source"), intp("version"), date("updatedAt"),
 			refp("labels", "Label"),
 		))},
 		{"LogField", class("LogField", props(
 			text("tenantId"), text("name"), text("type"), text("definition"),
-			stringDict("tags"), stringDict("examples"), intp("version"), date("updatedAt"), // Updated to stringDict
+			stringArray("tags"), stringDict("examples"), intp("version"), date("updatedAt"), // Updated to stringDict
 		))},
 		{"Service", class("Service", props(
-			text("tenantId"), text("name"), text("definition"), text("purpose"), text("owner"), stringDict("tags"), intp("version"), date("updatedAt"), // Updated to stringDict
+			text("tenantId"), text("name"), text("definition"), text("purpose"), text("owner"), stringArray("tags"), intp("version"), date("updatedAt"), // Updated to stringDict
 		))},
 		{"Operation", class("Operation", props(
-			text("tenantId"), text("service"), text("name"), text("definition"), text("purpose"), text("owner"), stringDict("tags"), intp("version"), date("updatedAt"), // Updated to stringDict
+			text("tenantId"), text("service"), text("name"), text("definition"), text("purpose"), text("owner"), stringArray("tags"), intp("version"), date("updatedAt"), // Updated to stringDict
 		))},
 		// Version classes with proper payload schemas
 		{"MetricVersion", class("MetricVersion", props(text("tenantId"), text("name"), intp("version"), metricVersionPayload(), text("author"), date("createdAt")))},
