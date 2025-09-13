@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -172,22 +173,34 @@ func (r *WeaviateRepo) ensureClass(ctx context.Context, className string, classD
 	return nil
 }
 
-// classExists checks if a class exists in the Weaviate schema
+// classExists checks if a class exists using REST API instead of GraphQL
 func (r *WeaviateRepo) classExists(ctx context.Context, className string) (bool, error) {
-	// Use GraphQL to check if class exists
-	query := fmt.Sprintf(`{ Get { %s { __typename } } }`, className)
-	var resp map[string]any
+	// Use REST API GET /v1/schema to check if class exists
+	// This works even when no schema exists yet
+	var schema struct {
+		Classes []struct {
+			Class string `json:"class"`
+		} `json:"classes"`
+	}
 
-	// If the query fails, the class likely doesn't exist
-	if err := r.t.GraphQL(ctx, query, nil, &resp); err != nil {
-		// Check if error indicates class not found
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "Unknown type") {
+	// Get the current schema
+	if err := r.t.(*httpTransport).doJSON(ctx, http.MethodGet, "/v1/schema", nil, &schema); err != nil {
+		// If we can't get the schema, assume class doesn't exist
+		// This handles the case where Weaviate is running but has no schema
+		if strings.Contains(err.Error(), "422") || strings.Contains(err.Error(), "no schema") {
 			return false, nil
 		}
 		return false, err
 	}
 
-	return true, nil
+	// Check if our class exists in the schema
+	for _, class := range schema.Classes {
+		if class.Class == className {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // Helper builders for schema classes
