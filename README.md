@@ -7,10 +7,10 @@
 [![Govulncheck](https://img.shields.io/badge/govulncheck-report-informational)](https://github.com/platformbuilds/mirador-core/actions/workflows/ci.yml)
 
 <!-- GitLab CI (optional mirror) -->
-[![Pipeline Status](https://gitlab.com/platformbuilds/mirador-core/badges/main/pipeline.svg)](https://gitlab.com/platformbuilds/mirador-core/-/pipelines?scope=branches&ref=main)
-[![Coverage](https://gitlab.com/platformbuilds/mirador-core/badges/main/coverage.svg)](https://gitlab.com/platformbuilds/mirador-core/-/graphs/main/charts)
-[![Vulnerability Report](https://img.shields.io/badge/GitLab%20Vulnerabilities-Report-blue)](https://gitlab.com/platformbuilds/mirador-core/-/security/vulnerabilities)
-[![Test Report](https://img.shields.io/badge/GitLab%20Tests-Latest%20Pipeline-lightgrey)](https://gitlab.com/platformbuilds/mirador-core/-/pipelines?scope=branches&ref=main)
+[![Pipeline Status](https://gitlab.com/platformbuilds/mirador-core/badges/main/pipeline.svg)](#https://gitlab.com/platformbuilds/mirador-core/-/pipelines?scope=branches&ref=main)
+[![Coverage](https://gitlab.com/platformbuilds/mirador-core/badges/main/coverage.svg)](#https://gitlab.com/platformbuilds/mirador-core/-/graphs/main/charts)
+[![Vulnerability Report](https://img.shields.io/badge/GitLab%20Vulnerabilities-Report-blue)](#https://gitlab.com/platformbuilds/mirador-core/-/security/vulnerabilities)
+[![Test Report](https://img.shields.io/badge/GitLab%20Tests-Latest%20Pipeline-lightgrey)](#https://gitlab.com/platformbuilds/mirador-core/-/pipelines?scope=branches&ref=main)
 
 # MIRADOR-CORE
 
