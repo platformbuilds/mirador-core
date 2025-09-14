@@ -27,6 +27,10 @@ curl http://localhost:8080/health
 - `config.enabled`, `config.existingConfigMap`, `config.content` for `/etc/mirador/config.yaml`
 - `alertRules.enabled`, `alertRules.existingConfigMap`, `alertRules.content` for `/etc/mirador/alert-rules.yaml`
 - `rbac.create`, `rbac.clusterWide` and `serviceAccount.create`
+- `autoscaling.enabled` for HPA, `podDisruptionBudget.*` for PDB
+- `networkPolicy.enabled` to restrict traffic; customize ingress/egress
+- `serviceMonitor.enabled` and `prometheusRule.enabled` for Prometheus Operator
+- `topologySpreadConstraints`, `priorityClassName`, `revisionHistoryLimit`
 
 ## Embedded Valkey (Subchart)
 
@@ -204,6 +208,29 @@ valkey:
 ```
 
 To manage app credentials in a single Secret created by this chart, set `secrets.create: true` and fill `secrets.data.JWT_SECRET`, `LDAP_PASSWORD`, `SMTP_PASSWORD`, `REDIS_PASSWORD`, `VM_PASSWORD`.
+ 
+## Production Setup Checklist
+ 
+- High availability
+  - Set `replicaCount >= 3`, enable `autoscaling.enabled` with sensible bounds.
+  - Enable `podDisruptionBudget` to preserve availability during voluntary disruptions.
+  - Use `topologySpreadConstraints` or anti-affinity to spread across zones/nodes.
+- Networking
+  - Enable `networkPolicy.enabled` and tailor allowed ingress/egress per environment.
+  - Terminate TLS at your ingress; set `ingress.tls` appropriately. For gRPC, ensure HTTP/2 is enabled on your ingress controller and add any required annotations.
+- Observability
+  - Leave `podAnnotations` Prometheus scrape hints, or enable `serviceMonitor.enabled` for Prometheus Operator.
+  - Optionally define `prometheusRule.groups` with SLO/SLA alerts for your environment.
+- Security
+  - Run as non-root (defaults provided in `podSecurityContext`).
+  - Set a strict `securityContext` (drop capabilities, read-only root FS) if compatible with your runtime.
+  - Manage application secrets externally and wire via `envFrom`, or set `secrets.create=true` with pre-provisioned values.
+- Config and rollouts
+  - ConfigMap and alert-rules changes trigger rollouts via checksum annotations.
+  - Tune `terminationGracePeriodSeconds`, `revisionHistoryLimit` to your SLOs.
+- Dependencies
+  - For production Valkey, prefer `architecture: replication` with persistence enabled and strong auth.
+  - Consider using a managed Redis/Valkey and set `mirador.cache.nodes` to external endpoints.
 
 ### Kubernetes Service Discovery (vmselect/vlselect/vtselect)
 
@@ -239,6 +266,56 @@ Notes:
 - Prefer headless Services for vmselect/vlselect/vtselect to expose per-pod A records.
 - Alternatively set `useSRV: true` and publish SRV records for the Service.
 - Static `database.*.endpoints` remain valid and are used as seed; discovery replaces the list dynamically at runtime.
+
+## Enabling HPA, PDB, NetworkPolicy, and Monitoring
+
+Example values override for production:
+
+```yaml
+replicaCount: 3
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+networkPolicy:
+  enabled: true
+  ingress:
+    from:
+      - namespaceSelector: {}
+        podSelector: {}
+  egress:
+    to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            k8s-app: kube-dns
+    ports:
+      - protocol: UDP
+        port: 53
+      - protocol: TCP
+        port: 53
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+```
 
 ## Configuration
 
