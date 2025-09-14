@@ -2,6 +2,7 @@ services:
   # VictoriaMetrics Suite
   victoriametrics:
     image: victoriametrics/victoria-metrics:latest
+    pull_policy: if_not_present
     container_name: victoriametrics
     ports:
       - 8428:8428 # Metrics UI/API
@@ -12,6 +13,7 @@ services:
 
   victorialogs:
     image: victoriametrics/victoria-logs:latest
+    pull_policy: if_not_present
     container_name: victorialogs
     ports:
       - 9428:9428 # Logs UI/API
@@ -22,6 +24,7 @@ services:
 
   victoriatraces:
     image: victoriametrics/victoria-traces:latest
+    pull_policy: if_not_present
     container_name: victoriatraces
     ports:
       - 10428:10428 # Traces UI/API
@@ -33,6 +36,7 @@ services:
   # OpenTelemetry Collector
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
+    pull_policy: if_not_present
     container_name: otel-collector
     command: ["--config", "/etc/otelcol/config.yaml"]
     ports:
@@ -52,6 +56,7 @@ services:
   # Valkey (single-node)
   valkey:
     image: valkey/valkey:latest
+    pull_policy: if_not_present
     container_name: mirador-valkey
     ports:
       - "6379:6379"
@@ -64,6 +69,7 @@ services:
   # Weaviate (DEV): local vector DB for schema store
   weaviate:
     image: cr.weaviate.io/semitechnologies/weaviate:1.32.8
+    pull_policy: if_not_present
     container_name: weaviate
     restart: unless-stopped
     ports:
