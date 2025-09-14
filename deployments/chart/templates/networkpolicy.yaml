@@ -1,0 +1,31 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "mirador-core.fullname" . }}
+  labels:
+    {{- include "mirador-core.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "mirador-core.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+      {{- range .Values.networkPolicy.ingress.from }}
+      - {{- toYaml . | nindent 8 }}
+      {{- end }}
+  egress:
+    - to:
+      {{- range .Values.networkPolicy.egress.to }}
+      - {{- toYaml . | nindent 8 }}
+      {{- end }}
+      ports:
+      {{- range .Values.networkPolicy.egress.ports }}
+        - {{- toYaml . | nindent 10 }}
+      {{- end }}
+{{- end }}
+

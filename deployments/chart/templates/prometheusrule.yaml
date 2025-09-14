@@ -1,0 +1,15 @@
+{{- if .Values.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "mirador-core.fullname" . }}
+  labels:
+    {{- include "mirador-core.labels" . | nindent 4 }}
+    {{- with .Values.prometheusRule.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    {{- toYaml .Values.prometheusRule.groups | nindent 4 }}
+{{- end }}
+

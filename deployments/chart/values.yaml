@@ -26,6 +26,9 @@ podAnnotations:
   prometheus.io/port: "8080"
   prometheus.io/path: "/metrics"
 
+# Optional additional Pod labels
+podLabels: {}
+
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 65534
@@ -67,6 +70,16 @@ nodeSelector: {}
 affinity: {}
 tolerations: []
 
+# Optional topology spread constraints
+topologySpreadConstraints: []
+
+# Optional priority class
+priorityClassName: ""
+
+# Pod lifecycle tuning
+terminationGracePeriodSeconds: 30
+revisionHistoryLimit: 3
+
 env:
   - name: CONFIG_PATH
     value: /etc/mirador/config.yaml
@@ -78,6 +91,11 @@ env:
 
 # Optional extra environment variables (rendered after `env` items)
 extraEnv: []
+
+# Optional sidecars and extra volumes
+extraContainers: []
+extraVolumeMounts: []
+extraVolumes: []
 
 
 # Init waiters for dependent services
@@ -189,6 +207,61 @@ alertRules:
   existingConfigMap: ""
   content: |
     # example alert rules file
+  groups: []
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: false
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  # targetMemoryUtilizationPercentage: 80
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# NetworkPolicy
+networkPolicy:
+  enabled: false
+  # When enabled, by default allow ingress from same namespace
+  # and egress to kube-dns. Customize as needed below.
+  ingress:
+    from:
+      - namespaceSelector: {}
+        podSelector: {}
+  egress:
+    to:
+      # kube-dns in kube-system
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            k8s-app: kube-dns
+    ports:
+      - protocol: UDP
+        port: 53
+      - protocol: TCP
+        port: 53
+
+# Prometheus ServiceMonitor
+serviceMonitor:
+  enabled: false
+  namespace: ""
+  interval: 30s
+  scrapeTimeout: 10s
+  additionalLabels: {}
+  honorLabels: false
+  relabelings: []
+  metricRelabelings: []
+
+# PrometheusRule
+prometheusRule:
+  enabled: false
+  additionalLabels: {}
   groups: []
 
 # Kubernetes Service Discovery for VM/VL/VT
