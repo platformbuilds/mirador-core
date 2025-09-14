@@ -169,13 +169,13 @@ func (h *SchemaHandler) GetMetricVersion(c *gin.Context) {
 }
 
 type upsertLogFieldReq struct {
-	TenantID    string            `json:"tenantId"`
-	Field       string            `json:"field"`
-	Type        string            `json:"type"`
-	Description string            `json:"description"`
-	Tags        map[string]string `json:"tags"`
-	Examples    map[string]string `json:"examples"`
-	Author      string            `json:"author"`
+	TenantID    string   `json:"tenantId"`
+	Field       string   `json:"field"`
+	Type        string   `json:"type"`
+	Description string   `json:"description"`
+	Tags        []string `json:"tags"`
+	Examples    []string `json:"examples"`
+	Author      string   `json:"author"`
 }
 
 func (h *SchemaHandler) UpsertLogField(c *gin.Context) {
@@ -188,18 +188,18 @@ func (h *SchemaHandler) UpsertLogField(c *gin.Context) {
 		req.TenantID = c.GetString("tenant_id")
 	}
 
-	// Convert map[string]string to []string for Tags
-	var tags []string
-	for k, v := range req.Tags {
-		// Format as "key=value" or just use values, depending on your needs
-		tags = append(tags, fmt.Sprintf("%s=%s", k, v))
-		// OR if you just want the values: tags = append(tags, v)
+	// arrays -> as-is for tags
+	tags := make([]string, 0, len(req.Tags))
+	for _, s := range req.Tags {
+		if s != "" {
+			tags = append(tags, s)
+		}
 	}
 
-	// Convert map[string]string to map[string]any for Examples (this was already correct)
-	examples := make(map[string]any)
-	for k, v := range req.Examples {
-		examples[k] = v
+	// examples []string -> map[string]any {"0": "...", "1": "..."}
+	examples := make(map[string]any, len(req.Examples))
+	for i, v := range req.Examples {
+		examples[strconv.Itoa(i)] = v
 	}
 
 	field := repo.LogFieldDef{
@@ -207,11 +207,11 @@ func (h *SchemaHandler) UpsertLogField(c *gin.Context) {
 		Field:       req.Field,
 		Type:        req.Type,
 		Description: req.Description,
-		Tags:        tags,     // Now this is []string
-		Examples:    examples, // This was already correct as map[string]any
+		Tags:        tags,
+		Examples:    examples,
 	}
 	if err := h.repo.UpsertLogField(c.Request.Context(), field, req.Author); err != nil {
-		h.logger.Error("log field upsert failed", "error", err)
+		h.logger.Error("upsert log field failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "upsert failed"})
 		return
 	}
