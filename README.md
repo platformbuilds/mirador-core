@@ -1,3 +1,17 @@
+<!-- CI Status & Reports (GitHub + GitLab) -->
+
+<!-- GitHub Actions -->
+[![GitHub CI](https://github.com/platformbuilds/mirador-core/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/platformbuilds/mirador-core/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/platformbuilds/mirador-core/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/platformbuilds/mirador-core/actions/workflows/codeql.yml)
+[![Coverage (artifacts)](https://img.shields.io/badge/coverage-see%20artifacts-informational)](https://github.com/platformbuilds/mirador-core/actions/workflows/ci.yml)
+[![Govulncheck](https://img.shields.io/badge/govulncheck-report-informational)](https://github.com/platformbuilds/mirador-core/actions/workflows/ci.yml)
+
+<!-- GitLab CI (optional mirror) -->
+[![Pipeline Status](https://gitlab.com/platformbuilds/mirador-core/badges/main/pipeline.svg)](https://gitlab.com/platformbuilds/mirador-core/-/pipelines?scope=branches&ref=main)
+[![Coverage](https://gitlab.com/platformbuilds/mirador-core/badges/main/coverage.svg)](https://gitlab.com/platformbuilds/mirador-core/-/graphs/main/charts)
+[![Vulnerability Report](https://img.shields.io/badge/GitLab%20Vulnerabilities-Report-blue)](https://gitlab.com/platformbuilds/mirador-core/-/security/vulnerabilities)
+[![Test Report](https://img.shields.io/badge/GitLab%20Tests-Latest%20Pipeline-lightgrey)](https://gitlab.com/platformbuilds/mirador-core/-/pipelines?scope=branches&ref=main)
+
 # MIRADOR-CORE
 
 Advanced Observability Platform - Backend REST API Service
@@ -519,6 +533,8 @@ Examples:
 Notes:
   - Auth is disabled by default in the localdev compose.
   - localdev-down runs 'docker compose ... down -v' and removes volumes created by that compose file.
+  - In GitHub Actions, coverage and JUnit test results are uploaded as artifacts for each CI run.
+  - In GitLab CI, coverage is extracted via the pipeline and test reports are visible in the pipeline UI.
 ```
 
 ## Kubernetes Deployment (Helm)

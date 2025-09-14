@@ -61,30 +61,22 @@ localdev-wait:
 
 localdev-test:
 	mkdir -p deployments/localdev
-	E2E_BASE_URL=$(BASE_URL) go test -count=1 -v ./deployments/localdev/e2e -json | tee deployments/localdev/e2e-report.json >/dev/null
-	@if command -v go-junit-report >/dev/null 2>&1; then \
-		cat deployments/localdev/e2e-report.json | go-junit-report > deployments/localdev/e2e-report.xml; \
-		echo "JUnit report at deployments/localdev/e2e-report.xml"; \
-	else \
-		echo "Install go-junit-report for JUnit XML: go install github.com/jstemmer/go-junit-report/v2@latest"; \
-	fi
+	E2E_BASE_URL=$(BASE_URL) bash deployments/localdev/scripts/run-e2e.sh
 	@echo "=========================================================="
 	@echo "=== E2E Summary (deployments/localdev/e2e-report.json) ==="
 	@echo "=========================================================="
 	@REPORT=deployments/localdev/e2e-report.json; \
 	if [ -f "$$REPORT" ]; then \
-	  PKG_COUNT=$$(grep -o '"Package":"[^"]*"' "$$REPORT" | cut -d: -f2- | tr -d '"' | sort -u | wc -l | tr -d ' '); \
-	  ALL=$$(grep '"Action":"run"' "$$REPORT" | grep -o '"Test":"[^"]*"' | cut -d: -f2- | tr -d '"' | sed '/^$$/d' | sort -u | wc -l | tr -d ' '); \
-	  PASSED=$$(grep '"Action":"pass"' "$$REPORT" | grep -o '"Test":"[^"]*"' | cut -d: -f2- | tr -d '"' | sed '/^$$/d' | sort -u | wc -l | tr -d ' '); \
-	  FAILED=$$(grep '"Action":"fail"' "$$REPORT" | grep -o '"Test":"[^"]*"' | cut -d: -f2- | tr -d '"' | sed '/^$$/d' | sort -u | wc -l | tr -d ' '); \
-	  echo "Packages=$$PKG_COUNT  Tests=$$ALL total, $$PASSED passed, $$FAILED failed"; \
+	  ALL=$$(wc -l < "$$REPORT" | tr -d ' '); \
+	  PASSED=$$(grep -c '\"ok\":true' "$$REPORT" || true); \
+	  FAILED=$$(grep -c '\"ok\":false' "$$REPORT" || true); \
+	  echo "Tests=$$ALL total, $$PASSED passed, $$FAILED failed"; \
 	  echo "=========================================================="; \
 	  echo; echo "Failed tests:"; \
-	  FAIL_LIST=$$(grep '"Action":"fail"' "$$REPORT" | grep -o '"Test":"[^"]*"' | cut -d: -f2- | tr -d '"' | sed '/^$$/d' | sort -u); \
+	  FAIL_LIST=$$(grep '\"ok\":false' "$$REPORT" | grep -o '\"name\":\"[^\"]*\"' | cut -d: -f2- | tr -d '\"' | sed '/^$$/d' | sort -u); \
 	  if [ -n "$$FAIL_LIST" ]; then \
 	    while IFS= read -r T; do \
-	      MSG=$$(grep -F '"Test":"'"$$T"'"' "$$REPORT" | grep '"Action":"output"' | grep -E 'unexpected status|status=|FAIL|error|failed' | tail -1 | sed -E 's/.*"Output":"[ ]*//; s/\\\n".*$$//'); \
-	      [ -z "$$MSG" ] && MSG="no message captured"; \
+	      MSG=$$(grep -F '\"name\":\"'"$$T"'\"' "$$REPORT" | tail -1 | sed -E 's/.*\"message\":\"//; s/\"\}\s*$$//'); \
 	      echo "  - $$T: $$MSG"; \
 	    done <<< "$$FAIL_LIST"; \
 	  else \
