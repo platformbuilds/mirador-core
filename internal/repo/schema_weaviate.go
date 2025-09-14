@@ -438,34 +438,100 @@ func (r *WeaviateRepo) UpsertLogField(ctx context.Context, f LogFieldDef, author
 	return r.putObject(ctx, "LogFieldVersion", vid, vprops)
 }
 
-func (r *WeaviateRepo) GetLogField(ctx context.Context, tenantID, field string) (*LogFieldDef, error) {
-	q := `query($tenant:String!,$name:String!){ Get { LogField(where:{operator:And,operands:[{path:["tenantId"],operator:Equal,valueString:$tenant},{path:["name"],operator:Equal,valueString:$name}]}, limit:1){ name type definition tags examples updatedAt } } }`
+// GetLogField reads a single log field by (tenantID, fieldName) from Weaviate.
+// It mirrors the inline GraphQL pattern used for GetMetric / GetTraceService / GetTraceOperation.
+// It also tolerates repos that stored the identifier under "name" or "field".
+func (r *WeaviateRepo) GetLogField(ctx context.Context, tenantID, fieldName string) (*LogFieldDef, error) {
+	q := fmt.Sprintf(`{
+	  Get {
+	    LogField(
+	      where: {
+	        operator: And,
+	        operands: [
+	          { path: ["tenantId"], operator: Equal, valueString: "%s" },
+	          { operator: Or, operands: [
+	              { path: ["name"],  operator: Equal, valueString: "%s" },
+	              { path: ["field"], operator: Equal, valueString: "%s" }
+	            ]
+	          }
+	        ]
+	      },
+	      limit: 1
+	    ) {
+	      name
+	      field
+	      type
+	      description
+	      tags
+	      examples
+	      updatedAt
+	    }
+	  }
+	}`, tenantID, fieldName, fieldName)
+
 	var resp struct {
 		Data struct {
-			Get struct{ LogField []map[string]any }
-		}
+			Get struct {
+				LogField []map[string]any `json:"LogField"`
+			} `json:"Get"`
+		} `json:"data"`
 	}
-	if err := r.gql(ctx, q, map[string]any{"tenant": tenantID, "name": field}, &resp); err != nil {
-		return nil, err
+
+	if err := r.gql(ctx, q, nil, &resp); err != nil {
+		return nil, fmt.Errorf("weaviate query failed for log field '%s' tenant '%s': %w", fieldName, tenantID, err)
 	}
+
 	arr := resp.Data.Get.LogField
 	if len(arr) == 0 {
-		return nil, fmt.Errorf("not found")
+		return nil, fmt.Errorf("log field '%s' not found for tenant '%s'", fieldName, tenantID)
 	}
+
 	it := arr[0]
+
+	// Field identifier: prefer explicit "field", otherwise fall back to "name"
+	gotField, _ := it["field"].(string)
+	if gotField == "" {
+		gotField, _ = it["name"].(string)
+	}
+
+	// tags: []interface{} -> []string
 	var tags []string
-	var ex map[string]any
-	if m, ok := it["tags"].([]string); ok {
-		tags = m
+	if raw, ok := it["tags"].([]interface{}); ok {
+		tags = make([]string, 0, len(raw))
+		for _, v := range raw {
+			if s, ok := v.(string); ok && s != "" {
+				tags = append(tags, s)
+			}
+		}
 	}
+
+	// examples: Weaviate returns arbitrary JSON => map[string]any
+	var examples map[string]any
 	if m, ok := it["examples"].(map[string]any); ok {
-		ex = m
+		examples = m
 	}
+
+	// type/description
+	typ, _ := it["type"].(string)
+	desc, _ := it["description"].(string)
+
+	// updatedAt: RFC3339 -> time.Time (best-effort)
 	var updated time.Time
 	if s, ok := it["updatedAt"].(string); ok {
-		updated, _ = time.Parse(time.RFC3339Nano, s)
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			updated = t
+		}
 	}
-	return &LogFieldDef{TenantID: tenantID, Field: it["name"].(string), Type: it["type"].(string), Description: it["definition"].(string), Tags: tags, Examples: ex, UpdatedAt: updated}, nil
+
+	return &LogFieldDef{
+		TenantID:    tenantID,
+		Field:       gotField,
+		Type:        typ,
+		Description: desc,
+		Tags:        tags,
+		Examples:    examples,
+		UpdatedAt:   updated,
+	}, nil
 }
 
 /* -------------------------------- traces --------------------------------- */
