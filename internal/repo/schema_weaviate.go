@@ -421,13 +421,44 @@ func (r *WeaviateRepo) GetLogField(ctx context.Context, tenantID, field string) 
 func (r *WeaviateRepo) UpsertTraceServiceWithAuthor(ctx context.Context, tenantID, service, purpose, owner string, tags map[string]any, author string) error {
 	next, _ := r.maxVersion(ctx, "ServiceVersion", map[string]string{"tenantId": tenantID, "name": service})
 	nowRFC := time.Now().UTC().Format(time.RFC3339Nano)
-	props := map[string]any{"tenantId": tenantID, "name": service, "definition": purpose, "purpose": purpose, "owner": owner, "tags": tags, "version": next, "updatedAt": nowRFC}
+	// Convert map[string]any tags to []interface{} for Weaviate text[] field
+	var weaviateTags interface{}
+	if tags != nil {
+		if listArray, exists := tags["list"]; exists {
+			// Handle the current case where tags are wrapped in "list"
+			if arr, ok := listArray.([]string); ok {
+				interfaceArray := make([]interface{}, len(arr))
+				for i, v := range arr {
+					interfaceArray[i] = v
+				}
+				weaviateTags = interfaceArray
+			} else if arr, ok := listArray.([]interface{}); ok {
+				weaviateTags = arr
+			} else {
+				weaviateTags = []interface{}{}
+			}
+		} else {
+			// Fallback: convert map values to array
+			tagValues := make([]interface{}, 0, len(tags))
+			for _, v := range tags {
+				if str, ok := v.(string); ok {
+					tagValues = append(tagValues, str)
+				}
+			}
+			weaviateTags = tagValues
+		}
+	} else {
+		weaviateTags = []interface{}{}
+	}
+
+	props := map[string]any{"tenantId": tenantID, "name": service, "definition": purpose, "purpose": purpose, "owner": owner, "tags": weaviateTags, "version": next, "updatedAt": nowRFC}
+
 	id := makeID("Service", tenantID, service)
 	if err := r.putObject(ctx, "Service", id, props); err != nil {
 		return err
 	}
 	vid := makeID("ServiceVersion", tenantID, service, fmt.Sprintf("%d", next))
-	vprops := map[string]any{"tenantId": tenantID, "name": service, "version": next, "payload": map[string]any{"tenantId": tenantID, "name": service, "definition": purpose, "purpose": purpose, "owner": owner, "tags": tags, "updatedAt": time.Now()}, "author": author, "createdAt": nowRFC}
+	vprops := map[string]any{"tenantId": tenantID, "name": service, "version": next, "payload": map[string]any{"tenantId": tenantID, "name": service, "definition": purpose, "purpose": purpose, "owner": owner, "tags": weaviateTags, "updatedAt": time.Now()}, "author": author, "createdAt": nowRFC}
 	return r.putObject(ctx, "ServiceVersion", vid, vprops)
 }
 
