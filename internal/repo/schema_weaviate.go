@@ -1,13 +1,14 @@
 package repo
 
 import (
-	"context"
-	"crypto/sha1"
-	"fmt"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
+    "context"
+    "crypto/sha1"
+    "fmt"
+    "sort"
+    "strconv"
+    "strings"
+    "sync"
+    "time"
 
 	storageweaviate "github.com/platformbuilds/mirador-core/internal/storage/weaviate"
 )
@@ -347,8 +348,10 @@ func (r *WeaviateRepo) GetMetric(ctx context.Context, tenantID, metric string) (
 	// updatedAt: RFC3339 -> time.Time
 	var updated time.Time
 	if s, ok := it["updatedAt"].(string); ok {
-		if t, err := time.Parse(time.RFC3339, s); err == nil {
+		if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
 			updated = t
+		} else if t2, err2 := time.Parse(time.RFC3339, s); err2 == nil {
+			updated = t2
 		}
 	}
 
@@ -426,94 +429,228 @@ func (r *WeaviateRepo) UpsertMetricLabel(ctx context.Context, tenantID, metric, 
 /* --------------------------------- logs ---------------------------------- */
 
 func (r *WeaviateRepo) UpsertLogField(ctx context.Context, f LogFieldDef, author string) error {
-	next, _ := r.maxVersion(ctx, "LogFieldVersion", map[string]string{"tenantId": f.TenantID, "name": f.Field})
-	nowRFC := time.Now().UTC().Format(time.RFC3339Nano)
-	props := map[string]any{"tenantId": f.TenantID, "name": f.Field, "type": f.Type, "definition": f.Description, "tags": f.Tags, "examples": f.Examples, "version": next, "updatedAt": nowRFC}
-	id := makeID("LogField", f.TenantID, f.Field)
-	if err := r.putObject(ctx, "LogField", id, props); err != nil {
-		return err
-	}
-	vid := makeID("LogFieldVersion", f.TenantID, f.Field, fmt.Sprintf("%d", next))
-	vprops := map[string]any{"tenantId": f.TenantID, "name": f.Field, "version": next, "payload": map[string]any{"tenantId": f.TenantID, "name": f.Field, "type": f.Type, "definition": f.Description, "tags": f.Tags, "examples": f.Examples, "updatedAt": time.Now()}, "author": author, "createdAt": nowRFC}
-	return r.putObject(ctx, "LogFieldVersion", vid, vprops)
+    next, _ := r.maxVersion(ctx, "LogFieldVersion", map[string]string{"tenantId": f.TenantID, "name": f.Field})
+    nowRFC := time.Now().UTC().Format(time.RFC3339Nano)
+
+    // Convert []string examples to []interface{} for Weaviate text[]
+    var examplesArr []interface{}
+    if len(f.Examples) > 0 {
+        examplesArr = make([]interface{}, len(f.Examples))
+        for i, s := range f.Examples {
+            examplesArr[i] = s
+        }
+    }
+
+    props := map[string]any{
+        "tenantId":   f.TenantID,
+        "name":       f.Field,
+        "type":       f.Type,
+        "definition": f.Description,
+        "tags":       f.Tags,
+        "examples":   examplesArr,
+        "version":    next,
+        "updatedAt":  nowRFC,
+    }
+    id := makeID("LogField", f.TenantID, f.Field)
+    if err := r.putObject(ctx, "LogField", id, props); err != nil {
+        // Back-compat fallback: older schema may define examples as object, not text[]
+        msg := err.Error()
+        if strings.Contains(msg, "invalid object property 'examples'") && strings.Contains(msg, "must be a map") {
+            // Convert []string -> map[string]any with numeric keys
+            exObj := map[string]any{}
+            for i, s := range f.Examples {
+                exObj[strconv.Itoa(i)] = s
+            }
+            props["examples"] = exObj
+            if e2 := r.putObject(ctx, "LogField", id, props); e2 == nil {
+                // proceed to version write with same fallback
+            } else {
+                return e2
+            }
+        } else {
+            return err
+        }
+    }
+    vid := makeID("LogFieldVersion", f.TenantID, f.Field, fmt.Sprintf("%d", next))
+    vprops := map[string]any{
+        "tenantId": f.TenantID,
+        "name":     f.Field,
+        "version":  next,
+        "payload": map[string]any{
+            "tenantId":   f.TenantID,
+            "name":       f.Field,
+            "type":       f.Type,
+            "definition": f.Description,
+            "tags":       f.Tags,
+            "examples":   examplesArr,
+            "updatedAt":  nowRFC,
+        },
+        "author":    author,
+        "createdAt": nowRFC,
+    }
+    if err := r.putObject(ctx, "LogFieldVersion", vid, vprops); err != nil {
+        msg := err.Error()
+        if strings.Contains(msg, "invalid object property 'payload'") && strings.Contains(msg, "examples") && strings.Contains(msg, "must be a map") {
+            // For version payload, also fallback to object for examples
+            exObj := map[string]any{}
+            for i, s := range f.Examples {
+                exObj[strconv.Itoa(i)] = s
+            }
+            if payload, ok := vprops["payload"].(map[string]any); ok {
+                payload["examples"] = exObj
+            }
+            return r.putObject(ctx, "LogFieldVersion", vid, vprops)
+        }
+        return err
+    }
+    return nil
 }
 
 // GetLogField reads a single log field by (tenantID, fieldName) from Weaviate.
 // It mirrors the inline GraphQL pattern used for GetMetric / GetTraceService / GetTraceOperation.
 // It also tolerates repos that stored the identifier under "name" or "field".
 func (r *WeaviateRepo) GetLogField(ctx context.Context, tenantID, fieldName string) (*LogFieldDef, error) {
-	q := fmt.Sprintf(`{
-	  Get {
-	    LogField(
-	      where: {
-	        operator: And,
-	        operands: [
-	          { path: ["tenantId"], operator: Equal, valueString: "%s" },
-	          { operator: Or, operands: [
-	              { path: ["name"],  operator: Equal, valueString: "%s" },
-	              { path: ["field"], operator: Equal, valueString: "%s" }
-	            ]
-	          }
-	        ]
-	      },
-	      limit: 1
-	    ) {
-	      name
-	      field
-	      type
-	      description
-	      tags
-	      examples
-	      updatedAt
-	    }
-	  }
-	}`, tenantID, fieldName, fieldName)
+    // Primary: EXACT GraphQL requested (tenantId + name, valueString)
+    esc := func(s string) string {
+        s = strings.ReplaceAll(s, `\\`, `\\\\`)
+        s = strings.ReplaceAll(s, `"`, `\\\"`)
+        return s
+    }
 
-	var resp struct {
-		Data struct {
-			Get struct {
-				LogField []map[string]any `json:"LogField"`
-			} `json:"Get"`
-		} `json:"data"`
-	}
+    q := fmt.Sprintf(`{
+      Get {
+        LogField(
+          where: {
+            operator: And,
+            operands: [
+              { path: ["tenantId"], operator: Equal, valueString: "%s" },
+              { path: ["name"],     operator: Equal, valueString: "%s" }
+            ]
+          },
+          limit: 1
+        ) {
+          tenantId
+          name
+          type
+          definition
+          tags
+          examples
+          updatedAt
+          _additional { id }
+        }
+      }
+    }`, esc(tenantID), esc(fieldName))
 
-	if err := r.gql(ctx, q, nil, &resp); err != nil {
-		return nil, fmt.Errorf("weaviate query failed for log field '%s' tenant '%s': %w", fieldName, tenantID, err)
-	}
+    var resp struct {
+        Data struct {
+            Get struct {
+                LogField []map[string]any `json:"LogField"`
+            } `json:"Get"`
+        } `json:"data"`
+    }
+    if err := r.gql(ctx, q, nil, &resp); err != nil {
+        return nil, fmt.Errorf("weaviate query failed for log field '%s' tenant '%s': %w", fieldName, tenantID, err)
+    }
 
-	arr := resp.Data.Get.LogField
-	if len(arr) == 0 {
-		return nil, fmt.Errorf("log field '%s' not found for tenant '%s'", fieldName, tenantID)
-	}
+    arr := resp.Data.Get.LogField
+    if len(arr) == 0 {
+        // Fallback: by deterministic ID (UUIDv5 of LogField|tenant|field)
+        fid := makeID("LogField", tenantID, fieldName)
+        qid := fmt.Sprintf(`{
+          Get {
+            LogField(
+              where: { path: ["id"], operator: Equal, valueString: "%s" },
+              limit: 1
+            ) {
+              tenantId
+              name
+              type
+              definition
+              tags
+              examples
+              updatedAt
+              _additional { id }
+            }
+          }
+        }`, esc(fid))
+        var rid struct {
+            Data struct {
+                Get struct {
+                    LogField []map[string]any `json:"LogField"`
+                } `json:"Get"`
+            } `json:"data"`
+        }
+        if err := r.gql(ctx, qid, nil, &rid); err == nil {
+            arr = rid.Data.Get.LogField
+        }
+        if len(arr) == 0 {
+            return nil, fmt.Errorf("log field '%s' not found for tenant '%s'", fieldName, tenantID)
+        }
+    }
 
 	it := arr[0]
 
-	// Field identifier: prefer explicit "field", otherwise fall back to "name"
-	gotField, _ := it["field"].(string)
-	if gotField == "" {
-		gotField, _ = it["name"].(string)
-	}
+	// We store the field identifier under "name"
+	gotField, _ := it["name"].(string)
 
-	// tags: []interface{} -> []string
-	var tags []string
-	if raw, ok := it["tags"].([]interface{}); ok {
-		tags = make([]string, 0, len(raw))
-		for _, v := range raw {
-			if s, ok := v.(string); ok && s != "" {
-				tags = append(tags, s)
-			}
-		}
-	}
+    // tags: normalize from []interface{} or []string
+    var tags []string
+    if raw, ok := it["tags"].([]interface{}); ok {
+        tags = make([]string, 0, len(raw))
+        for _, v := range raw {
+            if s, ok := v.(string); ok && s != "" {
+                tags = append(tags, s)
+            }
+        }
+    } else if raw2, ok := it["tags"].([]string); ok {
+        tags = raw2
+    }
 
-	// examples: Weaviate returns arbitrary JSON => map[string]any
-	var examples map[string]any
-	if m, ok := it["examples"].(map[string]any); ok {
-		examples = m
-	}
+    // examples: handle both text[] and object legacy; normalize to []string
+    var examples []string
+    if arr, ok := it["examples"].([]interface{}); ok {
+        examples = make([]string, 0, len(arr))
+        for _, v := range arr {
+            if s, ok := v.(string); ok {
+                examples = append(examples, s)
+            } else {
+                examples = append(examples, fmt.Sprintf("%v", v))
+            }
+        }
+    } else if sarr, ok := it["examples"].([]string); ok {
+        examples = sarr
+    } else if m, ok := it["examples"].(map[string]any); ok {
+        // Convert map to stable []string by numeric key order if possible
+        type kv struct{ k string; i int; v any; num bool }
+        tmp := make([]kv, 0, len(m))
+        for k, v := range m {
+            n, err := strconv.Atoi(k)
+            tmp = append(tmp, kv{k: k, i: n, v: v, num: err == nil})
+        }
+        // Try numeric sort; if not all numeric, fall back to lexicographic
+        allNum := true
+        for _, t := range tmp { if !t.num { allNum = false; break } }
+        if allNum {
+            sort.Slice(tmp, func(i, j int) bool { return tmp[i].i < tmp[j].i })
+        } else {
+            sort.Slice(tmp, func(i, j int) bool { return tmp[i].k < tmp[j].k })
+        }
+        examples = make([]string, 0, len(tmp))
+        for _, t := range tmp {
+            if s, ok := t.v.(string); ok {
+                examples = append(examples, s)
+            } else {
+                examples = append(examples, fmt.Sprintf("%v", t.v))
+            }
+        }
+    }
 
-	// type/description
-	typ, _ := it["type"].(string)
-	desc, _ := it["description"].(string)
+    // type/description (support legacy "description")
+    typ, _ := it["type"].(string)
+    desc, _ := it["definition"].(string)
+    if desc == "" {
+        desc, _ = it["description"].(string)
+    }
 
 	// updatedAt: RFC3339 -> time.Time (best-effort)
 	var updated time.Time
@@ -524,14 +661,14 @@ func (r *WeaviateRepo) GetLogField(ctx context.Context, tenantID, fieldName stri
 	}
 
 	return &LogFieldDef{
-		TenantID:    tenantID,
-		Field:       gotField,
-		Type:        typ,
-		Description: desc,
-		Tags:        tags,
-		Examples:    examples,
-		UpdatedAt:   updated,
-	}, nil
+        TenantID:    tenantID,
+        Field:       gotField,
+        Type:        typ,
+        Description: desc,
+        Tags:        tags,
+        Examples:    examples,
+        UpdatedAt:   updated,
+    }, nil
 }
 
 /* -------------------------------- traces --------------------------------- */
@@ -966,19 +1103,19 @@ func metricVersionPayload() map[string]any {
 
 // Log field version payload with string dictionary tags and examples
 func logFieldVersionPayload() map[string]any {
-	return map[string]any{
-		"name":     "payload",
-		"dataType": []string{"object"},
-		"nestedProperties": []any{
-			map[string]any{"name": "tenantId", "dataType": []string{"text"}},
-			map[string]any{"name": "name", "dataType": []string{"text"}},
-			map[string]any{"name": "type", "dataType": []string{"text"}},
-			map[string]any{"name": "definition", "dataType": []string{"text"}},
-			stringArray("tags"),    // Use string dictionary for tags
-			stringDict("examples"), // Use string dictionary for examples
-			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
-		},
-	}
+    return map[string]any{
+        "name":     "payload",
+        "dataType": []string{"object"},
+        "nestedProperties": []any{
+            map[string]any{"name": "tenantId", "dataType": []string{"text"}},
+            map[string]any{"name": "name", "dataType": []string{"text"}},
+            map[string]any{"name": "type", "dataType": []string{"text"}},
+            map[string]any{"name": "definition", "dataType": []string{"text"}},
+            stringArray("tags"),
+            stringArray("examples"),
+            map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
+        },
+    }
 }
 
 // Update the main classes to use stringDict for tags as well
@@ -998,10 +1135,10 @@ func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
 			text("unit"), text("source"), intp("version"), date("updatedAt"),
 			refp("labels", "Label"),
 		))},
-		{"LogField", class("LogField", props(
-			text("tenantId"), text("name"), text("type"), text("definition"),
-			stringArray("tags"), stringDict("examples"), intp("version"), date("updatedAt"), // Updated to stringDict
-		))},
+        {"LogField", class("LogField", props(
+            text("tenantId"), text("name"), text("type"), text("definition"),
+            stringArray("tags"), stringArray("examples"), intp("version"), date("updatedAt"),
+        ))},
 		{"Service", class("Service", props(
 			text("tenantId"), text("name"), text("definition"), text("purpose"), text("owner"), stringArray("tags"), intp("version"), date("updatedAt"), // Updated to stringDict
 		))},

@@ -18,13 +18,13 @@ type MetricDef struct {
 }
 
 type LogFieldDef struct {
-	TenantID    string         `json:"tenantId"`
-	Field       string         `json:"field"`
-	Type        string         `json:"type"`
-	Description string         `json:"description"`
-	Tags        []string       `json:"tags"`
-	Examples    map[string]any `json:"examples"`
-	UpdatedAt   time.Time      `json:"updatedAt"`
+    TenantID    string         `json:"tenantId"`
+    Field       string         `json:"field"`
+    Type        string         `json:"type"`
+    Description string         `json:"description"`
+    Tags        []string       `json:"tags"`
+    Examples    []string       `json:"examples"`
+    UpdatedAt   time.Time      `json:"updatedAt"`
 }
 
 type SchemaRepo struct{ DB *sql.DB }
@@ -76,8 +76,8 @@ func (r *SchemaRepo) GetMetric(ctx context.Context, tenantID, metric string) (*M
 }
 
 func (r *SchemaRepo) UpsertLogField(ctx context.Context, f LogFieldDef, author string) error {
-	tagsJSON, _ := json.Marshal(f.Tags)
-	exJSON, _ := json.Marshal(f.Examples)
+    tagsJSON, _ := json.Marshal(f.Tags)
+    exJSON, _ := json.Marshal(f.Examples)
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -103,23 +103,23 @@ func (r *SchemaRepo) UpsertLogField(ctx context.Context, f LogFieldDef, author s
 }
 
 func (r *SchemaRepo) GetLogField(ctx context.Context, tenantID, field string) (*LogFieldDef, error) {
-	row := r.DB.QueryRowContext(ctx, `SELECT type, description, tags, examples, updated_at FROM log_field_def WHERE tenant_id=? AND field=?`, tenantID, field)
-	var typ, desc string
-	var tagsRaw, exRaw sql.NullString
-	var updated time.Time
-	if err := row.Scan(&typ, &desc, &tagsRaw, &exRaw, &updated); err != nil {
-		return nil, err
-	}
-	var tags []string
-	var ex map[string]any
+    row := r.DB.QueryRowContext(ctx, `SELECT type, description, tags, examples, updated_at FROM log_field_def WHERE tenant_id=? AND field=?`, tenantID, field)
+    var typ, desc string
+    var tagsRaw, exRaw sql.NullString
+    var updated time.Time
+    if err := row.Scan(&typ, &desc, &tagsRaw, &exRaw, &updated); err != nil {
+        return nil, err
+    }
+    var tags []string
+    var ex []string
 
 	if tagsRaw.Valid {
 		_ = json.Unmarshal([]byte(tagsRaw.String), &tags)
 	}
-	if exRaw.Valid {
-		_ = json.Unmarshal([]byte(exRaw.String), &ex)
-	}
-	return &LogFieldDef{TenantID: tenantID, Field: field, Type: typ, Description: desc, Tags: tags, Examples: ex, UpdatedAt: updated}, nil
+    if exRaw.Valid {
+        _ = json.Unmarshal([]byte(exRaw.String), &ex)
+    }
+    return &LogFieldDef{TenantID: tenantID, Field: field, Type: typ, Description: desc, Tags: tags, Examples: ex, UpdatedAt: updated}, nil
 }
 
 // UpsertMetricLabel inserts or updates a metric label definition.

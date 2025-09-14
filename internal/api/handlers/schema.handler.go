@@ -169,13 +169,13 @@ func (h *SchemaHandler) GetMetricVersion(c *gin.Context) {
 }
 
 type upsertLogFieldReq struct {
-	TenantID    string   `json:"tenantId"`
-	Field       string   `json:"field"`
-	Type        string   `json:"type"`
-	Description string   `json:"description"`
-	Tags        []string `json:"tags"`
-	Examples    []string `json:"examples"`
-	Author      string   `json:"author"`
+    TenantID    string   `json:"tenantId"`
+    Field       string   `json:"field"`
+    Type        string   `json:"type"`
+    Description string   `json:"description"`
+    Tags        []string `json:"tags"`
+    Examples    []string `json:"examples"`
+    Author      string   `json:"author"`
 }
 
 func (h *SchemaHandler) UpsertLogField(c *gin.Context) {
@@ -196,20 +196,14 @@ func (h *SchemaHandler) UpsertLogField(c *gin.Context) {
 		}
 	}
 
-	// examples []string -> map[string]any {"0": "...", "1": "..."}
-	examples := make(map[string]any, len(req.Examples))
-	for i, v := range req.Examples {
-		examples[strconv.Itoa(i)] = v
-	}
-
-	field := repo.LogFieldDef{
-		TenantID:    req.TenantID,
-		Field:       req.Field,
-		Type:        req.Type,
-		Description: req.Description,
-		Tags:        tags,
-		Examples:    examples,
-	}
+    field := repo.LogFieldDef{
+        TenantID:    req.TenantID,
+        Field:       req.Field,
+        Type:        req.Type,
+        Description: req.Description,
+        Tags:        tags,
+        Examples:    req.Examples,
+    }
 	if err := h.repo.UpsertLogField(c.Request.Context(), field, req.Author); err != nil {
 		h.logger.Error("upsert log field failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "upsert failed"})
@@ -1025,10 +1019,10 @@ func (h *SchemaHandler) BulkUpsertLogFieldsCSV(c *gin.Context) {
 		// Tags: prefer JSON array of strings; legacy object -> ["k=v", ...]
 		tagsSlice := parseTagsJSONToSlice(tags)
 
-		// Examples: keep as map[string]any
-		exObj := parseJSONToMap(examples)
+        // Examples: parse JSON array of strings (preferred) or stringify generic arrays
+        exSlice := parseTagsJSONToSlice(examples)
 
-		f := repo.LogFieldDef{TenantID: tenant, Field: field, Type: typ, Description: desc, Tags: tagsSlice, Examples: exObj, UpdatedAt: time.Now()}
+        f := repo.LogFieldDef{TenantID: tenant, Field: field, Type: typ, Description: desc, Tags: tagsSlice, Examples: exSlice, UpdatedAt: time.Now()}
 		if err := h.repo.UpsertLogField(c.Request.Context(), f, author); err != nil {
 			rowErrs = append(rowErrs, "field upsert failed: "+field)
 		} else {
@@ -1044,7 +1038,7 @@ func (h *SchemaHandler) SampleCSVLogFields(c *gin.Context) {
 	c.Header("X-Content-Type-Options", "nosniff")
 	c.Header("Content-Disposition", "attachment; filename=log_field_definitions_sample.csv")
 	w := csv.NewWriter(c.Writer)
-	header := []string{"tenant_id", "field", "type", "description", "tags_json", "examples_json", "author"}
+    header := []string{"tenant_id", "field", "type", "description", "tags_json", "examples_json", "author"}
 	_ = w.Write(header)
 	if h.logsService == nil {
 		w.Flush()
@@ -1053,9 +1047,9 @@ func (h *SchemaHandler) SampleCSVLogFields(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	fields, err := h.logsService.GetFields(c.Request.Context(), tenantID)
 	if err == nil {
-		for _, f := range fields {
-			_ = w.Write([]string{"", f, "", "", "[]", "{}", ""})
-		}
+        for _, f := range fields {
+            _ = w.Write([]string{"", f, "", "", "[]", "[]", ""})
+        }
 	}
 	w.Flush()
 }
