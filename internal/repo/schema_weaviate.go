@@ -550,29 +550,97 @@ func (r *WeaviateRepo) UpsertTraceOperationWithAuthor(ctx context.Context, tenan
 }
 
 func (r *WeaviateRepo) GetTraceOperation(ctx context.Context, tenantID, service, operation string) (*TraceOperationDef, error) {
-	q := `query($tenant:String!,$service:String!,$name:String!){ Get { Operation(where:{operator:And,operands:[{path:["tenantId"],operator:Equal,valueString:$tenant},{path:["service"],operator:Equal,valueString:$service},{path:["name"],operator:Equal,valueString:$name}]}, limit:1){ purpose owner tags updatedAt } } }`
+	// Minimal GraphQL string escaping
+	esc := func(s string) string {
+		s = strings.ReplaceAll(s, `\`, `\\`)
+		s = strings.ReplaceAll(s, `"`, `\"`)
+		return s
+	}
+
+	q := fmt.Sprintf(`{
+	  Get {
+	    Operation(
+	      where: {
+	        operator: And,
+	        operands: [
+	          { path: ["tenantId"], operator: Equal, valueString: "%s" },
+	          { path: ["service"],  operator: Equal, valueString: "%s" },
+	          { path: ["name"],     operator: Equal, valueString: "%s" }
+	        ]
+	      },
+	      limit: 1
+	    ) {
+	      purpose
+	      owner
+	      tags
+	      updatedAt
+	      _additional { id }
+	    }
+	  }
+	}`, esc(tenantID), esc(service), esc(operation))
+
 	var resp struct {
 		Data struct {
-			Get struct{ Operation []map[string]any }
-		}
+			Get struct {
+				Operation []map[string]any `json:"Operation"`
+			} `json:"Get"`
+		} `json:"data"`
 	}
-	if err := r.gql(ctx, q, map[string]any{"tenant": tenantID, "service": service, "name": operation}, &resp); err != nil {
-		return nil, err
+
+	if err := r.gql(ctx, q, nil, &resp); err != nil {
+		return nil, fmt.Errorf("weaviate query failed for op %q (service %q tenant %q): %w", operation, service, tenantID, err)
 	}
+
 	arr := resp.Data.Get.Operation
 	if len(arr) == 0 {
-		return nil, fmt.Errorf("not found")
+		return nil, fmt.Errorf("operation %q (service %q) not found for tenant %q", operation, service, tenantID)
 	}
 	it := arr[0]
+
+	// nil-safe string getter
+	getStr := func(m map[string]any, key string) string {
+		if v, ok := m[key]; ok && v != nil {
+			if s, ok := v.(string); ok {
+				return s
+			}
+		}
+		return ""
+	}
+
+	// tags: accept []any or []string
 	var tags []string
-	if m, ok := it["tags"].([]string); ok {
-		tags = m
+	if raw, ok := it["tags"]; ok && raw != nil {
+		switch a := raw.(type) {
+		case []any:
+			for _, v := range a {
+				if s, ok := v.(string); ok {
+					tags = append(tags, s)
+				}
+			}
+		case []string:
+			tags = append(tags, a...)
+		}
 	}
+
+	// updatedAt: RFC3339Nano then RFC3339
 	var updated time.Time
-	if s, ok := it["updatedAt"].(string); ok {
-		updated, _ = time.Parse(time.RFC3339Nano, s)
+	if s := getStr(it, "updatedAt"); s != "" {
+		if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+			updated = t
+		} else if t2, err2 := time.Parse(time.RFC3339, s); err2 == nil {
+			updated = t2
+		}
 	}
-	return &TraceOperationDef{TenantID: tenantID, Service: service, Operation: operation, Purpose: it["purpose"].(string), Owner: it["owner"].(string), Tags: tags, UpdatedAt: updated}, nil
+
+	return &TraceOperationDef{
+		TenantID:  tenantID,
+		Service:   service,
+		Operation: operation,
+		Purpose:   getStr(it, "purpose"),
+		Owner:     getStr(it, "owner"),
+		Tags:      tags,
+		UpdatedAt: updated,
+	}, nil
 }
 
 /* ------------------------------ versions I/O ----------------------------- */

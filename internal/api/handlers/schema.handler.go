@@ -245,7 +245,7 @@ type upsertTraceServiceReq struct {
 	Service  string   `json:"service"`
 	Purpose  string   `json:"purpose"`
 	Owner    string   `json:"owner"`
-	Tags     []string `json:"tags"` // Changed from map[string]interface{} to map[string]string
+	Tags     []string `json:"tags"`
 	Author   string   `json:"author"`
 }
 
@@ -259,7 +259,6 @@ func (h *SchemaHandler) UpsertTraceService(c *gin.Context) {
 		req.TenantID = c.GetString("tenant_id")
 	}
 
-	// ✅ Simplified - just pass the string array directly
 	if err := h.repo.UpsertTraceServiceWithAuthor(c.Request.Context(), req.TenantID, req.Service, req.Purpose, req.Owner, req.Tags, req.Author); err != nil {
 		h.logger.Error("trace service upsert failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "upsert failed"})
@@ -309,13 +308,13 @@ func (h *SchemaHandler) GetTraceServiceVersion(c *gin.Context) {
 }
 
 type upsertTraceOperationReq struct {
-	TenantID  string            `json:"tenantId"`
-	Service   string            `json:"service"`
-	Operation string            `json:"operation"`
-	Purpose   string            `json:"purpose"`
-	Owner     string            `json:"owner"`
-	Tags      map[string]string `json:"tags"` // Changed from map[string]interface{} to map[string]string
-	Author    string            `json:"author"`
+	TenantID  string   `json:"tenantId"`
+	Service   string   `json:"service"`
+	Operation string   `json:"operation"`
+	Purpose   string   `json:"purpose"`
+	Owner     string   `json:"owner"`
+	Tags      []string `json:"tags"`
+	Author    string   `json:"author"`
 }
 
 func (h *SchemaHandler) UpsertTraceOperation(c *gin.Context) {
@@ -328,13 +327,7 @@ func (h *SchemaHandler) UpsertTraceOperation(c *gin.Context) {
 		req.TenantID = c.GetString("tenant_id")
 	}
 
-	// Convert map[string]string to []string for repository
-	var tags []string
-	for k, v := range req.Tags {
-		tags = append(tags, fmt.Sprintf("%s:%s", k, v))
-	}
-
-	if err := h.repo.UpsertTraceOperationWithAuthor(c.Request.Context(), req.TenantID, req.Service, req.Operation, req.Purpose, req.Owner, tags, req.Author); err != nil {
+	if err := h.repo.UpsertTraceOperationWithAuthor(c.Request.Context(), req.TenantID, req.Service, req.Operation, req.Purpose, req.Owner, req.Tags, req.Author); err != nil {
 		h.logger.Error("trace operation upsert failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "upsert failed"})
 		return
