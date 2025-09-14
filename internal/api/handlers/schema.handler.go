@@ -255,19 +255,8 @@ func (h *SchemaHandler) UpsertTraceService(c *gin.Context) {
 		req.TenantID = c.GetString("tenant_id")
 	}
 
-	// Simplified tag conversion - just convert []string to []interface{}
-	var tags map[string]any
-	if req.Tags != nil && len(req.Tags) > 0 {
-		tagInterfaces := make([]interface{}, len(req.Tags))
-		for i, tag := range req.Tags {
-			tagInterfaces[i] = tag
-		}
-		tags = map[string]any{
-			"list": tagInterfaces, // Use consistent "list" key
-		}
-	}
-
-	if err := h.repo.UpsertTraceServiceWithAuthor(c.Request.Context(), req.TenantID, req.Service, req.Purpose, req.Owner, tags, req.Author); err != nil {
+	// ✅ Simplified - just pass the string array directly
+	if err := h.repo.UpsertTraceServiceWithAuthor(c.Request.Context(), req.TenantID, req.Service, req.Purpose, req.Owner, req.Tags, req.Author); err != nil {
 		h.logger.Error("trace service upsert failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "upsert failed"})
 		return
