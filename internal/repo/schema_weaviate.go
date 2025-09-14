@@ -289,30 +289,81 @@ func (r *WeaviateRepo) UpsertMetric(ctx context.Context, m MetricDef, author str
 	return r.putObject(ctx, "MetricVersion", vid, vprops)
 }
 
+// replace the entire GetMetric method with this version
+
 func (r *WeaviateRepo) GetMetric(ctx context.Context, tenantID, metric string) (*MetricDef, error) {
-	q := `query($tenant:String!,$name:String!){ Get { Metric(where:{operator:And,operands:[{path:["tenantId"],operator:Equal,valueString:$tenant},{path:["name"],operator:Equal,valueString:$name}]}, limit:1){ name definition owner tags updatedAt }}}`
+	// Inline values (same approach as GetTraceService/GetTraceOperation)
+	q := fmt.Sprintf(`{
+	  Get {
+	    Metric(
+	      where: {
+	        operator: And,
+	        operands: [
+	          { path: ["tenantId"], operator: Equal, valueString: "%s" },
+	          { path: ["name"],     operator: Equal, valueString: "%s" }
+	        ]
+	      },
+	      limit: 1
+	    ) {
+	      name
+	      definition
+	      owner
+	      tags
+	      updatedAt
+	    }
+	  }
+	}`, tenantID, metric)
+
 	var resp struct {
 		Data struct {
-			Get struct{ Metric []map[string]any }
-		}
+			Get struct {
+				Metric []map[string]any `json:"Metric"`
+			} `json:"Get"`
+		} `json:"data"`
 	}
-	if err := r.gql(ctx, q, map[string]any{"tenant": tenantID, "name": metric}, &resp); err != nil {
-		return nil, err
+
+	if err := r.gql(ctx, q, nil, &resp); err != nil {
+		return nil, fmt.Errorf("weaviate query failed for metric '%s' tenant '%s': %w", metric, tenantID, err)
 	}
+
 	arr := resp.Data.Get.Metric
 	if len(arr) == 0 {
-		return nil, fmt.Errorf("not found")
+		return nil, fmt.Errorf("metric '%s' not found in Weaviate for tenant '%s'", metric, tenantID)
 	}
+
 	it := arr[0]
+
+	// tags: []interface{} -> []string (same as service/operation codepaths)
 	var tags []string
-	if m, ok := it["tags"].([]string); ok {
-		tags = m
+	if raw, ok := it["tags"].([]interface{}); ok {
+		tags = make([]string, 0, len(raw))
+		for _, v := range raw {
+			if s, ok := v.(string); ok {
+				tags = append(tags, s)
+			}
+		}
 	}
+
+	// updatedAt: RFC3339 -> time.Time
 	var updated time.Time
 	if s, ok := it["updatedAt"].(string); ok {
-		updated, _ = time.Parse(time.RFC3339Nano, s)
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			updated = t
+		}
 	}
-	return &MetricDef{TenantID: tenantID, Metric: metric, Description: it["definition"].(string), Owner: it["owner"].(string), Tags: tags, UpdatedAt: updated}, nil
+
+	// fields map 1:1 with UpsertMetric props: name->Metric, definition->Description
+	desc, _ := it["definition"].(string)
+	owner, _ := it["owner"].(string)
+
+	return &MetricDef{
+		TenantID:    tenantID,
+		Metric:      metric,
+		Description: desc,
+		Owner:       owner,
+		Tags:        tags,
+		UpdatedAt:   updated,
+	}, nil
 }
 
 /* -------------------------------- labels --------------------------------- */
