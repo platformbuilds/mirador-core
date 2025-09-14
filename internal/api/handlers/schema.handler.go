@@ -36,44 +36,69 @@ func NewSchemaHandler(r repo.SchemaStore, ms *services.VictoriaMetricsService, l
 }
 
 type upsertMetricReq struct {
-	TenantID    string            `json:"tenantId"`
-	Metric      string            `json:"metric"`
-	Description string            `json:"description"`
-	Owner       string            `json:"owner"`
-	Tags        map[string]string `json:"tags"` // Changed from map[string]interface{} to map[string]string
-	Author      string            `json:"author"`
+	TenantID    string   `json:"tenantId"`
+	Metric      string   `json:"metric"`
+	Description string   `json:"description"`
+	Owner       string   `json:"owner"`
+	Tags        []string `json:"tags"` // Changed from map[string]interface{} to map[string]string
+	Author      string   `json:"author"`
 }
 
 // Helper function to safely parse JSON tags from CSV and convert to map[string]any
-func parseTagsFromCSV(tagsJSON string) map[string]any {
+// parseTagsJSONToSlice accepts JSON array of strings (preferred) or a JSON object (BC).
+// - If it's an array: ["prod","hydnar"] -> []string{"prod","hydnar"}
+// - If it's an object: {"env":"prod","site":"hydnar"} -> []string{"env=prod","site=hydnar"}
+func parseTagsJSONToSlice(tagsJSON string) []string {
 	if tagsJSON == "" {
 		return nil
 	}
 
-	// First try to parse as map[string]string (preferred format)
-	var stringTags map[string]string
-	if err := json.Unmarshal([]byte(tagsJSON), &stringTags); err == nil {
-		tags := make(map[string]any)
-		for k, v := range stringTags {
-			tags[k] = v
+	// Preferred format: []string
+	var arr []string
+	if err := json.Unmarshal([]byte(tagsJSON), &arr); err == nil {
+		// sanitize non-string elements if any leaked in
+		out := make([]string, 0, len(arr))
+		for _, v := range arr {
+			out = append(out, v)
 		}
-		return tags
+		return out
 	}
 
-	// Fallback: try to parse as generic map[string]any for backward compatibility
-	var anyTags map[string]any
-	if err := json.Unmarshal([]byte(tagsJSON), &anyTags); err == nil {
-		// Convert all values to strings for consistency
-		tags := make(map[string]any)
-		for k, v := range anyTags {
-			if v != nil {
-				tags[k] = fmt.Sprintf("%v", v)
+	// Back-compat: map[string]any -> "k=v"
+	var obj map[string]any
+	if err := json.Unmarshal([]byte(tagsJSON), &obj); err == nil {
+		out := make([]string, 0, len(obj))
+		for k, v := range obj {
+			if s, ok := v.(string); ok {
+				out = append(out, k+"="+s)
+			} else {
+				out = append(out, k+"="+fmt.Sprintf("%v", v))
 			}
 		}
-		return tags
+		return out
 	}
 
-	// If parsing fails, return nil
+	// Back-compat (very lenient): []any -> stringify
+	var anyArr []any
+	if err := json.Unmarshal([]byte(tagsJSON), &anyArr); err == nil {
+		out := make([]string, 0, len(anyArr))
+		for _, v := range anyArr {
+			out = append(out, fmt.Sprintf("%v", v))
+		}
+		return out
+	}
+
+	return nil
+}
+
+func parseJSONToMap(s string) map[string]any {
+	if s == "" {
+		return nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(s), &m); err == nil {
+		return m
+	}
 	return nil
 }
 
@@ -88,17 +113,12 @@ func (h *SchemaHandler) UpsertMetric(c *gin.Context) {
 	}
 
 	// Convert map[string]string to map[string]any for repository
-	var tags []string
-	for k, v := range req.Tags {
-		tags = append(tags, fmt.Sprintf("%s=%s", k, v))
-	}
-
 	metric := repo.MetricDef{
 		TenantID:    req.TenantID,
 		Metric:      req.Metric,
 		Description: req.Description,
 		Owner:       req.Owner,
-		Tags:        tags,
+		Tags:        req.Tags,
 	}
 	if err := h.repo.UpsertMetric(c.Request.Context(), metric, req.Author); err != nil {
 		h.logger.Error("metric upsert failed", "error", err)
@@ -500,25 +520,7 @@ func (h *SchemaHandler) BulkUpsertTraceServicesCSV(c *gin.Context) {
 		tags := get("tags_json")
 		author := get("author")
 
-		// Parse tags and convert to []string format expected by the repository
-		tagsObj := parseTagsFromCSV(tags)
-		var tagsList []string
-		if tagsObj != nil {
-			// Convert map[string]any to []string by extracting values
-			for key, value := range tagsObj {
-				if str, ok := value.(string); ok {
-					// Format as "key=value" or just the key if value is empty
-					if str != "" {
-						tagsList = append(tagsList, fmt.Sprintf("%s=%s", key, str))
-					} else {
-						tagsList = append(tagsList, key)
-					}
-				} else {
-					// Handle non-string values by converting to string
-					tagsList = append(tagsList, fmt.Sprintf("%s=%v", key, value))
-				}
-			}
-		}
+		tagsList := parseTagsJSONToSlice(tags)
 
 		if err := h.repo.UpsertTraceServiceWithAuthor(c.Request.Context(), tenant, service, purpose, owner, tagsList, author); err != nil {
 			rowErrs = append(rowErrs, "service upsert failed: "+service)
@@ -650,26 +652,7 @@ func (h *SchemaHandler) BulkUpsertTraceOperationsCSV(c *gin.Context) {
 		tags := get("tags_json")
 		author := get("author")
 
-		// Parse tags from CSV and convert to []string for repository
-		tagsObj := parseTagsFromCSV(tags)
-		var tagsList []string
-		if tagsObj != nil {
-			// Convert map[string]any to []string
-			// If it's a map with key-value pairs, collect keys or values based on format
-			for key, value := range tagsObj {
-				if str, ok := value.(string); ok && str != "" {
-					// Format: key=value
-					if key != "" {
-						tagsList = append(tagsList, key+"="+str)
-					} else {
-						tagsList = append(tagsList, str)
-					}
-				} else if key != "" {
-					// Just use the key as a tag
-					tagsList = append(tagsList, key)
-				}
-			}
-		}
+		tagsList := parseTagsJSONToSlice(tags)
 
 		if err := h.repo.UpsertTraceOperationWithAuthor(c.Request.Context(), tenant, service, operation, purpose, owner, tagsList, author); err != nil {
 			errs = append(errs, "operation upsert failed: "+service+":"+operation)
@@ -834,24 +817,16 @@ func (h *SchemaHandler) BulkUpsertMetricsCSV(c *gin.Context) {
 
 	// Upsert metrics once
 	for _, mr := range metricsSeen {
-		// Parse tags from CSV and convert to []string for MetricDef
-		tagsMap := parseTagsFromCSV(mr.tags)
-		var tagsSlice []string
-		if tagsMap != nil {
-			// Convert map[string]any to []string by extracting values
-			tagsSlice = make([]string, 0, len(tagsMap))
-			for key, value := range tagsMap {
-				// Format as "key=value" or just use values as strings
-				if strValue, ok := value.(string); ok {
-					tagsSlice = append(tagsSlice, key+"="+strValue)
-				} else {
-					// Convert any other type to string
-					tagsSlice = append(tagsSlice, key+"="+fmt.Sprintf("%v", value))
-				}
-			}
-		}
+		tagsSlice := parseTagsJSONToSlice(mr.tags) // <-- array preferred, object BC
 
-		m := repo.MetricDef{TenantID: mr.tenant, Metric: mr.metric, Description: mr.desc, Owner: mr.owner, Tags: tagsSlice, UpdatedAt: time.Now()}
+		m := repo.MetricDef{
+			TenantID:    mr.tenant,
+			Metric:      mr.metric,
+			Description: mr.desc,
+			Owner:       mr.owner,
+			Tags:        tagsSlice,
+			UpdatedAt:   time.Now(),
+		}
 		if err := h.repo.UpsertMetric(c.Request.Context(), m, mr.author); err != nil {
 			rowErrs = append(rowErrs, "metric upsert failed for "+mr.metric)
 		} else {
@@ -923,11 +898,11 @@ func (h *SchemaHandler) SampleCSV(c *gin.Context) {
 			continue
 		}
 		if len(labels) == 0 {
-			_ = w.Write([]string{"", mname, "", "", "{}", "", "", "", "{}", "", ""})
+			_ = w.Write([]string{"", mname, "", "", "[]", "", "", "", "{}", "", ""})
 			continue
 		}
 		for _, lk := range labels {
-			_ = w.Write([]string{"", mname, "", "", "{}", lk, "", "", "{}", "", ""})
+			_ = w.Write([]string{"", mname, "", "", "[]", lk, "", "", "{}", "", ""})
 		}
 	}
 	w.Flush()
@@ -1047,25 +1022,11 @@ func (h *SchemaHandler) BulkUpsertLogFieldsCSV(c *gin.Context) {
 		examples := get("examples_json")
 		author := get("author")
 
-		// Parse tags from CSV and convert to []string for LogFieldDef
-		tagsMap := parseTagsFromCSV(tags)
-		var tagsSlice []string
-		if tagsMap != nil {
-			// Convert map[string]any to []string by extracting values
-			tagsSlice = make([]string, 0, len(tagsMap))
-			for key, value := range tagsMap {
-				// Format as "key=value" or just use values as strings
-				if strValue, ok := value.(string); ok {
-					tagsSlice = append(tagsSlice, key+"="+strValue)
-				} else {
-					// Convert any other type to string
-					tagsSlice = append(tagsSlice, key+"="+fmt.Sprintf("%v", value))
-				}
-			}
-		}
+		// Tags: prefer JSON array of strings; legacy object -> ["k=v", ...]
+		tagsSlice := parseTagsJSONToSlice(tags)
 
-		// Parse examples - keep as map[string]any
-		exObj := parseTagsFromCSV(examples)
+		// Examples: keep as map[string]any
+		exObj := parseJSONToMap(examples)
 
 		f := repo.LogFieldDef{TenantID: tenant, Field: field, Type: typ, Description: desc, Tags: tagsSlice, Examples: exObj, UpdatedAt: time.Now()}
 		if err := h.repo.UpsertLogField(c.Request.Context(), f, author); err != nil {
@@ -1093,7 +1054,7 @@ func (h *SchemaHandler) SampleCSVLogFields(c *gin.Context) {
 	fields, err := h.logsService.GetFields(c.Request.Context(), tenantID)
 	if err == nil {
 		for _, f := range fields {
-			_ = w.Write([]string{"", f, "", "", "{}", "{}", ""})
+			_ = w.Write([]string{"", f, "", "", "[]", "{}", ""})
 		}
 	}
 	w.Flush()
