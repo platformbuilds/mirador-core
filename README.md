@@ -284,7 +284,6 @@ Placeholders indicate no definition has been provided yet and reference the sche
 - Local development is recommended with Go 1.23.12 or newer 1.23.x.
 
 See `chart/README.md` for deployment via Helm, embedded Valkey, and the Weaviate subchart.
-```
 
 ## Monitoring
 
