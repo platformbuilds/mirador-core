@@ -257,8 +257,17 @@ func (h *SchemaHandler) UpsertTraceService(c *gin.Context) {
 
 	// Convert []string to map[string]any for repository compatibility
 	// Store the array as a single key-value pair
-	tags := map[string]any{
-		"list": req.Tags, // Store the []string as a value
+	var tags map[string]any
+	if req.Tags != nil && len(req.Tags) > 0 {
+		// Convert []string to []interface{} for compatibility
+		tagInterfaces := make([]interface{}, len(req.Tags))
+		for i, tag := range req.Tags {
+			tagInterfaces[i] = tag
+		}
+		// Use special key to signal direct array handling
+		tags = map[string]any{
+			"_directArray": tagInterfaces,
+		}
 	}
 
 	if err := h.repo.UpsertTraceServiceWithAuthor(c.Request.Context(), req.TenantID, req.Service, req.Purpose, req.Owner, tags, req.Author); err != nil {
