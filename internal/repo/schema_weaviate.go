@@ -463,29 +463,70 @@ func (r *WeaviateRepo) UpsertTraceServiceWithAuthor(ctx context.Context, tenantI
 }
 
 func (r *WeaviateRepo) GetTraceService(ctx context.Context, tenantID, service string) (*TraceServiceDef, error) {
-	q := `query($tenant:String!,$name:String!){ Get { Service(where:{operator:And,operands:[{path:["tenantId"],operator:Equal,valueString:$tenant},{path:["name"],operator:Equal,valueString:$name}]}, limit:1){ purpose owner tags updatedAt } } }`
+	// Use inline values instead of variables to avoid GraphQL type issues
+	q := fmt.Sprintf(`{ Get { Service(where: {operator: And, operands: [{path: ["tenantId"], operator: Equal, valueString: "%s"}, {path: ["name"], operator: Equal, valueString: "%s"}]}, limit: 1) { purpose owner tags updatedAt } } }`, tenantID, service)
+
 	var resp struct {
 		Data struct {
 			Get struct{ Service []map[string]any }
 		}
 	}
-	if err := r.gql(ctx, q, map[string]any{"tenant": tenantID, "name": service}, &resp); err != nil {
-		return nil, err
+
+	if err := r.gql(ctx, q, nil, &resp); err != nil {
+		return nil, fmt.Errorf("weaviate query failed for service '%s' tenant '%s': %w", service, tenantID, err)
 	}
+
 	arr := resp.Data.Get.Service
 	if len(arr) == 0 {
-		return nil, fmt.Errorf("not found")
+		return nil, fmt.Errorf("service '%s' not found in Weaviate for tenant '%s'", service, tenantID)
 	}
+
 	it := arr[0]
+
+	// Fix tags parsing - handle array instead of map
 	var tags map[string]any
-	if m, ok := it["tags"].(map[string]any); ok {
-		tags = m
+	if tagArray, ok := it["tags"].([]interface{}); ok {
+		// Convert array back to map format for API consistency
+		tags = map[string]any{
+			"list": tagArray,
+		}
+	} else if tagArray, ok := it["tags"].([]string); ok {
+		// Handle if it comes back as []string
+		interfaceArray := make([]interface{}, len(tagArray))
+		for i, v := range tagArray {
+			interfaceArray[i] = v
+		}
+		tags = map[string]any{
+			"list": interfaceArray,
+		}
 	}
+
 	var updated time.Time
 	if s, ok := it["updatedAt"].(string); ok {
 		updated, _ = time.Parse(time.RFC3339Nano, s)
 	}
-	return &TraceServiceDef{TenantID: tenantID, Service: service, Purpose: it["purpose"].(string), Owner: it["owner"].(string), Tags: tags, UpdatedAt: updated}, nil
+
+	return &TraceServiceDef{
+		TenantID:  tenantID,
+		Service:   service,
+		Purpose:   it["purpose"].(string),
+		Owner:     it["owner"].(string),
+		Tags:      tags,
+		UpdatedAt: updated,
+	}, nil
+}
+
+func (r *WeaviateRepo) DebugListServices(ctx context.Context, tenantID string) ([]map[string]any, error) {
+	q := `query($tenant:String!){ Get { Service(where:{path:["tenantId"],operator:Equal,valueString:$tenant}){ name purpose owner tags updatedAt } } }`
+	var resp struct {
+		Data struct {
+			Get struct{ Service []map[string]any }
+		}
+	}
+	if err := r.gql(ctx, q, map[string]any{"tenant": tenantID}, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Data.Get.Service, nil
 }
 
 func (r *WeaviateRepo) UpsertTraceOperationWithAuthor(ctx context.Context, tenantID, service, operation, purpose, owner string, tags map[string]any, author string) error {

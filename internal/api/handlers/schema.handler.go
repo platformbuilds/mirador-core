@@ -255,18 +255,15 @@ func (h *SchemaHandler) UpsertTraceService(c *gin.Context) {
 		req.TenantID = c.GetString("tenant_id")
 	}
 
-	// Convert []string to map[string]any for repository compatibility
-	// Store the array as a single key-value pair
+	// Simplified tag conversion - just convert []string to []interface{}
 	var tags map[string]any
 	if req.Tags != nil && len(req.Tags) > 0 {
-		// Convert []string to []interface{} for compatibility
 		tagInterfaces := make([]interface{}, len(req.Tags))
 		for i, tag := range req.Tags {
 			tagInterfaces[i] = tag
 		}
-		// Use special key to signal direct array handling
 		tags = map[string]any{
-			"_directArray": tagInterfaces,
+			"list": tagInterfaces, // Use consistent "list" key
 		}
 	}
 
@@ -834,6 +831,26 @@ func (h *SchemaHandler) BulkUpsertMetricsCSV(c *gin.Context) {
 		"errors":           rowErrs,
 		"file":             header.Filename,
 	})
+}
+
+func (h *SchemaHandler) DebugListAllServices(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	// Cast to WeaviateRepo to access debug methods
+	if wrepo, ok := h.repo.(*repo.WeaviateRepo); ok {
+		services, err := wrepo.DebugListServices(c.Request.Context(), tenantID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"tenant":    tenantID,
+			"services":  services,
+			"repo_type": "WeaviateRepo",
+		})
+	} else {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Not using WeaviateRepo"})
+	}
 }
 
 // SampleCSV generates a CSV template populated with metric and label keys for user to fill.
