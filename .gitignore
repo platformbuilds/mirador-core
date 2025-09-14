@@ -47,3 +47,7 @@ vmdata
 # Build binaries
 bin/
 bin/*
+
+# Local TestReports
+./deployments/localdev/e2e-report.json 
+deployments/localdev/e2e-report.json 

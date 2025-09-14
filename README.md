@@ -473,6 +473,53 @@ Rancher Desktop / Docker Desktop note
 - `make dev-stack` / `make dev-stack-down`: start/stop local Victoria* + Redis via docker-compose.
 - `make vendor`: tidy and vendor dependencies.
 
+### Localdev & E2E (Make help)
+
+Run `make help` to see localdev/E2E targets and options:
+
+```
+Mirador-Core Makefile — Localdev & E2E
+
+Usage:
+  make <target> [VAR=value]
+
+Common Targets:
+  help                 Show this help with available targets and options.
+  localdev             Full local E2E flow: up → wait → seed OTEL → test → down.
+  localdev-up          Build and start localdev Docker stack (Compose) in background.
+  localdev-wait        Wait until the app is ready (probes http://localhost:8080/ready by default).
+  localdev-seed-otel   Seed synthetic OpenTelemetry metrics/logs/traces via telemetrygen.
+  localdev-test        Run end-to-end tests against a running localdev server.
+  localdev-down        Tear down the localdev stack and remove volumes.
+
+Key Paths & Files:
+  deployments/localdev/docker-compose.yaml            Compose services (VM, VL, VT, Valkey, Weaviate, OTEL, app)
+  deployments/localdev/scripts/wait-for-url.sh        Readiness probe helper
+  deployments/localdev/e2e                            E2E test suite (Go)
+  deployments/localdev/e2e-report.json                JSON test report output
+  deployments/localdev/e2e-report.xml                 Optional JUnit XML report (if go-junit-report present)
+
+Environment Variables:
+  BASE_URL          Base URL for the running app (default: http://localhost:8080).
+                    Used by localdev-wait and passed to tests as E2E_BASE_URL.
+
+External Tools:
+  telemetrygen      Auto-installed on first use by localdev-seed-otel.
+                    Source: github.com/open-telemetry/opentelemetry-collector-contrib/cmd/telemetrygen
+  go-junit-report   Optional, converts JSON test output to JUnit XML.
+                    Install: go install github.com/jstemmer/go-junit-report/v2@latest
+
+Examples:
+  make help
+  make localdev
+  make localdev BASE_URL=http://127.0.0.1:8080
+  make localdev-up && make localdev-wait && make localdev-seed-otel && make localdev-test
+
+Notes:
+  - Auth is disabled by default in the localdev compose.
+  - localdev-down runs 'docker compose ... down -v' and removes volumes created by that compose file.
+```
+
 ## Kubernetes Deployment (Helm)
 
 The chart is bundled at `chart/`. Typical install:
