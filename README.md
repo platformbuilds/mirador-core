@@ -164,6 +164,7 @@ export RBAC_ENABLED=true
 # External integrations
 export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
 export TEAMS_WEBHOOK_URL=https://company.webhook.office.com/...
+```
 
 ### Weaviate (Schema Definitions Store)
 
@@ -424,6 +425,7 @@ MIRADOR-CORE exposes Prometheus metrics at `/metrics`:
 5. Open Pull Request
 
 ## License
+Apache 2.0
 
 ## Build & Release (Multi-Platform)
 
