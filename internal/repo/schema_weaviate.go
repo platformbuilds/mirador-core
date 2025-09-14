@@ -419,37 +419,20 @@ func (r *WeaviateRepo) GetLogField(ctx context.Context, tenantID, field string) 
 
 /* -------------------------------- traces --------------------------------- */
 
-func (r *WeaviateRepo) UpsertTraceServiceWithAuthor(ctx context.Context, tenantID, service, purpose, owner string, tags map[string]any, author string) error {
+func (r *WeaviateRepo) UpsertTraceServiceWithAuthor(
+	ctx context.Context,
+	tenantID, service, purpose, owner string,
+	tags []string,
+	author string,
+) error {
 	next, _ := r.maxVersion(ctx, "ServiceVersion", map[string]string{"tenantId": tenantID, "name": service})
-	nowRFC := time.Now().UTC().Format(time.RFC3339Nano)
+	now := time.Now().UTC()
+	nowRFC := now.Format(time.RFC3339Nano)
 
-	// Convert map[string]any tags to []interface{} for Weaviate text[] field
-	var weaviateTags []interface{}
-	if tags != nil {
-		if listArray, exists := tags["list"]; exists {
-			// Handle the case where tags are wrapped in "list"
-			if arr, ok := listArray.([]string); ok {
-				weaviateTags = make([]interface{}, len(arr))
-				for i, v := range arr {
-					weaviateTags[i] = v
-				}
-			} else if arr, ok := listArray.([]interface{}); ok {
-				weaviateTags = arr
-			}
-		} else if directArray, exists := tags["_directArray"]; exists {
-			// Handle direct array from handler
-			if arr, ok := directArray.([]interface{}); ok {
-				weaviateTags = arr
-			}
-		} else {
-			// Fallback: convert map values to array
-			weaviateTags = make([]interface{}, 0, len(tags))
-			for _, v := range tags {
-				if str, ok := v.(string); ok {
-					weaviateTags = append(weaviateTags, str)
-				}
-			}
-		}
+	// Convert []string -> []interface{} for Weaviate text[] field
+	weaviateTags := make([]interface{}, len(tags))
+	for i, v := range tags {
+		weaviateTags[i] = v
 	}
 
 	props := map[string]any{
@@ -460,7 +443,7 @@ func (r *WeaviateRepo) UpsertTraceServiceWithAuthor(ctx context.Context, tenantI
 		"owner":      owner,
 		"tags":       weaviateTags,
 		"version":    next,
-		"updatedAt":  nowRFC,
+		"updatedAt":  nowRFC, // keep timestamps consistent as strings
 	}
 
 	id := makeID("Service", tenantID, service)
@@ -480,7 +463,7 @@ func (r *WeaviateRepo) UpsertTraceServiceWithAuthor(ctx context.Context, tenantI
 			"purpose":    purpose,
 			"owner":      owner,
 			"tags":       weaviateTags,
-			"updatedAt":  time.Now(),
+			"updatedAt":  nowRFC, // match type
 		},
 		"author":    author,
 		"createdAt": nowRFC,
@@ -509,26 +492,21 @@ func (r *WeaviateRepo) GetTraceService(ctx context.Context, tenantID, service st
 
 	it := arr[0]
 
-	// Fix tags parsing - handle array instead of map
-	var tags map[string]any
+	// Convert tags from Weaviate format to []string for TraceServiceDef
+	var tags []string
 	if tagArray, ok := it["tags"].([]interface{}); ok {
-		// Convert array back to map format for API consistency
-		tags = map[string]any{
-			"list": tagArray,
+		// Convert []interface{} to []string
+		tags = make([]string, len(tagArray))
+		for i, v := range tagArray {
+			if str, ok := v.(string); ok {
+				tags[i] = str
+			}
 		}
 	} else if tagArray, ok := it["tags"].([]string); ok {
-		// Handle if it comes back as []string
-		interfaceArray := make([]interface{}, len(tagArray))
-		for i, v := range tagArray {
-			interfaceArray[i] = v
-		}
-		tags = map[string]any{
-			"list": interfaceArray,
-		}
-	} else if tagMap, ok := it["tags"].(map[string]any); ok {
-		// Handle if it's already a map
-		tags = tagMap
+		// Direct []string assignment
+		tags = tagArray
 	}
+	// If tags is neither format, it remains nil/empty []string
 
 	var updated time.Time
 	if s, ok := it["updatedAt"].(string); ok {
@@ -540,7 +518,7 @@ func (r *WeaviateRepo) GetTraceService(ctx context.Context, tenantID, service st
 		Service:   service,
 		Purpose:   it["purpose"].(string),
 		Owner:     it["owner"].(string),
-		Tags:      tags,
+		Tags:      tags, // Now correctly []string
 		UpdatedAt: updated,
 	}, nil
 }
@@ -558,7 +536,7 @@ func (r *WeaviateRepo) DebugListServices(ctx context.Context, tenantID string) (
 	return resp.Data.Get.Service, nil
 }
 
-func (r *WeaviateRepo) UpsertTraceOperationWithAuthor(ctx context.Context, tenantID, service, operation, purpose, owner string, tags map[string]any, author string) error {
+func (r *WeaviateRepo) UpsertTraceOperationWithAuthor(ctx context.Context, tenantID, service, operation, purpose, owner string, tags []string, author string) error {
 	next, _ := r.maxVersion(ctx, "OperationVersion", map[string]string{"tenantId": tenantID, "service": service, "name": operation})
 	nowRFC := time.Now().UTC().Format(time.RFC3339Nano)
 	props := map[string]any{"tenantId": tenantID, "service": service, "name": operation, "definition": purpose, "purpose": purpose, "owner": owner, "tags": tags, "version": next, "updatedAt": nowRFC}
