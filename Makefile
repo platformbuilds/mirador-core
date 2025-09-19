@@ -69,6 +69,8 @@ help:
 	"  dev                       Run server locally via 'go run'." \
 	"  run                       Alias to 'dev'." \
 	"  clean-build               Clean then perform a fresh build." \
+	"  openapi-json              Regenerate api/openapi.json from api/openapi.yaml." \
+	"  openapi-validate          Parse YAML → JSON to ensure syntax is valid." \
 	"" \
 	"Testing & Quality:" \
 	"  test                      Run unit tests with race detector and coverage." \
@@ -118,6 +120,28 @@ help:
 
 localdev: localdev-up localdev-wait localdev-seed-otel localdev-test localdev-down
 	@echo "Localdev E2E completed. Reports under localdev/."
+
+.PHONY: openapi-json openapi-validate
+openapi-json:
+	@python3 scripts/gen_openapi_json.py
+
+openapi-validate:
+	@python3 - <<'PY'
+	import sys, json
+	try:
+	  import yaml
+	except Exception as e:
+	  print('PyYAML not installed. Install via pip install pyyaml', file=sys.stderr)
+	  sys.exit(1)
+	from pathlib import Path
+	y = Path('api/openapi.yaml').read_text(encoding='utf-8')
+	data = yaml.safe_load(y)
+	assert isinstance(data, dict) and 'openapi' in data, 'Invalid OpenAPI YAML: missing openapi key'
+	print('YAML parse OK; version:', data.get('openapi'))
+	print('Paths count:', len((data.get('paths') or {})))
+	print('Components:', 'schemas' in (data.get('components') or {}))
+	print('Validation (structural) OK')
+	PY
 
 localdev-up:
 	mkdir -p localdev

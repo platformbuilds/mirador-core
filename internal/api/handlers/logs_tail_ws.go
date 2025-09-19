@@ -1,15 +1,17 @@
 package handlers
 
 import (
-	"fmt"
-	"net/http"
-	"sync"
-	"sync/atomic"
-	"time"
+    "fmt"
+    "net/http"
+    "sync"
+    "sync/atomic"
+    "time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
-	"github.com/platformbuilds/mirador-core/internal/models"
+    "github.com/gin-gonic/gin"
+    "github.com/gorilla/websocket"
+    "github.com/platformbuilds/mirador-core/internal/models"
+    lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
+    "strings"
 )
 
 // GET /api/v1/logs/tail (upgrades to WS)
@@ -31,6 +33,20 @@ func (h *LogsHandler) TailWS(c *gin.Context) {
             "example": "wscat -c ws://localhost:8080/api/v1/logs/tail?query=_time:5m",
         })
         return
+    }
+
+    // Translate Lucene if requested or detected (keeps frame shapes intact)
+    qlang := strings.ToLower(strings.TrimSpace(c.Query("query_language")))
+    if strings.TrimSpace(query) != "" && (qlang == "lucene" || lq.IsLikelyLucene(query)) {
+        if translated, ok := lq.Translate(query, lq.TargetLogsQL); ok {
+            query = translated
+            c.Header("X-Query-Translated-From", "lucene")
+        }
+    }
+
+    // If query contains explicit _time, ignore 'since' to avoid conflicting filters
+    if strings.Contains(query, "_time:") {
+        since = 0
     }
 
     upgrader := websocket.Upgrader{

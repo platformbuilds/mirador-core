@@ -225,10 +225,7 @@ paths:
               service: "otelgen"
               purpose: "this is a test service created by otelgen tool"
               owner: "aarvee"
-              tags:
-                environment: "development"
-                team: "observability"
-                version: "1.0.0"
+              tags: ["development", "bda"]
               author: "aarvee"
       responses:
         '200': { description: OK }
@@ -241,7 +238,7 @@ paths:
         CSV columns (header required; strict header mode):
         - tenant_id (optional; defaults to request tenant)
         - service (required)
-        - purpose, owner, tags_json, author
+        - purpose, owner, tags_json (JSON array), author
         Security: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.
         Limits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).
       requestBody:
@@ -269,6 +266,21 @@ paths:
       responses:
         '200': { description: OK }
         '404': { description: Not found }
+    delete:
+      summary: Delete trace service definition
+      parameters:
+        - in: path
+          name: service
+          required: true
+          schema: { type: string }
+        - in: query
+          name: confirm
+          schema: { type: string }
+          description: Must be '1', 'true', or 'yes'
+      responses:
+        '200': { description: Deleted }
+        '404': { description: Not Found }
+        '500': { description: Failed to delete }
   /schema/traces/services/{service}/versions:
     get:
       summary: List versions for a trace service
@@ -309,10 +321,7 @@ paths:
               operation: "handle_request"
               purpose: "handles incoming HTTP requests"
               owner: "aarvee"
-              tags:
-                method: "POST"
-                endpoint: "/api/v1/data"
-                timeout: "30s"
+              tags: ["POST", "/api/v1/data", "30s"]
               author: "aarvee"
       responses:
         '200': { description: OK }
@@ -326,7 +335,7 @@ paths:
         - tenant_id (optional; defaults to request tenant)
         - service (required)
         - operation (required)
-        - purpose, owner, tags_json, author
+        - purpose, owner, tags_json (JSON array), author
         Security: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.
         Limits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).
       requestBody:
@@ -358,6 +367,25 @@ paths:
       responses:
         '200': { description: OK }
         '404': { description: Not found }
+    delete:
+      summary: Delete trace operation definition
+      parameters:
+        - in: path
+          name: service
+          required: true
+          schema: { type: string }
+        - in: path
+          name: operation
+          required: true
+          schema: { type: string }
+        - in: query
+          name: confirm
+          schema: { type: string }
+          description: Must be '1', 'true', or 'yes'
+      responses:
+        '200': { description: Deleted }
+        '404': { description: Not Found }
+        '500': { description: Failed to delete }
   /schema/traces/services/{service}/operations/{operation}/versions:
     get:
       summary: List versions for a trace operation
@@ -408,7 +436,9 @@ paths:
                 metric: { type: string }
                 description: { type: string }
                 owner: { type: string }
-                tags: { type: object, additionalProperties: true }
+                tags:
+                  type: array
+                  items: { type: string }
                 author: { type: string }
       responses:
         '200': { description: OK }
@@ -426,7 +456,7 @@ paths:
         - metric (required)
         - description
         - owner
-        - tags_json (JSON object)
+        - tags_json (JSON array)
         - label
         - label_type
         - label_required (true/false/1/0/yes/no)
@@ -481,6 +511,21 @@ paths:
       responses:
         '200': { description: OK }
         '404': { description: Not Found }
+    delete:
+      summary: Delete metric definition
+      parameters:
+        - in: path
+          name: metric
+          required: true
+          schema: { type: string }
+        - in: query
+          name: confirm
+          schema: { type: string }
+          description: Must be '1', 'true', or 'yes'
+      responses:
+        '200': { description: Deleted }
+        '404': { description: Not Found }
+        '500': { description: Failed to delete }
 
   /schema/metrics/{metric}/versions:
     get:
@@ -524,6 +569,137 @@ paths:
           description: OK
         '404': { description: Not Found }
 
+  # Independent Labels Schema
+  /schema/labels:
+    post:
+      summary: Upsert label definition (independent)
+      description: Create or update a label definition (not tied to a metric) and record a new version.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LabelRequest'
+            example:
+              name: "instance"
+              type: "string"
+              required: false
+              allowedValues: { }
+              description: "Pod or host instance label"
+              author: "aarvee"
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad Request }
+  /schema/labels/{name}:
+    get:
+      summary: Get label definition
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+    delete:
+      summary: Delete label definition
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema: { type: string }
+        - in: query
+          name: confirm
+          schema: { type: string }
+          description: Must be '1', 'true', or 'yes'
+      responses:
+        '200': { description: Deleted }
+        '404': { description: Not Found }
+        '500': { description: Failed to delete }
+  /schema/labels/{name}/versions:
+    get:
+      summary: List label definition versions
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        version: { type: integer }
+                        author: { type: string }
+                        created_at: { type: string, format: date-time }
+  /schema/labels/{name}/versions/{version}:
+    get:
+      summary: Get specific label definition version
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema: { type: string }
+        - in: path
+          name: version
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+        '404': { description: Not Found }
+
+  /schema/labels/bulk:
+    post:
+      summary: Bulk upsert label definitions (CSV)
+      description: |
+        Upload a CSV to create/update label definitions.
+        Security: 5MiB payload limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota.
+
+        Columns (header required):
+        - tenant_id (optional)
+        - name (required)
+        - type
+        - required (true/false/1/0/yes/no)
+        - allowed_json (JSON object)
+        - description
+        - author
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad Request }
+        '429': { description: Too Many Requests }
+  /schema/labels/bulk/sample:
+    get:
+      summary: Download sample CSV template for labels
+      description: Generates a CSV with header and example rows for common labels.
+      responses:
+        '200':
+          description: CSV
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+
   /schema/logs/fields:
     post:
       summary: Upsert log field definition
@@ -539,7 +715,9 @@ paths:
                 field: { type: string }
                 type: { type: string }
                 description: { type: string }
-                tags: { type: object, additionalProperties: true }
+                tags:
+                  type: array
+                  items: { type: string }
                 examples: { type: object, additionalProperties: true }
                 author: { type: string }
       responses:
@@ -557,7 +735,7 @@ paths:
         - field (required)
         - type
         - description
-        - tags_json (JSON object)
+        - tags_json (JSON array)
         - examples_json (JSON object)
         - author
       requestBody:
@@ -598,6 +776,21 @@ paths:
       responses:
         '200': { description: OK }
         '404': { description: Not Found }
+    delete:
+      summary: Delete log field definition
+      parameters:
+        - in: path
+          name: field
+          required: true
+          schema: { type: string }
+        - in: query
+          name: confirm
+          schema: { type: string }
+          description: Must be '1', 'true', or 'yes'
+      responses:
+        '200': { description: Deleted }
+        '404': { description: Not Found }
+        '500': { description: Failed to delete }
 
   /schema/logs/fields/{field}/versions:
     get:
@@ -666,7 +859,9 @@ paths:
     post:
       summary: MetricsQL instant query (VictoriaMetrics)
       description: |
-        Executes an instant query against VictoriaMetrics. When `include_definitions` is enabled (default),
+        Executes an instant query against VictoriaMetrics. The `query` field also supports Lucene syntax when
+        `query_language` is `lucene` (or when auto-detected); Mirador translates Lucene into PromQL label selectors.
+        When `include_definitions` is enabled (default),
         the response contains `definitions` sourced from the schema store (Weaviate) including metric and
         per-metric label definitions. Optional `label_keys` can limit which label keys are considered.
       requestBody:
@@ -677,12 +872,20 @@ paths:
               type: object
               properties:
                 query: { type: string }
+                query_language:
+                  type: string
+                  enum: [lucene, promql]
+                  description: If `lucene`, the server translates to PromQL/MetricsQL.
                 time: { type: string }
                 include_definitions: { type: boolean, description: Include definitions in response (default true) }
                 label_keys:
                   type: array
                   items: { type: string }
                   description: Restrict definitions to these label keys
+            example:
+              query_language: lucene
+              query: "__name__:http_requests_total AND job:api"
+              time: "2025-01-01T00:00:00Z"
       responses:
         '200':
           description: OK
@@ -710,7 +913,7 @@ paths:
                       metric: http_requests_total
                       description: Total number of HTTP requests
                       owner: team-observability
-                      tags: { domain: web }
+                      tags: ["domain:web"]
                   labels:
                     http_requests_total:
                       instance:
@@ -736,6 +939,10 @@ paths:
               type: object
               properties:
                 query: { type: string }
+                query_language:
+                  type: string
+                  enum: [lucene, promql]
+                  description: If `lucene`, the server translates to PromQL/MetricsQL.
                 start: { type: string }
                 end: { type: string }
                 step: { type: string }
@@ -826,6 +1033,11 @@ paths:
   /logs/query:
     post:
       summary: LogsQL query (VictoriaLogs)
+      description: |
+        Accepts Lucene expressions via `query` when `query_language` is `lucene` (or when auto-detected).
+        Mirador translates Lucene to VictoriaLogs query syntax.
+        Note: Use either `_time` inside `query` or top-level `start`/`end`, not both. If both are provided, the
+        server prioritizes `_time` in `query` to avoid conflicting time filters.
       requestBody:
         required: true
         content:
@@ -836,6 +1048,10 @@ paths:
                 query:
                   type: string
                   description: 'LogsQL expression (e.g., `{service.name="telemetrygen"} AND severity="Info" AND _msg~"message"`)'
+                query_language:
+                  type: string
+                  enum: [lucene, logsql]
+                  description: If `lucene`, the server translates to VictoriaLogs query.
                 start:
                   type: integer
                   format: int64
@@ -851,9 +1067,8 @@ paths:
                   type: string
                   description: Optional tenant override
             example:
-              query: '{service.name="telemetrygen"} AND severity="Info" AND _msg~"message"'
-              start: 1694009100000
-              end: 1694009700000
+              query_language: lucene
+              query: '_time:[now-15m, now] AND service.name:telemetrygen AND severity:Info'
               limit: 200
       responses:
         '200': { description: OK }
@@ -885,7 +1100,11 @@ paths:
   /logs/export:
     post:
       summary: Export logs (streaming)
-      description: Streams a file attachment. Defaults to CSV when format is omitted. May convert JSON/NDJSON to CSV on the fly for compatibility.
+      description: |
+        Streams a file attachment. Defaults to CSV when format is omitted. May convert JSON/NDJSON to CSV on the fly.
+        Accepts Lucene via `query_language=lucene` and translates to VictoriaLogs query.
+        Note: Use either `_time` inside `query` or top-level `start`/`end`, not both. If both are provided, the
+        server prioritizes `_time` in `query`.
       requestBody:
         required: true
         content:
@@ -894,10 +1113,17 @@ paths:
               type: object
               properties:
                 query: { type: string }
+                query_language:
+                  type: string
+                  enum: [lucene, logsql]
                 start: { type: integer, format: int64 }
                 end: { type: integer, format: int64 }
                 limit: { type: integer }
                 format: { type: string, enum: [csv, json] }
+            example:
+              query_language: lucene
+              query: '_time:[now-5m, now] AND level:error'
+              format: csv
       responses:
         '200':
           description: File stream
@@ -918,16 +1144,77 @@ paths:
   /logs/histogram:
     get:
       summary: Histogram (D3)
+      description: |
+        Supports Lucene via `query_language=lucene` (server translates to VictoriaLogs query). Response shape unchanged
+        for D3. Note: Use either `_time` in `query` or top-level `start`/`end`, not both. If both are present, `_time`
+        in `query` takes precedence.
+      parameters:
+        - in: query
+          name: query_language
+          schema: { type: string, enum: [lucene, logsql] }
+          description: If `lucene`, the server translates to VictoriaLogs query.
+        - in: query
+          name: query
+          schema: { type: string }
+          description: Lucene expression for filtering logs
+          example: _time:[now-30m, now]
+        - in: query
+          name: step
+          schema: { type: integer, format: int64 }
+          description: Bucket width in ms
+          example: 60000
       responses:
-        '200': { description: OK }
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                buckets:
+                  - { ts: 1737000000000, count: 42 }
+                  - { ts: 1737000060000, count: 30 }
+                stats: { buckets: 2, sampleN: 1 }
+                sampled: false
   /logs/facets:
     get:
       summary: Facets (D3)
+      description: |
+        Supports Lucene via `query_language=lucene` (server translates to VictoriaLogs query). Response shape unchanged
+        for D3. Note: Use either `_time` in `query` or top-level `start`/`end`, not both. If both are present, `_time`
+        in `query` takes precedence.
+      parameters:
+        - in: query
+          name: query_language
+          schema: { type: string, enum: [lucene, logsql] }
+          description: If `lucene`, the server translates to VictoriaLogs query.
+        - in: query
+          name: query
+          schema: { type: string }
+          description: Lucene expression for filtering logs before faceting
+          example: _time:[now-30m, now] AND level:error
+        - in: query
+          name: fields
+          schema: { type: string }
+          description: Comma-separated fields to facet on
+          example: service,host
       responses:
-        '200': { description: OK }
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                facets:
+                  - field: service
+                    buckets:
+                      - { key: checkout, count: 120 }
+                      - { key: api, count: 75 }
+                stats: { fields: 1, sampleN: 1 }
+                sampled: false
   /logs/search:
     post:
       summary: Search logs (D3)
+      description: |
+        Supports Lucene via `query_language=lucene`; translated to VictoriaLogs query. Note: Use either `_time` in
+        `query` or top-level `start`/`end`, not both. If both are present, `_time` in `query` takes precedence.
       requestBody:
         required: true
         content:
@@ -938,6 +1225,9 @@ paths:
                 query:
                   type: string
                   description: 'LogsQL expression (e.g., "_time:5m service=web")'
+                query_language:
+                  type: string
+                  enum: [lucene, logsql]
                 start:
                   type: integer
                   format: int64
@@ -963,7 +1253,8 @@ paths:
                   type: string
                   description: Optional tenant override
             example:
-              query: "_time:15m level=error"
+              query_language: lucene
+              query: "_time:15m AND level:error"
               limit: 200
       responses:
         '200': { description: OK }
@@ -990,6 +1281,10 @@ paths:
           name: query
           schema: { type: string }
           description: LogsQL expression (e.g., `_time:5m`)
+        - in: query
+          name: query_language
+          schema: { type: string, enum: [lucene, logsql] }
+          description: If `lucene`, the server translates to VictoriaLogs query.
         - in: query
           name: since
           schema: { type: integer, format: int64 }
@@ -1093,11 +1388,34 @@ paths:
   /traces/search:
     post:
       summary: Search traces
+      description: |
+        Jaeger-compatible search across traces. This endpoint also accepts a Lucene expression via
+        `query_language=lucene` and `query`, which Mirador translates into Jaeger filters (service,
+        operation, tags, durations, and time window). Note: Use either `_time` in `query` or top-level `start`/`end`,
+        not both. If both are provided, `_time` in `query` takes precedence. Alternatively, discover trace IDs via
+        `/logs/search` with a Lucene filter on `trace_id`, then fetch traces by ID using `/traces/{traceId}`.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { type: object }
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                  description: Optional Lucene expression (e.g., "_time:[now-15m TO now] AND service:checkout AND operation:CreateOrder AND duration:[10ms TO *]")
+                query_language:
+                  type: string
+                  enum: [lucene]
+                  description: Set to `lucene` to enable translation
+                service: { type: string }
+                operation: { type: string }
+                tags: { type: string, description: Comma-separated key=value pairs }
+                minDuration: { type: string }
+                maxDuration: { type: string }
+                start: { type: string, format: date-time }
+                end: { type: string, format: date-time }
+                limit: { type: integer }
       responses:
         '200': { description: OK }
 
@@ -1220,15 +1538,11 @@ TraceServiceRequest:
     owner: 
       type: string
       description: Service owner
-    tags: 
-      type: object
-      additionalProperties:
-        type: string
-      description: Key-value pairs where both keys and values are strings
-      example:
-        environment: "production"
-        team: "platform"
-        version: "1.2.3"
+    tags:
+      type: array
+      items: { type: string }
+      description: Flat list of tags (e.g., "key:value" or free-form labels)
+      example: ["environment:production", "team:platform", "version:1.2.3"]
     author: 
       type: string
       description: Author of this change
@@ -1253,15 +1567,11 @@ TraceOperationRequest:
     owner: 
       type: string
       description: Operation owner
-    tags: 
-      type: object
-      additionalProperties:
-        type: string
-      description: Key-value pairs where both keys and values are strings
-      example:
-        endpoint: "/api/v1/users"
-        method: "GET"
-        timeout: "30s"
+    tags:
+      type: array
+      items: { type: string }
+      description: Flat list of tags
+      example: ["GET", "/api/v1/users", "30s"]
     author: 
       type: string
       description: Author of this change
@@ -1283,15 +1593,11 @@ MetricRequest:
     owner: 
       type: string
       description: Metric owner
-    tags: 
-      type: object
-      additionalProperties:
-        type: string
-      description: Key-value pairs where both keys and values are strings
-      example:
-        category: "performance"
-        unit: "seconds"
-        source: "prometheus"
+    tags:
+      type: array
+      items: { type: string }
+      description: Flat list of tags
+      example: ["category:performance", "unit:seconds", "source:prometheus"]
     author: 
       type: string
       description: Author of this change
@@ -1313,15 +1619,11 @@ LogFieldRequest:
     description: 
       type: string
       description: Field description
-    tags: 
-      type: object
-      additionalProperties:
-        type: string
-      description: Key-value pairs where both keys and values are strings
-      example:
-        category: "security"
-        format: "json"
-        indexed: "true"
+    tags:
+      type: array
+      items: { type: string }
+      description: Flat list of tags
+      example: ["category:security", "format:json", "indexed:true"]
     examples: 
       type: object
       additionalProperties:
@@ -1335,3 +1637,27 @@ LogFieldRequest:
       type: string
       description: Author of this change
   required: [field]
+LabelRequest:
+  type: object
+  properties:
+    tenantId:
+      type: string
+      description: Optional tenant ID (defaults to request tenant)
+    name:
+      type: string
+      description: Label name (e.g., instance)
+    type:
+      type: string
+      description: Data type (string, number, bool, etc.)
+    required:
+      type: boolean
+    allowedValues:
+      type: object
+      additionalProperties: true
+      description: Optional allowed set or constraints map
+    description:
+      type: string
+    author:
+      type: string
+      description: Author of this change
+  required: [name]

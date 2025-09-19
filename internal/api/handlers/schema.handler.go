@@ -35,6 +35,135 @@ func NewSchemaHandler(r repo.SchemaStore, ms *services.VictoriaMetricsService, l
 	return &SchemaHandler{repo: r, metricsService: ms, logsService: ls, cache: cache, logger: l, maxUploadBytes: maxUploadBytes}
 }
 
+// ------------------- Independent Label CRUD -------------------
+type upsertLabelReq struct {
+    TenantID    string                 `json:"tenantId"`
+    Name        string                 `json:"name"` // label name
+    Type        string                 `json:"type"`
+    Required    bool                   `json:"required"`
+    Allowed     map[string]any         `json:"allowedValues"`
+    Description string                 `json:"description"`
+    Author      string                 `json:"author"`
+}
+
+func (h *SchemaHandler) UpsertLabel(c *gin.Context) {
+    var req upsertLabelReq
+    if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+        return
+    }
+    if req.TenantID == "" { req.TenantID = c.GetString("tenant_id") }
+    if err := h.repo.UpsertLabel(c.Request.Context(), req.TenantID, req.Name, req.Type, req.Required, req.Allowed, req.Description, req.Author); err != nil {
+        h.logger.Error("label upsert failed", "error", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "upsert failed"})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func (h *SchemaHandler) GetLabel(c *gin.Context) {
+    tenantID := c.GetString("tenant_id")
+    name := c.Param("name")
+    d, err := h.repo.GetLabel(c.Request.Context(), tenantID, name)
+    if err != nil { c.JSON(http.StatusNotFound, gin.H{"error": "not found"}); return }
+    c.JSON(http.StatusOK, d)
+}
+
+func (h *SchemaHandler) ListLabelVersions(c *gin.Context) {
+    tenantID := c.GetString("tenant_id")
+    name := c.Param("name")
+    out, err := h.repo.ListLabelVersions(c.Request.Context(), tenantID, name)
+    if err != nil { h.logger.Error("list label versions failed", "error", err); c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list versions"}); return }
+    c.JSON(http.StatusOK, gin.H{"versions": out})
+}
+
+func (h *SchemaHandler) GetLabelVersion(c *gin.Context) {
+    tenantID := c.GetString("tenant_id")
+    name := c.Param("name")
+    verStr := c.Param("version")
+    v, err := strconv.ParseInt(verStr, 10, 64)
+    if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "invalid version"}); return }
+    payload, info, err := h.repo.GetLabelVersion(c.Request.Context(), tenantID, name, v)
+    if err != nil { c.JSON(http.StatusNotFound, gin.H{"error": "version not found"}); return }
+    c.JSON(http.StatusOK, gin.H{"version": info.Version, "author": info.Author, "created_at": info.CreatedAt, "payload": payload})
+}
+
+func (h *SchemaHandler) DeleteLabel(c *gin.Context) {
+    tenantID := c.GetString("tenant_id")
+    name := c.Param("name")
+    if name == "" { c.JSON(http.StatusBadRequest, gin.H{"error":"missing name"}); return }
+    q := strings.ToLower(strings.TrimSpace(c.Query("confirm")))
+    if q != "1" && q != "true" && q != "yes" {
+        c.JSON(http.StatusBadRequest, gin.H{"error":"confirmation required: add ?confirm=1"}); return
+    }
+    if err := h.repo.DeleteLabel(c.Request.Context(), tenantID, name); err != nil {
+        h.logger.Error("delete label failed", "error", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "delete failed"})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{"status": "deleted"})
+}
+
+// Bulk upsert labels via CSV
+// Columns: tenant_id (optional), name (required), type, required, allowed_json, description, author
+func (h *SchemaHandler) BulkUpsertLabelsCSV(c *gin.Context) {
+    if limited := h.enforceQuota(c, "labels", 20); limited { return }
+    c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, h.maxUploadBytes)
+    if err := c.Request.ParseMultipartForm(6 << 20); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "invalid multipart form or file too large"}); return
+    }
+    file, header, err := c.Request.FormFile("file")
+    if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error":"missing file"}); return }
+    defer file.Close()
+    // basic content sniff
+    var sniff [512]byte
+    n, _ := file.Read(sniff[:])
+    if _, err := file.Seek(0, io.SeekStart); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error":"failed to read file"}); return }
+    _ = n
+    reader := csv.NewReader(file)
+    reader.TrimLeadingSpace = true
+    headerRow, err := reader.Read()
+    if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error":"empty csv"}); return }
+    idx := make(map[string]int)
+    for i, col := range headerRow { idx[strings.ToLower(strings.TrimSpace(col))] = i }
+    allowed := map[string]struct{}{"tenant_id":{},"name":{},"type":{},"required":{},"allowed_json":{},"description":{},"author":{}}
+    for k := range idx { if _, ok := allowed[k]; !ok { c.JSON(http.StatusBadRequest, gin.H{"error":"unknown column: "+k}); return } }
+    if _, ok := idx["name"]; !ok { c.JSON(http.StatusBadRequest, gin.H{"error":"missing column: name"}); return }
+    tenantOverride := c.GetString("tenant_id")
+    count := 0
+    var rowErrs []string
+    rows := 0
+    for {
+        rec, err := reader.Read()
+        if err == io.EOF { break }
+        if err != nil { rowErrs = append(rowErrs, "read error"); continue }
+        rows++
+        get := func(k string) string { if j, ok := idx[k]; ok && j < len(rec) { return strings.TrimSpace(rec[j]) } ; return "" }
+        tenant := get("tenant_id"); if tenant == "" { tenant = tenantOverride }
+        name := get("name"); if name == "" { rowErrs = append(rowErrs, "missing name"); continue }
+        ltype := get("type")
+        reqStr := strings.ToLower(get("required")); required := reqStr=="true"||reqStr=="1"||reqStr=="yes"
+        allowedJSON := get("allowed_json")
+        var allowed map[string]any
+        if allowedJSON != "" { _ = json.Unmarshal([]byte(allowedJSON), &allowed) }
+        desc := get("description")
+        author := get("author")
+        if err := h.repo.UpsertLabel(c.Request.Context(), tenant, name, ltype, required, allowed, desc, author); err != nil { rowErrs = append(rowErrs, "upsert failed: "+name) } else { count++ }
+    }
+    c.JSON(http.StatusOK, gin.H{"status":"ok", "labels_upserted": count, "errors": rowErrs, "file": header.Filename})
+}
+
+// Sample CSV for labels
+func (h *SchemaHandler) SampleCSVLabels(c *gin.Context) {
+    c.Header("Content-Disposition", "attachment; filename=labels-sample.csv")
+    c.Header("Content-Type", "text/csv")
+    w := csv.NewWriter(c.Writer)
+    _ = w.Write([]string{"tenant_id","name","type","required","allowed_json","description","author"})
+    _ = w.Write([]string{"","instance","string","false","{}","Pod or host instance label",""})
+    _ = w.Write([]string{"","service","string","false","{}","Service name",""})
+    w.Flush()
+}
+
 type upsertMetricReq struct {
 	TenantID    string   `json:"tenantId"`
 	Metric      string   `json:"metric"`
@@ -139,6 +268,22 @@ func (h *SchemaHandler) GetMetric(c *gin.Context) {
 	c.JSON(http.StatusOK, m)
 }
 
+func (h *SchemaHandler) DeleteMetric(c *gin.Context) {
+    tenantID := c.GetString("tenant_id")
+    metric := c.Param("metric")
+    if metric == "" { c.JSON(http.StatusBadRequest, gin.H{"error":"missing metric"}); return }
+    q := strings.ToLower(strings.TrimSpace(c.Query("confirm")))
+    if q != "1" && q != "true" && q != "yes" {
+        c.JSON(http.StatusBadRequest, gin.H{"error":"confirmation required: add ?confirm=1"}); return
+    }
+    if err := h.repo.DeleteMetric(c.Request.Context(), tenantID, metric); err != nil {
+        h.logger.Error("delete metric failed", "error", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error":"delete failed"})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{"status":"deleted"})
+}
+
 func (h *SchemaHandler) ListMetricVersions(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	metric := c.Param("metric")
@@ -223,6 +368,22 @@ func (h *SchemaHandler) GetLogField(c *gin.Context) {
 	c.JSON(http.StatusOK, f)
 }
 
+func (h *SchemaHandler) DeleteLogField(c *gin.Context) {
+    tenantID := c.GetString("tenant_id")
+    field := c.Param("field")
+    if field == "" { c.JSON(http.StatusBadRequest, gin.H{"error":"missing field"}); return }
+    q := strings.ToLower(strings.TrimSpace(c.Query("confirm")))
+    if q != "1" && q != "true" && q != "yes" {
+        c.JSON(http.StatusBadRequest, gin.H{"error":"confirmation required: add ?confirm=1"}); return
+    }
+    if err := h.repo.DeleteLogField(c.Request.Context(), tenantID, field); err != nil {
+        h.logger.Error("delete log field failed", "error", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error":"delete failed"})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{"status":"deleted"})
+}
+
 func (h *SchemaHandler) ListLogFieldVersions(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	field := c.Param("field")
@@ -292,6 +453,22 @@ func (h *SchemaHandler) GetTraceService(c *gin.Context) {
 	c.JSON(http.StatusOK, s)
 }
 
+func (h *SchemaHandler) DeleteTraceService(c *gin.Context) {
+    tenantID := c.GetString("tenant_id")
+    service := c.Param("service")
+    if service == "" { c.JSON(http.StatusBadRequest, gin.H{"error":"missing service"}); return }
+    q := strings.ToLower(strings.TrimSpace(c.Query("confirm")))
+    if q != "1" && q != "true" && q != "yes" {
+        c.JSON(http.StatusBadRequest, gin.H{"error":"confirmation required: add ?confirm=1"}); return
+    }
+    if err := h.repo.DeleteTraceService(c.Request.Context(), tenantID, service); err != nil {
+        h.logger.Error("delete trace service failed", "error", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error":"delete failed"})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{"status":"deleted"})
+}
+
 func (h *SchemaHandler) ListTraceServiceVersions(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	service := c.Param("service")
@@ -359,6 +536,23 @@ func (h *SchemaHandler) GetTraceOperation(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, o)
+}
+
+func (h *SchemaHandler) DeleteTraceOperation(c *gin.Context) {
+    tenantID := c.GetString("tenant_id")
+    service := c.Param("service")
+    operation := c.Param("operation")
+    if service == "" || operation == "" { c.JSON(http.StatusBadRequest, gin.H{"error":"missing service/operation"}); return }
+    q := strings.ToLower(strings.TrimSpace(c.Query("confirm")))
+    if q != "1" && q != "true" && q != "yes" {
+        c.JSON(http.StatusBadRequest, gin.H{"error":"confirmation required: add ?confirm=1"}); return
+    }
+    if err := h.repo.DeleteTraceOperation(c.Request.Context(), tenantID, service, operation); err != nil {
+        h.logger.Error("delete trace operation failed", "error", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error":"delete failed"})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{"status":"deleted"})
 }
 
 func (h *SchemaHandler) ListTraceOperationVersions(c *gin.Context) {

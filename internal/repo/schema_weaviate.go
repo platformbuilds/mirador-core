@@ -1147,7 +1147,7 @@ func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
 		))},
 		// Version classes with proper payload schemas
 		{"MetricVersion", class("MetricVersion", props(text("tenantId"), text("name"), intp("version"), metricVersionPayload(), text("author"), date("createdAt")))},
-		{"LabelVersion", class("LabelVersion", props(text("tenantId"), text("metric"), text("name"), intp("version"), labelVersionPayload(), text("author"), date("createdAt")))},
+        {"LabelVersion", class("LabelVersion", props(text("tenantId"), text("name"), intp("version"), labelVersionPayload(), text("author"), date("createdAt")))},
 		{"LogFieldVersion", class("LogFieldVersion", props(text("tenantId"), text("name"), intp("version"), logFieldVersionPayload(), text("author"), date("createdAt")))},
 		{"ServiceVersion", class("ServiceVersion", props(text("tenantId"), text("name"), intp("version"), serviceVersionPayload(), text("author"), date("createdAt")))},
 		{"OperationVersion", class("OperationVersion", props(text("tenantId"), text("service"), text("name"), intp("version"), operationVersionPayload(), text("author"), date("createdAt")))},
@@ -1161,4 +1161,147 @@ func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// UpsertLabel creates/updates an independent label definition (not metric-scoped)
+func (r *WeaviateRepo) UpsertLabel(ctx context.Context, tenantID, name, typ string, required bool, allowed map[string]any, description, author string) error {
+    next, _ := r.maxVersion(ctx, "LabelVersion", map[string]string{"tenantId": tenantID, "name": name})
+    nowRFC := time.Now().UTC().Format(time.RFC3339Nano)
+    obj := map[string]any{
+        "tenantId":     tenantID,
+        "name":         name,
+        "type":         typ,
+        "required":     required,
+        "allowedValues": allowed,
+        "definition":   description,
+        "version":      next,
+        "updatedAt":    nowRFC,
+    }
+    id := makeID("Label", tenantID, name)
+    if err := r.putObject(ctx, "Label", id, obj); err != nil { return err }
+    vid := makeID("LabelVersion", tenantID, name, fmt.Sprintf("%d", next))
+    vprops := map[string]any{
+        "tenantId": tenantID,
+        "name":     name,
+        "version":  next,
+        "payload": map[string]any{
+            "tenantId":   tenantID,
+            "name":       name,
+            "type":       typ,
+            "required":   required,
+            "allowedValues": allowed,
+            "definition": description,
+            "updatedAt":  nowRFC,
+        },
+        "author":    author,
+        "createdAt": nowRFC,
+    }
+    return r.putObject(ctx, "LabelVersion", vid, vprops)
+}
+
+func (r *WeaviateRepo) GetLabel(ctx context.Context, tenantID, name string) (*LabelDef, error) {
+    esc := func(s string) string {
+        s = strings.ReplaceAll(s, `\\`, `\\\\`)
+        s = strings.ReplaceAll(s, `"`, `\\\"`)
+        return s
+    }
+    q := fmt.Sprintf(`{
+      Get { Label(
+        where: { operator: And, operands: [
+          { path: ["tenantId"], operator: Equal, valueString: "%s" },
+          { path: ["name"], operator: Equal, valueString: "%s" }
+        ]}, limit: 1) {
+          type required allowedValues definition updatedAt
+        }
+      }
+    }`, esc(tenantID), esc(name))
+    var resp struct { Data struct { Get struct { Label []map[string]any `json:"Label"` } `json:"Get"` } `json:"data"` }
+    if err := r.gql(ctx, q, nil, &resp); err != nil { return nil, err }
+    if len(resp.Data.Get.Label) == 0 { return nil, fmt.Errorf("not found") }
+    it := resp.Data.Get.Label[0]
+    allowed := map[string]any{}
+    if m, ok := it["allowedValues"].(map[string]any); ok { allowed = m }
+    upd := time.Now()
+    if s, ok := it["updatedAt"].(string); ok { if t, e := time.Parse(time.RFC3339, s); e == nil { upd = t } }
+    tstr, _ := it["type"].(string)
+    req, _ := it["required"].(bool)
+    def, _ := it["definition"].(string)
+    return &LabelDef{TenantID: tenantID, Name: name, Type: tstr, Required: req, AllowedVals: allowed, Description: def, UpdatedAt: upd}, nil
+}
+
+func (r *WeaviateRepo) ListLabelVersions(ctx context.Context, tenantID, name string) ([]VersionInfo, error) {
+    esc := func(s string) string {
+        s = strings.ReplaceAll(s, `\\`, `\\\\`)
+        s = strings.ReplaceAll(s, `"`, `\\\"`)
+        return s
+    }
+    q := fmt.Sprintf(`{ Get { LabelVersion(
+      where: { operator: And, operands: [
+        { path: ["tenantId"], operator: Equal, valueString: "%s" },
+        { path: ["name"], operator: Equal, valueString: "%s" }
+      ]}, limit: 1000, sort: [{path:["version"], order: desc}])
+      { version author createdAt }
+    } }`, esc(tenantID), esc(name))
+    var resp struct { Data struct { Get struct { LabelVersion []map[string]any `json:"LabelVersion"` } `json:"Get"` } `json:"data"` }
+    if err := r.gql(ctx, q, nil, &resp); err != nil { return nil, err }
+    out := make([]VersionInfo, 0, len(resp.Data.Get.LabelVersion))
+    for _, it := range resp.Data.Get.LabelVersion {
+        var t time.Time
+        if s, ok := it["createdAt"].(string); ok { t, _ = time.Parse(time.RFC3339, s) }
+        v := int64(0)
+        switch x := it["version"].(type) { case float64: v = int64(x) }
+        auth, _ := it["author"].(string)
+        out = append(out, VersionInfo{Version: v, Author: auth, CreatedAt: t})
+    }
+    return out, nil
+}
+
+func (r *WeaviateRepo) GetLabelVersion(ctx context.Context, tenantID, name string, version int64) (map[string]any, VersionInfo, error) {
+    esc := func(s string) string {
+        s = strings.ReplaceAll(s, `\\`, `\\\\`)
+        s = strings.ReplaceAll(s, `"`, `\\\"`)
+        return s
+    }
+    q := fmt.Sprintf(`{ Get { LabelVersion(
+      where: { operator: And, operands: [
+        { path: ["tenantId"], operator: Equal, valueString: "%s" },
+        { path: ["name"], operator: Equal, valueString: "%s" },
+        { path: ["version"], operator: Equal, valueInt: %d }
+      ]}, limit: 1) { version author createdAt payload } } }`, esc(tenantID), esc(name), version)
+    var resp struct { Data struct { Get struct { LabelVersion []map[string]any `json:"LabelVersion"` } `json:"Get"` } `json:"data"` }
+    if err := r.gql(ctx, q, nil, &resp); err != nil { return nil, VersionInfo{}, err }
+    if len(resp.Data.Get.LabelVersion) == 0 { return nil, VersionInfo{}, fmt.Errorf("not found") }
+    it := resp.Data.Get.LabelVersion[0]
+    payload, _ := it["payload"].(map[string]any)
+    var t time.Time
+    if s, ok := it["createdAt"].(string); ok { t, _ = time.Parse(time.RFC3339, s) }
+    v := version
+    if vv, ok := it["version"].(float64); ok { v = int64(vv) }
+    auth, _ := it["author"].(string)
+    return payload, VersionInfo{Version: v, Author: auth, CreatedAt: t}, nil
+}
+
+func (r *WeaviateRepo) DeleteLabel(ctx context.Context, tenantID, name string) error {
+    id := makeID("Label", tenantID, name)
+    return r.t.DeleteObject(ctx, id)
+}
+
+func (r *WeaviateRepo) DeleteMetric(ctx context.Context, tenantID, metric string) error {
+    id := makeID("Metric", tenantID, metric)
+    return r.t.DeleteObject(ctx, id)
+}
+
+func (r *WeaviateRepo) DeleteLogField(ctx context.Context, tenantID, field string) error {
+    id := makeID("LogField", tenantID, field)
+    return r.t.DeleteObject(ctx, id)
+}
+
+func (r *WeaviateRepo) DeleteTraceService(ctx context.Context, tenantID, service string) error {
+    id := makeID("Service", tenantID, service)
+    return r.t.DeleteObject(ctx, id)
+}
+
+func (r *WeaviateRepo) DeleteTraceOperation(ctx context.Context, tenantID, service, operation string) error {
+    id := makeID("Operation", tenantID, service, operation)
+    return r.t.DeleteObject(ctx, id)
 }

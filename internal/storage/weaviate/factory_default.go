@@ -31,8 +31,12 @@ func (o *officialTransport) PutObject(ctx context.Context, class, id string, pro
 }
 
 func (o *officialTransport) GraphQL(ctx context.Context, query string, variables map[string]any, out any) error {
-	// Delegate to lightweight HTTP transport for maximum compatibility
-	return o.httpT.GraphQL(ctx, query, variables, out)
+    // Delegate to lightweight HTTP transport for maximum compatibility
+    return o.httpT.GraphQL(ctx, query, variables, out)
+}
+
+func (o *officialTransport) DeleteObject(ctx context.Context, id string) error {
+    return o.httpT.DeleteObject(ctx, id)
 }
 
 // NewTransportFromConfig returns the official transport (non-optional).

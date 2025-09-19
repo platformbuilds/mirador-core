@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+    "strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/platformbuilds/mirador-core/internal/metrics"
@@ -13,6 +14,7 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/utils"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
+    lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
 )
 
 type LogsQLHandler struct {
@@ -44,6 +46,20 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 		})
 		return
 	}
+
+    // Translate Lucene -> LogsQL if requested or detected
+    if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
+        if translated, ok := lq.Translate(request.Query, lq.TargetLogsQL); ok {
+            request.Query = translated
+            c.Header("X-Query-Translated-From", "lucene")
+        }
+    }
+
+    // If query already contains an explicit _time filter, drop Start/End to avoid conflicts.
+    if strings.Contains(request.Query, "_time:") {
+        request.Start = 0
+        request.End = 0
+    }
 
 	// Validate LogsQL query
 	if err := h.validator.ValidateLogsQL(request.Query); err != nil {
@@ -192,6 +208,20 @@ func (h *LogsQLHandler) ExportLogs(c *gin.Context) {
 		})
 		return
 	}
+
+    // Translate Lucene -> LogsQL if requested or detected
+    if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
+        if translated, ok := lq.Translate(request.Query, lq.TargetLogsQL); ok {
+            request.Query = translated
+            c.Header("X-Query-Translated-From", "lucene")
+        }
+    }
+
+    // If query already contains an explicit _time filter, drop Start/End to avoid conflicts.
+    if strings.Contains(request.Query, "_time:") {
+        request.Start = 0
+        request.End = 0
+    }
 
 	// Set tenant context
 	request.TenantID = tenantID

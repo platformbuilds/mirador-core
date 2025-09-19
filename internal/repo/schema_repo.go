@@ -219,6 +219,17 @@ type TraceOperationDef struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
+// Independent Label definition
+type LabelDef struct {
+    TenantID    string            `json:"tenantId"`
+    Name        string            `json:"name"`
+    Type        string            `json:"type"`
+    Required    bool              `json:"required"`
+    AllowedVals map[string]any    `json:"allowedValues"`
+    Description string            `json:"description"`
+    UpdatedAt   time.Time         `json:"updatedAt"`
+}
+
 func (r *SchemaRepo) GetTraceService(ctx context.Context, tenantID, service string) (*TraceServiceDef, error) {
 	row := r.DB.QueryRowContext(ctx, `SELECT purpose, owner, tags, updated_at FROM traces_service_def WHERE tenant_id=? AND service=?`, tenantID, service)
 	var purpose, owner string
