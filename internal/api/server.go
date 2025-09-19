@@ -125,14 +125,19 @@ func (s *Server) setupRoutes() {
 	} else {
 		metricsHandler = handlers.NewMetricsQLHandler(s.vmServices.Metrics, s.cache, s.logger)
 	}
-	v1.POST("/query", metricsHandler.ExecuteQuery)
-	v1.POST("/query_range", metricsHandler.ExecuteRangeQuery)
+    // New metrics endpoints under /metrics/*
+    v1.POST("/metrics/query", metricsHandler.ExecuteQuery)
+    v1.POST("/metrics/query_range", metricsHandler.ExecuteRangeQuery)
+    // Back-compat (deprecated): keep old routes registered
+    v1.POST("/query", metricsHandler.ExecuteQuery)
+    v1.POST("/query_range", metricsHandler.ExecuteRangeQuery)
 	v1.GET("/series", metricsHandler.GetSeries)
 	v1.GET("/labels", metricsHandler.GetLabels)
 	v1.GET("/metrics/names", metricsHandler.GetMetricNames)
 	// Back-compat aliases at root so Swagger with base "/" also works
-	s.router.POST("/query", metricsHandler.ExecuteQuery)
-	s.router.POST("/query_range", metricsHandler.ExecuteRangeQuery)
+    // Back-compat aliases at root so Swagger with base "/" also works
+    s.router.POST("/query", metricsHandler.ExecuteQuery)
+    s.router.POST("/query_range", metricsHandler.ExecuteRangeQuery)
 	s.router.GET("/series", metricsHandler.GetSeries)
 	s.router.GET("/labels", metricsHandler.GetLabels)
 	s.router.GET("/metrics/names", metricsHandler.GetMetricNames)

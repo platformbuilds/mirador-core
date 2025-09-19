@@ -38,7 +38,7 @@
       "name": "Metrics",
       "item": [
         {
-          "name": "POST /api/v1/query (instant)",
+          "name": "POST /api/v1/metrics/query (instant)",
           "request": {
             "method": "POST",
             "header": [
@@ -49,11 +49,11 @@
               "mode": "raw",
               "raw": "{\n  \"query\": \"1\",\n  \"time\": \"{{now_rfc}}\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/query", "host": ["{{baseUrl}}"], "path": ["api","v1","query"] }
+            "url": { "raw": "{{baseUrl}}/api/v1/metrics/query", "host": ["{{baseUrl}}"], "path": ["api","v1","metrics","query"] }
           }
         },
         {
-          "name": "POST /api/v1/query_range (range)",
+          "name": "POST /api/v1/metrics/query_range (range)",
           "request": {
             "method": "POST",
             "header": [
@@ -64,7 +64,7 @@
               "mode": "raw",
               "raw": "{\n  \"query\": \"1\",\n  \"start\": \"{{start_rfc}}\",\n  \"end\": \"{{now_rfc}}\",\n  \"step\": \"30s\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/query_range", "host": ["{{baseUrl}}"], "path": ["api","v1","query_range"] }
+            "url": { "raw": "{{baseUrl}}/api/v1/metrics/query_range", "host": ["{{baseUrl}}"], "path": ["api","v1","metrics","query_range"] }
           }
         },
         {

@@ -267,6 +267,59 @@ Notes:
 - Alternatively set `useSRV: true` and publish SRV records for the Service.
 - Static `database.*.endpoints` remain valid and are used as seed; discovery replaces the list dynamically at runtime.
 
+### Multi-Source Aggregation
+
+You can configure multiple backend clusters per data type and Mirador will fan-out queries and aggregate results.
+
+Values keys (rendered into `/etc/mirador/config.yaml`):
+
+```yaml
+mirador:
+  database:
+    victoria_metrics:
+      name: primary
+      endpoints: ["http://vm-a:8481"]
+      timeout: 30000
+    metrics_sources:
+      - name: fin_metrics
+        endpoints: ["http://vm-fin-0:8481"]
+      - name: os_metrics
+        discovery:
+          enabled: true
+          service: vm-select.vm-os.svc.cluster.local
+          port: 8481
+          scheme: http
+          refreshSeconds: 30
+          useSRV: false
+
+    victoria_logs:
+      name: primary
+      endpoints: ["http://vl-a:9428"]
+      timeout: 30000
+    logs_sources:
+      - name: fin_logs
+        endpoints: ["http://vl-fin-0:9428"]
+
+    victoria_traces:
+      name: primary
+      endpoints: ["http://vt-a:10428"]
+      timeout: 30000
+    traces_sources:
+      - name: os_traces
+        discovery:
+          enabled: true
+          service: vt-select.vt-os.svc.cluster.local
+          port: 10428
+          scheme: http
+          refreshSeconds: 30
+          useSRV: false
+```
+
+Behavior summary:
+- Metrics: concatenates series across sources; datapoint counts are summed; duplicates may appear.
+- Logs: concatenates rows; unions field names; aggregates stats.
+- Traces: unions services; concatenates searches; first-found trace is returned.
+
 ## Enabling HPA, PDB, NetworkPolicy, and Monitoring
 
 Example values override for production:

@@ -12,14 +12,17 @@ func GetDefaultConfig() *Config {
 				Endpoints: []string{"http://localhost:8481"},
 				Timeout:   30000,
 			},
+            MetricsSources: []VictoriaMetricsConfig{},
 			VictoriaLogs: VictoriaLogsConfig{
 				Endpoints: []string{"http://localhost:9428"},
 				Timeout:   30000,
 			},
+			LogsSources: []VictoriaLogsConfig{},
 			VictoriaTraces: VictoriaTracesConfig{
 				Endpoints: []string{"http://localhost:10428"},
 				Timeout:   30000,
 			},
+            TracesSources: []VictoriaTracesConfig{},
 		},
 
 		GRPC: GRPCConfig{

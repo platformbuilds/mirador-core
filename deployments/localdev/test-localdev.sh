@@ -57,9 +57,9 @@ code=$(curl_json GET /api/v1/health)
 [[ "$code" == 200 ]] && ok "/api/v1/health" || err "/api/v1/health -> $code"
 
 # 2) Metrics: instant and range
-code=$(curl_json POST /api/v1/query '{"query":"1"}')
+code=$(curl_json POST /api/v1/metrics/query '{"query":"1"}')
 [[ "$code" == 200 ]] && ok "MetricsQL instant" || err "MetricsQL instant -> $code"
-code=$(curl_json POST /api/v1/query_range "{\"query\":\"1\",\"start\":\"$start_rfc\",\"end\":\"$now_rfc\",\"step\":\"30s\"}")
+code=$(curl_json POST /api/v1/metrics/query_range "{\"query\":\"1\",\"start\":\"$start_rfc\",\"end\":\"$now_rfc\",\"step\":\"30s\"}")
 [[ "$code" == 200 ]] && ok "MetricsQL range" || err "MetricsQL range -> $code"
 
 # 3) Metrics: labels, names, label values
@@ -85,4 +85,3 @@ code=$(curl_json GET /api/v1/traces/services)
 echo
 echo "Summary: $pass passed, $fail failed"
 exit $(( fail > 0 ))
-

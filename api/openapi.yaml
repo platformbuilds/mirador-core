@@ -858,12 +858,15 @@ paths:
   /query:
     post:
       summary: MetricsQL instant query (VictoriaMetrics)
+      deprecated: true
       description: |
         Executes an instant query against VictoriaMetrics. The `query` field also supports Lucene syntax when
         `query_language` is `lucene` (or when auto-detected); Mirador translates Lucene into PromQL label selectors.
         When `include_definitions` is enabled (default),
         the response contains `definitions` sourced from the schema store (Weaviate) including metric and
         per-metric label definitions. Optional `label_keys` can limit which label keys are considered.
+        When multiple metrics sources are configured in config.yaml (database.victoria_metrics + database.metrics_sources),
+        the server fans out the query across sources and aggregates the results. Identical series from different sources may appear as duplicates.
       requestBody:
         required: true
         content:
@@ -928,9 +931,11 @@ paths:
   /query_range:
     post:
       summary: MetricsQL range query (VictoriaMetrics)
+      deprecated: true
       description: |
         Executes a range query. When `include_definitions` is enabled (default), the response contains
         `definitions` for metrics and per-metric label keys. Use `label_keys` to limit keys.
+        When multiple metrics sources are configured, the server fans out the query and concatenates series across sources; datapoint counts are aggregated.
       requestBody:
         required: true
         content:
@@ -1038,6 +1043,8 @@ paths:
         Mirador translates Lucene to VictoriaLogs query syntax.
         Note: Use either `_time` inside `query` or top-level `start`/`end`, not both. If both are provided, the
         server prioritizes `_time` in `query` to avoid conflicting time filters.
+        When multiple logs sources are configured in config.yaml (database.victoria_logs + database.logs_sources),
+        the server fans out the query and concatenates rows from all sources; the `fields` list is the union.
       requestBody:
         required: true
         content:
@@ -1306,6 +1313,7 @@ paths:
   /traces/services:
     get:
       summary: List services (VictoriaTraces/Jaeger)
+      description: Returns the union of services when multiple traces sources are configured (database.victoria_traces + database.traces_sources).
       responses:
         '200': { description: OK }
   /traces/services/{service}/operations:
@@ -1321,6 +1329,7 @@ paths:
   /traces/{traceId}:
     get:
       summary: Get trace by ID
+      description: Returns the first matching trace across configured sources when multiple traces sources are present.
       parameters:
         - in: path
           name: traceId
@@ -1394,6 +1403,8 @@ paths:
         operation, tags, durations, and time window). Note: Use either `_time` in `query` or top-level `start`/`end`,
         not both. If both are provided, `_time` in `query` takes precedence. Alternatively, discover trace IDs via
         `/logs/search` with a Lucene filter on `trace_id`, then fetch traces by ID using `/traces/{traceId}`.
+        When multiple traces sources are configured in config.yaml (database.victoria_traces + database.traces_sources),
+        results from all sources are concatenated.
       requestBody:
         required: true
         content:
@@ -1661,3 +1672,67 @@ LabelRequest:
       type: string
       description: Author of this change
   required: [name]
+  /metrics/query:
+    post:
+      summary: MetricsQL instant query (VictoriaMetrics)
+      description: |
+        Executes an instant query against VictoriaMetrics. The `query` field also supports Lucene syntax when
+        `query_language` is `lucene` (or when auto-detected); Mirador translates Lucene into PromQL label selectors.
+        When `include_definitions` is enabled (default), the response contains `definitions` sourced from the schema store
+        (Weaviate) including metric and per-metric label definitions. Optional `label_keys` can limit which label keys are considered.
+        When multiple metrics sources are configured in config.yaml (database.victoria_metrics + database.metrics_sources),
+        the server fans out the query across sources and aggregates the results. Identical series from different sources may appear as duplicates.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query: { type: string }
+                query_language:
+                  type: string
+                  enum: [lucene, promql]
+                  description: If `lucene`, the server translates to PromQL/MetricsQL.
+                time: { type: string }
+                include_definitions: { type: boolean, description: Include definitions in response (default true) }
+                label_keys:
+                  type: array
+                  items: { type: string }
+                  description: Restrict definitions to these label keys
+            example:
+              query_language: lucene
+              query: "__name__:http_requests_total AND job:api"
+              time: "2025-01-01T00:00:00Z"
+      responses:
+        '200': { description: OK }
+
+  /metrics/query_range:
+    post:
+      summary: MetricsQL range query (VictoriaMetrics)
+      description: |
+        Executes a range query. When `include_definitions` is enabled (default), the response contains
+        `definitions` for metrics and per-metric label keys. Use `label_keys` to limit keys.
+        When multiple metrics sources are configured, the server fans out the query and concatenates series across sources; datapoint counts are aggregated.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query: { type: string }
+                query_language:
+                  type: string
+                  enum: [lucene, promql]
+                  description: If `lucene`, the server translates to PromQL/MetricsQL.
+                start: { type: string }
+                end: { type: string }
+                step: { type: string }
+                include_definitions: { type: boolean, description: Include definitions in response (default true) }
+                label_keys:
+                  type: array
+                  items: { type: string }
+                  description: Restrict definitions to these label keys
+      responses:
+        '200': { description: OK }

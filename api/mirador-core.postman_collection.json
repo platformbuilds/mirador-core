@@ -18,11 +18,11 @@
       "name": "Metrics",
       "item": [
         {
-          "name": "POST /query (instant, Lucene)",
+          "name": "POST /metrics/query (instant, Lucene)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/query" },
+            "url": { "raw": "{{baseUrl}}/metrics/query" },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"query_language\": \"lucene\",\n  \"query\": \"__name__:http_requests_total AND job:api\"\n}"
@@ -47,11 +47,11 @@
           "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/schema/traces/services/checkout/operations/CreateOrder?confirm=1" } }
         },
         {
-          "name": "POST /query (instant, PromQL)",
+          "name": "POST /metrics/query (instant, PromQL)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/query" },
+            "url": { "raw": "{{baseUrl}}/metrics/query" },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
@@ -59,11 +59,11 @@
           }
         },
         {
-          "name": "POST /query_range (Lucene)",
+          "name": "POST /metrics/query_range (Lucene)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/query_range" },
+            "url": { "raw": "{{baseUrl}}/metrics/query_range" },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"query_language\": \"lucene\",\n  \"query\": \"__name__:http_requests_total AND job:api\",\n  \"start\": \"2025-01-01T00:00:00Z\",\n  \"end\": \"2025-01-01T00:10:00Z\",\n  \"step\": \"30s\"\n}"

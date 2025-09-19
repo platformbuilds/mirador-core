@@ -65,8 +65,8 @@ request "openapi" GET "/api/openapi.json"
 
 # MetricsQL
 request "metrics:labels" GET "/api/v1/labels"
-request "metrics:query" POST "/api/v1/query" '{"query":"up"}'
-request "metrics:query_range" POST "/api/v1/query_range" '{"query":"up","start":"0","end":"1","step":"1"}'
+request "metrics:query" POST "/api/v1/metrics/query" '{"query":"up"}'
+request "metrics:query_range" POST "/api/v1/metrics/query_range" '{"query":"up","start":"0","end":"1","step":"1"}'
 request "metrics:names" GET "/api/v1/metrics/names"
 request "metrics:series" GET "/api/v1/series?match[]=up"
 request "metrics:label_values" GET "/api/v1/label/__name__/values"
