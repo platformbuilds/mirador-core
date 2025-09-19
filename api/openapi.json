@@ -11,12 +11,25 @@
   },
   "servers": [
     {
-      "url": "http://localhost:8080/api/v1",
-      "description": "Development server"
-    },
-    {
-      "url": "https://mirador-core.company.com/api/v1",
-      "description": "Production server"
+      "url": "{scheme}://{host}{basePath}",
+      "description": "Configurable server (edit variables in Swagger UI)",
+      "variables": {
+        "scheme": {
+          "enum": [
+            "http",
+            "https"
+          ],
+          "default": "http"
+        },
+        "host": {
+          "default": "localhost:8080",
+          "description": "Hostname:port of mirador-core"
+        },
+        "basePath": {
+          "default": "/api/v1",
+          "description": "Base path for API routes (use \"/\" for root-only endpoints)"
+        }
+      }
     }
   ],
   "components": {
@@ -31,11 +44,19 @@
       "SystemFracture": {
         "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "component": { "type": "string" },
+          "id": {
+            "type": "string"
+          },
+          "component": {
+            "type": "string"
+          },
           "fracture_type": {
             "type": "string",
-            "enum": ["fatigue", "overload", "degradation"]
+            "enum": [
+              "fatigue",
+              "overload",
+              "degradation"
+            ]
           },
           "time_to_fracture": {
             "type": "integer",
@@ -43,7 +64,11 @@
           },
           "severity": {
             "type": "string",
-            "enum": ["high", "medium", "low"]
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
           },
           "probability": {
             "type": "number",
@@ -60,12 +85,20 @@
       "CorrelationResult": {
         "type": "object",
         "properties": {
-          "correlation_id": { "type": "string" },
-          "root_cause": { "type": "string" },
-          "confidence": { "type": "number" },
+          "correlation_id": {
+            "type": "string"
+          },
+          "root_cause": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number"
+          },
           "red_anchors": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/RedAnchor" }
+            "items": {
+              "$ref": "#/components/schemas/RedAnchor"
+            }
           }
         }
       },
@@ -73,23 +106,89 @@
         "type": "object",
         "description": "Anomaly score pattern for RCA analysis",
         "properties": {
-          "service": { "type": "string" },
-          "metric": { "type": "string" },
-          "anomaly_score": { "type": "number" },
-          "threshold": { "type": "number" },
-          "timestamp": { "type": "string", "format": "date-time" },
+          "service": {
+            "type": "string"
+          },
+          "metric": {
+            "type": "string"
+          },
+          "anomaly_score": {
+            "type": "number"
+          },
+          "threshold": {
+            "type": "number"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
           "data_type": {
             "type": "string",
-            "enum": ["metrics", "logs", "traces"]
+            "enum": [
+              "metrics",
+              "logs",
+              "traces"
+            ]
+          }
+        }
+      },
+      "FlameNode": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "integer",
+            "description": "Duration in ms"
+          },
+          "spanId": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FlameNode"
+            }
           }
         }
       }
     }
   },
   "security": [
-    { "BearerAuth": [] }
+    {
+      "BearerAuth": []
+    }
   ],
   "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "description": "Returns basic service health",
+        "responses": {
+          "200": {
+            "description": "Healthy"
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Readiness check",
+        "description": "Checks backends (Victoria*, engines) and returns readiness",
+        "responses": {
+          "200": {
+            "description": "Ready"
+          },
+          "503": {
+            "description": "Not ready"
+          }
+        }
+      }
+    },
     "/predict/analyze": {
       "post": {
         "summary": "Analyze system fractures",
@@ -101,11 +200,17 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "component": { "type": "string" },
-                  "time_range": { "type": "string" },
+                  "component": {
+                    "type": "string"
+                  },
+                  "time_range": {
+                    "type": "string"
+                  },
                   "model_types": {
                     "type": "array",
-                    "items": { "type": "string" }
+                    "items": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -120,13 +225,17 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "status": { "type": "string" },
+                    "status": {
+                      "type": "string"
+                    },
                     "data": {
                       "type": "object",
                       "properties": {
                         "fractures": {
                           "type": "array",
-                          "items": { "$ref": "#/components/schemas/SystemFracture" }
+                          "items": {
+                            "$ref": "#/components/schemas/SystemFracture"
+                          }
                         }
                       }
                     }
@@ -149,16 +258,26 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "incident_id": { "type": "string" },
+                  "incident_id": {
+                    "type": "string"
+                  },
                   "symptoms": {
                     "type": "array",
-                    "items": { "type": "string" }
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "time_range": {
                     "type": "object",
                     "properties": {
-                      "start": { "type": "string", "format": "date-time" },
-                      "end": { "type": "string", "format": "date-time" }
+                      "start": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "end": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
                     }
                   }
                 }
@@ -171,12 +290,2581 @@
             "description": "RCA correlation results",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/CorrelationResult" }
+                "schema": {
+                  "$ref": "#/components/schemas/CorrelationResult"
+                }
               }
             }
           }
         }
       }
+    },
+    "/predict/health": {
+      "get": {
+        "summary": "Predict Engine health",
+        "responses": {
+          "200": {
+            "description": "Healthy"
+          }
+        }
+      }
+    },
+    "/predict/fractures": {
+      "get": {
+        "summary": "List predicted fractures",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "time_range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_prob",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/predict/models": {
+      "get": {
+        "summary": "List active prediction models",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/schema/traces/services": {
+      "post": {
+        "summary": "Upsert trace service definition",
+        "description": "Create or update a trace service definition and record a new version.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TraceServiceRequest"
+              },
+              "example": {
+                "service": "otelgen",
+                "purpose": "this is a test service created by otelgen tool",
+                "owner": "aarvee",
+                "tags": [
+                  "development",
+                  "bda"
+                ],
+                "author": "aarvee"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/schema/traces/services/bulk": {
+      "post": {
+        "summary": "Bulk upsert trace services via CSV",
+        "description": "Upload a CSV to create/update trace service definitions.\nCSV columns (header required; strict header mode):\n- tenant_id (optional; defaults to request tenant)\n- service (required)\n- purpose, owner, tags_json (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/schema/traces/services/{service}": {
+      "get": {
+        "summary": "Get current trace service definition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete trace service definition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confirm",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must be '1', 'true', or 'yes'"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Failed to delete"
+          }
+        }
+      }
+    },
+    "/schema/traces/services/{service}/versions": {
+      "get": {
+        "summary": "List versions for a trace service",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/schema/traces/services/{service}/versions/{version}": {
+      "get": {
+        "summary": "Get a specific version of a trace service definition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/schema/traces/operations": {
+      "post": {
+        "summary": "Upsert trace operation definition",
+        "description": "Create or update a trace operation definition and record a new version.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TraceOperationRequest"
+              },
+              "example": {
+                "service": "otelgen",
+                "operation": "handle_request",
+                "purpose": "handles incoming HTTP requests",
+                "owner": "aarvee",
+                "tags": [
+                  "POST",
+                  "/api/v1/data",
+                  "30s"
+                ],
+                "author": "aarvee"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/schema/traces/operations/bulk": {
+      "post": {
+        "summary": "Bulk upsert trace operations via CSV",
+        "description": "Upload a CSV to create/update trace operation definitions. Operations are scoped per service; rows referencing undefined services are rejected.\nCSV columns (header required; strict header mode):\n- tenant_id (optional; defaults to request tenant)\n- service (required)\n- operation (required)\n- purpose, owner, tags_json (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/schema/traces/services/{service}/operations/{operation}": {
+      "get": {
+        "summary": "Get current trace operation definition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "operation",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete trace operation definition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "operation",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confirm",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must be '1', 'true', or 'yes'"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Failed to delete"
+          }
+        }
+      }
+    },
+    "/schema/traces/services/{service}/operations/{operation}/versions": {
+      "get": {
+        "summary": "List versions for a trace operation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "operation",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/schema/traces/services/{service}/operations/{operation}/versions/{version}": {
+      "get": {
+        "summary": "Get a specific version of a trace operation definition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "operation",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/schema/metrics": {
+      "post": {
+        "summary": "Upsert metric definition",
+        "description": "Create or update a metric definition and record a new version.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "metric"
+                ],
+                "properties": {
+                  "tenantId": {
+                    "type": "string"
+                  },
+                  "metric": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "owner": {
+                    "type": "string"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "author": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/schema/metrics/bulk": {
+      "post": {
+        "summary": "Bulk upsert metric and label definitions (CSV)",
+        "description": "Upload a CSV to create/update metric and label definitions.\nSecurity: payload limited to 5MiB, MIME allowlist, UTF‑8 validation, and CSV injection mitigations.\n\nColumns (header required):\n\n- tenant_id (optional; defaults to authenticated tenant)\n- metric (required)\n- description\n- owner\n- tags_json (JSON array)\n- label\n- label_type\n- label_required (true/false/1/0/yes/no)\n- label_allowed_json (JSON object)\n- label_description\n- author\n\nNote: Use the sample endpoint below to generate a pre-filled template.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/schema/metrics/bulk/sample": {
+      "get": {
+        "summary": "Download sample CSV template",
+        "description": "Generates a CSV with header and rows per metric/label to guide users.\n- If `metrics` is omitted, the server enumerates all metric names (via `__name__`) and includes a row per discovered label.\n- If `metrics` is provided (comma-separated), only those metrics are included.\n",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "metrics",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated metric names to include in the sample"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schema/metrics/{metric}": {
+      "get": {
+        "summary": "Get metric definition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete metric definition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confirm",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must be '1', 'true', or 'yes'"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Failed to delete"
+          }
+        }
+      }
+    },
+    "/schema/metrics/{metric}/versions": {
+      "get": {
+        "summary": "List metric definition versions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "versions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "version": {
+                            "type": "integer"
+                          },
+                          "author": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schema/metrics/{metric}/versions/{version}": {
+      "get": {
+        "summary": "Get specific metric definition version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/schema/labels": {
+      "post": {
+        "summary": "Upsert label definition (independent)",
+        "description": "Create or update a label definition (not tied to a metric) and record a new version.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabelRequest"
+              },
+              "example": {
+                "name": "instance",
+                "type": "string",
+                "required": false,
+                "allowedValues": {},
+                "description": "Pod or host instance label",
+                "author": "aarvee"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/schema/labels/{name}": {
+      "get": {
+        "summary": "Get label definition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete label definition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confirm",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must be '1', 'true', or 'yes'"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Failed to delete"
+          }
+        }
+      }
+    },
+    "/schema/labels/{name}/versions": {
+      "get": {
+        "summary": "List label definition versions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "versions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "version": {
+                            "type": "integer"
+                          },
+                          "author": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schema/labels/{name}/versions/{version}": {
+      "get": {
+        "summary": "Get specific label definition version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/schema/labels/bulk": {
+      "post": {
+        "summary": "Bulk upsert label definitions (CSV)",
+        "description": "Upload a CSV to create/update label definitions.\nSecurity: 5MiB payload limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota.\n\nColumns (header required):\n- tenant_id (optional)\n- name (required)\n- type\n- required (true/false/1/0/yes/no)\n- allowed_json (JSON object)\n- description\n- author\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/schema/labels/bulk/sample": {
+      "get": {
+        "summary": "Download sample CSV template for labels",
+        "description": "Generates a CSV with header and example rows for common labels.",
+        "responses": {
+          "200": {
+            "description": "CSV",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schema/logs/fields": {
+      "post": {
+        "summary": "Upsert log field definition",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "field"
+                ],
+                "properties": {
+                  "tenantId": {
+                    "type": "string"
+                  },
+                  "field": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "examples": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "author": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/schema/logs/fields/bulk": {
+      "post": {
+        "summary": "Bulk upsert log field definitions (CSV)",
+        "description": "Upload a CSV to create/update log field definitions.\nSecurity: 5MiB payload limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota.\n\nColumns (header required):\n- tenant_id (optional)\n- field (required)\n- type\n- description\n- tags_json (JSON array)\n- examples_json (JSON object)\n- author\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/schema/logs/fields/bulk/sample": {
+      "get": {
+        "summary": "Download sample CSV template for log fields",
+        "description": "Generates a CSV with header and one row per discovered log field.",
+        "responses": {
+          "200": {
+            "description": "CSV",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schema/logs/fields/{field}": {
+      "get": {
+        "summary": "Get log field definition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "field",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete log field definition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "field",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confirm",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must be '1', 'true', or 'yes'"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Failed to delete"
+          }
+        }
+      }
+    },
+    "/schema/logs/fields/{field}/versions": {
+      "get": {
+        "summary": "List log field definition versions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "field",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "versions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "version": {
+                            "type": "integer"
+                          },
+                          "author": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schema/logs/fields/{field}/versions/{version}": {
+      "get": {
+        "summary": "Get specific log field definition version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "field",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/rca/correlations": {
+      "get": {
+        "summary": "Get active correlations",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/rca/patterns": {
+      "get": {
+        "summary": "Get failure patterns",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/rca/store": {
+      "post": {
+        "summary": "Store correlation event",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/query": {
+      "post": {
+        "summary": "MetricsQL instant query (VictoriaMetrics)",
+        "description": "Executes an instant query against VictoriaMetrics. The `query` field also supports Lucene syntax when\n`query_language` is `lucene` (or when auto-detected); Mirador translates Lucene into PromQL label selectors.\nWhen `include_definitions` is enabled (default),\nthe response contains `definitions` sourced from the schema store (Weaviate) including metric and\nper-metric label definitions. Optional `label_keys` can limit which label keys are considered.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string"
+                  },
+                  "query_language": {
+                    "type": "string",
+                    "enum": [
+                      "lucene",
+                      "promql"
+                    ],
+                    "description": "If `lucene`, the server translates to PromQL/MetricsQL."
+                  },
+                  "time": {
+                    "type": "string"
+                  },
+                  "include_definitions": {
+                    "type": "boolean",
+                    "description": "Include definitions in response (default true)"
+                  },
+                  "label_keys": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Restrict definitions to these label keys"
+                  }
+                }
+              },
+              "example": {
+                "query_language": "lucene",
+                "query": "__name__:http_requests_total AND job:api",
+                "time": "2025-01-01T00:00:00Z"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "resultType": "vector",
+                    "result": [
+                      {
+                        "metric": {
+                          "__name__": "http_requests_total",
+                          "job": "api",
+                          "instance": "pod-1"
+                        },
+                        "value": [
+                          1690003600,
+                          "1"
+                        ]
+                      }
+                    ]
+                  },
+                  "metadata": {
+                    "executionTime": 12,
+                    "seriesCount": 1,
+                    "cached": false,
+                    "timestamp": "2025-09-08 10:00:00+00:00"
+                  },
+                  "definitions": {
+                    "metrics": {
+                      "http_requests_total": {
+                        "tenantId": "t1",
+                        "metric": "http_requests_total",
+                        "description": "Total number of HTTP requests",
+                        "owner": "team-observability",
+                        "tags": [
+                          "domain:web"
+                        ]
+                      }
+                    },
+                    "labels": {
+                      "http_requests_total": {
+                        "instance": {
+                          "tenantId": "t1",
+                          "metric": "http_requests_total",
+                          "label": "instance",
+                          "type": "string",
+                          "required": false,
+                          "description": "The pod or host instance"
+                        },
+                        "job": {
+                          "definition": "No definition provided. Use /api/v1/schema/metrics to add label definition."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/query_range": {
+      "post": {
+        "summary": "MetricsQL range query (VictoriaMetrics)",
+        "description": "Executes a range query. When `include_definitions` is enabled (default), the response contains\n`definitions` for metrics and per-metric label keys. Use `label_keys` to limit keys.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string"
+                  },
+                  "query_language": {
+                    "type": "string",
+                    "enum": [
+                      "lucene",
+                      "promql"
+                    ],
+                    "description": "If `lucene`, the server translates to PromQL/MetricsQL."
+                  },
+                  "start": {
+                    "type": "string"
+                  },
+                  "end": {
+                    "type": "string"
+                  },
+                  "step": {
+                    "type": "string"
+                  },
+                  "include_definitions": {
+                    "type": "boolean",
+                    "description": "Include definitions in response (default true)"
+                  },
+                  "label_keys": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Restrict definitions to these label keys"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "resultType": "matrix",
+                    "result": [
+                      {
+                        "metric": {
+                          "__name__": "http_requests_total",
+                          "job": "api",
+                          "instance": "pod-1"
+                        },
+                        "values": [
+                          [
+                            1690000000,
+                            "1"
+                          ],
+                          [
+                            1690000300,
+                            "2"
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  "metadata": {
+                    "executionTime": 18,
+                    "dataPoints": 2,
+                    "timeRange": "1690000000 to 1690003600",
+                    "step": 30
+                  },
+                  "definitions": {
+                    "metrics": {
+                      "http_requests_total": {
+                        "description": "Total number of HTTP requests"
+                      }
+                    },
+                    "labels": {
+                      "http_requests_total": {
+                        "instance": {
+                          "type": "string",
+                          "required": false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/series": {
+      "get": {
+        "summary": "Series listing",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "match",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/labels": {
+      "get": {
+        "summary": "Labels listing",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/metrics/names": {
+      "get": {
+        "summary": "List metric names",
+        "description": "Returns values of the special label `__name__` from VictoriaMetrics.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Start time (RFC3339 or unix seconds)"
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "schema": {
+              "type": "string"
+            },
+            "description": "End time (RFC3339 or unix seconds)"
+          },
+          {
+            "in": "query",
+            "name": "match[]",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "description": "Optional label matchers"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/label/{name}/values": {
+      "get": {
+        "summary": "Label values",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/logs/query": {
+      "post": {
+        "summary": "LogsQL query (VictoriaLogs)",
+        "description": "Accepts Lucene expressions via `query` when `query_language` is `lucene` (or when auto-detected).\nMirador translates Lucene to VictoriaLogs query syntax.\nNote: Use either `_time` inside `query` or top-level `start`/`end`, not both. If both are provided, the\nserver prioritizes `_time` in `query` to avoid conflicting time filters.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "LogsQL expression (e.g., `{service.name=\"telemetrygen\"} AND severity=\"Info\" AND _msg~\"message\"`)"
+                  },
+                  "query_language": {
+                    "type": "string",
+                    "enum": [
+                      "lucene",
+                      "logsql"
+                    ],
+                    "description": "If `lucene`, the server translates to VictoriaLogs query."
+                  },
+                  "start": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "Start time in milliseconds since epoch"
+                  },
+                  "end": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "End time in milliseconds since epoch"
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "description": "Max rows to return (default 1000)"
+                  },
+                  "tenantId": {
+                    "type": "string",
+                    "description": "Optional tenant override"
+                  }
+                }
+              },
+              "example": {
+                "query_language": "lucene",
+                "query": "_time:[now-15m, now] AND service.name:telemetrygen AND severity:Info",
+                "limit": 200
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/logs/streams": {
+      "get": {
+        "summary": "Log streams",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/logs/fields": {
+      "get": {
+        "summary": "Log fields",
+        "description": "Returns only the union of field names derived from a hardcoded query over the last 10 minutes. Response contains only the fields array.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "fields": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/logs/export": {
+      "post": {
+        "summary": "Export logs (streaming)",
+        "description": "Streams a file attachment. Defaults to CSV when format is omitted. May convert JSON/NDJSON to CSV on the fly.\nAccepts Lucene via `query_language=lucene` and translates to VictoriaLogs query.\nNote: Use either `_time` inside `query` or top-level `start`/`end`, not both. If both are provided, the\nserver prioritizes `_time` in `query`.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string"
+                  },
+                  "query_language": {
+                    "type": "string",
+                    "enum": [
+                      "lucene",
+                      "logsql"
+                    ]
+                  },
+                  "start": {
+                    "type": "integer",
+                    "format": "int64"
+                  },
+                  "end": {
+                    "type": "integer",
+                    "format": "int64"
+                  },
+                  "limit": {
+                    "type": "integer"
+                  },
+                  "format": {
+                    "type": "string",
+                    "enum": [
+                      "csv",
+                      "json"
+                    ]
+                  }
+                }
+              },
+              "example": {
+                "query_language": "lucene",
+                "query": "_time:[now-5m, now] AND level:error",
+                "format": "csv"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File stream",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/logs/store": {
+      "post": {
+        "summary": "Store JSON event to logs",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/logs/histogram": {
+      "get": {
+        "summary": "Histogram (D3)",
+        "description": "Supports Lucene via `query_language=lucene` (server translates to VictoriaLogs query). Response shape unchanged\nfor D3. Note: Use either `_time` in `query` or top-level `start`/`end`, not both. If both are present, `_time`\nin `query` takes precedence.\n",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query_language",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "lucene",
+                "logsql"
+              ]
+            },
+            "description": "If `lucene`, the server translates to VictoriaLogs query."
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Lucene expression for filtering logs",
+            "example": "_time:[now-30m, now]"
+          },
+          {
+            "in": "query",
+            "name": "step",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Bucket width in ms",
+            "example": 60000
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "example": {
+                  "buckets": [
+                    {
+                      "ts": 1737000000000,
+                      "count": 42
+                    },
+                    {
+                      "ts": 1737000060000,
+                      "count": 30
+                    }
+                  ],
+                  "stats": {
+                    "buckets": 2,
+                    "sampleN": 1
+                  },
+                  "sampled": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/logs/facets": {
+      "get": {
+        "summary": "Facets (D3)",
+        "description": "Supports Lucene via `query_language=lucene` (server translates to VictoriaLogs query). Response shape unchanged\nfor D3. Note: Use either `_time` in `query` or top-level `start`/`end`, not both. If both are present, `_time`\nin `query` takes precedence.\n",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query_language",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "lucene",
+                "logsql"
+              ]
+            },
+            "description": "If `lucene`, the server translates to VictoriaLogs query."
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Lucene expression for filtering logs before faceting",
+            "example": "_time:[now-30m, now] AND level:error"
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated fields to facet on",
+            "example": "service,host"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "example": {
+                  "facets": [
+                    {
+                      "field": "service",
+                      "buckets": [
+                        {
+                          "key": "checkout",
+                          "count": 120
+                        },
+                        {
+                          "key": "api",
+                          "count": 75
+                        }
+                      ]
+                    }
+                  ],
+                  "stats": {
+                    "fields": 1,
+                    "sampleN": 1
+                  },
+                  "sampled": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/logs/search": {
+      "post": {
+        "summary": "Search logs (D3)",
+        "description": "Supports Lucene via `query_language=lucene`; translated to VictoriaLogs query. Note: Use either `_time` in\n`query` or top-level `start`/`end`, not both. If both are present, `_time` in `query` takes precedence.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "LogsQL expression (e.g., \"_time:5m service=web\")"
+                  },
+                  "query_language": {
+                    "type": "string",
+                    "enum": [
+                      "lucene",
+                      "logsql"
+                    ]
+                  },
+                  "start": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "Start time in ms since epoch"
+                  },
+                  "end": {
+                    "type": "integer",
+                    "format": "int64",
+                    "description": "End time in ms since epoch"
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "description": "Rows per page (default 1000, max 10000)"
+                  },
+                  "page_after": {
+                    "type": "object",
+                    "properties": {
+                      "ts": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Cursor timestamp (ms)"
+                      },
+                      "offset": {
+                        "type": "integer",
+                        "description": "Offset for same-ms rows"
+                      }
+                    }
+                  },
+                  "tenantId": {
+                    "type": "string",
+                    "description": "Optional tenant override"
+                  }
+                }
+              },
+              "example": {
+                "query_language": "lucene",
+                "query": "_time:15m AND level:error",
+                "limit": 200
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/logs/tail": {
+      "get": {
+        "summary": "Tail logs (WebSocket)",
+        "description": "Upgrades to a WebSocket connection and streams log rows as JSON frames.\nNote: Swagger \"Try it out\" sends a normal HTTP request and will not work here.\nUse a WebSocket client, for example:\n\n- wscat: `wscat -c ws://localhost:8080/api/v1/logs/tail?query=_time:5m&sampling=10`\n- websocat: `websocat -n ws://localhost:8080/api/v1/logs/tail?query=_time:5m`\n- Browser console: `new WebSocket(\"ws://localhost:8080/api/v1/logs/tail?query=_time:5m\")`\n\nQuery parameters:\n- `query`: LogsQL expression (e.g., `_time:5m`)\n- `since`: Start time in milliseconds since epoch (defaults to last 5 minutes)\n- `sampling`: Send every Nth row (integer, default 1)\n- `tenantId`: Optional tenant override\n",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "LogsQL expression (e.g., `_time:5m`)"
+          },
+          {
+            "in": "query",
+            "name": "query_language",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "lucene",
+                "logsql"
+              ]
+            },
+            "description": "If `lucene`, the server translates to VictoriaLogs query."
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Start timestamp in ms (defaults to now-5m)"
+          },
+          {
+            "in": "query",
+            "name": "sampling",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Downsample by sending every Nth row (default 1)"
+          },
+          {
+            "in": "query",
+            "name": "tenantId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional tenant override for the request"
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "Switching Protocols (WebSocket upgrade successful)"
+          },
+          "426": {
+            "description": "Upgrade Required — endpoint must be called via WebSocket (not HTTP)"
+          }
+        }
+      }
+    },
+    "/traces/services": {
+      "get": {
+        "summary": "List services (VictoriaTraces/Jaeger)",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/traces/services/{service}/operations": {
+      "get": {
+        "summary": "List operations for a service",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/traces/{traceId}": {
+      "get": {
+        "summary": "Get trace by ID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "traceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/traces/{traceId}/flamegraph": {
+      "get": {
+        "summary": "Flame graph tree for a trace (D3)",
+        "description": "Returns a hierarchical structure suitable for d3-flame-graph built from the Jaeger trace spans using CHILD_OF references.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "traceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "duration",
+                "self"
+              ]
+            },
+            "description": "Node sizing mode. duration = total span duration; self = duration minus children durations (approximate)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "integer"
+                        },
+                        "children": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/FlameNode"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/traces/flamegraph/search": {
+      "post": {
+        "summary": "Aggregate flame graph over a traces search (D3)",
+        "description": "Searches VictoriaTraces (Jaeger) and merges returned traces into a single flame graph tree. Useful for service-level flame graphs over a time window.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "mode",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "duration",
+                "self"
+              ]
+            },
+            "description": "Node sizing mode. duration = total span duration; self = duration minus children durations (approximate)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FlameNode"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/traces/search": {
+      "post": {
+        "summary": "Search traces",
+        "description": "Jaeger-compatible search across traces. This endpoint also accepts a Lucene expression via\n`query_language=lucene` and `query`, which Mirador translates into Jaeger filters (service,\noperation, tags, durations, and time window). Note: Use either `_time` in `query` or top-level `start`/`end`,\nnot both. If both are provided, `_time` in `query` takes precedence. Alternatively, discover trace IDs via\n`/logs/search` with a Lucene filter on `trace_id`, then fetch traces by ID using `/traces/{traceId}`.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "Optional Lucene expression (e.g., \"_time:[now-15m TO now] AND service:checkout AND operation:CreateOrder AND duration:[10ms TO *]\")"
+                  },
+                  "query_language": {
+                    "type": "string",
+                    "enum": [
+                      "lucene"
+                    ],
+                    "description": "Set to `lucene` to enable translation"
+                  },
+                  "service": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "type": "string"
+                  },
+                  "tags": {
+                    "type": "string",
+                    "description": "Comma-separated key=value pairs"
+                  },
+                  "minDuration": {
+                    "type": "string"
+                  },
+                  "maxDuration": {
+                    "type": "string"
+                  },
+                  "start": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "end": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "limit": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/config/datasources": {
+      "get": {
+        "summary": "Get data sources",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add data source",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/config/user-settings": {
+      "get": {
+        "summary": "Get user settings",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update user settings",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/config/integrations": {
+      "get": {
+        "summary": "Get integrations config",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/sessions/active": {
+      "get": {
+        "summary": "Get active sessions (current user)",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/sessions/invalidate": {
+      "post": {
+        "summary": "Invalidate a session",
+        "requestBody": {
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/sessions/user/{userId}": {
+      "get": {
+        "summary": "Get sessions for a user",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/rbac/roles": {
+      "get": {
+        "summary": "List roles",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create role",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/rbac/users/{userId}/roles": {
+      "put": {
+        "summary": "Assign user roles",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/ws/metrics": {
+      "get": {
+        "summary": "Metrics stream (WebSocket)",
+        "responses": {
+          "101": {
+            "description": "Switching Protocols"
+          }
+        }
+      }
+    },
+    "/ws/alerts": {
+      "get": {
+        "summary": "Alerts stream (WebSocket)",
+        "responses": {
+          "101": {
+            "description": "Switching Protocols"
+          }
+        }
+      }
+    },
+    "/ws/predictions": {
+      "get": {
+        "summary": "Predictions stream (WebSocket)",
+        "responses": {
+          "101": {
+            "description": "Switching Protocols"
+          }
+        }
+      }
     }
+  },
+  "TraceServiceRequest": {
+    "type": "object",
+    "properties": {
+      "tenantId": {
+        "type": "string",
+        "description": "Optional tenant ID (defaults to request tenant)"
+      },
+      "service": {
+        "type": "string",
+        "description": "Service name"
+      },
+      "purpose": {
+        "type": "string",
+        "description": "Service purpose/description"
+      },
+      "owner": {
+        "type": "string",
+        "description": "Service owner"
+      },
+      "tags": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Flat list of tags (e.g., \"key:value\" or free-form labels)",
+        "example": [
+          "environment:production",
+          "team:platform",
+          "version:1.2.3"
+        ]
+      },
+      "author": {
+        "type": "string",
+        "description": "Author of this change"
+      }
+    },
+    "required": [
+      "service"
+    ]
+  },
+  "TraceOperationRequest": {
+    "type": "object",
+    "properties": {
+      "tenantId": {
+        "type": "string",
+        "description": "Optional tenant ID (defaults to request tenant)"
+      },
+      "service": {
+        "type": "string",
+        "description": "Service name"
+      },
+      "operation": {
+        "type": "string",
+        "description": "Operation name"
+      },
+      "purpose": {
+        "type": "string",
+        "description": "Operation purpose/description"
+      },
+      "owner": {
+        "type": "string",
+        "description": "Operation owner"
+      },
+      "tags": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Flat list of tags",
+        "example": [
+          "GET",
+          "/api/v1/users",
+          "30s"
+        ]
+      },
+      "author": {
+        "type": "string",
+        "description": "Author of this change"
+      }
+    },
+    "required": [
+      "service",
+      "operation"
+    ]
+  },
+  "MetricRequest": {
+    "type": "object",
+    "properties": {
+      "tenantId": {
+        "type": "string",
+        "description": "Optional tenant ID (defaults to request tenant)"
+      },
+      "metric": {
+        "type": "string",
+        "description": "Metric name"
+      },
+      "description": {
+        "type": "string",
+        "description": "Metric description"
+      },
+      "owner": {
+        "type": "string",
+        "description": "Metric owner"
+      },
+      "tags": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Flat list of tags",
+        "example": [
+          "category:performance",
+          "unit:seconds",
+          "source:prometheus"
+        ]
+      },
+      "author": {
+        "type": "string",
+        "description": "Author of this change"
+      }
+    },
+    "required": [
+      "metric"
+    ]
+  },
+  "LogFieldRequest": {
+    "type": "object",
+    "properties": {
+      "tenantId": {
+        "type": "string",
+        "description": "Optional tenant ID (defaults to request tenant)"
+      },
+      "field": {
+        "type": "string",
+        "description": "Log field name"
+      },
+      "type": {
+        "type": "string",
+        "description": "Field data type"
+      },
+      "description": {
+        "type": "string",
+        "description": "Field description"
+      },
+      "tags": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Flat list of tags",
+        "example": [
+          "category:security",
+          "format:json",
+          "indexed:true"
+        ]
+      },
+      "examples": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        },
+        "description": "Example values as key-value string pairs",
+        "example": {
+          "normal": "INFO",
+          "error": "ERROR",
+          "debug": "DEBUG"
+        }
+      },
+      "author": {
+        "type": "string",
+        "description": "Author of this change"
+      }
+    },
+    "required": [
+      "field"
+    ]
+  },
+  "LabelRequest": {
+    "type": "object",
+    "properties": {
+      "tenantId": {
+        "type": "string",
+        "description": "Optional tenant ID (defaults to request tenant)"
+      },
+      "name": {
+        "type": "string",
+        "description": "Label name (e.g., instance)"
+      },
+      "type": {
+        "type": "string",
+        "description": "Data type (string, number, bool, etc.)"
+      },
+      "required": {
+        "type": "boolean"
+      },
+      "allowedValues": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Optional allowed set or constraints map"
+      },
+      "description": {
+        "type": "string"
+      },
+      "author": {
+        "type": "string",
+        "description": "Author of this change"
+      }
+    },
+    "required": [
+      "name"
+    ]
   }
 }

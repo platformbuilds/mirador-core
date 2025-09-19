@@ -13,6 +13,9 @@ import (
     "github.com/platformbuilds/mirador-core/internal/utils"
     "github.com/platformbuilds/mirador-core/pkg/cache"
     "github.com/platformbuilds/mirador-core/pkg/logger"
+    lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
+    "sort"
+    "strings"
 )
 
 type TracesHandler struct {
@@ -111,16 +114,50 @@ func (h *TracesHandler) GetTrace(c *gin.Context) {
 
 // POST /api/v1/traces/search - Search traces with filters
 func (h *TracesHandler) SearchTraces(c *gin.Context) {
-	var request models.TraceSearchRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  "Invalid trace search request",
-		})
-		return
-	}
+    var request models.TraceSearchRequest
+    if err := c.ShouldBindJSON(&request); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "status": "error",
+            "error":  "Invalid trace search request",
+        })
+        return
+    }
 
-	request.TenantID = c.GetString("tenant_id")
+    request.TenantID = c.GetString("tenant_id")
+
+    // Lucene translation: if query_language=lucene or auto-detected, translate into Jaeger filters
+    if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
+        if filters, ok := lq.TranslateTraces(request.Query); ok {
+            if filters.Service != "" { request.Service = filters.Service }
+            if filters.Operation != "" { request.Operation = filters.Operation }
+            // Tags: join as comma-separated key=value
+            if len(filters.Tags) > 0 {
+                parts := make([]string, 0, len(filters.Tags))
+                for k, v := range filters.Tags {
+                    // preserve value as-is; quote not needed for Jaeger tags param (string)
+                    parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+                }
+                // stable order helps caching
+                sort.Strings(parts)
+                request.Tags = strings.Join(parts, ",")
+            }
+            if filters.MinDuration != "" { request.MinDuration = filters.MinDuration }
+            if filters.MaxDuration != "" { request.MaxDuration = filters.MaxDuration }
+            // Time window: prefer explicit [start TO end], else use Since shorthand
+            now := time.Now().UTC()
+            if filters.StartExpr != "" || filters.EndExpr != "" {
+                // Parse simple forms: now, now-<dur>, RFC3339 timestamps
+                if t, ok := parseNowLike(filters.StartExpr, now); ok { request.Start = models.FlexibleTime{Time: t} }
+                if t, ok := parseNowLike(filters.EndExpr, now); ok { request.End = models.FlexibleTime{Time: t} }
+            } else if filters.Since != "" {
+                if dur, err := time.ParseDuration(filters.Since); err == nil {
+                    request.End = models.FlexibleTime{Time: now}
+                    request.Start = models.FlexibleTime{Time: now.Add(-dur)}
+                }
+            }
+            c.Header("X-Query-Translated-From", "lucene")
+        }
+    }
 
     traces, err := h.tracesService.SearchTraces(c.Request.Context(), &request)
     if err != nil {
@@ -156,6 +193,25 @@ func (h *TracesHandler) SearchTraces(c *gin.Context) {
 			"tracesFound": len(traces.Traces),
 		},
 	})
+}
+
+// parseNowLike parses simple expressions useful for Lucene time windows:
+// - "now" → now
+// - "now-15m" → now - 15m
+// - RFC3339 / RFC3339Nano timestamps
+func parseNowLike(expr string, now time.Time) (time.Time, bool) {
+    e := strings.TrimSpace(expr)
+    if e == "" { return time.Time{}, false }
+    lower := strings.ToLower(e)
+    if lower == "now" { return now, true }
+    if strings.HasPrefix(lower, "now-") {
+        d := strings.TrimPrefix(lower, "now-")
+        if dur, err := time.ParseDuration(d); err == nil { return now.Add(-dur), true }
+    }
+    // Try RFC3339
+    if t, err := time.Parse(time.RFC3339, e); err == nil { return t, true }
+    if t, err := time.Parse(time.RFC3339Nano, e); err == nil { return t, true }
+    return time.Time{}, false
 }
 
 // GET /api/v1/traces/services/:service/operations - Get operations for a service (Jaeger-compatible)

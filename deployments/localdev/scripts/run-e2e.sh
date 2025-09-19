@@ -74,11 +74,11 @@ request "metrics:label_values" GET "/api/v1/label/__name__/values"
 # Logs + D3 endpoints (allow 200)
 request "logs:streams" GET "/api/v1/logs/streams"
 request "logs:fields" GET "/api/v1/logs/fields"
-request "logs:export" POST "/api/v1/logs/export" '{"query":"_time:5m"}'
+request "logs:export" POST "/api/v1/logs/export" '{"query_language":"lucene","query":"_time:5m"}'
 request "logs:store" POST "/api/v1/logs/store" '{"event":{"_time":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'","_msg":"e2e","type":"e2e","component":"e2e"}}'
-request "logs:histogram" GET "/api/v1/logs/histogram"
-request "logs:facets" GET "/api/v1/logs/facets?fields=level,service"
-request "logs:search" POST "/api/v1/logs/search" '{"query":"_time:5m","limit":10}'
+request "logs:histogram" GET "/api/v1/logs/histogram?query_language=lucene&query=_time:5m"
+request "logs:facets" GET "/api/v1/logs/facets?query_language=lucene&fields=level,service&query=_time:5m"
+request "logs:search" POST "/api/v1/logs/search" '{"query_language":"lucene","query":"_time:5m","limit":10}'
 
 # Traces
 request "traces:services" GET "/api/v1/traces/services"
@@ -131,4 +131,3 @@ echo "Summary: $TOTAL total, $PASS passed, $FAIL failed" | tee -a "$REPORT_TXT"
 echo "Report: $REPORT_JSON" | tee -a "$REPORT_TXT"
 
 exit 0
-

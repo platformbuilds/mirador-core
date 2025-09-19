@@ -207,9 +207,10 @@ Routes (under `/api/v1`):
     - Required header and columns:
       - `tenant_id` (optional; defaults to request tenant)
       - `metric` (required)
-      - `description`, `owner`, `tags_json`
+      - `description`, `owner`, `tags_json` (JSON array of strings)
       - `label`, `label_type`, `label_required`, `label_allowed_json`, `label_description`
       - `author`
+    - Tags note: All schema `tags` are flat arrays of strings. In CSV, `tags_json` must be a JSON array of strings. Example: `["domain:web", "owner:team-observability"]`.
     - Security controls: 5MiB limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, in‑memory only (no disk writes)
   - `GET /schema/metrics/bulk/sample` — download a sample CSV template
     - Optional: `?metrics=http_requests_total,process_cpu_seconds_total` pre-fills rows for listed metrics with discovered label keys
@@ -224,7 +225,8 @@ Routes (under `/api/v1`):
   - `GET /schema/logs/fields/{field}/versions` — list versions
   - `GET /schema/logs/fields/{field}/versions/{version}` — fetch version payload
   - `POST /schema/logs/fields/bulk` — bulk upsert via CSV (secure upload)
-    - Columns: `tenant_id, field, type, description, tags_json, examples_json, author`
+    - Columns: `tenant_id, field, type, description, tags_json (JSON array), examples_json, author`
+    - Tags note: `tags_json` must be a JSON array of strings. Example: `["category:security", "format:json", "indexed:true"]`.
     - Security: 5MiB limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota
   - `GET /schema/logs/fields/bulk/sample` — download a sample CSV template (one row per discovered log field)
 
@@ -236,7 +238,8 @@ Routes (under `/api/v1`):
     - `GET /schema/traces/services/{service}/versions` — list version metadata
     - `GET /schema/traces/services/{service}/versions/{version}` — fetch specific version payload
     - `POST /schema/traces/services/bulk` — bulk upsert via CSV (secure upload)
-      - Columns: `tenant_id, service, purpose, owner, tags_json, author`
+      - Columns: `tenant_id, service, purpose, owner, tags_json (JSON array), author`
+      - Tags note: `tags_json` must be a JSON array of strings. Example: `["environment:production", "team:platform"]`.
       - Security: 5MiB limit, MIME allowlist + sniffing, UTF‑8 validation, CSV injection mitigation, header strict mode (reject unknown columns), 10k row cap, in‑memory only (no disk writes), per‑tenant daily quota (429)
   - Operations
     - `POST /schema/traces/operations` — upsert trace operation definition
@@ -245,8 +248,22 @@ Routes (under `/api/v1`):
     - `GET /schema/traces/services/{service}/operations/{operation}/versions` — list version metadata
     - `GET /schema/traces/services/{service}/operations/{operation}/versions/{version}` — fetch specific version payload
     - `POST /schema/traces/operations/bulk` — bulk upsert via CSV (secure upload)
-      - Columns: `tenant_id, service, operation, purpose, owner, tags_json, author`
+      - Columns: `tenant_id, service, operation, purpose, owner, tags_json (JSON array), author`
+      - Tags note: `tags_json` must be a JSON array of strings. Example: `["method:GET", "endpoint:/api/v1/users"]`.
       - Security: 5MiB limit, MIME allowlist + sniffing, UTF‑8 validation, CSV injection mitigation, header strict mode (reject unknown columns), 10k row cap, in‑memory only (no disk writes), per‑tenant daily quota (429). Each row must reference an existing service (operations are per service).
+
+- Labels (independent)
+  - `POST /schema/labels` — upsert label definition (not tied to a metric)
+    - Body: `{ tenantId?, name, type?, required?, allowedValues?, description?, author? }`
+  - `GET /schema/labels/{name}` — get current label definition
+  - `GET /schema/labels/{name}/versions` — list version metadata
+  - `GET /schema/labels/{name}/versions/{version}` — fetch specific version payload
+  - `DELETE /schema/labels/{name}` — delete label definition
+  - `POST /schema/labels/bulk` — bulk upsert via CSV (secure upload)
+    - Columns: `tenant_id, name, type, required, allowed_json, description, author`
+    - Tags note: `allowed_json` is a JSON object of constraints or allowed values
+    - Security: 5MiB limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota
+  - `GET /schema/labels/bulk/sample` — download a sample CSV template for labels
 
 Configuration: Bulk CSV Upload Size Limit
 - Config key: `uploads.bulk_max_bytes` (bytes). Default 5 MiB.
@@ -254,6 +271,19 @@ Configuration: Bulk CSV Upload Size Limit
   - Helm values (`chart/values.yaml` → `.Values.mirador.uploads.bulk_max_bytes`), templated into `/etc/mirador/config.yaml`.
   - Env vars: `BULK_UPLOAD_MAX_BYTES` or `BULK_UPLOAD_MAX_MIB` (takes precedence over file).
   - Local dev compose sets `BULK_UPLOAD_MAX_BYTES` by default; adjust as needed.
+
+## Logs (Lucene) & Traces
+
+- Logs APIs accept Lucene using `query_language: "lucene"` and a Lucene expression in `query`.
+  - Examples:
+    - Instant logs query: `POST /api/v1/logs/query` with `{ "query_language": "lucene", "query": "_time:15m level:error service:web" }`
+    - Range D3 endpoints: `GET /api/v1/logs/histogram?query_language=lucene&query=_time:30m&step=60000`
+    - Export: `POST /api/v1/logs/export` with `{ "query_language": "lucene", "query": "_time:5m", "format": "csv" }`
+
+- Traces are Jaeger-compatible for retrieval (services, operations, search, flamegraph).
+  - To discover trace IDs with Lucene, first search logs with a Lucene filter on `trace_id`, then fetch traces by ID:
+    1) `POST /api/v1/logs/search` with `{ "query_language": "lucene", "query": "_time:15m trace_id:*" }`
+    2) `GET /api/v1/traces/{traceId}` or `POST /api/v1/traces/search` using Jaeger filters (service, operation, tags, durations).
 
 ## MetricsQL Enrichment (Definitions)
 
@@ -280,6 +310,11 @@ definitions:
 ```
 
 Placeholders indicate no definition has been provided yet and reference the schema APIs to create one.
+
+Schema Tags format
+- All schema APIs now use flat arrays of strings for `tags` (not key/value maps).
+- Request bodies: supply `tags` as an array of strings, e.g. `["domain:web", "owner:platform"]`.
+- Bulk CSV: the `tags_json` column must contain a JSON array of strings.
 
 ## Vulnerability Scanning
 

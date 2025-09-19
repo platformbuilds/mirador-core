@@ -1,0 +1,285 @@
+{
+  "info": {
+    "name": "Mirador Core API",
+    "description": "Postman collection for testing MIRADOR-CORE endpoints, including Lucene-compatible queries (translated server-side).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{bearerToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/api/v1" },
+    { "key": "bearerToken", "value": "" },
+    { "key": "tenantId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Metrics",
+      "item": [
+        {
+          "name": "POST /query (instant, Lucene)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/query" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query_language\": \"lucene\",\n  \"query\": \"__name__:http_requests_total AND job:api\"\n}"
+            },
+            "description": "Executes an instant MetricsQL query; when query_language=lucene, the server translates to PromQL."
+          }
+        },
+        {
+          "name": "DELETE /schema/metrics/{metric}",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/schema/metrics/http_requests_total?confirm=1" } }
+        },
+        {
+          "name": "DELETE /schema/logs/fields/{field}",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/schema/logs/fields/service?confirm=1" } }
+        },
+        {
+          "name": "DELETE /schema/traces/services/{service}",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/schema/traces/services/checkout?confirm=1" } }
+        },
+        {
+          "name": "DELETE /schema/traces/services/{service}/operations/{operation}",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/schema/traces/services/checkout/operations/CreateOrder?confirm=1" } }
+        },
+        {
+          "name": "POST /query (instant, PromQL)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/query" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /query_range (Lucene)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/query_range" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query_language\": \"lucene\",\n  \"query\": \"__name__:http_requests_total AND job:api\",\n  \"start\": \"2025-01-01T00:00:00Z\",\n  \"end\": \"2025-01-01T00:10:00Z\",\n  \"step\": \"30s\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /metrics/names",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/metrics/names" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logs",
+      "item": [
+        {
+          "name": "POST /logs/query (Lucene)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/logs/query" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query_language\": \"lucene\",\n  \"query\": \"_time:5m AND service:web AND level:error\",\n  \"limit\": 100\n}"
+            },
+            "description": "Logs query via VictoriaLogs; Lucene is translated server-side."
+          }
+        },
+        {
+          "name": "POST /logs/search (D3, Lucene)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/logs/search" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query_language\": \"lucene\",\n  \"query\": \"_time:15m level:error\",\n  \"limit\": 200\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /logs/export (CSV, Lucene)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/logs/export" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query_language\": \"lucene\",\n  \"query\": \"_time:5m service:web\",\n  \"format\": \"csv\",\n  \"limit\": 1000\n}"
+            },
+            "description": "Response is a file download (CSV by default)."
+          }
+        },
+        {
+          "name": "GET /logs/histogram (Lucene)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/logs/histogram?query_language=lucene&query=_time:30m%20AND%20service:web&step=60000",
+              "query": [
+                { "key": "query_language", "value": "lucene" },
+                { "key": "query", "value": "_time:30m AND service:web" },
+                { "key": "step", "value": "60000" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /logs/facets (Lucene)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/logs/facets?query_language=lucene&query=_time:30m%20AND%20level:error&fields=service,host&limit=10",
+              "query": [
+                { "key": "query_language", "value": "lucene" },
+                { "key": "query", "value": "_time:30m AND level:error" },
+                { "key": "fields", "value": "service,host" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "WS /logs/tail (Lucene)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/logs/tail?query_language=lucene&query=_time:5m" },
+            "description": "Note: Use Postman's WebSocket feature or wscat. This HTTP request placeholder documents the query params."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Schema",
+      "item": [
+        {
+          "name": "POST /schema/metrics (tags array)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/schema/metrics" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"metric\": \"http_requests_total\",\n  \"description\": \"Total HTTP requests\",\n  \"owner\": \"team-observability\",\n  \"tags\": [\"domain:web\", \"source:prometheus\"],\n  \"author\": \"user@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /schema/logs/fields (tags array)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/schema/logs/fields" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"field\": \"service\",\n  \"type\": \"string\",\n  \"description\": \"Service name\",\n  \"tags\": [\"category:identity\"],\n  \"examples\": {\"normal\": \"auth\"},\n  \"author\": \"user@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /schema/traces/services (tags array)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/schema/traces/services" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"service\": \"checkout\",\n  \"purpose\": \"handles customer checkout\",\n  \"owner\": \"team-payments\",\n  \"tags\": [\"environment:production\", \"team:platform\"],\n  \"author\": \"user@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /schema/traces/operations (tags array)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/schema/traces/operations" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"service\": \"checkout\",\n  \"operation\": \"CreateOrder\",\n  \"purpose\": \"creates orders\",\n  \"owner\": \"team-payments\",\n  \"tags\": [\"method:POST\", \"endpoint:/api/v1/orders\"],\n  \"author\": \"user@example.com\"\n}"
+            }
+          }
+        }
+        ,
+        {
+          "name": "POST /schema/labels (independent label)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/schema/labels" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"name\": \"instance\",\n  \"type\": \"string\",\n  \"required\": false,\n  \"allowedValues\": {},\n  \"description\": \"Pod or host instance label\",\n  \"author\": \"user@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /schema/labels/{name}",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/schema/labels/instance" } }
+        },
+        {
+          "name": "GET /schema/labels/{name}/versions",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/schema/labels/instance/versions" } }
+        },
+        {
+          "name": "GET /schema/labels/{name}/versions/{version}",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/schema/labels/instance/versions/1" } }
+        },
+        {
+          "name": "DELETE /schema/labels/{name}",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/schema/labels/instance?confirm=1" } }
+        },
+        {
+          "name": "POST /schema/labels/bulk (CSV)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "multipart/form-data" } ],
+            "url": { "raw": "{{baseUrl}}/schema/labels/bulk" },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": ["labels-sample.csv"] }
+              ]
+            },
+            "description": "Upload a CSV with header: tenant_id,name,type,required,allowed_json,description,author"
+          }
+        },
+        {
+          "name": "GET /schema/labels/bulk/sample",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/schema/labels/bulk/sample" } }
+        }
+      ]
+    },
+    {
+      "name": "Traces",
+      "item": [
+        {
+          "name": "POST /traces/search (Lucene)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/traces/search" },
+            "body": { "mode": "raw", "raw": "{\n  \"query_language\": \"lucene\",\n  \"query\": \"_time:[now-15m TO now] AND service:{{traceService}} AND duration:[10ms TO *]\",\n  \"limit\": 10\n}" }
+          }
+        },
+        {
+          "name": "GET /traces/{traceId}",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/traces/00000000000000000000000000000000" }
+          }
+        }
+      ]
+    }
+  ]
+}

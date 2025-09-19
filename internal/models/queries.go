@@ -29,6 +29,7 @@ type MetricsQLQueryRequest struct {
     Time     string `json:"time,omitempty"`
     Timeout  string `json:"timeout,omitempty"`
     TenantID string `json:"-"` // Set by middleware
+    QueryLanguage     string  `json:"query_language,omitempty"` // e.g., "lucene", "promql"
     // Optional: include definitions and restrict label keys
     IncludeDefinitions *bool    `json:"include_definitions,omitempty"`
     DefinitionsMinimal *bool    `json:"definitions_minimal,omitempty"`
@@ -41,6 +42,7 @@ type MetricsQLRangeQueryRequest struct {
     End      string `json:"end" binding:"required"`
     Step     string `json:"step" binding:"required"`
     TenantID string `json:"-"`
+    QueryLanguage     string  `json:"query_language,omitempty"`
     IncludeDefinitions *bool    `json:"include_definitions,omitempty"`
     DefinitionsMinimal *bool    `json:"definitions_minimal,omitempty"`
     LabelKeys          []string `json:"label_keys,omitempty"`
@@ -91,12 +93,13 @@ type LabelValuesRequest struct {
 // LogsQL Models
 
 type LogsQLQueryRequest struct {
-	Query    string            `json:"query" form:"query"`
-	Start    int64             `json:"start" form:"start"` // epoch (sec/ms/ns ok; service normalizes)
-	End      int64             `json:"end" form:"end"`
-	Limit    int               `json:"limit" form:"limit"`
-	TenantID string            `json:"tenantId" form:"tenantId"`
-	Extra    map[string]string `json:"extra,omitempty" form:"-"` // passthrough flags (dedup, order, etc.)
+    Query    string            `json:"query" form:"query"`
+    Start    int64             `json:"start" form:"start"` // epoch (sec/ms/ns ok; service normalizes)
+    End      int64             `json:"end" form:"end"`
+    Limit    int               `json:"limit" form:"limit"`
+    TenantID string            `json:"tenantId" form:"tenantId"`
+    QueryLanguage string       `json:"query_language,omitempty"`
+    Extra    map[string]string `json:"extra,omitempty" form:"-"` // passthrough flags (dedup, order, etc.)
 }
 
 type LogsQLQueryResult struct {
@@ -123,6 +126,7 @@ type LogExportRequest struct {
     End      int64  `json:"end,omitempty"`
     Limit    int    `json:"limit,omitempty"`
     TenantID string `json:"-"`
+    QueryLanguage string `json:"query_language,omitempty"`
 }
 
 type LogExportResult struct {
@@ -145,6 +149,8 @@ type TraceSearchRequest struct {
     End         FlexibleTime `json:"end"`
     Limit       int          `json:"limit,omitempty"`
     TenantID    string       `json:"-"`
+    Query       string       `json:"query,omitempty"`
+    QueryLanguage string     `json:"query_language,omitempty"`
 }
 
 type TraceSearchResult struct {

@@ -6,6 +6,7 @@ import (
     "fmt"
     "net/http"
     "time"
+    "strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/platformbuilds/mirador-core/internal/metrics"
@@ -16,6 +17,7 @@ import (
 	"github.com/platformbuilds/mirador-core/pkg/logger"
     "github.com/platformbuilds/mirador-core/internal/repo"
     "context"
+    lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
 )
 
 type MetricsQLHandler struct {
@@ -84,6 +86,14 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 		})
 		return
 	}
+
+    // Translate Lucene query to PromQL/MetricsQL if requested or detected
+    if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
+        if translated, ok := lq.Translate(request.Query, lq.TargetMetricsQL); ok {
+            request.Query = translated
+            c.Header("X-Query-Translated-From", "lucene")
+        }
+    }
 
 	// Validate MetricsQL query syntax
 	if err := h.validator.ValidateMetricsQL(request.Query); err != nil {
@@ -208,6 +218,14 @@ func (h *MetricsQLHandler) ExecuteRangeQuery(c *gin.Context) {
 		})
 		return
 	}
+
+    // Translate Lucene query to PromQL/MetricsQL if requested or detected
+    if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
+        if translated, ok := lq.Translate(request.Query, lq.TargetMetricsQL); ok {
+            request.Query = translated
+            c.Header("X-Query-Translated-From", "lucene")
+        }
+    }
 
 	// Validate query
 	if err := h.validator.ValidateMetricsQL(request.Query); err != nil {

@@ -80,6 +80,10 @@ func (t *httpTransport) GraphQL(ctx context.Context, query string, variables map
 	return t.doJSON(ctx, http.MethodPost, "/v1/graphql", body, out)
 }
 
+func (t *httpTransport) DeleteObject(ctx context.Context, id string) error {
+    return t.doJSON(ctx, http.MethodDelete, "/v1/objects/"+id, nil, nil)
+}
+
 func (t *httpTransport) doJSON(ctx context.Context, method, path string, body any, out any) error {
 	var buf *bytes.Reader
 	if body != nil {

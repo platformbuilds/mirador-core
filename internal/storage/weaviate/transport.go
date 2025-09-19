@@ -15,8 +15,10 @@ type Transport interface {
 	EnsureClasses(ctx context.Context, classDefs []map[string]any) error
 	// PutObject upserts an object (by class + id) with the provided properties.
 	PutObject(ctx context.Context, class, id string, props map[string]any) error
-	// GraphQL executes a GraphQL POST /v1/graphql with variables, decoding into out.
-	GraphQL(ctx context.Context, query string, variables map[string]any, out any) error
-	// GetSchema retrieves the current schema from Weaviate
-	GetSchema(ctx context.Context, out any) error
+    // GraphQL executes a GraphQL POST /v1/graphql with variables, decoding into out.
+    GraphQL(ctx context.Context, query string, variables map[string]any, out any) error
+    // GetSchema retrieves the current schema from Weaviate
+    GetSchema(ctx context.Context, out any) error
+    // DeleteObject removes an object by its UUID (class is implied by object id linkage)
+    DeleteObject(ctx context.Context, id string) error
 }
