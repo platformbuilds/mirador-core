@@ -155,6 +155,138 @@
             }
           }
         }
+      },
+      "ServiceGraphRequest": {
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start of the evaluation window (RFC3339)"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End of the evaluation window (RFC3339)"
+          },
+          "client": {
+            "type": "string",
+            "description": "Optional client service filter"
+          },
+          "server": {
+            "type": "string",
+            "description": "Optional server service filter"
+          },
+          "connection_type": {
+            "type": "string",
+            "description": "Optional connection type filter (for example \"http\")"
+          }
+        }
+      },
+      "ServiceGraphLatency": {
+        "type": "object",
+        "properties": {
+          "avg_ms": {
+            "type": "number",
+            "format": "double",
+            "description": "Average latency in milliseconds over the selected window"
+          }
+        }
+      },
+      "ServiceGraphEdge": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Client service emitting the request"
+          },
+          "target": {
+            "type": "string",
+            "description": "Server service handling the request"
+          },
+          "connection_type": {
+            "type": "string",
+            "description": "Connection type inferred by the servicegraph connector"
+          },
+          "call_count": {
+            "type": "number",
+            "format": "double",
+            "description": "Total calls between the services over the window"
+          },
+          "call_rate": {
+            "type": "number",
+            "format": "double",
+            "description": "Average calls per minute during the window"
+          },
+          "error_count": {
+            "type": "number",
+            "format": "double",
+            "description": "Failed calls over the window"
+          },
+          "error_rate": {
+            "type": "number",
+            "format": "double",
+            "description": "Percentage of failed calls over total calls"
+          },
+          "server_latency_ms": {
+            "$ref": "#/components/schemas/ServiceGraphLatency"
+          },
+          "client_latency_ms": {
+            "$ref": "#/components/schemas/ServiceGraphLatency"
+          },
+          "unpaired_spans": {
+            "type": "number",
+            "format": "double",
+            "description": "Count of unpaired spans contributing to the edge"
+          },
+          "dropped_spans": {
+            "type": "number",
+            "format": "double",
+            "description": "Count of dropped spans while building the edge"
+          }
+        }
+      },
+      "ServiceGraphWindow": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "description": "Duration of the evaluation window in seconds"
+          }
+        }
+      },
+      "ServiceGraphResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "window": {
+            "$ref": "#/components/schemas/ServiceGraphWindow"
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceGraphEdge"
+            }
+          }
+        }
       }
     }
   },
@@ -382,7 +514,7 @@
     "/schema/traces/services/bulk": {
       "post": {
         "summary": "Bulk upsert trace services via CSV",
-        "description": "Upload a CSV to create/update trace service definitions.\nCSV columns (header required; strict header mode):\n- tenant_id (optional; defaults to request tenant)\n- service (required)\n- purpose, owner, tags_json (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).\n",
+        "description": "Upload a CSV to create/update trace service definitions.\nCSV columns (header required; strict header mode):\n- tenant_id (optional; defaults to request tenant)\n- service (required)\n- purpose, owner, tags_json (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF\u20118 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per\u2011tenant daily quota (429 on exceed).\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -557,7 +689,7 @@
     "/schema/traces/operations/bulk": {
       "post": {
         "summary": "Bulk upsert trace operations via CSV",
-        "description": "Upload a CSV to create/update trace operation definitions. Operations are scoped per service; rows referencing undefined services are rejected.\nCSV columns (header required; strict header mode):\n- tenant_id (optional; defaults to request tenant)\n- service (required)\n- operation (required)\n- purpose, owner, tags_json (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).\n",
+        "description": "Upload a CSV to create/update trace operation definitions. Operations are scoped per service; rows referencing undefined services are rejected.\nCSV columns (header required; strict header mode):\n- tenant_id (optional; defaults to request tenant)\n- service (required)\n- operation (required)\n- purpose, owner, tags_json (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF\u20118 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per\u2011tenant daily quota (429 on exceed).\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -778,7 +910,7 @@
     "/schema/metrics/bulk": {
       "post": {
         "summary": "Bulk upsert metric and label definitions (CSV)",
-        "description": "Upload a CSV to create/update metric and label definitions.\nSecurity: payload limited to 5MiB, MIME allowlist, UTF‑8 validation, and CSV injection mitigations.\n\nColumns (header required):\n\n- tenant_id (optional; defaults to authenticated tenant)\n- metric (required)\n- description\n- owner\n- tags_json (JSON array)\n- label\n- label_type\n- label_required (true/false/1/0/yes/no)\n- label_allowed_json (JSON object)\n- label_description\n- author\n\nNote: Use the sample endpoint below to generate a pre-filled template.\n",
+        "description": "Upload a CSV to create/update metric and label definitions.\nSecurity: payload limited to 5MiB, MIME allowlist, UTF\u20118 validation, and CSV injection mitigations.\n\nColumns (header required):\n\n- tenant_id (optional; defaults to authenticated tenant)\n- metric (required)\n- description\n- owner\n- tags_json (JSON array)\n- label\n- label_type\n- label_required (true/false/1/0/yes/no)\n- label_allowed_json (JSON object)\n- label_description\n- author\n\nNote: Use the sample endpoint below to generate a pre-filled template.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -1139,7 +1271,7 @@
     "/schema/labels/bulk": {
       "post": {
         "summary": "Bulk upsert label definitions (CSV)",
-        "description": "Upload a CSV to create/update label definitions.\nSecurity: 5MiB payload limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota.\n\nColumns (header required):\n- tenant_id (optional)\n- name (required)\n- type\n- required (true/false/1/0/yes/no)\n- allowed_json (JSON object)\n- description\n- author\n",
+        "description": "Upload a CSV to create/update label definitions.\nSecurity: 5MiB payload limit, MIME allowlist, UTF\u20118 validation, CSV injection mitigation, daily per\u2011tenant quota.\n\nColumns (header required):\n- tenant_id (optional)\n- name (required)\n- type\n- required (true/false/1/0/yes/no)\n- allowed_json (JSON object)\n- description\n- author\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -1247,7 +1379,7 @@
     "/schema/logs/fields/bulk": {
       "post": {
         "summary": "Bulk upsert log field definitions (CSV)",
-        "description": "Upload a CSV to create/update log field definitions.\nSecurity: 5MiB payload limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota.\n\nColumns (header required):\n- tenant_id (optional)\n- field (required)\n- type\n- description\n- tags_json (JSON array)\n- examples_json (JSON object)\n- author\n",
+        "description": "Upload a CSV to create/update log field definitions.\nSecurity: 5MiB payload limit, MIME allowlist, UTF\u20118 validation, CSV injection mitigation, daily per\u2011tenant quota.\n\nColumns (header required):\n- tenant_id (optional)\n- field (required)\n- type\n- description\n- tags_json (JSON array)\n- examples_json (JSON object)\n- author\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -2226,7 +2358,7 @@
             "description": "Switching Protocols (WebSocket upgrade successful)"
           },
           "426": {
-            "description": "Upgrade Required — endpoint must be called via WebSocket (not HTTP)"
+            "description": "Upgrade Required \u2014 endpoint must be called via WebSocket (not HTTP)"
           }
         }
       }
@@ -2650,6 +2782,40 @@
         "responses": {
           "101": {
             "description": "Switching Protocols"
+          }
+        }
+      }
+    },
+    "/rca/service-graph": {
+      "post": {
+        "summary": "Aggregate service graph metrics",
+        "description": "Aggregates OpenTelemetry service graph metrics emitted by the `servicegraph` connector across every configured VictoriaMetrics source and returns the directed dependency edges for the requested window.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceGraphRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Service graph edges",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceGraphResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "500": {
+            "description": "Failed to fetch service graph"
           }
         }
       }
