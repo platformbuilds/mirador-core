@@ -503,6 +503,7 @@ MIRADOR-CORE exposes Prometheus metrics at `/metrics`:
 - LogsQL & D3: UI → `/api/v1/logs/query|histogram|facets|search|tail` → VictoriaLogs streaming JSON (gzip‑aware) → on‑the‑fly aggregations (buckets/facets/paging) → response; `/logs/store` persists AI events.
 - Traces: UI → `/api/v1/traces/services|operations|:traceId|search` → pass‑through to VictoriaTraces (Jaeger HTTP) with optional caching for lists.
 - Predict: UI → `/api/v1/predict/analyze` → gRPC to Predict‑Engine → store prediction JSON events to VictoriaLogs → optional notifications → list via `/predict/fractures` (logs query + cache).
+- Service graph: UI → `/api/v1/rca/service-graph` → VictoriaMetrics (servicegraph metrics) → merged topology for RCA & mesh visualisations.
 - RCA: UI → `/api/v1/rca/investigate` → gRPC to RCA‑Engine → timeline + red anchors → optional store via `/api/v1/rca/store`.
 - Alerts: UI → `/api/v1/alerts` (GET with cache; POST to create rule) and `/api/v1/alerts/:id/acknowledge` → gRPC to Alert‑Engine → optional WS broadcast.
 
