@@ -111,7 +111,7 @@ Query via MIRADOR-CORE (auth disabled; no token required):
 - MetricsQL instant query:
   curl -sS -H "Content-Type: application/json" \
     -d '{"query":"up"}' \
-    http://localhost:8080/api/v1/query | jq .
+    http://localhost:8080/api/v1/metrics/query | jq .
 
 - LogsQL query (last 5 minutes):
   curl -sS -H "Content-Type: application/json" \

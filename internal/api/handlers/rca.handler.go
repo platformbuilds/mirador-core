@@ -14,23 +14,26 @@ import (
 )
 
 type RCAHandler struct {
-	rcaClient   clients.RCAClient
-	logsService *services.VictoriaLogsService
-	cache       cache.ValkeyCluster
-	logger      logger.Logger
+	rcaClient    clients.RCAClient
+	logsService  *services.VictoriaLogsService
+	serviceGraph services.ServiceGraphFetcher
+	cache        cache.ValkeyCluster
+	logger       logger.Logger
 }
 
 func NewRCAHandler(
 	rcaClient clients.RCAClient,
 	logsService *services.VictoriaLogsService,
+	serviceGraph services.ServiceGraphFetcher,
 	cache cache.ValkeyCluster,
 	logger logger.Logger,
 ) *RCAHandler {
 	return &RCAHandler{
-		rcaClient:   rcaClient,
-		logsService: logsService,
-		cache:       cache,
-		logger:      logger,
+		rcaClient:    rcaClient,
+		logsService:  logsService,
+		serviceGraph: serviceGraph,
+		cache:        cache,
+		logger:       logger,
 	}
 }
 
@@ -171,4 +174,54 @@ func (h *RCAHandler) GetFailurePatterns(c *gin.Context) {
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
 	c.JSON(http.StatusOK, resp)
+}
+
+// POST /api/v1/rca/service-graph - Aggregate service dependency metrics.
+func (h *RCAHandler) GetServiceGraph(c *gin.Context) {
+	if h.serviceGraph == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status": "error",
+			"error":  "service graph metrics not configured",
+		})
+		return
+	}
+
+	var request models.ServiceGraphRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "invalid service graph request",
+		})
+		return
+	}
+
+	if request.Start.IsZero() || request.End.IsZero() {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "start and end must be provided",
+		})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	data, err := h.serviceGraph.FetchServiceGraph(c.Request.Context(), tenantID, &request)
+	if err != nil {
+		h.logger.Error("service graph fetch failed", "tenant", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "failed to fetch service graph",
+		})
+		return
+	}
+
+	if data == nil {
+		data = &models.ServiceGraphData{Edges: []models.ServiceGraphEdge{}}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":       "success",
+		"generated_at": time.Now().UTC(),
+		"window":       data.Window,
+		"edges":        data.Edges,
+	})
 }

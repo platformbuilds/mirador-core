@@ -19,12 +19,24 @@ type Config struct {
 
 // DatabaseConfig handles VictoriaMetrics ecosystem configuration
 type DatabaseConfig struct {
-	VictoriaMetrics VictoriaMetricsConfig `mapstructure:"victoria_metrics" yaml:"victoria_metrics"`
-	VictoriaLogs    VictoriaLogsConfig    `mapstructure:"victoria_logs" yaml:"victoria_logs"`
-	VictoriaTraces  VictoriaTracesConfig  `mapstructure:"victoria_traces" yaml:"victoria_traces"`
+    VictoriaMetrics VictoriaMetricsConfig `mapstructure:"victoria_metrics" yaml:"victoria_metrics"`
+    VictoriaLogs    VictoriaLogsConfig    `mapstructure:"victoria_logs" yaml:"victoria_logs"`
+    VictoriaTraces  VictoriaTracesConfig  `mapstructure:"victoria_traces" yaml:"victoria_traces"`
+    // MetricsSources allows configuring multiple independent VictoriaMetrics clusters
+    // for aggregation across sources. When non-empty, mirador will fan-out metrics
+    // queries to each source and aggregate the results. The legacy
+    // victoria_metrics block is still honored and treated as an additional source
+    // if it has endpoints or discovery enabled.
+    MetricsSources []VictoriaMetricsConfig `mapstructure:"metrics_sources" yaml:"metrics_sources"`
+    // LogsSources allows configuring multiple VictoriaLogs clusters for aggregation
+    LogsSources    []VictoriaLogsConfig    `mapstructure:"logs_sources" yaml:"logs_sources"`
+    // TracesSources allows configuring multiple VictoriaTraces clusters for aggregation
+    TracesSources  []VictoriaTracesConfig  `mapstructure:"traces_sources" yaml:"traces_sources"`
 }
 
 type VictoriaMetricsConfig struct {
+    // Optional friendly name for this metrics source
+    Name     string   `mapstructure:"name" yaml:"name"`
     Endpoints []string `mapstructure:"endpoints" yaml:"endpoints"`
     Timeout   int      `mapstructure:"timeout" yaml:"timeout"` // milliseconds
     Username  string   `mapstructure:"username" yaml:"username"`
@@ -33,6 +45,8 @@ type VictoriaMetricsConfig struct {
 }
 
 type VictoriaLogsConfig struct {
+    // Optional friendly name for this logs source
+    Name     string   `mapstructure:"name" yaml:"name"`
     Endpoints []string `mapstructure:"endpoints" yaml:"endpoints"`
     Timeout   int      `mapstructure:"timeout" yaml:"timeout"`
     Username  string   `mapstructure:"username" yaml:"username"`
@@ -41,6 +55,8 @@ type VictoriaLogsConfig struct {
 }
 
 type VictoriaTracesConfig struct {
+    // Optional friendly name for this traces source
+    Name     string   `mapstructure:"name" yaml:"name"`
     Endpoints []string `mapstructure:"endpoints" yaml:"endpoints"`
     Timeout   int      `mapstructure:"timeout" yaml:"timeout"`
     Username  string   `mapstructure:"username" yaml:"username"`

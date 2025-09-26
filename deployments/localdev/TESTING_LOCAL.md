@@ -44,7 +44,7 @@
 - Health and OpenAPI:
   - `GET /health`, `GET /ready`, `GET /api/openapi.json`
 - MetricsQL (VictoriaMetrics):
-  - `GET /api/v1/labels`, `POST /api/v1/query`
+  - `GET /api/v1/labels`, `POST /api/v1/metrics/query`
 - Logs/D3 endpoints (VictoriaLogs):
   - `GET /api/v1/logs/streams`, `GET /api/v1/logs/histogram`, `POST /api/v1/logs/search`
 
@@ -68,4 +68,3 @@
 - Ports busy: change host ports in `deployments/localdev/docker-compose.yaml`.
 - Collector can’t reach backends: check `deployments/localdev/otel-collector-config.yaml` endpoints.
 - App not ready: inspect container logs `docker logs mirador-core`.
-
