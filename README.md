@@ -100,13 +100,13 @@ curl -X GET https://mirador-core/api/v1/query \
 ### MetricsQL Queries
 ```bash
 # Execute MetricsQL query
-curl -X POST https://mirador-core/api/v1/query \
+curl -X POST https://mirador-core/api/v1/metrics/query \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"query": "rate(http_requests_total[5m])"}'
 
 # Range query with time series data
-curl -X POST https://mirador-core/api/v1/query_range \
+curl -X POST https://mirador-core/api/v1/metrics/query_range \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -179,6 +179,66 @@ export RBAC_ENABLED=true
 export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
 export TEAMS_WEBHOOK_URL=https://company.webhook.office.com/...
 ```
+
+### Multi-Source Aggregation (Metrics, Logs, Traces)
+
+Mirador can fan-out queries across multiple backend clusters and aggregate results. Configure this in `config.yaml` under `database`. Each source supports an optional `name` and the same fields as the primary block (`endpoints`, `timeout`, `username`, `password`, `discovery`).
+
+Example config.yaml snippet:
+
+```yaml
+database:
+  # Primary + additional metrics sources
+  victoria_metrics:
+    name: fin_metrics
+    endpoints: ["http://vm-fin-0:8481", "http://vm-fin-1:8481"]
+    timeout: 30000
+  metrics_sources:
+    - name: os_metrics
+      endpoints: ["http://vm-os-0:8481"]
+      timeout: 30000
+    - name: network_metrics
+      discovery:
+        enabled: true
+        service: vm-select.network.svc.cluster.local
+        port: 8481
+        scheme: http
+        refresh_seconds: 30
+        use_srv: false
+
+  # Primary + additional logs sources
+  victoria_logs:
+    name: fin_logs
+    endpoints: ["http://vl-fin-0:9428", "http://vl-fin-1:9428"]
+    timeout: 30000
+  logs_sources:
+    - name: os_logs
+      endpoints: ["http://vl-os-0:9428"]
+      timeout: 30000
+
+  # Primary + additional traces sources
+  victoria_traces:
+    name: fin_traces
+    endpoints: ["http://vt-fin-0:10428"]
+    timeout: 30000
+  traces_sources:
+    - name: os_traces
+      discovery:
+        enabled: true
+        service: vt-select.os.svc.cluster.local
+        port: 10428
+        scheme: http
+        refresh_seconds: 30
+        use_srv: false
+```
+
+Behavior:
+- Metrics: concatenates series and sums datapoint counts. Duplicates may appear if identical series exist in multiple sources.
+- Logs: concatenates rows, unions field names; stats aggregate across sources.
+- Traces: services union; search concatenates; trace fetch returns the first found.
+- Health: each subsystem is healthy if any configured source is healthy.
+
+Helm: set these under `mirador.database.*` in `chart/values.yaml`. They render into `/etc/mirador/config.yaml` by the chart.
 
 ### Weaviate (Schema Definitions Store)
 
@@ -289,8 +349,8 @@ Configuration: Bulk CSV Upload Size Limit
 
 The query endpoints can include definitions for metrics and labels, sourced from the schema store:
 
-- `POST /api/v1/query`
-- `POST /api/v1/query_range`
+- `POST /api/v1/metrics/query`
+- `POST /api/v1/metrics/query_range`
 
 Optional controls (body or query params):
 
@@ -439,10 +499,11 @@ MIRADOR-CORE exposes Prometheus metrics at `/metrics`:
 - CORS configured; security headers added; per-tenant rate limiting enabled.
 
 ### Primary Flows
-- MetricsQL (instant/range): UI → `/api/v1/query|query_range` → middleware (auth/RBAC/rate limit) → Valkey cache → VictoriaMetrics (round‑robin + retry/backoff) → cache set → response.
+- MetricsQL (instant/range): UI → `/api/v1/metrics/query|metrics/query_range` → middleware (auth/RBAC/rate limit) → Valkey cache → VictoriaMetrics (round‑robin + retry/backoff) → cache set → response.
 - LogsQL & D3: UI → `/api/v1/logs/query|histogram|facets|search|tail` → VictoriaLogs streaming JSON (gzip‑aware) → on‑the‑fly aggregations (buckets/facets/paging) → response; `/logs/store` persists AI events.
 - Traces: UI → `/api/v1/traces/services|operations|:traceId|search` → pass‑through to VictoriaTraces (Jaeger HTTP) with optional caching for lists.
 - Predict: UI → `/api/v1/predict/analyze` → gRPC to Predict‑Engine → store prediction JSON events to VictoriaLogs → optional notifications → list via `/predict/fractures` (logs query + cache).
+- Service graph: UI → `/api/v1/rca/service-graph` → VictoriaMetrics (servicegraph metrics) → merged topology for RCA & mesh visualisations.
 - RCA: UI → `/api/v1/rca/investigate` → gRPC to RCA‑Engine → timeline + red anchors → optional store via `/api/v1/rca/store`.
 - Alerts: UI → `/api/v1/alerts` (GET with cache; POST to create rule) and `/api/v1/alerts/:id/acknowledge` → gRPC to Alert‑Engine → optional WS broadcast.
 

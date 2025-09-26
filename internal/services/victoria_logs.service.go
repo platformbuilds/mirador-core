@@ -24,6 +24,7 @@ import (
 )
 
 type VictoriaLogsService struct {
+    name      string
     endpoints []string
     timeout   time.Duration
     client    *http.Client
@@ -33,18 +34,32 @@ type VictoriaLogsService struct {
 
     username string
     password string
+
+    // Optional child services for multi-source aggregation
+    children []*VictoriaLogsService
 }
 
 func NewVictoriaLogsService(cfg config.VictoriaLogsConfig, logger logger.Logger) *VictoriaLogsService {
     return &VictoriaLogsService{
+        name:      cfg.Name,
         endpoints: cfg.Endpoints,
         timeout:   time.Duration(cfg.Timeout) * time.Millisecond,
         client: &http.Client{
             Timeout: time.Duration(cfg.Timeout) * time.Millisecond,
         },
-        logger: logger,
+        logger:   logger,
         username: cfg.Username,
         password: cfg.Password,
+    }
+}
+
+// SetChildren configures downstream services used for aggregation
+func (s *VictoriaLogsService) SetChildren(children []*VictoriaLogsService) {
+    s.mu.Lock()
+    s.children = children
+    s.mu.Unlock()
+    if len(children) > 0 {
+        s.logger.Info("VictoriaLogs multi-source aggregation enabled", "sources", len(children)+boolToInt(len(s.endpoints) > 0))
     }
 }
 
@@ -52,9 +67,55 @@ func NewVictoriaLogsService(cfg config.VictoriaLogsConfig, logger logger.Logger)
 // ExecuteQuery delegates to ExecuteQueryStream and buffers rows in memory.
 // -------------------------------------------------------------------
 func (s *VictoriaLogsService) ExecuteQuery(
-	ctx context.Context,
-	req *models.LogsQLQueryRequest,
+    ctx context.Context,
+    req *models.LogsQLQueryRequest,
 ) (*models.LogsQLQueryResult, error) {
+
+    // Aggregation: fan-out and merge results when children present
+    if len(s.children) > 0 {
+        type out struct{ res *models.LogsQLQueryResult; err error }
+        services := make([]*VictoriaLogsService, 0, len(s.children)+1)
+        if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 0 }() { services = append(services, s) }
+        services = append(services, s.children...)
+        ch := make(chan out, len(services))
+        for _, svc := range services {
+            go func(svc *VictoriaLogsService) { r, e := svc.ExecuteQuery(ctx, req); ch <- out{r, e} }(svc)
+        }
+        fieldsSet := map[string]struct{}{}
+        var merged []map[string]any
+        totalCount := 0
+        totalBytes := int64(0)
+        sources := make([]map[string]any, 0, len(services))
+        success := 0
+        for i := 0; i < len(services); i++ {
+            o := <-ch
+            if o.err != nil || o.res == nil { continue }
+            if len(o.res.Logs) > 0 { merged = append(merged, o.res.Logs...) }
+            for _, f := range o.res.Fields { fieldsSet[f] = struct{}{} }
+            if o.res.Stats != nil {
+                if v, ok := toInt(o.res.Stats["count"]); ok { totalCount += v }
+                if b, ok := toInt64(o.res.Stats["bytes_read"]); ok { totalBytes += b }
+                src := map[string]any{"source": svcName(o.res.Stats), "stats": o.res.Stats}
+                sources = append(sources, src)
+            }
+            success++
+        }
+        if success == 0 { return nil, fmt.Errorf("all logs sources failed") }
+        fields := make([]string, 0, len(fieldsSet))
+        for k := range fieldsSet { fields = append(fields, k) }
+        sort.Strings(fields)
+        return &models.LogsQLQueryResult{
+            Logs:   merged,
+            Fields: fields,
+            Stats: map[string]any{
+                "count":       totalCount,
+                "bytes_read":  totalBytes,
+                "aggregated":  true,
+                "sources":     sources,
+                "streaming":   false,
+            },
+        }, nil
+    }
 
 	var rows []map[string]any
 	onRow := func(m map[string]any) error {
@@ -85,10 +146,56 @@ func (s *VictoriaLogsService) ExecuteQuery(
 // ExecuteQueryStream is the single source of truth for VictoriaLogs queries.
 // -------------------------------------------------------------------
 func (s *VictoriaLogsService) ExecuteQueryStream(
-	ctx context.Context,
-	req *models.LogsQLQueryRequest,
-	onRow func(row map[string]any) error,
+    ctx context.Context,
+    req *models.LogsQLQueryRequest,
+    onRow func(row map[string]any) error,
 ) (*models.LogsQLQueryResult, error) {
+
+    if len(s.children) > 0 {
+        // Fan out streaming queries. Serialize onRow to keep caller safety.
+        mu := &sync.Mutex{}
+        safeOnRow := func(m map[string]any) error { mu.Lock(); defer mu.Unlock(); return onRow(m) }
+        services := make([]*VictoriaLogsService, 0, len(s.children)+1)
+        if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 0 }() { services = append(services, s) }
+        services = append(services, s.children...)
+        type out struct{ res *models.LogsQLQueryResult; err error }
+        ch := make(chan out, len(services))
+        for _, svc := range services {
+            go func(svc *VictoriaLogsService) { r, e := svc.ExecuteQueryStream(ctx, req, safeOnRow); ch <- out{r, e} }(svc)
+        }
+        fields := map[string]struct{}{}
+        totalCount := 0
+        totalBytes := int64(0)
+        sources := make([]map[string]any, 0, len(services))
+        success := 0
+        for i := 0; i < len(services); i++ {
+            o := <-ch
+            if o.err != nil || o.res == nil { continue }
+            for _, f := range o.res.Fields { fields[f] = struct{}{} }
+            if o.res.Stats != nil {
+                if v, ok := toInt(o.res.Stats["count"]); ok { totalCount += v }
+                if b, ok := toInt64(o.res.Stats["bytes_read"]); ok { totalBytes += b }
+                sources = append(sources, map[string]any{"source": svcName(o.res.Stats), "stats": o.res.Stats})
+            }
+            success++
+        }
+        if success == 0 { return nil, fmt.Errorf("all logs sources failed") }
+        // finalize
+        fieldList := make([]string, 0, len(fields))
+        for k := range fields { fieldList = append(fieldList, k) }
+        sort.Strings(fieldList)
+        return &models.LogsQLQueryResult{
+            Logs:   nil,
+            Fields: fieldList,
+            Stats: map[string]any{
+                "count":      totalCount,
+                "bytes_read": totalBytes,
+                "aggregated": true,
+                "sources":    sources,
+                "streaming":  true,
+            },
+        }, nil
+    }
 
 	if req == nil {
 		return nil, errors.New("nil request")
@@ -437,28 +544,61 @@ func (s *VictoriaLogsService) ReplaceEndpoints(eps []string) {
     s.endpoints = append([]string(nil), eps...)
     s.current = 0
     s.mu.Unlock()
-    s.logger.Info("VictoriaLogs endpoints updated", "count", len(eps))
+    s.logger.Info("VictoriaLogs endpoints updated", "source", s.name, "count", len(eps))
 }
 
 func (s *VictoriaLogsService) HealthCheck(ctx context.Context) error {
-	endpoint := s.selectEndpoint()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"/health", nil)
-	if err != nil {
-		return err
-	}
+    if len(s.children) > 0 {
+        if err := s.healthCheckSelf(ctx); err == nil { return nil }
+        for _, c := range s.children { if c.HealthCheck(ctx) == nil { return nil } }
+        return fmt.Errorf("all logs sources unhealthy")
+    }
+    return s.healthCheckSelf(ctx)
+}
+
+func (s *VictoriaLogsService) healthCheckSelf(ctx context.Context) error {
+    endpoint := s.selectEndpoint()
+    req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"/health", nil)
+    if err != nil {
+        return err
+    }
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("VictoriaLogs health check failed: status %d", resp.StatusCode)
-	}
-	return nil
+    if resp.StatusCode != http.StatusOK {
+        return fmt.Errorf("VictoriaLogs health check failed: status %d", resp.StatusCode)
+    }
+    return nil
 }
 
 // GetStreams queries VictoriaLogs for available log streams.
 func (s *VictoriaLogsService) GetStreams(ctx context.Context, tenantID string, limit int) ([]map[string]string, error) {
+    if len(s.children) > 0 {
+        services := make([]*VictoriaLogsService, 0, len(s.children)+1)
+        if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 0 }() { services = append(services, s) }
+        services = append(services, s.children...)
+        ch := make(chan struct{ out []map[string]string; err error }, len(services))
+        for _, svc := range services {
+            go func(svc *VictoriaLogsService) { o, e := svc.GetStreams(ctx, tenantID, limit); ch <- struct{ out []map[string]string; err error }{o, e} }(svc)
+        }
+        seen := map[string]struct{}{}
+        var merged []map[string]string
+        for i := 0; i < len(services); i++ {
+            r := <-ch
+            if r.err != nil { continue }
+            for _, m := range r.out {
+                if v := m["label"]; v != "" {
+                    if _, ok := seen[v]; ok { continue }
+                    seen[v] = struct{}{}
+                    merged = append(merged, map[string]string{"label": v})
+                    if limit > 0 && len(merged) >= limit { return merged, nil }
+                }
+            }
+        }
+        return merged, nil
+    }
     // VictoriaLogs does not expose a generic "/labels" endpoint. Derive useful
     // stream labels from available field names and common conventions.
     fields, err := s.GetFields(ctx, tenantID)
@@ -494,6 +634,23 @@ func (s *VictoriaLogsService) GetStreams(ctx context.Context, tenantID string, l
 
 // GetFields retrieves available log fields.
 func (s *VictoriaLogsService) GetFields(ctx context.Context, tenantID string) ([]string, error) {
+    if len(s.children) > 0 {
+        services := make([]*VictoriaLogsService, 0, len(s.children)+1)
+        if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 0 }() { services = append(services, s) }
+        services = append(services, s.children...)
+        ch := make(chan struct{ out []string; err error }, len(services))
+        for _, svc := range services { go func(svc *VictoriaLogsService){ o, e := svc.GetFields(ctx, tenantID); ch <- struct{out []string; err error}{o, e} }(svc) }
+        set := map[string]struct{}{}
+        for i := 0; i < len(services); i++ {
+            r := <-ch
+            if r.err != nil { continue }
+            for _, f := range r.out { set[f] = struct{}{} }
+        }
+        fields := make([]string, 0, len(set))
+        for k := range set { fields = append(fields, k) }
+        sort.Strings(fields)
+        return fields, nil
+    }
     // Hardcode a query equivalent to:
     // { "query": "*", "start": now-10m, "end": now, "limit": 500 }
     nowMs := time.Now().UnixMilli()
@@ -710,3 +867,33 @@ func toScalarString(v any) string {
 
 // isUint32 returns true if s parses as base-10 uint32
 // (moved) tenant ID numeric check lives in utils.IsUint32String
+
+// helpers for aggregation
+func toInt(v any) (int, bool) {
+    switch x := v.(type) {
+    case int: return x, true
+    case int64: return int(x), true
+    case float64: return int(x), true
+    case float32: return int(x), true
+    case json.Number:
+        if i, err := x.Int64(); err == nil { return int(i), true }
+    }
+    return 0, false
+}
+func toInt64(v any) (int64, bool) {
+    switch x := v.(type) {
+    case int64: return x, true
+    case int: return int64(x), true
+    case float64: return int64(x), true
+    case float32: return int64(x), true
+    case json.Number:
+        if i, err := x.Int64(); err == nil { return i, true }
+    }
+    return 0, false
+}
+func svcName(stats map[string]any) string {
+    if stats == nil { return "" }
+    if v, ok := stats["source"].(string); ok { return v }
+    if v, ok := stats["endpoint"].(string); ok { return v }
+    return ""
+}

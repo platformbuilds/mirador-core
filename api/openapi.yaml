@@ -87,6 +87,105 @@ components:
           type: string
           enum: [metrics, logs, traces]
 
+    ServiceGraphRequest:
+      type: object
+      required: [start, end]
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: Start of the evaluation window (RFC3339)
+        end:
+          type: string
+          format: date-time
+          description: End of the evaluation window (RFC3339)
+        client:
+          type: string
+          description: Optional client service filter
+        server:
+          type: string
+          description: Optional server service filter
+        connection_type:
+          type: string
+          description: Optional connection type filter (for example "http")
+
+    ServiceGraphLatency:
+      type: object
+      properties:
+        avg_ms:
+          type: number
+          format: double
+          description: Average latency in milliseconds over the selected window
+
+    ServiceGraphEdge:
+      type: object
+      properties:
+        source:
+          type: string
+          description: Client service emitting the request
+        target:
+          type: string
+          description: Server service handling the request
+        connection_type:
+          type: string
+          description: Connection type inferred by the servicegraph connector
+        call_count:
+          type: number
+          format: double
+          description: Total calls between the services over the window
+        call_rate:
+          type: number
+          format: double
+          description: Average calls per minute during the window
+        error_count:
+          type: number
+          format: double
+          description: Failed calls over the window
+        error_rate:
+          type: number
+          format: double
+          description: Percentage of failed calls over total calls
+        server_latency_ms:
+          $ref: '#/components/schemas/ServiceGraphLatency'
+        client_latency_ms:
+          $ref: '#/components/schemas/ServiceGraphLatency'
+        unpaired_spans:
+          type: number
+          format: double
+          description: Count of unpaired spans contributing to the edge
+        dropped_spans:
+          type: number
+          format: double
+          description: Count of dropped spans while building the edge
+
+    ServiceGraphWindow:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        duration_seconds:
+          type: integer
+          description: Duration of the evaluation window in seconds
+
+    ServiceGraphResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+        window:
+          $ref: '#/components/schemas/ServiceGraphWindow'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceGraphEdge'
+
     FlameNode:
       type: object
       properties:
@@ -844,6 +943,28 @@ paths:
       summary: Get failure patterns
       responses:
         '200': { description: OK }
+  /rca/service-graph:
+    post:
+      summary: Aggregate service graph metrics
+      description: |
+        Aggregates OpenTelemetry service graph metrics emitted by the
+        `servicegraph` connector across every configured VictoriaMetrics source
+        and returns the directed dependency edges for the requested window.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceGraphRequest'
+      responses:
+        '200':
+          description: Service graph edges
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceGraphResponse'
+        '400': { description: Invalid request }
+        '500': { description: Failed to fetch service graph }
   /rca/store:
     post:
       summary: Store correlation event
@@ -858,12 +979,15 @@ paths:
   /query:
     post:
       summary: MetricsQL instant query (VictoriaMetrics)
+      deprecated: true
       description: |
         Executes an instant query against VictoriaMetrics. The `query` field also supports Lucene syntax when
         `query_language` is `lucene` (or when auto-detected); Mirador translates Lucene into PromQL label selectors.
         When `include_definitions` is enabled (default),
         the response contains `definitions` sourced from the schema store (Weaviate) including metric and
         per-metric label definitions. Optional `label_keys` can limit which label keys are considered.
+        When multiple metrics sources are configured in config.yaml (database.victoria_metrics + database.metrics_sources),
+        the server fans out the query across sources and aggregates the results. Identical series from different sources may appear as duplicates.
       requestBody:
         required: true
         content:
@@ -928,9 +1052,11 @@ paths:
   /query_range:
     post:
       summary: MetricsQL range query (VictoriaMetrics)
+      deprecated: true
       description: |
         Executes a range query. When `include_definitions` is enabled (default), the response contains
         `definitions` for metrics and per-metric label keys. Use `label_keys` to limit keys.
+        When multiple metrics sources are configured, the server fans out the query and concatenates series across sources; datapoint counts are aggregated.
       requestBody:
         required: true
         content:
@@ -1038,6 +1164,8 @@ paths:
         Mirador translates Lucene to VictoriaLogs query syntax.
         Note: Use either `_time` inside `query` or top-level `start`/`end`, not both. If both are provided, the
         server prioritizes `_time` in `query` to avoid conflicting time filters.
+        When multiple logs sources are configured in config.yaml (database.victoria_logs + database.logs_sources),
+        the server fans out the query and concatenates rows from all sources; the `fields` list is the union.
       requestBody:
         required: true
         content:
@@ -1306,6 +1434,7 @@ paths:
   /traces/services:
     get:
       summary: List services (VictoriaTraces/Jaeger)
+      description: Returns the union of services when multiple traces sources are configured (database.victoria_traces + database.traces_sources).
       responses:
         '200': { description: OK }
   /traces/services/{service}/operations:
@@ -1321,6 +1450,7 @@ paths:
   /traces/{traceId}:
     get:
       summary: Get trace by ID
+      description: Returns the first matching trace across configured sources when multiple traces sources are present.
       parameters:
         - in: path
           name: traceId
@@ -1394,6 +1524,8 @@ paths:
         operation, tags, durations, and time window). Note: Use either `_time` in `query` or top-level `start`/`end`,
         not both. If both are provided, `_time` in `query` takes precedence. Alternatively, discover trace IDs via
         `/logs/search` with a Lucene filter on `trace_id`, then fetch traces by ID using `/traces/{traceId}`.
+        When multiple traces sources are configured in config.yaml (database.victoria_traces + database.traces_sources),
+        results from all sources are concatenated.
       requestBody:
         required: true
         content:
@@ -1661,3 +1793,67 @@ LabelRequest:
       type: string
       description: Author of this change
   required: [name]
+  /metrics/query:
+    post:
+      summary: MetricsQL instant query (VictoriaMetrics)
+      description: |
+        Executes an instant query against VictoriaMetrics. The `query` field also supports Lucene syntax when
+        `query_language` is `lucene` (or when auto-detected); Mirador translates Lucene into PromQL label selectors.
+        When `include_definitions` is enabled (default), the response contains `definitions` sourced from the schema store
+        (Weaviate) including metric and per-metric label definitions. Optional `label_keys` can limit which label keys are considered.
+        When multiple metrics sources are configured in config.yaml (database.victoria_metrics + database.metrics_sources),
+        the server fans out the query across sources and aggregates the results. Identical series from different sources may appear as duplicates.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query: { type: string }
+                query_language:
+                  type: string
+                  enum: [lucene, promql]
+                  description: If `lucene`, the server translates to PromQL/MetricsQL.
+                time: { type: string }
+                include_definitions: { type: boolean, description: Include definitions in response (default true) }
+                label_keys:
+                  type: array
+                  items: { type: string }
+                  description: Restrict definitions to these label keys
+            example:
+              query_language: lucene
+              query: "__name__:http_requests_total AND job:api"
+              time: "2025-01-01T00:00:00Z"
+      responses:
+        '200': { description: OK }
+
+  /metrics/query_range:
+    post:
+      summary: MetricsQL range query (VictoriaMetrics)
+      description: |
+        Executes a range query. When `include_definitions` is enabled (default), the response contains
+        `definitions` for metrics and per-metric label keys. Use `label_keys` to limit keys.
+        When multiple metrics sources are configured, the server fans out the query and concatenates series across sources; datapoint counts are aggregated.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query: { type: string }
+                query_language:
+                  type: string
+                  enum: [lucene, promql]
+                  description: If `lucene`, the server translates to PromQL/MetricsQL.
+                start: { type: string }
+                end: { type: string }
+                step: { type: string }
+                include_definitions: { type: boolean, description: Include definitions in response (default true) }
+                label_keys:
+                  type: array
+                  items: { type: string }
+                  description: Restrict definitions to these label keys
+      responses:
+        '200': { description: OK }

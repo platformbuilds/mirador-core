@@ -146,20 +146,35 @@ mirador:
 
   database:
     victoria_metrics:
+      # Optional friendly name for the primary source
+      name: "primary"
       endpoints:
         - "http://vm-select-0.vm-select:8481"
         - "http://vm-select-1.vm-select:8481"
       timeout: 30000
+    # Optional: additional metrics sources for aggregation
+    # Each entry supports the same fields as victoria_metrics (name, endpoints, timeout, username, password, discovery)
+    metrics_sources: []
     victoria_logs:
+      # Optional friendly name for the primary logs source
+      name: "primary"
       endpoints:
         - "http://vl-select-0.vl-select:9428"
         - "http://vl-select-1.vl-select:9428"
       timeout: 30000
+    # Optional: additional logs sources for aggregation
+    # Each entry supports the same fields as victoria_logs (name, endpoints, timeout, username, password, discovery)
+    logs_sources: []
     victoria_traces:
+      # Optional friendly name for the primary traces source
+      name: "primary"
       endpoints:
         - "http://vt-select-0.vt-select:10428"
         - "http://vt-select-1.vt-select:10428"
       timeout: 30000
+    # Optional: additional traces sources for aggregation
+    # Each entry supports the same fields as victoria_traces (name, endpoints, timeout, username, password, discovery)
+    traces_sources: []
 
   grpc:
     predict_engine:

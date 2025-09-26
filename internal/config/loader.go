@@ -143,12 +143,18 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("database.victoria_logs.timeout", 30000)
 	v.SetDefault("database.victoria_logs.discovery.enabled", false)
 	v.SetDefault("database.victoria_logs.discovery.scheme", "http")
-	v.SetDefault("database.victoria_logs.discovery.refresh_seconds", 30)
-	v.SetDefault("database.victoria_traces.endpoints", []string{"http://localhost:10428"})
-	v.SetDefault("database.victoria_traces.timeout", 30000)
-	v.SetDefault("database.victoria_traces.discovery.enabled", false)
-	v.SetDefault("database.victoria_traces.discovery.scheme", "http")
-	v.SetDefault("database.victoria_traces.discovery.refresh_seconds", 30)
+    v.SetDefault("database.victoria_logs.discovery.refresh_seconds", 30)
+    v.SetDefault("database.victoria_traces.endpoints", []string{"http://localhost:10428"})
+    v.SetDefault("database.victoria_traces.timeout", 30000)
+    v.SetDefault("database.victoria_traces.discovery.enabled", false)
+    v.SetDefault("database.victoria_traces.discovery.scheme", "http")
+    v.SetDefault("database.victoria_traces.discovery.refresh_seconds", 30)
+    // Optional multi-source metrics aggregation list (default empty)
+    v.SetDefault("database.metrics_sources", []map[string]any{})
+    // Optional multi-source logs aggregation list (default empty)
+    v.SetDefault("database.logs_sources", []map[string]any{})
+    // Optional multi-source traces aggregation list (default empty)
+    v.SetDefault("database.traces_sources", []map[string]any{})
 
 	// gRPC
 	v.SetDefault("grpc.predict_engine.endpoint", "localhost:9091")
@@ -325,11 +331,32 @@ func overrideWithEnvVars(v *viper.Viper) {
 
 // Note: JWT secret enforcement is handled in secrets.go (LoadSecrets).
 func validateConfig(cfg *Config) error {
-    if len(cfg.Database.VictoriaMetrics.Endpoints) == 0 && !cfg.Database.VictoriaMetrics.Discovery.Enabled {
-        return fmt.Errorf("at least one VictoriaMetrics endpoint is required (or enable discovery)")
+    // Metrics must have at least one source: either legacy single-source
+    // config or at least one item in metrics_sources list where endpoints
+    // exist or discovery is enabled.
+    hasPrimary := len(cfg.Database.VictoriaMetrics.Endpoints) > 0 || cfg.Database.VictoriaMetrics.Discovery.Enabled
+    hasMulti := false
+    if len(cfg.Database.MetricsSources) > 0 {
+        for _, s := range cfg.Database.MetricsSources {
+            if len(s.Endpoints) > 0 || s.Discovery.Enabled {
+                hasMulti = true
+                break
+            }
+        }
     }
-    if len(cfg.Database.VictoriaLogs.Endpoints) == 0 && !cfg.Database.VictoriaLogs.Discovery.Enabled {
-        return fmt.Errorf("at least one VictoriaLogs endpoint is required (or enable discovery)")
+    if !hasPrimary && !hasMulti {
+        return fmt.Errorf("at least one VictoriaMetrics source is required (set database.victoria_metrics or database.metrics_sources)")
+    }
+    // Logs: require at least one source from primary or logs_sources
+    hasLogsPrimary := len(cfg.Database.VictoriaLogs.Endpoints) > 0 || cfg.Database.VictoriaLogs.Discovery.Enabled
+    hasLogsMulti := false
+    if len(cfg.Database.LogsSources) > 0 {
+        for _, s := range cfg.Database.LogsSources {
+            if len(s.Endpoints) > 0 || s.Discovery.Enabled { hasLogsMulti = true; break }
+        }
+    }
+    if !hasLogsPrimary && !hasLogsMulti {
+        return fmt.Errorf("at least one VictoriaLogs source is required (set database.victoria_logs or database.logs_sources)")
     }
 	if len(cfg.Cache.Nodes) == 0 {
 		return fmt.Errorf("at least one Valkey cluster cache node is required")
