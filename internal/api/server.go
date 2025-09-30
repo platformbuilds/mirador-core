@@ -143,6 +143,21 @@ func (s *Server) setupRoutes() {
 	s.router.GET("/metrics/names", metricsHandler.GetMetricNames)
 	v1.GET("/label/:name/values", metricsHandler.GetLabelValues)
 
+	// MetricsQL function query endpoints (hierarchical by category)
+	queryHandler := handlers.NewMetricsQLQueryHandler(s.vmServices.Query, s.cache, s.logger)
+	// Rollup functions
+	v1.POST("/metrics/query/rollup/:function", queryHandler.ExecuteRollupFunction)
+	v1.POST("/metrics/query/rollup/:function/range", queryHandler.ExecuteRollupRangeFunction)
+	// Transform functions
+	v1.POST("/metrics/query/transform/:function", queryHandler.ExecuteTransformFunction)
+	v1.POST("/metrics/query/transform/:function/range", queryHandler.ExecuteTransformRangeFunction)
+	// Label functions
+	v1.POST("/metrics/query/label/:function", queryHandler.ExecuteLabelFunction)
+	v1.POST("/metrics/query/label/:function/range", queryHandler.ExecuteLabelRangeFunction)
+	// Aggregate functions
+	v1.POST("/metrics/query/aggregate/:function", queryHandler.ExecuteAggregateFunction)
+	v1.POST("/metrics/query/aggregate/:function/range", queryHandler.ExecuteAggregateRangeFunction)
+
 	// LogsQL endpoints (VictoriaLogs integration)
 	logsHandler := handlers.NewLogsQLHandler(s.vmServices.Logs, s.cache, s.logger)
 	v1.POST("/logs/query", logsHandler.ExecuteQuery)
