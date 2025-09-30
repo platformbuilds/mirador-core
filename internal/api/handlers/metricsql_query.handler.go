@@ -53,14 +53,22 @@ func (h *MetricsQLQueryHandler) ExecuteAggregateFunction(c *gin.Context) {
 
 // executeFunctionQuery is a helper method to execute function queries
 func (h *MetricsQLQueryHandler) executeFunctionQuery(c *gin.Context, category, functionName string) {
-	var req models.MetricsQLFunctionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Failed to bind MetricsQL function request", "error", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+	// Get the validated request from middleware context
+	validatedReq, exists := c.Get("validated_request")
+	if !exists {
+		h.logger.Error("Validated request not found in context")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Request validation failed"})
 		return
 	}
 
-	// Validate function name
+	req, ok := validatedReq.(*models.MetricsQLFunctionRequest)
+	if !ok {
+		h.logger.Error("Invalid validated request type")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Request validation failed"})
+		return
+	}
+
+	// Validate function name (additional check beyond middleware)
 	if !h.isValidFunction(functionName, category) {
 		h.logger.Error("Invalid function name", "function", functionName, "category", category)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid function name for category"})
@@ -76,7 +84,7 @@ func (h *MetricsQLQueryHandler) executeFunctionQuery(c *gin.Context, category, f
 		"query", req.Query)
 
 	// Execute the query
-	resp, err := h.queryService.ExecuteFunctionQuery(c.Request.Context(), &req)
+	resp, err := h.queryService.ExecuteFunctionQuery(c.Request.Context(), req)
 	if err != nil {
 		h.logger.Error("Failed to execute MetricsQL function query", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to execute query"})
@@ -112,14 +120,22 @@ func (h *MetricsQLQueryHandler) ExecuteAggregateRangeFunction(c *gin.Context) {
 
 // executeRangeFunctionQuery is a helper method to execute range function queries
 func (h *MetricsQLQueryHandler) executeRangeFunctionQuery(c *gin.Context, category, functionName string) {
-	var req models.MetricsQLFunctionRangeRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Failed to bind MetricsQL function range request", "error", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+	// Get the validated range request from middleware context
+	validatedReq, exists := c.Get("validated_range_request")
+	if !exists {
+		h.logger.Error("Validated range request not found in context")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Request validation failed"})
 		return
 	}
 
-	// Validate function name
+	req, ok := validatedReq.(*models.MetricsQLFunctionRangeRequest)
+	if !ok {
+		h.logger.Error("Invalid validated range request type")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Request validation failed"})
+		return
+	}
+
+	// Validate function name (additional check beyond middleware)
 	if !h.isValidFunction(functionName, category) {
 		h.logger.Error("Invalid function name", "function", functionName, "category", category)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid function name for category"})
@@ -135,7 +151,7 @@ func (h *MetricsQLQueryHandler) executeRangeFunctionQuery(c *gin.Context, catego
 		"query", req.Query)
 
 	// Execute the query
-	resp, err := h.queryService.ExecuteRangeFunctionQuery(c.Request.Context(), &req)
+	resp, err := h.queryService.ExecuteRangeFunctionQuery(c.Request.Context(), req)
 	if err != nil {
 		h.logger.Error("Failed to execute MetricsQL function range query", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to execute query"})
@@ -163,18 +179,21 @@ func (h *MetricsQLQueryHandler) isValidFunction(functionName, category string) b
 		"day_of_month", "day_of_week", "day_of_year", "deg", "exp", "floor", "histogram_avg", "histogram_quantile", "histogram_stddev", "hour",
 		"interpolate", "keep_last_value", "keep_next_value", "ln",
 		"log10", "log2", "minute", "month", "now", "pi", "prometheus_buckets", "rad", "rand", "rand_normal", "range_linear", "range_vector", "remove_resets", "round", "running_avg", "running_max", "running_min", "running_sum",
-		"scalar", "sgn", "sin", "sinh", "smooth_exponential", "sort", "sort_by_label", "sqrt", "tan", "tanh",
+		"scalar", "sgn", "sin", "sinh", "smooth_exponential", "sort", "sqrt", "tan", "tanh",
 		"time", "timestamp", "timezone_offset", "union", "vector", "year",
 	}
 
 	labelFunctions := []string{
-		"label_copy", "label_del", "label_join", "label_keep",
-		"label_map", "label_replace", "label_set", "label_value",
+		"alias", "drop_common_labels", "label_copy", "label_del", "label_graphite_group",
+		"label_join", "label_keep", "label_lowercase", "label_map", "label_match",
+		"label_mismatch", "label_move", "label_replace", "label_set", "label_transform",
+		"label_uppercase", "labels_equal", "label_value", "sort_by_label",
+		"sort_by_label_desc",
 	}
 
 	aggregateFunctions := []string{
-		"avg", "bottomk", "count", "count_values", "group", "max",
-		"min", "quantile", "stddev", "stdvar", "sum", "topk",
+		"any", "avg", "bottomk", "bottomk_avg", "bottomk_max", "bottomk_min", "count", "count_values", "distinct", "geomean", "group", "histogram", "limitk", "mad", "max",
+		"median", "min", "mode", "outliers_iqr", "outliers_mad", "outliersk", "quantile", "quantiles", "share", "stddev", "stdvar", "sum", "sum2", "topk", "topk_avg", "topk_max", "topk_min", "zscore",
 	}
 
 	var validFunctions []string

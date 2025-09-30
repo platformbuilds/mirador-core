@@ -13,7 +13,7 @@ BASE_URL ?= http://localhost:8080
 # Build and release variables
 # -----------------------------
 BINARY_NAME?=mirador-core
-VERSION?=v2.1.3
+VERSION?=v5.0.0
 BUILD_TIME:=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 COMMIT_HASH:=$(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 LDFLAGS=-w -s -X main.version=$(VERSION) -X main.buildTime=$(BUILD_TIME) -X main.commitHash=$(COMMIT_HASH)

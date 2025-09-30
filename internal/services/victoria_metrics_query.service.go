@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/models"
@@ -357,8 +358,6 @@ func (s *VictoriaMetricsQueryService) constructFunctionQuery(functionName, baseQ
 		return "rand_normal()", nil
 	case "sort":
 		return fmt.Sprintf("sort(%s)", baseQuery), nil
-	case "sort_by_label":
-		return fmt.Sprintf("sort_by_label(%s)", baseQuery), nil
 	case "smooth_exponential":
 		return fmt.Sprintf("smooth_exponential(%s)", baseQuery), nil
 
@@ -425,6 +424,306 @@ func (s *VictoriaMetricsQueryService) constructFunctionQuery(functionName, baseQ
 			}
 		}
 		return "", fmt.Errorf("label_move requires 'src' and 'dst' parameters")
+	case "label_join":
+		// label_join needs dst_label, separator, and src_labels parameters
+		dst, hasDst := params["dst"]
+		separator, hasSep := params["separator"]
+		srcLabels, hasSrc := params["src_labels"]
+		if hasDst && hasSep && hasSrc {
+			if d, ok := dst.(string); ok {
+				if sep, ok := separator.(string); ok {
+					if srcList, ok := srcLabels.([]string); ok && len(srcList) > 0 {
+						srcStr := strings.Join(srcList, ",")
+						return fmt.Sprintf("label_join(%s, %s, %s, %s)", d, sep, srcStr, baseQuery), nil
+					}
+				}
+			}
+		}
+		return "", fmt.Errorf("label_join requires 'dst', 'separator', and 'src_labels' parameters")
+	case "label_replace":
+		// label_replace needs dst_label, replacement, src_label, and regex parameters
+		dst, hasDst := params["dst"]
+		replacement, hasRep := params["replacement"]
+		src, hasSrc := params["src"]
+		regex, hasRegex := params["regex"]
+		if hasDst && hasRep && hasSrc && hasRegex {
+			if d, ok := dst.(string); ok {
+				if rep, ok := replacement.(string); ok {
+					if s, ok := src.(string); ok {
+						if reg, ok := regex.(string); ok {
+							return fmt.Sprintf("label_replace(%s, %s, %s, %s, %s)", baseQuery, d, rep, s, reg), nil
+						}
+					}
+				}
+			}
+		}
+		return "", fmt.Errorf("label_replace requires 'dst', 'replacement', 'src', and 'regex' parameters")
+	case "label_map":
+		// label_map needs label and mapping parameters
+		label, hasLabel := params["label"]
+		mapping, hasMapping := params["mapping"]
+		if hasLabel && hasMapping {
+			if l, ok := label.(string); ok {
+				if m, ok := mapping.(map[string]string); ok {
+					// Convert mapping to string format: key1=value1,key2=value2
+					var mappingPairs []string
+					for k, v := range m {
+						mappingPairs = append(mappingPairs, fmt.Sprintf("%s=%s", k, v))
+					}
+					mappingStr := strings.Join(mappingPairs, ",")
+					return fmt.Sprintf("label_map(%s, %s, %s)", baseQuery, l, mappingStr), nil
+				}
+			}
+		}
+		return "", fmt.Errorf("label_map requires 'label' and 'mapping' parameters")
+	case "label_transform":
+		// label_transform needs label, regex, replacement, and optionally separator
+		label, hasLabel := params["label"]
+		regex, hasRegex := params["regex"]
+		replacement, hasRep := params["replacement"]
+		if hasLabel && hasRegex && hasRep {
+			if l, ok := label.(string); ok {
+				if reg, ok := regex.(string); ok {
+					if rep, ok := replacement.(string); ok {
+						if sep, hasSep := params["separator"]; hasSep {
+							if s, ok := sep.(string); ok {
+								return fmt.Sprintf("label_transform(%s, %s, %s, %s, %s)", baseQuery, l, reg, rep, s), nil
+							}
+						}
+						return fmt.Sprintf("label_transform(%s, %s, %s, %s)", baseQuery, l, reg, rep), nil
+					}
+				}
+			}
+		}
+		return "", fmt.Errorf("label_transform requires 'label', 'regex', and 'replacement' parameters")
+	case "label_lowercase":
+		// label_lowercase needs label parameter
+		if label, ok := params["label"]; ok {
+			if l, ok := label.(string); ok {
+				return fmt.Sprintf("label_lowercase(%s, %s)", baseQuery, l), nil
+			}
+		}
+		return "", fmt.Errorf("label_lowercase requires a 'label' parameter")
+	case "label_uppercase":
+		// label_uppercase needs label parameter
+		if label, ok := params["label"]; ok {
+			if l, ok := label.(string); ok {
+				return fmt.Sprintf("label_uppercase(%s, %s)", baseQuery, l), nil
+			}
+		}
+		return "", fmt.Errorf("label_uppercase requires a 'label' parameter")
+	case "label_match":
+		// label_match needs label and regex parameters
+		label, hasLabel := params["label"]
+		regex, hasRegex := params["regex"]
+		if hasLabel && hasRegex {
+			if l, ok := label.(string); ok {
+				if reg, ok := regex.(string); ok {
+					return fmt.Sprintf("label_match(%s, %s, %s)", baseQuery, l, reg), nil
+				}
+			}
+		}
+		return "", fmt.Errorf("label_match requires 'label' and 'regex' parameters")
+	case "label_mismatch":
+		// label_mismatch needs label and regex parameters
+		label, hasLabel := params["label"]
+		regex, hasRegex := params["regex"]
+		if hasLabel && hasRegex {
+			if l, ok := label.(string); ok {
+				if reg, ok := regex.(string); ok {
+					return fmt.Sprintf("label_mismatch(%s, %s, %s)", baseQuery, l, reg), nil
+				}
+			}
+		}
+		return "", fmt.Errorf("label_mismatch requires 'label' and 'regex' parameters")
+	case "labels_equal":
+		// labels_equal needs label and value parameters
+		label, hasLabel := params["label"]
+		value, hasValue := params["value"]
+		if hasLabel && hasValue {
+			if l, ok := label.(string); ok {
+				if v, ok := value.(string); ok {
+					return fmt.Sprintf("labels_equal(%s, %s, %s)", baseQuery, l, v), nil
+				}
+			}
+		}
+		return "", fmt.Errorf("labels_equal requires 'label' and 'value' parameters")
+	case "sort_by_label":
+		// sort_by_label can optionally take label names
+		if labels, ok := params["labels"]; ok {
+			if labelList, ok := labels.([]string); ok && len(labelList) > 0 {
+				labelStr := strings.Join(labelList, ",")
+				return fmt.Sprintf("sort_by_label(%s, %s)", baseQuery, labelStr), nil
+			}
+		}
+		return fmt.Sprintf("sort_by_label(%s)", baseQuery), nil
+	case "sort_by_label_desc":
+		// sort_by_label_desc can optionally take label names
+		if labels, ok := params["labels"]; ok {
+			if labelList, ok := labels.([]string); ok && len(labelList) > 0 {
+				labelStr := strings.Join(labelList, ",")
+				return fmt.Sprintf("sort_by_label_desc(%s, %s)", baseQuery, labelStr), nil
+			}
+		}
+		return fmt.Sprintf("sort_by_label_desc(%s)", baseQuery), nil
+	case "label_graphite_group":
+		// label_graphite_group can optionally take a prefix parameter
+		if prefix, ok := params["prefix"]; ok {
+			if p, ok := prefix.(string); ok {
+				return fmt.Sprintf("label_graphite_group(%s, %s)", baseQuery, p), nil
+			}
+		}
+		return fmt.Sprintf("label_graphite_group(%s)", baseQuery), nil
+	case "drop_common_labels":
+		return fmt.Sprintf("drop_common_labels(%s)", baseQuery), nil
+
+	// Aggregate functions
+	case "sum":
+		return fmt.Sprintf("sum(%s)", baseQuery), nil
+	case "avg":
+		return fmt.Sprintf("avg(%s)", baseQuery), nil
+	case "min":
+		return fmt.Sprintf("min(%s)", baseQuery), nil
+	case "max":
+		return fmt.Sprintf("max(%s)", baseQuery), nil
+	case "count":
+		return fmt.Sprintf("count(%s)", baseQuery), nil
+	case "stddev":
+		return fmt.Sprintf("stddev(%s)", baseQuery), nil
+	case "stdvar":
+		return fmt.Sprintf("stdvar(%s)", baseQuery), nil
+	case "median":
+		return fmt.Sprintf("median(%s)", baseQuery), nil
+	case "mode":
+		return fmt.Sprintf("mode(%s)", baseQuery), nil
+	case "topk":
+		// topk needs a k parameter
+		if k, ok := params["k"]; ok {
+			if kVal, ok := k.(float64); ok {
+				return fmt.Sprintf("topk(%.0f, %s)", kVal, baseQuery), nil
+			}
+		}
+		return "", fmt.Errorf("topk requires a 'k' parameter")
+	case "bottomk":
+		// bottomk needs a k parameter
+		if k, ok := params["k"]; ok {
+			if kVal, ok := k.(float64); ok {
+				return fmt.Sprintf("bottomk(%.0f, %s)", kVal, baseQuery), nil
+			}
+		}
+		return "", fmt.Errorf("bottomk requires a 'k' parameter")
+	case "topk_avg":
+		// topk_avg needs a k parameter
+		if k, ok := params["k"]; ok {
+			if kVal, ok := k.(float64); ok {
+				return fmt.Sprintf("topk_avg(%.0f, %s)", kVal, baseQuery), nil
+			}
+		}
+		return "", fmt.Errorf("topk_avg requires a 'k' parameter")
+	case "topk_max":
+		// topk_max needs a k parameter
+		if k, ok := params["k"]; ok {
+			if kVal, ok := k.(float64); ok {
+				return fmt.Sprintf("topk_max(%.0f, %s)", kVal, baseQuery), nil
+			}
+		}
+		return "", fmt.Errorf("topk_max requires a 'k' parameter")
+	case "topk_min":
+		// topk_min needs a k parameter
+		if k, ok := params["k"]; ok {
+			if kVal, ok := k.(float64); ok {
+				return fmt.Sprintf("topk_min(%.0f, %s)", kVal, baseQuery), nil
+			}
+		}
+		return "", fmt.Errorf("topk_min requires a 'k' parameter")
+	case "bottomk_avg":
+		// bottomk_avg needs a k parameter
+		if k, ok := params["k"]; ok {
+			if kVal, ok := k.(float64); ok {
+				return fmt.Sprintf("bottomk_avg(%.0f, %s)", kVal, baseQuery), nil
+			}
+		}
+		return "", fmt.Errorf("bottomk_avg requires a 'k' parameter")
+	case "bottomk_max":
+		// bottomk_max needs a k parameter
+		if k, ok := params["k"]; ok {
+			if kVal, ok := k.(float64); ok {
+				return fmt.Sprintf("bottomk_max(%.0f, %s)", kVal, baseQuery), nil
+			}
+		}
+		return "", fmt.Errorf("bottomk_max requires a 'k' parameter")
+	case "bottomk_min":
+		// bottomk_min needs a k parameter
+		if k, ok := params["k"]; ok {
+			if kVal, ok := k.(float64); ok {
+				return fmt.Sprintf("bottomk_min(%.0f, %s)", kVal, baseQuery), nil
+			}
+		}
+		return "", fmt.Errorf("bottomk_min requires a 'k' parameter")
+	case "quantile":
+		// quantile needs a quantile parameter
+		if quantile, ok := params["quantile"]; ok {
+			if q, ok := quantile.(float64); ok {
+				return fmt.Sprintf("quantile(%.2f, %s)", q, baseQuery), nil
+			}
+		}
+		return "", fmt.Errorf("quantile requires a 'quantile' parameter")
+	case "quantiles":
+		// quantiles needs a quantiles parameter (array)
+		if quantiles, ok := params["quantiles"]; ok {
+			if qList, ok := quantiles.([]interface{}); ok && len(qList) > 0 {
+				// Convert quantiles to string format
+				var quantileStrs []string
+				for _, q := range qList {
+					if qVal, ok := q.(float64); ok {
+						quantileStrs = append(quantileStrs, fmt.Sprintf("%.2f", qVal))
+					}
+				}
+				quantilesStr := strings.Join(quantileStrs, ",")
+				return fmt.Sprintf("quantiles(%s, %s)", quantilesStr, baseQuery), nil
+			}
+		}
+		return "", fmt.Errorf("quantiles requires a 'quantiles' parameter with quantile values")
+	case "mad":
+		return fmt.Sprintf("mad(%s)", baseQuery), nil
+	case "geomean":
+		return fmt.Sprintf("geomean(%s)", baseQuery), nil
+	case "distinct":
+		return fmt.Sprintf("distinct(%s)", baseQuery), nil
+	case "histogram":
+		return fmt.Sprintf("histogram(%s)", baseQuery), nil
+	case "share":
+		return fmt.Sprintf("share(%s)", baseQuery), nil
+	case "outliers_iqr":
+		return fmt.Sprintf("outliers_iqr(%s)", baseQuery), nil
+	case "outliers_mad":
+		return fmt.Sprintf("outliers_mad(%s)", baseQuery), nil
+	case "outliersk":
+		// outliersk needs a k parameter
+		if k, ok := params["k"]; ok {
+			if kVal, ok := k.(float64); ok {
+				return fmt.Sprintf("outliersk(%.0f, %s)", kVal, baseQuery), nil
+			}
+		}
+		return "", fmt.Errorf("outliersk requires a 'k' parameter")
+	case "any":
+		return fmt.Sprintf("any(%s)", baseQuery), nil
+	case "group":
+		return fmt.Sprintf("group(%s)", baseQuery), nil
+	case "limitk":
+		// limitk needs a k parameter
+		if k, ok := params["k"]; ok {
+			if kVal, ok := k.(float64); ok {
+				return fmt.Sprintf("limitk(%.0f, %s)", kVal, baseQuery), nil
+			}
+		}
+		return "", fmt.Errorf("limitk requires a 'k' parameter")
+	case "count_values":
+		return fmt.Sprintf("count_values(%s)", baseQuery), nil
+	case "sum2":
+		return fmt.Sprintf("sum2(%s)", baseQuery), nil
+	case "zscore":
+		return fmt.Sprintf("zscore(%s)", baseQuery), nil
 
 	default:
 		return "", fmt.Errorf("unsupported function: %s", functionName)
