@@ -160,10 +160,11 @@ func (h *MetricsQLQueryHandler) isValidFunction(functionName, category string) b
 	transformFunctions := []string{
 		"abs", "acos", "acosh", "asin", "asinh", "atan", "atanh",
 		"ceil", "clamp", "clamp_max", "clamp_min", "cos", "cosh",
-		"deg", "exp", "floor", "histogram_quantile", "hour", "ln",
-		"log10", "log2", "minute", "month", "pi", "rad", "round",
-		"scalar", "sgn", "sin", "sinh", "sqrt", "tan", "tanh",
-		"time", "timestamp", "vector", "year",
+		"day_of_month", "day_of_week", "day_of_year", "deg", "exp", "floor", "histogram_avg", "histogram_quantile", "histogram_stddev", "hour",
+		"interpolate", "keep_last_value", "keep_next_value", "ln",
+		"log10", "log2", "minute", "month", "now", "pi", "prometheus_buckets", "rad", "rand", "rand_normal", "range_linear", "range_vector", "remove_resets", "round", "running_avg", "running_max", "running_min", "running_sum",
+		"scalar", "sgn", "sin", "sinh", "smooth_exponential", "sort", "sort_by_label", "sqrt", "tan", "tanh",
+		"time", "timestamp", "timezone_offset", "union", "vector", "year",
 	}
 
 	labelFunctions := []string{
