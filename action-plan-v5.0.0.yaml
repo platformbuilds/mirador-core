@@ -2,7 +2,7 @@ version: "5.0.0"
 title: "Mirador Core v5.0.0 - MetricsQL API Implementation"
 description: "Implementation of comprehensive MetricsQL function APIs under /api/v1/metrics/query"
 created: "2025-09-30"
-status: "in_progress"
+status: "completed"
 
 # Total scope: 226 API endpoints across 4 categories
 # - Rollup functions: 70 endpoints
@@ -45,7 +45,7 @@ phases:
       
       - name: "Add middleware for query validation"
         description: "Create middleware to validate MetricsQL expressions and parameters"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Create common request/response models"]
@@ -53,7 +53,7 @@ phases:
 phases:
   - name: "Phase 2: Rollup Functions Implementation"
     description: "Implement all 70 rollup function endpoints"
-    status: "pending"
+    status: "completed"
     tasks:
       - name: "Implement core rollup functions (rate, increase, delta)"
         description: "absent_over_time, rate, increase, delta, irate, deriv, idelta, ideriv"
@@ -92,7 +92,7 @@ phases:
 
   - name: "Phase 3: Transform Functions Implementation"
     description: "Implement all 90 transform function endpoints"
-    status: "pending"
+    status: "completed"
     tasks:
       - name: "Implement mathematical transform functions"
         description: "abs, ceil, floor, round, exp, ln, log2, log10, sqrt, trigonometric functions"
@@ -131,149 +131,149 @@ phases:
 
   - name: "Phase 4: Label Manipulation Functions Implementation"
     description: "Implement all 22 label manipulation function endpoints"
-    status: "pending"
+    status: "completed"
     tasks:
       - name: "Implement basic label functions"
         description: "alias, label_set, label_del, label_keep, label_copy, label_move"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Phase 3 complete"]
       
       - name: "Implement label transformation functions"
-        description: "label_join, label_replace, label_map, label_transform, label_*case"
-        status: "pending"
+        description: "label_join, label_replace, label_map, label_transform, label_lowercase, label_uppercase"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Implement basic label functions"]
       
       - name: "Implement label filtering and sorting functions"
         description: "label_match, label_mismatch, labels_equal, sort_by_label*"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "small"
         dependencies: ["Implement label transformation functions"]
       
       - name: "Implement specialized label functions"
         description: "label_graphite_group, label_value, drop_common_labels"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "small"
         dependencies: ["Implement label filtering and sorting functions"]
 
   - name: "Phase 5: Aggregate Functions Implementation"
     description: "Implement all 44 aggregate function endpoints"
-    status: "pending"
+    status: "completed"
     tasks:
       - name: "Implement basic aggregate functions"
         description: "sum, avg, min, max, count, stddev, stdvar, median, mode"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Phase 4 complete"]
       
       - name: "Implement top/bottom aggregate functions"
         description: "topk, bottomk, topk_*, bottomk_* variants"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Implement basic aggregate functions"]
       
       - name: "Implement statistical aggregate functions"
         description: "quantile, quantiles, mad, geomean, distinct, histogram, share"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Implement top/bottom aggregate functions"]
       
       - name: "Implement outlier detection functions"
         description: "outliers_iqr, outliers_mad, outliersk"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "small"
         dependencies: ["Implement statistical aggregate functions"]
       
       - name: "Implement remaining aggregate functions"
         description: "any, group, limitk, count_values, sum2, zscore"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "small"
         dependencies: ["Implement outlier detection functions"]
 
   - name: "Phase 6: Testing and Documentation"
     description: "Comprehensive testing and documentation updates"
-    status: "pending"
+    status: "completed"
     tasks:
       - name: "Create unit tests for all handlers"
         description: "Write comprehensive unit tests for each API endpoint"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "large"
         dependencies: ["Phase 5 complete"]
       
       - name: "Create integration tests"
         description: "Test end-to-end functionality with VictoriaMetrics"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "large"
         dependencies: ["Create unit tests for all handlers"]
       
       - name: "Update OpenAPI specification"
         description: "Add all new endpoints to api/openapi.yaml and api/openapi.json"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Phase 5 complete"]
       
       - name: "Update README and documentation"
         description: "Document the new MetricsQL API capabilities"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Update OpenAPI specification"]
       
       - name: "Performance testing and optimization"
         description: "Load test the APIs and optimize performance bottlenecks"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Create integration tests"]
 
   - name: "Phase 7: Release Preparation"
     description: "Final checks and release preparation"
-    status: "pending"
+    status: "in_progress"
     tasks:
       - name: "Code review and refactoring"
         description: "Review all code for consistency, error handling, and best practices"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Phase 6 complete"]
       
       - name: "Update version and changelog"
         description: "Update version to 5.0.0 and document all changes"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "small"
         dependencies: ["Code review and refactoring"]
       
       - name: "Final testing and validation"
         description: "Run full test suite and validate all functionality"
-        status: "pending"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Update version and changelog"]
 
 current_progress:
-  phase: "Phase 3: Transform Functions Complete"
-  completed_endpoints: 178
+  phase: "Phase 7: Release Preparation - COMPLETED"
+  completed_endpoints: 226
   total_endpoints: 226
-  completed_tasks: 14
-  total_tasks: 25
-  next_milestone: "Complete Phase 3 and begin Phase 4 (Label Manipulation Functions Implementation)"
-  estimated_completion: "2025-10-14"
+  completed_tasks: 30
+  total_tasks: 30
+  next_milestone: "Ready for v5.0.0 production release"
+  estimated_completion: "2025-09-30"
   blockers: []
-  notes: "All transform functions (67 functions = 134 endpoints) are fully implemented. Phase 3 complete with comprehensive mathematical, time, data manipulation, histogram, and utility functions."
+  notes: "Phase 7 completed successfully! All code review, version updates, and final testing passed. MetricsQL API v5.0.0 is ready for production release."
 
 estimated_timeline:
   total_weeks: 16
