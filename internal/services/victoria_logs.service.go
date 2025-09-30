@@ -55,8 +55,8 @@ func NewVictoriaLogsService(cfg config.VictoriaLogsConfig, logger logger.Logger)
 		logger:    logger,
 		username:  cfg.Username,
 		password:  cfg.Password,
-		retries:   3,   // total attempts
-		backoffMS: 200, // 200ms, 400ms, 800ms
+		retries:   3,    // total attempts
+		backoffMS: 1000, // 1s, 2s, 4s
 	}
 }
 
@@ -77,6 +77,11 @@ func (s *VictoriaLogsService) ExecuteQuery(
 	ctx context.Context,
 	req *models.LogsQLQueryRequest,
 ) (*models.LogsQLQueryResult, error) {
+
+	// Multi-endpoint aggregation when multiple endpoints configured in this service
+	if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 1 }() {
+		return s.executeQueryMultiEndpoint(ctx, req)
+	}
 
 	// Aggregation: fan-out and merge results when children present
 	if len(s.children) > 0 {
@@ -143,6 +148,125 @@ func (s *VictoriaLogsService) ExecuteQuery(
 		}, nil
 	}
 
+	var rows []map[string]any
+	onRow := func(m map[string]any) error {
+		cp := make(map[string]any, len(m))
+		for k, v := range m {
+			cp[k] = v
+		}
+		rows = append(rows, cp)
+		return nil
+	}
+
+	res, err := s.ExecuteQueryStream(ctx, req, onRow)
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		res.Logs = make([]map[string]any, 0)
+	} else {
+		res.Logs = rows
+	}
+	if res.Stats != nil {
+		res.Stats["streaming"] = false
+	}
+	return res, nil
+}
+
+// executeQueryMultiEndpoint fans out the query to all configured endpoints in this service,
+// aggregates the results (concatenates logs), and returns a combined result.
+func (s *VictoriaLogsService) executeQueryMultiEndpoint(ctx context.Context, req *models.LogsQLQueryRequest) (*models.LogsQLQueryResult, error) {
+	// Get endpoints safely
+	s.mu.Lock()
+	endpoints := make([]string, len(s.endpoints))
+	copy(endpoints, s.endpoints)
+	s.mu.Unlock()
+
+	if len(endpoints) == 0 {
+		return nil, errors.New("no VictoriaLogs endpoints configured")
+	}
+
+	type out struct {
+		res *models.LogsQLQueryResult
+		err error
+	}
+	ch := make(chan out, len(endpoints))
+	for _, endpoint := range endpoints {
+		go func(ep string) {
+			// Create a temporary service instance for this endpoint
+			tempSvc := &VictoriaLogsService{
+				name:      s.name,
+				endpoints: []string{ep}, // Single endpoint
+				timeout:   s.timeout,
+				client:    s.client,
+				logger:    s.logger,
+				username:  s.username,
+				password:  s.password,
+				retries:   s.retries,
+				backoffMS: s.backoffMS,
+			}
+			r, e := tempSvc.executeQuerySingleEndpoint(ctx, req)
+			ch <- out{r, e}
+		}(endpoint)
+	}
+
+	fieldsSet := map[string]struct{}{}
+	var merged []map[string]any
+	totalCount := 0
+	totalBytes := int64(0)
+	sources := make([]map[string]any, 0, len(endpoints))
+	success := 0
+	for i := 0; i < len(endpoints); i++ {
+		o := <-ch
+		if o.err != nil || o.res == nil {
+			if o.err != nil {
+				s.logger.Warn("logs endpoint failed", "error", o.err)
+			}
+			continue
+		}
+		if len(o.res.Logs) > 0 {
+			merged = append(merged, o.res.Logs...)
+		}
+		for _, f := range o.res.Fields {
+			fieldsSet[f] = struct{}{}
+		}
+		if o.res.Stats != nil {
+			if v, ok := toInt(o.res.Stats["count"]); ok {
+				totalCount += v
+			}
+			if b, ok := toInt64(o.res.Stats["bytes_read"]); ok {
+				totalBytes += b
+			}
+			src := map[string]any{"source": svcName(o.res.Stats), "stats": o.res.Stats}
+			sources = append(sources, src)
+		}
+		success++
+	}
+
+	if success == 0 {
+		return nil, fmt.Errorf("all logs endpoints failed")
+	}
+
+	fields := make([]string, 0, len(fieldsSet))
+	for f := range fieldsSet {
+		fields = append(fields, f)
+	}
+
+	return &models.LogsQLQueryResult{
+		Logs:   merged,
+		Fields: fields,
+		Stats: map[string]any{
+			"count":      totalCount,
+			"bytes_read": totalBytes,
+			"aggregated": true,
+			"sources":    sources,
+			"streaming":  false,
+		},
+	}, nil
+}
+
+// executeQuerySingleEndpoint executes a query against a single endpoint (used by multi-endpoint fan-out)
+func (s *VictoriaLogsService) executeQuerySingleEndpoint(ctx context.Context, req *models.LogsQLQueryRequest) (*models.LogsQLQueryResult, error) {
 	var rows []map[string]any
 	onRow := func(m map[string]any) error {
 		cp := make(map[string]any, len(m))
@@ -562,6 +686,118 @@ func (s *VictoriaLogsService) StoreJSONEvent(ctx context.Context, event map[stri
 }
 
 func (s *VictoriaLogsService) QueryPredictionEvents(ctx context.Context, query, tenantID string) ([]*models.SystemFracture, error) {
+	// Multi-endpoint aggregation when multiple endpoints configured in this service
+	if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 1 }() {
+		return s.queryPredictionEventsMultiEndpoint(ctx, query, tenantID)
+	}
+
+	endpoint := s.selectEndpoint()
+	url := fmt.Sprintf("%s/select/logsql/query", endpoint)
+
+	reqBody := map[string]interface{}{"query": query, "limit": 1000}
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonData))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if s.username != "" {
+		req.SetBasicAuth(s.username, s.password)
+	}
+	if utils.IsUint32String(tenantID) {
+		req.Header.Set("AccountID", tenantID)
+	}
+
+	resp, err := s.doRequestWithRetry(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var queryResponse models.LogsQLResponse
+	if err := json.NewDecoder(resp.Body).Decode(&queryResponse); err != nil {
+		return nil, err
+	}
+
+	var fractures []*models.SystemFracture
+	for _, entry := range queryResponse.Data {
+		if prediction, ok := entry["prediction"].(map[string]interface{}); ok {
+			f := &models.SystemFracture{}
+			if v, ok := prediction["id"].(string); ok {
+				f.ID = v
+			}
+			if v, ok := prediction["component"].(string); ok {
+				f.Component = v
+			}
+			fractures = append(fractures, f)
+		}
+	}
+	return fractures, nil
+}
+
+// queryPredictionEventsMultiEndpoint aggregates prediction events from all configured endpoints in this service
+func (s *VictoriaLogsService) queryPredictionEventsMultiEndpoint(ctx context.Context, query, tenantID string) ([]*models.SystemFracture, error) {
+	// Get endpoints safely
+	s.mu.Lock()
+	endpoints := make([]string, len(s.endpoints))
+	copy(endpoints, s.endpoints)
+	s.mu.Unlock()
+
+	if len(endpoints) == 0 {
+		return nil, errors.New("no VictoriaLogs endpoints configured")
+	}
+
+	type out struct {
+		fractures []*models.SystemFracture
+		err       error
+	}
+	ch := make(chan out, len(endpoints))
+	for _, endpoint := range endpoints {
+		go func(ep string) {
+			tempSvc := &VictoriaLogsService{
+				name:      s.name,
+				endpoints: []string{ep}, // Single endpoint
+				timeout:   s.timeout,
+				client:    s.client,
+				logger:    s.logger,
+				username:  s.username,
+				password:  s.password,
+				retries:   s.retries,
+				backoffMS: s.backoffMS,
+			}
+			f, e := tempSvc.queryPredictionEventsSingleEndpoint(ctx, query, tenantID)
+			ch <- out{f, e}
+		}(endpoint)
+	}
+
+	// Aggregate results - collect all unique fractures
+	fractureMap := make(map[string]*models.SystemFracture)
+	for i := 0; i < len(endpoints); i++ {
+		o := <-ch
+		if o.err != nil {
+			s.logger.Warn("prediction events from endpoint failed", "error", o.err)
+			continue
+		}
+		for _, f := range o.fractures {
+			if f.ID != "" {
+				fractureMap[f.ID] = f // Use ID as key to deduplicate
+			}
+		}
+	}
+
+	fractures := make([]*models.SystemFracture, 0, len(fractureMap))
+	for _, f := range fractureMap {
+		fractures = append(fractures, f)
+	}
+	return fractures, nil
+}
+
+// queryPredictionEventsSingleEndpoint queries prediction events from a single endpoint (used by multi-endpoint aggregation)
+func (s *VictoriaLogsService) queryPredictionEventsSingleEndpoint(ctx context.Context, query, tenantID string) ([]*models.SystemFracture, error) {
 	endpoint := s.selectEndpoint()
 	url := fmt.Sprintf("%s/select/logsql/query", endpoint)
 
@@ -631,6 +867,11 @@ func (s *VictoriaLogsService) ReplaceEndpoints(eps []string) {
 }
 
 func (s *VictoriaLogsService) HealthCheck(ctx context.Context) error {
+	// Multi-endpoint health check when multiple endpoints configured in this service
+	if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 1 }() {
+		return s.healthCheckMultiEndpoint(ctx)
+	}
+
 	if len(s.children) > 0 {
 		if err := s.healthCheckSelf(ctx); err == nil {
 			return nil
@@ -643,6 +884,38 @@ func (s *VictoriaLogsService) HealthCheck(ctx context.Context) error {
 		return fmt.Errorf("all logs sources unhealthy")
 	}
 	return s.healthCheckSelf(ctx)
+}
+
+// healthCheckMultiEndpoint checks health across all configured endpoints in this service
+func (s *VictoriaLogsService) healthCheckMultiEndpoint(ctx context.Context) error {
+	// Get endpoints safely
+	s.mu.Lock()
+	endpoints := make([]string, len(s.endpoints))
+	copy(endpoints, s.endpoints)
+	s.mu.Unlock()
+
+	if len(endpoints) == 0 {
+		return errors.New("no VictoriaLogs endpoints configured")
+	}
+
+	// Healthy if any endpoint is healthy
+	for _, endpoint := range endpoints {
+		tempSvc := &VictoriaLogsService{
+			name:      s.name,
+			endpoints: []string{endpoint}, // Single endpoint
+			timeout:   s.timeout,
+			client:    s.client,
+			logger:    s.logger,
+			username:  s.username,
+			password:  s.password,
+			retries:   s.retries,
+			backoffMS: s.backoffMS,
+		}
+		if err := tempSvc.healthCheckSelf(ctx); err == nil {
+			return nil // At least one endpoint is healthy
+		}
+	}
+	return fmt.Errorf("all logs endpoints unhealthy")
 }
 
 func (s *VictoriaLogsService) healthCheckSelf(ctx context.Context) error {
@@ -664,6 +937,11 @@ func (s *VictoriaLogsService) healthCheckSelf(ctx context.Context) error {
 
 // GetStreams queries VictoriaLogs for available log streams.
 func (s *VictoriaLogsService) GetStreams(ctx context.Context, tenantID string, limit int) ([]map[string]string, error) {
+	// Multi-endpoint aggregation when multiple endpoints configured in this service
+	if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 1 }() {
+		return s.getStreamsMultiEndpoint(ctx, tenantID, limit)
+	}
+
 	if len(s.children) > 0 {
 		services := make([]*VictoriaLogsService, 0, len(s.children)+1)
 		if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 0 }() {
@@ -746,8 +1024,115 @@ func (s *VictoriaLogsService) GetStreams(ctx context.Context, tenantID string, l
 	return pick, nil
 }
 
+// getStreamsMultiEndpoint aggregates streams from all configured endpoints in this service
+func (s *VictoriaLogsService) getStreamsMultiEndpoint(ctx context.Context, tenantID string, limit int) ([]map[string]string, error) {
+	// Get endpoints safely
+	s.mu.Lock()
+	endpoints := make([]string, len(s.endpoints))
+	copy(endpoints, s.endpoints)
+	s.mu.Unlock()
+
+	if len(endpoints) == 0 {
+		return nil, errors.New("no VictoriaLogs endpoints configured")
+	}
+
+	type out struct {
+		streams []map[string]string
+		err     error
+	}
+	ch := make(chan out, len(endpoints))
+	for _, endpoint := range endpoints {
+		go func(ep string) {
+			tempSvc := &VictoriaLogsService{
+				name:      s.name,
+				endpoints: []string{ep}, // Single endpoint
+				timeout:   s.timeout,
+				client:    s.client,
+				logger:    s.logger,
+				username:  s.username,
+				password:  s.password,
+				retries:   s.retries,
+				backoffMS: s.backoffMS,
+			}
+			st, e := tempSvc.getStreamsSingleEndpoint(ctx, tenantID, limit)
+			ch <- out{st, e}
+		}(endpoint)
+	}
+
+	seen := map[string]struct{}{}
+	var merged []map[string]string
+	for i := 0; i < len(endpoints); i++ {
+		r := <-ch
+		if r.err != nil {
+			s.logger.Warn("streams from endpoint failed", "error", r.err)
+			continue
+		}
+		for _, m := range r.streams {
+			if v := m["label"]; v != "" {
+				if _, ok := seen[v]; ok {
+					continue
+				}
+				seen[v] = struct{}{}
+				merged = append(merged, map[string]string{"label": v})
+				if limit > 0 && len(merged) >= limit {
+					return merged, nil
+				}
+			}
+		}
+	}
+	return merged, nil
+}
+
+// getStreamsSingleEndpoint gets streams from a single endpoint (used by multi-endpoint aggregation)
+func (s *VictoriaLogsService) getStreamsSingleEndpoint(ctx context.Context, tenantID string, limit int) ([]map[string]string, error) {
+	// VictoriaLogs does not expose a generic "/labels" endpoint. Derive useful
+	// stream labels from available field names and common conventions.
+	fields, err := s.GetFields(ctx, tenantID)
+	if err != nil {
+		// Fall back to a conservative default list
+		fields = []string{"service", "level", "host"}
+	}
+
+	// Preferred candidates typically used for stream-like grouping.
+	candidates := []string{"service", "app", "application", "component", "level", "host", "namespace", "pod", "container"}
+
+	contains := func(list []string, v string) bool {
+		for _, x := range list {
+			if x == v {
+				return true
+			}
+		}
+		return false
+	}
+
+	pick := make([]map[string]string, 0, len(fields))
+	for _, c := range candidates {
+		if contains(fields, c) {
+			pick = append(pick, map[string]string{"label": c})
+			if limit > 0 && len(pick) >= limit {
+				return pick, nil
+			}
+		}
+	}
+	// If nothing matched, just return the first N field names as labels
+	if len(pick) == 0 {
+		for _, f := range fields {
+			pick = append(pick, map[string]string{"label": f})
+			if limit > 0 && len(pick) >= limit {
+				break
+			}
+		}
+	}
+	return pick, nil
+}
+
 // GetFields retrieves available log fields.
 func (s *VictoriaLogsService) GetFields(ctx context.Context, tenantID string) ([]string, error) {
+	// Multi-endpoint aggregation when multiple endpoints configured in this service
+	if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 1 }() {
+		return s.getFieldsMultiEndpoint(ctx, tenantID)
+	}
+
 	if len(s.children) > 0 {
 		services := make([]*VictoriaLogsService, 0, len(s.children)+1)
 		if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 0 }() {
@@ -784,6 +1169,82 @@ func (s *VictoriaLogsService) GetFields(ctx context.Context, tenantID string) ([
 		sort.Strings(fields)
 		return fields, nil
 	}
+	// Hardcode a query equivalent to:
+	// { "query": "*", "start": now-10m, "end": now, "limit": 500 }
+	nowMs := time.Now().UnixMilli()
+	req := &models.LogsQLQueryRequest{
+		Query:    "*",
+		Start:    nowMs - 10*60*1000,
+		End:      nowMs,
+		Limit:    500,
+		TenantID: tenantID,
+	}
+	res, err := s.ExecuteQuery(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if res == nil || len(res.Fields) == 0 {
+		return []string{}, nil
+	}
+	return res.Fields, nil
+}
+
+// getFieldsMultiEndpoint aggregates fields from all configured endpoints in this service
+func (s *VictoriaLogsService) getFieldsMultiEndpoint(ctx context.Context, tenantID string) ([]string, error) {
+	// Get endpoints safely
+	s.mu.Lock()
+	endpoints := make([]string, len(s.endpoints))
+	copy(endpoints, s.endpoints)
+	s.mu.Unlock()
+
+	if len(endpoints) == 0 {
+		return nil, errors.New("no VictoriaLogs endpoints configured")
+	}
+
+	type out struct {
+		fields []string
+		err    error
+	}
+	ch := make(chan out, len(endpoints))
+	for _, endpoint := range endpoints {
+		go func(ep string) {
+			tempSvc := &VictoriaLogsService{
+				name:      s.name,
+				endpoints: []string{ep}, // Single endpoint
+				timeout:   s.timeout,
+				client:    s.client,
+				logger:    s.logger,
+				username:  s.username,
+				password:  s.password,
+				retries:   s.retries,
+				backoffMS: s.backoffMS,
+			}
+			f, e := tempSvc.getFieldsSingleEndpoint(ctx, tenantID)
+			ch <- out{f, e}
+		}(endpoint)
+	}
+
+	set := map[string]struct{}{}
+	for i := 0; i < len(endpoints); i++ {
+		r := <-ch
+		if r.err != nil {
+			s.logger.Warn("fields from endpoint failed", "error", r.err)
+			continue
+		}
+		for _, f := range r.fields {
+			set[f] = struct{}{}
+		}
+	}
+	fields := make([]string, 0, len(set))
+	for k := range set {
+		fields = append(fields, k)
+	}
+	sort.Strings(fields)
+	return fields, nil
+}
+
+// getFieldsSingleEndpoint gets fields from a single endpoint (used by multi-endpoint aggregation)
+func (s *VictoriaLogsService) getFieldsSingleEndpoint(ctx context.Context, tenantID string) ([]string, error) {
 	// Hardcode a query equivalent to:
 	// { "query": "*", "start": now-10m, "end": now, "limit": 500 }
 	nowMs := time.Now().UnixMilli()
