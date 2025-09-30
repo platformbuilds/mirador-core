@@ -310,26 +310,29 @@ known_issues:
   - name: "VictoriaMetrics multi-endpoint query routing"
     description: "mirador-core should send the query to all configured VictoriaMetrics endpoints, currently it is sending to only one of the multiple configured VictoriaMetrics endpoints"
     severity: "high"
-    status: "open"
+    status: "resolved"
     assignee: "developer"
     effort: "medium"
     fix_required: "Update query routing logic to fan-out queries to all configured VictoriaMetrics endpoints"
+    resolution: "Implemented multi-endpoint fan-out for ExecuteQuery, ExecuteRangeQuery, GetSeries, GetLabels, GetLabelValues, and HealthCheck methods. Added exponential backoff retry logic with 3 attempts (1s, 2s, 4s delays) to prevent memory leaks and infinite retries."
     
   - name: "VictoriaLogs multi-endpoint query routing"
     description: "mirador-core should send the query to all configured VictoriaLogs endpoints, currently it is sending to only one of the multiple configured VictoriaLogs endpoints"
     severity: "high"
-    status: "open"
+    status: "resolved"
     assignee: "developer"
     effort: "medium"
     fix_required: "Update query routing logic to fan-out queries to all configured VictoriaLogs endpoints"
+    resolution: "Implemented multi-endpoint fan-out for ExecuteQuery, QueryPredictionEvents, GetStreams, GetFields, and HealthCheck methods. Added exponential backoff retry logic with 3 attempts (1s, 2s, 4s delays) to prevent memory leaks and infinite retries."
     
   - name: "VictoriaTraces multi-endpoint query routing"
     description: "mirador-core should send the query to all configured VictoriaTraces endpoints, currently it is sending to only one of the multiple configured VictoriaTraces endpoints"
     severity: "high"
-    status: "open"
+    status: "resolved"
     assignee: "developer"
     effort: "medium"
     fix_required: "Update query routing logic to fan-out queries to all configured VictoriaTraces endpoints"
+    resolution: "Implemented multi-endpoint fan-out for GetOperations, GetServices, SearchTraces, and HealthCheck methods. Added exponential backoff retry logic with 3 attempts (1s, 2s, 4s delays) to prevent memory leaks and infinite retries."
 
 success_criteria:
   - All 226 API endpoints implemented and functional
