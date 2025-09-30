@@ -225,6 +225,207 @@ func (s *VictoriaMetricsQueryService) constructFunctionQuery(functionName, baseQ
 	case "rollup_delta":
 		return fmt.Sprintf("rollup_delta(%s)", baseQuery), nil
 
+	// Mathematical transform functions
+	case "abs":
+		return fmt.Sprintf("abs(%s)", baseQuery), nil
+	case "ceil":
+		return fmt.Sprintf("ceil(%s)", baseQuery), nil
+	case "floor":
+		return fmt.Sprintf("floor(%s)", baseQuery), nil
+	case "round":
+		return fmt.Sprintf("round(%s)", baseQuery), nil
+	case "exp":
+		return fmt.Sprintf("exp(%s)", baseQuery), nil
+	case "ln":
+		return fmt.Sprintf("ln(%s)", baseQuery), nil
+	case "log2":
+		return fmt.Sprintf("log2(%s)", baseQuery), nil
+	case "log10":
+		return fmt.Sprintf("log10(%s)", baseQuery), nil
+	case "sqrt":
+		return fmt.Sprintf("sqrt(%s)", baseQuery), nil
+	// Trigonometric functions
+	case "acos":
+		return fmt.Sprintf("acos(%s)", baseQuery), nil
+	case "acosh":
+		return fmt.Sprintf("acosh(%s)", baseQuery), nil
+	case "asin":
+		return fmt.Sprintf("asin(%s)", baseQuery), nil
+	case "asinh":
+		return fmt.Sprintf("asinh(%s)", baseQuery), nil
+	case "atan":
+		return fmt.Sprintf("atan(%s)", baseQuery), nil
+	case "atanh":
+		return fmt.Sprintf("atanh(%s)", baseQuery), nil
+	case "cos":
+		return fmt.Sprintf("cos(%s)", baseQuery), nil
+	case "cosh":
+		return fmt.Sprintf("cosh(%s)", baseQuery), nil
+	case "sin":
+		return fmt.Sprintf("sin(%s)", baseQuery), nil
+	case "sinh":
+		return fmt.Sprintf("sinh(%s)", baseQuery), nil
+	case "tan":
+		return fmt.Sprintf("tan(%s)", baseQuery), nil
+	case "tanh":
+		return fmt.Sprintf("tanh(%s)", baseQuery), nil
+
+	// Time-related transform functions
+	case "day_of_month":
+		return fmt.Sprintf("day_of_month(%s)", baseQuery), nil
+	case "day_of_week":
+		return fmt.Sprintf("day_of_week(%s)", baseQuery), nil
+	case "day_of_year":
+		return fmt.Sprintf("day_of_year(%s)", baseQuery), nil
+	case "hour":
+		return fmt.Sprintf("hour(%s)", baseQuery), nil
+	case "minute":
+		return fmt.Sprintf("minute(%s)", baseQuery), nil
+	case "month":
+		return fmt.Sprintf("month(%s)", baseQuery), nil
+	case "year":
+		return fmt.Sprintf("year(%s)", baseQuery), nil
+	case "time":
+		return fmt.Sprintf("time(%s)", baseQuery), nil
+	case "now":
+		return fmt.Sprintf("now(%s)", baseQuery), nil
+	case "timezone_offset":
+		return fmt.Sprintf("timezone_offset(%s)", baseQuery), nil
+
+	// Data manipulation functions
+	case "clamp":
+		return fmt.Sprintf("clamp(%s)", baseQuery), nil
+	case "clamp_max":
+		return fmt.Sprintf("clamp_max(%s)", baseQuery), nil
+	case "clamp_min":
+		return fmt.Sprintf("clamp_min(%s)", baseQuery), nil
+	case "interpolate":
+		return fmt.Sprintf("interpolate(%s)", baseQuery), nil
+	case "keep_last_value":
+		return fmt.Sprintf("keep_last_value(%s)", baseQuery), nil
+	case "keep_next_value":
+		return fmt.Sprintf("keep_next_value(%s)", baseQuery), nil
+	case "remove_resets":
+		return fmt.Sprintf("remove_resets(%s)", baseQuery), nil
+	case "scalar":
+		return fmt.Sprintf("scalar(%s)", baseQuery), nil
+	case "union":
+		return fmt.Sprintf("union(%s)", baseQuery), nil
+	case "vector":
+		return fmt.Sprintf("vector(%s)", baseQuery), nil
+
+	// Histogram transform functions
+	case "histogram_quantile":
+		// histogram_quantile needs a quantile parameter
+		if quantile, ok := params["quantile"]; ok {
+			if q, ok := quantile.(float64); ok {
+				return fmt.Sprintf("histogram_quantile(%.2f, %s)", q, baseQuery), nil
+			}
+		}
+		return "", fmt.Errorf("histogram_quantile requires a 'quantile' parameter")
+	case "histogram_avg":
+		return fmt.Sprintf("histogram_avg(%s)", baseQuery), nil
+	case "histogram_stddev":
+		return fmt.Sprintf("histogram_stddev(%s)", baseQuery), nil
+	case "prometheus_buckets":
+		return fmt.Sprintf("prometheus_buckets(%s)", baseQuery), nil
+
+	// Additional transform functions
+	case "pi":
+		return "pi()", nil
+	case "rad":
+		return fmt.Sprintf("rad(%s)", baseQuery), nil
+	case "deg":
+		return fmt.Sprintf("deg(%s)", baseQuery), nil
+	case "sgn":
+		return fmt.Sprintf("sgn(%s)", baseQuery), nil
+	case "range_linear":
+		return fmt.Sprintf("range_linear(%s)", baseQuery), nil
+	case "range_vector":
+		return fmt.Sprintf("range_vector(%s)", baseQuery), nil
+	case "running_sum":
+		return fmt.Sprintf("running_sum(%s)", baseQuery), nil
+	case "running_avg":
+		return fmt.Sprintf("running_avg(%s)", baseQuery), nil
+	case "running_min":
+		return fmt.Sprintf("running_min(%s)", baseQuery), nil
+	case "running_max":
+		return fmt.Sprintf("running_max(%s)", baseQuery), nil
+	case "rand":
+		return "rand()", nil
+	case "rand_normal":
+		return "rand_normal()", nil
+	case "sort":
+		return fmt.Sprintf("sort(%s)", baseQuery), nil
+	case "sort_by_label":
+		return fmt.Sprintf("sort_by_label(%s)", baseQuery), nil
+	case "smooth_exponential":
+		return fmt.Sprintf("smooth_exponential(%s)", baseQuery), nil
+
+	// Label manipulation functions
+	case "alias":
+		// alias needs a new label name parameter
+		if newLabel, ok := params["label"]; ok {
+			if label, ok := newLabel.(string); ok {
+				return fmt.Sprintf("alias(%s, %s)", baseQuery, label), nil
+			}
+		}
+		return "", fmt.Errorf("alias requires a 'label' parameter")
+	case "label_set":
+		// label_set needs label and value parameters
+		label, hasLabel := params["label"]
+		value, hasValue := params["value"]
+		if hasLabel && hasValue {
+			if l, ok := label.(string); ok {
+				if v, ok := value.(string); ok {
+					return fmt.Sprintf("label_set(%s, %s, %s)", l, v, baseQuery), nil
+				}
+			}
+		}
+		return "", fmt.Errorf("label_set requires 'label' and 'value' parameters")
+	case "label_del":
+		// label_del can take multiple label names
+		if labels, ok := params["labels"]; ok {
+			if labelList, ok := labels.([]string); ok && len(labelList) > 0 {
+				labelStr := strings.Join(labelList, ",")
+				return fmt.Sprintf("label_del(%s, %s)", baseQuery, labelStr), nil
+			}
+		}
+		return "", fmt.Errorf("label_del requires a 'labels' parameter with label names")
+	case "label_keep":
+		// label_keep can take multiple label names
+		if labels, ok := params["labels"]; ok {
+			if labelList, ok := labels.([]string); ok && len(labelList) > 0 {
+				labelStr := strings.Join(labelList, ",")
+				return fmt.Sprintf("label_keep(%s, %s)", baseQuery, labelStr), nil
+			}
+		}
+		return "", fmt.Errorf("label_keep requires a 'labels' parameter with label names")
+	case "label_copy":
+		// label_copy needs src and dst label parameters
+		src, hasSrc := params["src"]
+		dst, hasDst := params["dst"]
+		if hasSrc && hasDst {
+			if s, ok := src.(string); ok {
+				if d, ok := dst.(string); ok {
+					return fmt.Sprintf("label_copy(%s, %s, %s)", s, d, baseQuery), nil
+				}
+			}
+		}
+		return "", fmt.Errorf("label_copy requires 'src' and 'dst' parameters")
+	case "label_move":
+		// label_move needs src and dst label parameters
+		src, hasSrc := params["src"]
+		dst, hasDst := params["dst"]
+		if hasSrc && hasDst {
+			if s, ok := src.(string); ok {
+				if d, ok := dst.(string); ok {
+					return fmt.Sprintf("label_move(%s, %s, %s)", s, d, baseQuery), nil
+				}
+			}
+		}
+		return "", fmt.Errorf("label_move requires 'src' and 'dst' parameters")
+
 	default:
 		return "", fmt.Errorf("unsupported function: %s", functionName)
 	}
