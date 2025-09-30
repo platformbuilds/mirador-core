@@ -40,7 +40,7 @@ func TestMetricsQLQueryHandler_Integration_AggregateFunctions(t *testing.T) {
 					"result": []any{
 						map[string]any{
 							"metric": map[string]string{"__name__": "http_requests_total"},
-							"value": []any{1703123456, "100"},
+							"value":  []any{1703123456, "100"},
 						},
 					},
 				},
@@ -52,7 +52,7 @@ func TestMetricsQLQueryHandler_Integration_AggregateFunctions(t *testing.T) {
 					"result": []any{
 						map[string]any{
 							"metric": map[string]string{"__name__": "http_requests_total"},
-							"value": []any{1703123456, "25.5"},
+							"value":  []any{1703123456, "25.5"},
 						},
 					},
 				},
@@ -64,7 +64,7 @@ func TestMetricsQLQueryHandler_Integration_AggregateFunctions(t *testing.T) {
 					"result": []any{
 						map[string]any{
 							"metric": map[string]string{"__name__": "http_requests_total"},
-							"value": []any{1703123456, "4"},
+							"value":  []any{1703123456, "4"},
 						},
 					},
 				},
@@ -76,7 +76,7 @@ func TestMetricsQLQueryHandler_Integration_AggregateFunctions(t *testing.T) {
 					"result": []any{
 						map[string]any{
 							"metric": map[string]string{"__name__": "http_requests_total"},
-							"value": []any{1703123456, "95"},
+							"value":  []any{1703123456, "95"},
 						},
 					},
 				},
@@ -88,11 +88,11 @@ func TestMetricsQLQueryHandler_Integration_AggregateFunctions(t *testing.T) {
 					"result": []any{
 						map[string]any{
 							"metric": map[string]string{"__name__": "http_requests_total", "instance": "app1"},
-							"value": []any{1703123456, "50"},
+							"value":  []any{1703123456, "50"},
 						},
 						map[string]any{
 							"metric": map[string]string{"__name__": "http_requests_total", "instance": "app2"},
-							"value": []any{1703123456, "30"},
+							"value":  []any{1703123456, "30"},
 						},
 					},
 				},
@@ -105,7 +105,7 @@ func TestMetricsQLQueryHandler_Integration_AggregateFunctions(t *testing.T) {
 					"result": []any{
 						map[string]any{
 							"metric": map[string]string{"__name__": "http_requests_total"},
-							"value": []any{1703123456, "42"},
+							"value":  []any{1703123456, "42"},
 						},
 					},
 				},

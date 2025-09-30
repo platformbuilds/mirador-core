@@ -27,7 +27,7 @@ func BenchmarkMetricsQLAggregateFunctions(b *testing.B) {
 				"result": []any{
 					map[string]any{
 						"metric": map[string]string{"__name__": "http_requests_total"},
-						"value": []any{1703123456, "42.5"},
+						"value":  []any{1703123456, "42.5"},
 					},
 				},
 			},
@@ -96,7 +96,7 @@ func BenchmarkMetricsQLParameterFunctions(b *testing.B) {
 				"result": []any{
 					map[string]any{
 						"metric": map[string]string{"__name__": "http_requests_total"},
-						"value": []any{1703123456, "95"},
+						"value":  []any{1703123456, "95"},
 					},
 				},
 			},
