@@ -52,21 +52,23 @@ type MetricsQLRangeQueryRequest struct {
 
 // MetricsQLFunctionRequest represents a request to execute a MetricsQL function
 type MetricsQLFunctionRequest struct {
-	Query    string `json:"query" binding:"required"` // The MetricsQL expression
-	Function string `json:"function,omitempty"`       // Function name (set by route)
-	Time     string `json:"time,omitempty"`           // Evaluation timestamp
-	Timeout  string `json:"timeout,omitempty"`        // Query timeout
-	TenantID string `json:"-"`                        // Set by middleware
+	Query    string                 `json:"query" binding:"required"` // The MetricsQL expression
+	Function string                 `json:"function,omitempty"`       // Function name (set by route)
+	Time     string                 `json:"time,omitempty"`           // Evaluation timestamp
+	Timeout  string                 `json:"timeout,omitempty"`        // Query timeout
+	Params   map[string]interface{} `json:"params,omitempty"`         // Function-specific parameters
+	TenantID string                 `json:"-"`                        // Set by middleware
 }
 
 // MetricsQLFunctionRangeRequest represents a request to execute a MetricsQL function with range
 type MetricsQLFunctionRangeRequest struct {
-	Query    string `json:"query" binding:"required"` // The MetricsQL expression
-	Function string `json:"function,omitempty"`       // Function name (set by route)
-	Start    string `json:"start" binding:"required"` // Start time
-	End      string `json:"end" binding:"required"`   // End time
-	Step     string `json:"step" binding:"required"`  // Query resolution step width
-	TenantID string `json:"-"`                        // Set by middleware
+	Query    string                 `json:"query" binding:"required"` // The MetricsQL expression
+	Function string                 `json:"function,omitempty"`       // Function name (set by route)
+	Start    string                 `json:"start" binding:"required"` // Start time
+	End      string                 `json:"end" binding:"required"`   // End time
+	Step     string                 `json:"step" binding:"required"`  // Query resolution step width
+	Params   map[string]interface{} `json:"params,omitempty"`         // Function-specific parameters
+	TenantID string                 `json:"-"`                        // Set by middleware
 }
 
 // MetricsQLFunctionResponse represents the response from a MetricsQL function query
