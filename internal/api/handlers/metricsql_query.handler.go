@@ -150,11 +150,11 @@ func (h *MetricsQLQueryHandler) isValidFunction(functionName, category string) b
 	// Define valid functions for each category
 	rollupFunctions := []string{
 		"absent_over_time", "avg_over_time", "changes", "count_over_time",
-		"delta", "deriv", "holt_winters", "idelta", "increase", "irate",
-		"last_over_time", "max_over_time", "min_over_time", "predict_linear",
-		"present_over_time", "quantile_over_time", "rate", "resets",
+		"delta", "deriv", "distinct_over_time", "histogram_over_time", "holt_winters", "idelta", "increase", "irate",
+		"lag", "last_over_time", "lifetime", "mad_over_time", "max_over_time", "min_over_time", "predict_linear",
+		"present_over_time", "quantile_over_time", "rate", "resets", "rollup", "rollup_delta", "rollup_increase", "rollup_rate",
 		"stddev_over_time", "stdvar_over_time", "sum_over_time",
-		"timestamp", "tmax_over_time", "tmin_over_time",
+		"timestamp", "tmax_over_time", "tmin_over_time", "zscore_over_time",
 	}
 
 	transformFunctions := []string{
