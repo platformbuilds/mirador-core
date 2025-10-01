@@ -333,6 +333,15 @@ known_issues:
     effort: "medium"
     fix_required: "Update query routing logic to fan-out queries to all configured VictoriaTraces endpoints"
     resolution: "Implemented multi-endpoint fan-out for GetOperations, GetServices, SearchTraces, and HealthCheck methods. Added exponential backoff retry logic with 3 attempts (1s, 2s, 4s delays) to prevent memory leaks and infinite retries."
+    
+  - name: "Missing /api/v1/microservices/status endpoint"
+    description: "/microservices/status endpoint was only available at root level but not under /api/v1/ group, despite being documented in OpenAPI spec"
+    severity: "medium"
+    status: "resolved"
+    assignee: "developer"
+    effort: "small"
+    fix_required: "Add v1.GET('/microservices/status', healthHandler.MicroservicesStatus) route registration in server.go"
+    resolution: "Added missing v1 route registration for /api/v1/microservices/status endpoint to maintain consistency with other health endpoints (/health, /ready) that are available at both root and v1 levels."
 
 success_criteria:
   - All 226 API endpoints implemented and functional

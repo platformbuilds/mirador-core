@@ -10,6 +10,7 @@ import (
     "sync"
     "time"
 
+	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	storageweaviate "github.com/platformbuilds/mirador-core/internal/storage/weaviate"
 )
 
@@ -125,10 +126,16 @@ func (r *WeaviateRepo) ensureClass(ctx context.Context, className string, classD
 	}
 
 	// Create the class
-	if err := r.t.EnsureClasses(ctx, []map[string]any{classDef}); err != nil {
+	start := time.Now()
+	err = r.t.EnsureClasses(ctx, []map[string]any{classDef})
+	duration := time.Since(start)
+	
+	if err != nil {
+		monitoring.RecordWeaviateOperation("ensure_class", className, duration, false)
 		return fmt.Errorf("failed to create class %s: %w", className, err)
 	}
 
+	monitoring.RecordWeaviateOperation("ensure_class", className, duration, true)
 	return nil
 }
 
@@ -141,7 +148,12 @@ func (r *WeaviateRepo) classExists(ctx context.Context, className string) (bool,
 	}
 
 	// Use the Transport interface method instead of type assertion
-	if err := r.t.GetSchema(ctx, &schema); err != nil {
+	start := time.Now()
+	err := r.t.GetSchema(ctx, &schema)
+	duration := time.Since(start)
+	
+	if err != nil {
+		monitoring.RecordWeaviateOperation("get_schema", "schema", duration, false)
 		// If we can't get the schema, assume class doesn't exist
 		// This handles the case where Weaviate is running but has no schema
 		if strings.Contains(err.Error(), "422") || strings.Contains(err.Error(), "no schema") {
@@ -149,6 +161,8 @@ func (r *WeaviateRepo) classExists(ctx context.Context, className string) (bool,
 		}
 		return false, err
 	}
+
+	monitoring.RecordWeaviateOperation("get_schema", "schema", duration, true)
 
 	// Check if our class exists in the schema
 	for _, class := range schema.Classes {
@@ -226,21 +240,38 @@ func labelVersionPayload() map[string]any {
 }
 
 func (r *WeaviateRepo) gql(ctx context.Context, query string, variables map[string]any, out any) error {
-	return r.t.GraphQL(ctx, query, variables, out)
+	start := time.Now()
+	err := r.t.GraphQL(ctx, query, variables, out)
+	duration := time.Since(start)
+	
+	if err != nil {
+		monitoring.RecordWeaviateOperation("graphql", "query", duration, false)
+		return err
+	}
+	
+	monitoring.RecordWeaviateOperation("graphql", "query", duration, true)
+	return nil
 }
 
 func (r *WeaviateRepo) putObject(ctx context.Context, class, id string, props map[string]any) error {
 	// Ensure schema exists once per process (cheap no-op if already present)
 	r.ensureOnce(ctx)
+	start := time.Now()
 	if err := r.t.PutObject(ctx, class, id, props); err != nil {
 		// If class is missing, try to (re)ensure schema once, then retry
 		msg := err.Error()
 		if strings.Contains(msg, "class \"") && strings.Contains(msg, "not found") {
 			_ = r.EnsureSchema(ctx)
-			return r.t.PutObject(ctx, class, id, props)
+			err = r.t.PutObject(ctx, class, id, props)
 		}
-		return err
+		if err != nil {
+			duration := time.Since(start)
+			monitoring.RecordWeaviateOperation("put_object", class, duration, false)
+			return err
+		}
 	}
+	duration := time.Since(start)
+	monitoring.RecordWeaviateOperation("put_object", class, duration, true)
 	return nil
 }
 
@@ -1283,25 +1314,40 @@ func (r *WeaviateRepo) GetLabelVersion(ctx context.Context, tenantID, name strin
 
 func (r *WeaviateRepo) DeleteLabel(ctx context.Context, tenantID, name string) error {
     id := makeID("Label", tenantID, name)
-    return r.t.DeleteObject(ctx, id)
+    start := time.Now()
+    err := r.t.DeleteObject(ctx, id)
+    monitoring.RecordWeaviateOperation("DeleteObject", "Label", time.Since(start), err == nil)
+    return err
 }
 
 func (r *WeaviateRepo) DeleteMetric(ctx context.Context, tenantID, metric string) error {
     id := makeID("Metric", tenantID, metric)
-    return r.t.DeleteObject(ctx, id)
+    start := time.Now()
+    err := r.t.DeleteObject(ctx, id)
+    monitoring.RecordWeaviateOperation("DeleteObject", "Metric", time.Since(start), err == nil)
+    return err
 }
 
 func (r *WeaviateRepo) DeleteLogField(ctx context.Context, tenantID, field string) error {
     id := makeID("LogField", tenantID, field)
-    return r.t.DeleteObject(ctx, id)
+    start := time.Now()
+    err := r.t.DeleteObject(ctx, id)
+    monitoring.RecordWeaviateOperation("DeleteObject", "LogField", time.Since(start), err == nil)
+    return err
 }
 
 func (r *WeaviateRepo) DeleteTraceService(ctx context.Context, tenantID, service string) error {
     id := makeID("Service", tenantID, service)
-    return r.t.DeleteObject(ctx, id)
+    start := time.Now()
+    err := r.t.DeleteObject(ctx, id)
+    monitoring.RecordWeaviateOperation("DeleteObject", "Service", time.Since(start), err == nil)
+    return err
 }
 
 func (r *WeaviateRepo) DeleteTraceOperation(ctx context.Context, tenantID, service, operation string) error {
     id := makeID("Operation", tenantID, service, operation)
-    return r.t.DeleteObject(ctx, id)
+    start := time.Now()
+    err := r.t.DeleteObject(ctx, id)
+    monitoring.RecordWeaviateOperation("DeleteObject", "Operation", time.Since(start), err == nil)
+    return err
 }
