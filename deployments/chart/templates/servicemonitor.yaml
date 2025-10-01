@@ -18,7 +18,7 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
   endpoints:
     - port: http-api
-      path: {{ .Values.podAnnotations."prometheus.io/path" | default "/metrics" }}
+      path: {{ index .Values.podAnnotations "prometheus.io/path" | default "/metrics" }}
       interval: {{ .Values.serviceMonitor.interval }}
       scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout }}
       honorLabels: {{ .Values.serviceMonitor.honorLabels }}

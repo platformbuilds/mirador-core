@@ -9,6 +9,11 @@ service:
   type: ClusterIP
   port: 8080
 
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+
 resources: {}
 
 persistence:

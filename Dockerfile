@@ -2,7 +2,7 @@
 # syntax=docker/dockerfile:1.6
 
 # Use BuildKit-aware, platform-specific builder to avoid QEMU segfaults on M1
-FROM --platform=$BUILDPLATFORM golang:1.23-bookworm AS builder
+FROM --platform=$BUILDPLATFORM golang:1.24-bookworm AS builder
 
 # Install build dependencies
 RUN apt-get update \

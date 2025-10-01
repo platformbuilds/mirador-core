@@ -17,6 +17,12 @@ spec:
       labels:
         app.kubernetes.io/name: {{ include "weaviate.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- if .Values.metrics.enabled }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/v1/metrics"
+      {{- end }}
     spec:
       containers:
         - name: weaviate
