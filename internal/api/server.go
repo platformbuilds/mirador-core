@@ -119,6 +119,9 @@ func (s *Server) setupRoutes() {
 	v1.GET("/ready", healthHandler.ReadinessCheck)
 	v1.GET("/microservices/status", healthHandler.MicroservicesStatus)
 
+	// Also expose metrics under /api/v1 for consistency
+	monitoring.SetupPrometheusMetrics(v1)
+
 	// MetricsQL endpoints (VictoriaMetrics integration)
 	var metricsHandler *handlers.MetricsQLHandler
 	if s.schemaRepo != nil {
