@@ -77,6 +77,3140 @@
             "url": { "raw": "{{baseUrl}}/metrics/names" }
           }
         }
+      ],
+      "item": [
+        {
+          "name": "Rollup Functions",
+          "item": [
+            {
+              "name": "POST /metrics/query/rollup/rate",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/rate" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
+                },
+                "description": "Calculates the per-second instant rate of increase of counter values"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/rate/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/rate/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the per-second instant rate of increase of counter values over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/increase",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/increase" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
+                },
+                "description": "Calculates the increase in counter values over the time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/increase/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/increase/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the increase in counter values over the specified time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/delta",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/delta" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the difference between the first and last values in the time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/delta/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/delta/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the difference between the first and last values in the specified time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/irate",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/irate" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
+                },
+                "description": "Calculates the instant rate of increase of counter values"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/irate/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/irate/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the instant rate of increase of counter values over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/deriv",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/deriv" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the per-second derivative of gauge values"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/deriv/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/deriv/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the per-second derivative of gauge values over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/idelta",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/idelta" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the instant difference between the last two values"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/idelta/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/idelta/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the instant difference between the last two values over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/ideriv",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/ideriv" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the instant derivative of gauge values"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/ideriv/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/ideriv/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the instant derivative of gauge values over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/absent_over_time",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/absent_over_time" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"up{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Returns 1 if no data points exist in the time range, otherwise returns 0"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/absent_over_time/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/absent_over_time/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"up{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns 1 if no data points exist in the specified time range, otherwise returns 0"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/avg_over_time",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/avg_over_time" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the average value over the time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/avg_over_time/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/avg_over_time/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the average value over the specified time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/min_over_time",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/min_over_time" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the minimum value over the time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/min_over_time/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/min_over_time/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the minimum value over the specified time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/max_over_time",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/max_over_time" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the maximum value over the time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/max_over_time/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/max_over_time/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the maximum value over the specified time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/sum_over_time",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/sum_over_time" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
+                },
+                "description": "Calculates the sum of all values over the time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/sum_over_time/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/sum_over_time/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the sum of all values over the specified time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/count_over_time",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/count_over_time" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Counts the number of data points over the time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/count_over_time/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/count_over_time/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Counts the number of data points over the specified time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/quantile_over_time",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/quantile_over_time" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"quantile\": 0.95\n  }\n}"
+                },
+                "description": "Calculates the quantile value over the time range (requires quantile parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/quantile_over_time/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/quantile_over_time/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"quantile\": 0.95\n  }\n}"
+                },
+                "description": "Calculates the quantile value over the specified time range (requires quantile parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/stddev_over_time",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/stddev_over_time" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the standard deviation over the time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/stddev_over_time/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/stddev_over_time/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the standard deviation over the specified time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/stdvar_over_time",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/stdvar_over_time" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the standard variance over the time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/stdvar_over_time/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/stdvar_over_time/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the standard variance over the specified time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/mad_over_time",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/mad_over_time" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the median absolute deviation over the time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/mad_over_time/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/mad_over_time/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the median absolute deviation over the specified time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/zscore_over_time",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/zscore_over_time" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the z-score over the time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/zscore_over_time/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/zscore_over_time/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the z-score over the specified time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/distinct_over_time",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/distinct_over_time" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"status_code{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Counts distinct values over the time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/distinct_over_time/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/distinct_over_time/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"status_code{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Counts distinct values over the specified time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/changes",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/changes" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"up{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Counts the number of times the value changes"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/changes/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/changes/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"up{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Counts the number of times the value changes over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/resets",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/resets" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
+                },
+                "description": "Counts the number of counter resets"
+              }
+            },
+            {
+              "name": "POST /metrics/query/rollup/resets/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/rollup/resets/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Counts the number of counter resets over a time range"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transform Functions",
+          "item": [
+            {
+              "name": "POST /metrics/query/transform/abs",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/abs" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the absolute value of each data point"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/abs/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/abs/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the absolute value of each data point over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/ceil",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/ceil" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Rounds each data point up to the nearest integer"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/ceil/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/ceil/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Rounds each data point up to the nearest integer over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/floor",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/floor" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Rounds each data point down to the nearest integer"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/floor/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/floor/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Rounds each data point down to the nearest integer over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/round",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/round" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Rounds each data point to the nearest integer"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/round/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/round/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Rounds each data point to the nearest integer over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/sqrt",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/sqrt" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the square root of each data point"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/sqrt/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/sqrt/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the square root of each data point over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/ln",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/ln" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the natural logarithm of each data point"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/ln/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/ln/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the natural logarithm of each data point over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/log2",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/log2" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the base-2 logarithm of each data point"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/log2/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/log2/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the base-2 logarithm of each data point over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/log10",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/log10" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the base-10 logarithm of each data point"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/log10/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/log10/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the base-10 logarithm of each data point over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/exp",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/exp" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates e^x for each data point"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/exp/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/exp/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates e^x for each data point over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/sin",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/sin" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the sine of each data point (in radians)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/sin/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/sin/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the sine of each data point (in radians) over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/cos",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/cos" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the cosine of each data point (in radians)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/cos/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/cos/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the cosine of each data point (in radians) over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/tan",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/tan" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the tangent of each data point (in radians)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/tan/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/tan/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the tangent of each data point (in radians) over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/asin",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/asin" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the arcsine of each data point (in radians)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/asin/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/asin/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the arcsine of each data point (in radians) over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/acos",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/acos" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the arccosine of each data point (in radians)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/acos/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/acos/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the arccosine of each data point (in radians) over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/atan",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/atan" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates the arctangent of each data point (in radians)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/atan/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/atan/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates the arctangent of each data point (in radians) over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/deg",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/deg" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Converts radians to degrees"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/deg/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/deg/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Converts radians to degrees over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/rad",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/rad" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Converts degrees to radians"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/rad/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/rad/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Converts degrees to radians over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/clamp",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/clamp" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"min\": 0,\n    \"max\": 100\n  }\n}"
+                },
+                "description": "Clamps values to a specified range (requires min and max parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/clamp/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/clamp/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"min\": 0,\n    \"max\": 100\n  }\n}"
+                },
+                "description": "Clamps values to a specified range over a time range (requires min and max parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/clamp_min",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/clamp_min" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"min\": 0\n  }\n}"
+                },
+                "description": "Clamps values to a minimum value (requires min parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/clamp_min/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/clamp_min/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"min\": 0\n  }\n}"
+                },
+                "description": "Clamps values to a minimum value over a time range (requires min parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/clamp_max",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/clamp_max" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"max\": 100\n  }\n}"
+                },
+                "description": "Clamps values to a maximum value (requires max parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/clamp_max/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/clamp_max/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"max\": 100\n  }\n}"
+                },
+                "description": "Clamps values to a maximum value over a time range (requires max parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/histogram_quantile",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/histogram_quantile" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_request_duration_seconds_bucket{le=\\\"0.1\\\"}\",\n  \"params\": {\n    \"quantile\": 0.95\n  }\n}"
+                },
+                "description": "Calculates quantiles from histogram buckets (requires quantile parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/histogram_quantile/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/histogram_quantile/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_request_duration_seconds_bucket{le=\\\"0.1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"quantile\": 0.95\n  }\n}"
+                },
+                "description": "Calculates quantiles from histogram buckets over a time range (requires quantile parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_replace",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_replace" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"dst\": \"service\",\n    \"replacement\": \"$1\",\n    \"src\": \"instance\",\n    \"regex\": \"(.*)\"\n  }\n}"
+                },
+                "description": "Replaces label values using regex (requires dst, replacement, src, regex parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_replace/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_replace/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"dst\": \"service\",\n    \"replacement\": \"$1\",\n    \"src\": \"instance\",\n    \"regex\": \"(.*)\"\n  }\n}"
+                },
+                "description": "Replaces label values using regex over a time range (requires dst, replacement, src, regex parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_join",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_join" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"params\": {\n    \"dst\": \"combined\",\n    \"src\": [\"instance\", \"job\"],\n    \"separator\": \"-\"\n  }\n}"
+                },
+                "description": "Joins multiple label values into a single label (requires dst, src parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_join/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_join/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"dst\": \"combined\",\n    \"src\": [\"instance\", \"job\"],\n    \"separator\": \"-\"\n  }\n}"
+                },
+                "description": "Joins multiple label values into a single label over a time range (requires dst, src parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_set",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_set" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"environment\",\n    \"value\": \"production\"\n  }\n}"
+                },
+                "description": "Sets a label to a fixed value (requires label, value parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_set/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_set/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"environment\",\n    \"value\": \"production\"\n  }\n}"
+                },
+                "description": "Sets a label to a fixed value over a time range (requires label, value parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_del",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_del" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"params\": {\n    \"label\": [\"instance\"]\n  }\n}"
+                },
+                "description": "Deletes specified labels (requires label parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_del/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_del/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": [\"instance\"]\n  }\n}"
+                },
+                "description": "Deletes specified labels over a time range (requires label parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_keep",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_keep" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"params\": {\n    \"label\": [\"job\"]\n  }\n}"
+                },
+                "description": "Keeps only specified labels (requires label parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_keep/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_keep/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": [\"job\"]\n  }\n}"
+                },
+                "description": "Keeps only specified labels over a time range (requires label parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_copy",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_copy" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"dst\": \"host\",\n    \"src\": \"instance\"\n  }\n}"
+                },
+                "description": "Copies a label to a new name (requires dst, src parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_copy/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_copy/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"dst\": \"host\",\n    \"src\": \"instance\"\n  }\n}"
+                },
+                "description": "Copies a label to a new name over a time range (requires dst, src parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_value",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_value" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"instance\"\n  }\n}"
+                },
+                "description": "Returns the value of a label as a metric value (requires label parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_value/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_value/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"instance\"\n  }\n}"
+                },
+                "description": "Returns the value of a label as a metric value over a time range (requires label parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_match",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_match" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                },
+                "description": "Filters series where label matches regex (requires label, regex parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_match/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_match/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                },
+                "description": "Filters series where label matches regex over a time range (requires label, regex parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_mismatch",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_mismatch" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                },
+                "description": "Filters series where label does not match regex (requires label, regex parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/label_mismatch/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/label_mismatch/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                },
+                "description": "Filters series where label does not match regex over a time range (requires label, regex parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/sort",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/sort" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Sorts series by values in ascending order"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/sort/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/sort/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Sorts series by values in ascending order over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/sort_desc",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/sort_desc" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Sorts series by values in descending order"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/sort_desc/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/sort_desc/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Sorts series by values in descending order over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/reverse",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/reverse" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Reverses the order of series"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/reverse/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/reverse/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Reverses the order of series over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/topk",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/topk" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage\",\n  \"params\": {\n    \"k\": 5\n  }\n}"
+                },
+                "description": "Returns the top k series by value (requires k parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/topk/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/topk/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"k\": 5\n  }\n}"
+                },
+                "description": "Returns the top k series by value over a time range (requires k parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/bottomk",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/bottomk" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage\",\n  \"params\": {\n    \"k\": 5\n  }\n}"
+                },
+                "description": "Returns the bottom k series by value (requires k parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/bottomk/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/bottomk/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"k\": 5\n  }\n}"
+                },
+                "description": "Returns the bottom k series by value over a time range (requires k parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/limitk",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/limitk" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage\",\n  \"params\": {\n    \"k\": 10\n  }\n}"
+                },
+                "description": "Limits the number of series returned (requires k parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/limitk/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/limitk/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"k\": 10\n  }\n}"
+                },
+                "description": "Limits the number of series returned over a time range (requires k parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/keep_last_value",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/keep_last_value" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Fills gaps with the last known value"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/keep_last_value/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/keep_last_value/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Fills gaps with the last known value over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/keep_next_value",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/keep_next_value" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Fills gaps with the next known value"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/keep_next_value/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/keep_next_value/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Fills gaps with the next known value over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/interpolate",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/interpolate" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Interpolates missing values using linear interpolation"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/interpolate/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/interpolate/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Interpolates missing values using linear interpolation over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/union",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/union" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage OR memory_usage\"\n}"
+                },
+                "description": "Returns the union of multiple series"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/union/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/union/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage OR memory_usage\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns the union of multiple series over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/absent",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/absent" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"up{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Returns 1 if series is absent, otherwise returns nothing"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/absent/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/absent/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"up{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns 1 if series is absent over a time range, otherwise returns nothing"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/scalar",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/scalar" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"42\"\n}"
+                },
+                "description": "Converts a single value to a scalar"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/scalar/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/scalar/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"42\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Converts a single value to a scalar over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/vector",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/vector" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"42\"\n}"
+                },
+                "description": "Converts a scalar to a vector"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/vector/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/vector/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"42\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Converts a scalar to a vector over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/time",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/time" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\"\n}"
+                },
+                "description": "Returns the current time as a scalar"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/time/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/time/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns the current time as a scalar over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/hour",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/hour" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\"\n}"
+                },
+                "description": "Returns the hour of the timestamp (0-23)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/hour/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/hour/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns the hour of the timestamp (0-23) over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/minute",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/minute" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\"\n}"
+                },
+                "description": "Returns the minute of the timestamp (0-59)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/minute/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/minute/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns the minute of the timestamp (0-59) over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/month",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/month" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\"\n}"
+                },
+                "description": "Returns the month of the timestamp (1-12)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/month/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/month/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns the month of the timestamp (1-12) over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/year",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/year" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\"\n}"
+                },
+                "description": "Returns the year of the timestamp"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/year/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/year/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns the year of the timestamp over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/day_of_month",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/day_of_month" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\"\n}"
+                },
+                "description": "Returns the day of the month (1-31)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/day_of_month/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/day_of_month/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns the day of the month (1-31) over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/day_of_week",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/day_of_week" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\"\n}"
+                },
+                "description": "Returns the day of the week (0-6, Sunday=0)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/day_of_week/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/day_of_week/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns the day of the week (0-6, Sunday=0) over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/days_in_month",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/days_in_month" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\"\n}"
+                },
+                "description": "Returns the number of days in the month"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/days_in_month/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/days_in_month/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns the number of days in the month over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/timestamp",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/timestamp" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Returns the timestamp of each data point"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/timestamp/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/timestamp/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns the timestamp of each data point over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/start",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/start" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\"\n}"
+                },
+                "description": "Returns the start time of the query range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/start/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/start/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns the start time of the query range over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/end",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/end" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\"\n}"
+                },
+                "description": "Returns the end time of the query range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/end/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/end/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns the end time of the query range over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/step",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/step" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\"\n}"
+                },
+                "description": "Returns the step size of the query"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/step/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/step/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Returns the step size of the query over a time range"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/offset",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/offset" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"offset\": \"1h\"\n  }\n}"
+                },
+                "description": "Applies a time offset to the series (requires offset parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/offset/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/offset/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"offset\": \"1h\"\n  }\n}"
+                },
+                "description": "Applies a time offset to the series over a time range (requires offset parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/increase_pure",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/increase_pure" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
+                },
+                "description": "Calculates pure increase (handles counter resets)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/increase_pure/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/increase_pure/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates pure increase over a time range (handles counter resets)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/rate_pure",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/rate_pure" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
+                },
+                "description": "Calculates pure rate (handles counter resets)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/rate_pure/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/rate_pure/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates pure rate over a time range (handles counter resets)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/delta_pure",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/delta_pure" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates pure delta (handles counter resets)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/delta_pure/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/delta_pure/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates pure delta over a time range (handles counter resets)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/irate_pure",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/irate_pure" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
+                },
+                "description": "Calculates pure instant rate (handles counter resets)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/irate_pure/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/irate_pure/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates pure instant rate over a time range (handles counter resets)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/deriv_pure",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/deriv_pure" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates pure derivative (handles counter resets)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/deriv_pure/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/deriv_pure/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates pure derivative over a time range (handles counter resets)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/ideriv_pure",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/ideriv_pure" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "Calculates pure instant derivative (handles counter resets)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/transform/ideriv_pure/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/transform/ideriv_pure/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                },
+                "description": "Calculates pure instant derivative over a time range (handles counter resets)"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Label Functions",
+          "item": [
+            {
+              "name": "POST /metrics/query/label/label_replace",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_replace" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"dst\": \"service\",\n    \"replacement\": \"$1\",\n    \"src\": \"instance\",\n    \"regex\": \"(.*)\"\n  }\n}"
+                },
+                "description": "Replaces label values using regex (requires dst, replacement, src, regex parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_replace/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_replace/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"dst\": \"service\",\n    \"replacement\": \"$1\",\n    \"src\": \"instance\",\n    \"regex\": \"(.*)\"\n  }\n}"
+                },
+                "description": "Replaces label values using regex over a time range (requires dst, replacement, src, regex parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_join",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_join" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"params\": {\n    \"dst\": \"combined\",\n    \"src\": [\"instance\", \"job\"],\n    \"separator\": \"-\"\n  }\n}"
+                },
+                "description": "Joins multiple label values into a single label (requires dst, src parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_join/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_join/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"dst\": \"combined\",\n    \"src\": [\"instance\", \"job\"],\n    \"separator\": \"-\"\n  }\n}"
+                },
+                "description": "Joins multiple label values into a single label over a time range (requires dst, src parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_set",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_set" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"environment\",\n    \"value\": \"production\"\n  }\n}"
+                },
+                "description": "Sets a label to a fixed value (requires label, value parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_set/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_set/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"environment\",\n    \"value\": \"production\"\n  }\n}"
+                },
+                "description": "Sets a label to a fixed value over a time range (requires label, value parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_del",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_del" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"params\": {\n    \"label\": [\"instance\"]\n  }\n}"
+                },
+                "description": "Deletes specified labels (requires label parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_del/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_del/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": [\"instance\"]\n  }\n}"
+                },
+                "description": "Deletes specified labels over a time range (requires label parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_keep",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_keep" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"params\": {\n    \"label\": [\"job\"]\n  }\n}"
+                },
+                "description": "Keeps only specified labels (requires label parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_keep/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_keep/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": [\"job\"]\n  }\n}"
+                },
+                "description": "Keeps only specified labels over a time range (requires label parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_copy",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_copy" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"dst\": \"host\",\n    \"src\": \"instance\"\n  }\n}"
+                },
+                "description": "Copies a label to a new name (requires dst, src parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_copy/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_copy/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"dst\": \"host\",\n    \"src\": \"instance\"\n  }\n}"
+                },
+                "description": "Copies a label to a new name over a time range (requires dst, src parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_value",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_value" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"instance\"\n  }\n}"
+                },
+                "description": "Returns the value of a label as a metric value (requires label parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_value/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_value/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"instance\"\n  }\n}"
+                },
+                "description": "Returns the value of a label as a metric value over a time range (requires label parameter)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_match",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_match" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                },
+                "description": "Filters series where label matches regex (requires label, regex parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_match/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_match/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                },
+                "description": "Filters series where label matches regex over a time range (requires label, regex parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_mismatch",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_mismatch" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                },
+                "description": "Filters series where label does not match regex (requires label, regex parameters)"
+              }
+            },
+            {
+              "name": "POST /metrics/query/label/label_mismatch/range",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/metrics/query/label/label_mismatch/range" },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                },
+                "description": "Filters series where label does not match regex over a time range (requires label, regex parameters)"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Aggregate Functions",
+      "item": [
+{
+        "name": "POST /metrics/query/aggregate/sum",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/sum"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL sum aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/avg",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/avg"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL avg aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/count",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/count"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL count aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/min",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/min"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL min aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/max",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/max"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL max aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/median",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/median"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL median aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/quantile",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/quantile"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL quantile aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/topk",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/topk"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL topk aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/bottomk",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/bottomk"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL bottomk aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/distinct",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/distinct"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL distinct aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/histogram",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/histogram"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL histogram aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/outliers_iqr",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/outliers_iqr"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL outliers_iqr aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/outliersk",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/outliersk"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL outliersk aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/stddev",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/stddev"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL stddev aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/stdvar",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/stdvar"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL stdvar aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/mad",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/mad"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL mad aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/zscore",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/zscore"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL zscore aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/mode",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/mode"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL mode aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/skewness",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/skewness"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL skewness aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/kurtosis",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/kurtosis"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL kurtosis aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/cov",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/cov"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL cov aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/range",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/range"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL range aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/delta",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/delta"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL delta aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/idelta",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/idelta"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL idelta aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/increase",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/increase"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL increase aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/irate",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/irate"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL irate aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/rate",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/rate"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL rate aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/geomean",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/geomean"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL geomean aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/harmean",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/harmean"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL harmean aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/trimean",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/trimean"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL trimean aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/iqr",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/iqr"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL iqr aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/percentile",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/percentile"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL percentile aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/entropy",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/entropy"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL entropy aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/mode_multi",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/mode_multi"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL mode_multi aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/count_values",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/count_values"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL count_values aggregate function"
+        }
+},
+{
+        "name": "POST /metrics/query/aggregate/corr",
+        "request": {
+                "method": "POST",
+                "header": [
+                        {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                        }
+                ],
+                "url": {
+                        "raw": "{{baseUrl}}/metrics/query/aggregate/corr"
+                },
+                "body": {
+                        "mode": "raw",
+                        "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                },
+                "description": "MetricsQL corr aggregate function"
+        }
+}
       ]
     },
     {

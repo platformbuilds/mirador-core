@@ -143,6 +143,23 @@ func (s *Server) setupRoutes() {
 	s.router.GET("/metrics/names", metricsHandler.GetMetricNames)
 	v1.GET("/label/:name/values", metricsHandler.GetLabelValues)
 
+	// MetricsQL function query endpoints (hierarchical by category)
+	queryHandler := handlers.NewMetricsQLQueryHandler(s.vmServices.Query, s.cache, s.logger)
+	validationMiddleware := middleware.NewMetricsQLQueryValidationMiddleware(s.logger)
+
+	// Rollup functions
+	v1.POST("/metrics/query/rollup/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteRollupFunction)
+	v1.POST("/metrics/query/rollup/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteRollupRangeFunction)
+	// Transform functions
+	v1.POST("/metrics/query/transform/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteTransformFunction)
+	v1.POST("/metrics/query/transform/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteTransformRangeFunction)
+	// Label functions
+	v1.POST("/metrics/query/label/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteLabelFunction)
+	v1.POST("/metrics/query/label/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteLabelRangeFunction)
+	// Aggregate functions
+	v1.POST("/metrics/query/aggregate/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteAggregateFunction)
+	v1.POST("/metrics/query/aggregate/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteAggregateRangeFunction)
+
 	// LogsQL endpoints (VictoriaLogs integration)
 	logsHandler := handlers.NewLogsQLHandler(s.vmServices.Logs, s.cache, s.logger)
 	v1.POST("/logs/query", logsHandler.ExecuteQuery)
