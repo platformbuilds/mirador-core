@@ -25,27 +25,59 @@ type VictoriaMetricsResponse struct {
 }
 
 type MetricsQLQueryRequest struct {
-    Query    string `json:"query" binding:"required"`
-    Time     string `json:"time,omitempty"`
-    Timeout  string `json:"timeout,omitempty"`
-    TenantID string `json:"-"` // Set by middleware
-    QueryLanguage     string  `json:"query_language,omitempty"` // e.g., "lucene", "promql"
-    // Optional: include definitions and restrict label keys
-    IncludeDefinitions *bool    `json:"include_definitions,omitempty"`
-    DefinitionsMinimal *bool    `json:"definitions_minimal,omitempty"`
-    LabelKeys          []string `json:"label_keys,omitempty"`
+	Query         string `json:"query" binding:"required"`
+	Time          string `json:"time,omitempty"`
+	Timeout       string `json:"timeout,omitempty"`
+	TenantID      string `json:"-"`                        // Set by middleware
+	QueryLanguage string `json:"query_language,omitempty"` // e.g., "lucene", "promql"
+	// Optional: include definitions and restrict label keys
+	IncludeDefinitions *bool    `json:"include_definitions,omitempty"`
+	DefinitionsMinimal *bool    `json:"definitions_minimal,omitempty"`
+	LabelKeys          []string `json:"label_keys,omitempty"`
 }
 
 type MetricsQLRangeQueryRequest struct {
-    Query    string `json:"query" binding:"required"`
-    Start    string `json:"start" binding:"required"`
-    End      string `json:"end" binding:"required"`
-    Step     string `json:"step" binding:"required"`
-    TenantID string `json:"-"`
-    QueryLanguage     string  `json:"query_language,omitempty"`
-    IncludeDefinitions *bool    `json:"include_definitions,omitempty"`
-    DefinitionsMinimal *bool    `json:"definitions_minimal,omitempty"`
-    LabelKeys          []string `json:"label_keys,omitempty"`
+	Query              string   `json:"query" binding:"required"`
+	Start              string   `json:"start" binding:"required"`
+	End                string   `json:"end" binding:"required"`
+	Step               string   `json:"step" binding:"required"`
+	TenantID           string   `json:"-"`
+	QueryLanguage      string   `json:"query_language,omitempty"`
+	IncludeDefinitions *bool    `json:"include_definitions,omitempty"`
+	DefinitionsMinimal *bool    `json:"definitions_minimal,omitempty"`
+	LabelKeys          []string `json:"label_keys,omitempty"`
+}
+
+// MetricsQL Function Query Models
+
+// MetricsQLFunctionRequest represents a request to execute a MetricsQL function
+type MetricsQLFunctionRequest struct {
+	Query    string                 `json:"query" binding:"required"` // The MetricsQL expression
+	Function string                 `json:"function,omitempty"`       // Function name (set by route)
+	Time     string                 `json:"time,omitempty"`           // Evaluation timestamp
+	Timeout  string                 `json:"timeout,omitempty"`        // Query timeout
+	Params   map[string]interface{} `json:"params,omitempty"`         // Function-specific parameters
+	TenantID string                 `json:"-"`                        // Set by middleware
+}
+
+// MetricsQLFunctionRangeRequest represents a request to execute a MetricsQL function with range
+type MetricsQLFunctionRangeRequest struct {
+	Query    string                 `json:"query" binding:"required"` // The MetricsQL expression
+	Function string                 `json:"function,omitempty"`       // Function name (set by route)
+	Start    string                 `json:"start" binding:"required"` // Start time
+	End      string                 `json:"end" binding:"required"`   // End time
+	Step     string                 `json:"step" binding:"required"`  // Query resolution step width
+	Params   map[string]interface{} `json:"params,omitempty"`         // Function-specific parameters
+	TenantID string                 `json:"-"`                        // Set by middleware
+}
+
+// MetricsQLFunctionResponse represents the response from a MetricsQL function query
+type MetricsQLFunctionResponse struct {
+	Status        string      `json:"status"`            // "success" or "error"
+	Data          interface{} `json:"data,omitempty"`    // Query result data
+	Error         string      `json:"error,omitempty"`   // Error message if status is "error"
+	ExecutionTime int64       `json:"execution_time_ms"` // Query execution time in milliseconds
+	Function      string      `json:"function"`          // Function that was executed
 }
 
 type MetricsQLQueryResult struct {
@@ -62,10 +94,10 @@ type MetricsQLRangeQueryResult struct {
 }
 
 type MetricsQLQueryResponse struct {
-    Data          interface{} `json:"data"`
-    ExecutionTime int64       `json:"execution_time"`
-    Timestamp     time.Time   `json:"timestamp"`
-    Definitions  interface{} `json:"definitions,omitempty"`
+	Data          interface{} `json:"data"`
+	ExecutionTime int64       `json:"execution_time"`
+	Timestamp     time.Time   `json:"timestamp"`
+	Definitions   interface{} `json:"definitions,omitempty"`
 }
 
 type SeriesRequest struct {
@@ -93,13 +125,13 @@ type LabelValuesRequest struct {
 // LogsQL Models
 
 type LogsQLQueryRequest struct {
-    Query    string            `json:"query" form:"query"`
-    Start    int64             `json:"start" form:"start"` // epoch (sec/ms/ns ok; service normalizes)
-    End      int64             `json:"end" form:"end"`
-    Limit    int               `json:"limit" form:"limit"`
-    TenantID string            `json:"tenantId" form:"tenantId"`
-    QueryLanguage string       `json:"query_language,omitempty"`
-    Extra    map[string]string `json:"extra,omitempty" form:"-"` // passthrough flags (dedup, order, etc.)
+	Query         string            `json:"query" form:"query"`
+	Start         int64             `json:"start" form:"start"` // epoch (sec/ms/ns ok; service normalizes)
+	End           int64             `json:"end" form:"end"`
+	Limit         int               `json:"limit" form:"limit"`
+	TenantID      string            `json:"tenantId" form:"tenantId"`
+	QueryLanguage string            `json:"query_language,omitempty"`
+	Extra         map[string]string `json:"extra,omitempty" form:"-"` // passthrough flags (dedup, order, etc.)
 }
 
 type LogsQLQueryResult struct {
@@ -120,13 +152,13 @@ type LogFieldsRequest struct {
 }
 
 type LogExportRequest struct {
-    Query    string `json:"query" binding:"required"`
-    Format   string `json:"format,omitempty"` // json, csv, parquet
-    Start    int64  `json:"start,omitempty"` // epoch (sec/ms/ns ok; service normalizes)
-    End      int64  `json:"end,omitempty"`
-    Limit    int    `json:"limit,omitempty"`
-    TenantID string `json:"-"`
-    QueryLanguage string `json:"query_language,omitempty"`
+	Query         string `json:"query" binding:"required"`
+	Format        string `json:"format,omitempty"` // json, csv, parquet
+	Start         int64  `json:"start,omitempty"`  // epoch (sec/ms/ns ok; service normalizes)
+	End           int64  `json:"end,omitempty"`
+	Limit         int    `json:"limit,omitempty"`
+	TenantID      string `json:"-"`
+	QueryLanguage string `json:"query_language,omitempty"`
 }
 
 type LogExportResult struct {
@@ -140,17 +172,17 @@ type LogExportResult struct {
 
 // VictoriaTraces Models
 type TraceSearchRequest struct {
-    Service     string       `json:"service,omitempty"`
-    Operation   string       `json:"operation,omitempty"`
-    Tags        string       `json:"tags,omitempty"`
-    MinDuration string       `json:"minDuration,omitempty"`
-    MaxDuration string       `json:"maxDuration,omitempty"`
-    Start       FlexibleTime `json:"start"`
-    End         FlexibleTime `json:"end"`
-    Limit       int          `json:"limit,omitempty"`
-    TenantID    string       `json:"-"`
-    Query       string       `json:"query,omitempty"`
-    QueryLanguage string     `json:"query_language,omitempty"`
+	Service       string       `json:"service,omitempty"`
+	Operation     string       `json:"operation,omitempty"`
+	Tags          string       `json:"tags,omitempty"`
+	MinDuration   string       `json:"minDuration,omitempty"`
+	MaxDuration   string       `json:"maxDuration,omitempty"`
+	Start         FlexibleTime `json:"start"`
+	End           FlexibleTime `json:"end"`
+	Limit         int          `json:"limit,omitempty"`
+	TenantID      string       `json:"-"`
+	Query         string       `json:"query,omitempty"`
+	QueryLanguage string       `json:"query_language,omitempty"`
 }
 
 type TraceSearchResult struct {

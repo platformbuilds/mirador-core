@@ -97,25 +97,41 @@ curl -X GET https://mirador-core/api/v1/query \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
 
-### MetricsQL Queries
+### MetricsQL Aggregate Functions
+MIRADOR-CORE v5.0.0 introduces comprehensive MetricsQL aggregate functions for advanced time series analysis:
+
 ```bash
-# Execute MetricsQL query
-curl -X POST https://mirador-core/api/v1/metrics/query \
+# Sum aggregation
+curl -X POST https://mirador-core/api/v1/metrics/query/aggregate/sum \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"query": "rate(http_requests_total[5m])"}'
 
-# Range query with time series data
-curl -X POST https://mirador-core/api/v1/metrics/query_range \
+# Quantile with parameter
+curl -X POST https://mirador-core/api/v1/metrics/query/aggregate/quantile \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{
-    "query": "avg_over_time(cpu_usage[10m])",
-    "start": "2025-08-31T10:00:00Z",
-    "end": "2025-08-31T11:00:00Z",
-    "step": "1m"
-  }'
+  -d '{"query": "rate(http_requests_total[5m])", "params": {"quantile": 0.95}}'
+
+# Top K values
+curl -X POST https://mirador-core/api/v1/metrics/query/aggregate/topk \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "rate(http_requests_total[5m])", "params": {"k": 5}}'
 ```
+
+#### Available Aggregate Functions
+- **Basic Aggregations**: `sum`, `avg`, `count`, `min`, `max`, `median`
+- **Statistical Functions**: `stddev`, `stdvar`, `mad`, `zscore`, `skewness`, `kurtosis`
+- **Ranking Functions**: `topk`, `bottomk`, `quantile`, `percentile`
+- **Distribution Analysis**: `histogram`, `distinct`, `count_values`, `mode`, `mode_multi`
+- **Outlier Detection**: `outliers_iqr`, `outliersk`
+- **Correlation**: `cov`, `corr`, `entropy`
+- **Range Analysis**: `range`, `iqr`, `trimean`
+- **Rate Functions**: `increase`, `rate`, `irate`, `delta`, `idelta`
+- **Advanced Math**: `geomean`, `harmean`
+
+All functions support optional parameters and return VictoriaMetrics-compatible responses.
 
 ### AI Fracture Prediction
 ```bash
