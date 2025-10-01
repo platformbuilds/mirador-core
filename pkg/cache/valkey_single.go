@@ -8,6 +8,7 @@ import (
 
     "github.com/go-redis/redis/v8"
     "github.com/platformbuilds/mirador-core/internal/models"
+    "github.com/platformbuilds/mirador-core/internal/monitoring"
     "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -43,11 +44,19 @@ func NewValkeySingle(addr string, db int, password string, defaultTTL time.Durat
 }
 
 func (v *valkeySingleImpl) Get(ctx context.Context, key string) ([]byte, error) {
-    b, err := v.client.Get(ctx, key).Bytes()
-    if err == redis.Nil {
-        return nil, fmt.Errorf("key not found: %s", key)
-    }
-    return b, err
+	b, err := v.client.Get(ctx, key).Bytes()
+	if err == redis.Nil {
+		monitoring.RecordCacheOperation("get", "miss")
+		return nil, fmt.Errorf("key not found: %s", key)
+	}
+	
+	if err != nil {
+		monitoring.RecordCacheOperation("get", "error")
+		return nil, err
+	}
+	
+	monitoring.RecordCacheOperation("get", "hit")
+	return b, nil
 }
 
 func (v *valkeySingleImpl) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
@@ -60,6 +69,7 @@ func (v *valkeySingleImpl) Set(ctx context.Context, key string, value interface{
     default:
         j, err := json.Marshal(x)
         if err != nil {
+            monitoring.RecordCacheOperation("set", "error")
             return fmt.Errorf("marshal value for key %s: %w", key, err)
         }
         data = j
@@ -67,33 +77,55 @@ func (v *valkeySingleImpl) Set(ctx context.Context, key string, value interface{
     if ttl <= 0 {
         ttl = v.ttl
     }
-    return v.client.Set(ctx, key, data, ttl).Err()
+    err := v.client.Set(ctx, key, data, ttl).Err()
+    if err != nil {
+        monitoring.RecordCacheOperation("set", "error")
+        return err
+    }
+    monitoring.RecordCacheOperation("set", "success")
+    return nil
 }
 
 func (v *valkeySingleImpl) Delete(ctx context.Context, key string) error {
-    return v.client.Del(ctx, key).Err()
+    err := v.client.Del(ctx, key).Err()
+    if err != nil {
+        monitoring.RecordCacheOperation("delete", "error")
+        return err
+    }
+    monitoring.RecordCacheOperation("delete", "success")
+    return nil
 }
 
 func (v *valkeySingleImpl) SetSession(ctx context.Context, session *models.UserSession) error {
     session.LastActivity = time.Now()
     key := fmt.Sprintf("session:%s", session.ID)
     if err := v.Set(ctx, key, session, 24*time.Hour); err != nil {
+        monitoring.RecordCacheOperation("set_session", "error")
         return err
     }
     tenantKey := fmt.Sprintf("tenant_sessions:%s", session.TenantID)
-    return v.client.SAdd(ctx, tenantKey, session.ID).Err()
+    err := v.client.SAdd(ctx, tenantKey, session.ID).Err()
+    if err != nil {
+        monitoring.RecordCacheOperation("set_session", "error")
+        return err
+    }
+    monitoring.RecordCacheOperation("set_session", "success")
+    return nil
 }
 
 func (v *valkeySingleImpl) GetSession(ctx context.Context, sessionID string) (*models.UserSession, error) {
     key := fmt.Sprintf("session:%s", sessionID)
     data, err := v.Get(ctx, key)
     if err != nil {
+        monitoring.RecordCacheOperation("get_session", "miss")
         return nil, err
     }
     var session models.UserSession
     if err := json.Unmarshal(data, &session); err != nil {
+        monitoring.RecordCacheOperation("get_session", "error")
         return nil, fmt.Errorf("failed to unmarshal session: %w", err)
     }
+    monitoring.RecordCacheOperation("get_session", "hit")
     return &session, nil
 }
 
@@ -103,7 +135,13 @@ func (v *valkeySingleImpl) InvalidateSession(ctx context.Context, sessionID stri
         tenantKey := fmt.Sprintf("tenant_sessions:%s", sess.TenantID)
         _ = v.client.SRem(ctx, tenantKey, sessionID).Err()
     }
-    return v.Delete(ctx, fmt.Sprintf("session:%s", sessionID))
+    err = v.Delete(ctx, fmt.Sprintf("session:%s", sessionID))
+    if err != nil {
+        monitoring.RecordCacheOperation("invalidate_session", "error")
+        return err
+    }
+    monitoring.RecordCacheOperation("invalidate_session", "success")
+    return nil
 }
 
 func (v *valkeySingleImpl) GetActiveSessions(ctx context.Context, tenantID string) ([]*models.UserSession, error) {
