@@ -211,6 +211,8 @@ func isPublicEndpoint(path string) bool {
 		"/health",
 		"/ready",
 		"/api/openapi.json",
+		"/api/openapi.yaml",
+		"/swagger/", // Swagger UI
 		"/metrics", // Prometheus metrics endpoint
 		"/api/v1/auth/login",
 		"/api/v1/auth/oauth/callback",
