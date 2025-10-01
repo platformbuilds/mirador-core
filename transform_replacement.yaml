@@ -1,0 +1,52 @@
+  # Transform Functions (2 parameterized endpoints)
+  /metrics/query/transform/{function}:
+    post:
+      summary: Execute MetricsQL transform function
+      description: Executes a MetricsQL transform function specified by the {function} path parameter. Supported functions include abs, ceil, floor, round, sqrt, ln, log2, log10, exp, sin, cos, tan, rad, deg, pi, e, time, timestamp, year, month, day, hour, minute, second, sort, sort_desc, reverse, present, absent, scalar, vector, label_copy, label_del, label_join, label_keep, label_match, label_mismatch, label_replace, label_set, label_value, limitk, topk, bottomk, offset, rate_pure, and more.
+      parameters:
+        - name: function
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [abs, ceil, floor, round, sqrt, ln, log2, log10, exp, sin, cos, tan, rad, deg, pi, e, time, timestamp, year, month, day, hour, minute, second, sort, sort_desc, reverse, present, absent, scalar, vector, label_copy, label_del, label_join, label_keep, label_match, label_mismatch, label_replace, label_set, label_value, limitk, topk, bottomk, offset, rate_pure]
+          description: The transform function to execute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetricsQLFunctionRequest'
+      responses:
+        '200':
+          description: Transform function result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsQLQueryResponse'
+
+  /metrics/query/transform/{function}/range:
+    post:
+      summary: Execute MetricsQL transform function (range)
+      description: Executes a MetricsQL transform function over a time range specified by the {function} path parameter. Supported functions include abs, ceil, floor, round, sqrt, ln, log2, log10, exp, sin, cos, tan, rad, deg, pi, e, time, timestamp, year, month, day, hour, minute, second, sort, sort_desc, reverse, present, absent, scalar, vector, label_copy, label_del, label_join, label_keep, label_match, label_mismatch, label_replace, label_set, label_value, limitk, topk, bottomk, offset, rate_pure, and more.
+      parameters:
+        - name: function
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [abs, ceil, floor, round, sqrt, ln, log2, log10, exp, sin, cos, tan, rad, deg, pi, e, time, timestamp, year, month, day, hour, minute, second, sort, sort_desc, reverse, present, absent, scalar, vector, label_copy, label_del, label_join, label_keep, label_match, label_mismatch, label_replace, label_set, label_value, limitk, topk, bottomk, offset, rate_pure]
+          description: The transform function to execute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetricsQLFunctionRangeRequest'
+      responses:
+        '200':
+          description: Transform function result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsQLQueryResponse'

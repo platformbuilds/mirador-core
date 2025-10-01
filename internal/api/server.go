@@ -117,6 +117,7 @@ func (s *Server) setupRoutes() {
 	// Back-compat: expose health under /api/v1 as well
 	v1.GET("/health", healthHandler.HealthCheck)
 	v1.GET("/ready", healthHandler.ReadinessCheck)
+	v1.GET("/microservices/status", healthHandler.MicroservicesStatus)
 
 	// MetricsQL endpoints (VictoriaMetrics integration)
 	var metricsHandler *handlers.MetricsQLHandler
@@ -134,6 +135,8 @@ func (s *Server) setupRoutes() {
 	v1.GET("/series", metricsHandler.GetSeries)
 	v1.GET("/labels", metricsHandler.GetLabels)
 	v1.GET("/metrics/names", metricsHandler.GetMetricNames)
+	v1.GET("/metrics/series", metricsHandler.GetSeries)
+	v1.GET("/metrics/labels", metricsHandler.GetLabels)
 	// Back-compat aliases at root so Swagger with base "/" also works
 	// Back-compat aliases at root so Swagger with base "/" also works
 	s.router.POST("/query", metricsHandler.ExecuteQuery)
@@ -141,6 +144,8 @@ func (s *Server) setupRoutes() {
 	s.router.GET("/series", metricsHandler.GetSeries)
 	s.router.GET("/labels", metricsHandler.GetLabels)
 	s.router.GET("/metrics/names", metricsHandler.GetMetricNames)
+	s.router.GET("/metrics/series", metricsHandler.GetSeries)
+	s.router.GET("/metrics/labels", metricsHandler.GetLabels)
 	v1.GET("/label/:name/values", metricsHandler.GetLabelValues)
 
 	// MetricsQL function query endpoints (hierarchical by category)
