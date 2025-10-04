@@ -1,17 +1,19 @@
 package handlers
 
 import (
-    "fmt"
-    "net/http"
-    "sync"
-    "sync/atomic"
-    "time"
+	"fmt"
+	"net/http"
+	"sync"
+	"sync/atomic"
+	"time"
 
-    "github.com/gin-gonic/gin"
-    "github.com/gorilla/websocket"
-    "github.com/platformbuilds/mirador-core/internal/models"
-    lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
-    "strings"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
+	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/utils"
+	lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
 )
 
 // GET /api/v1/logs/tail (upgrades to WS)
@@ -24,36 +26,50 @@ func (h *LogsHandler) TailWS(c *gin.Context) {
 		sampling = parseIntDefault(c.Query("sampling"), 1)
 	)
 
-    // If this isn't a proper WebSocket upgrade, return a helpful error
-    if !websocket.IsWebSocketUpgrade(c.Request) {
-        c.JSON(http.StatusUpgradeRequired, gin.H{
-            "status": "error",
-            "error":  "WebSocket upgrade required",
-            "detail": "Connect with a WebSocket client (e.g., ws://host/api/v1/logs/tail). Swagger 'Try it out' uses HTTP and will fail.",
-            "example": "wscat -c ws://localhost:8080/api/v1/logs/tail?query=_time:5m",
-        })
-        return
-    }
+	// If this isn't a proper WebSocket upgrade, return a helpful error
+	if !websocket.IsWebSocketUpgrade(c.Request) {
+		c.JSON(http.StatusUpgradeRequired, gin.H{
+			"status":  "error",
+			"error":   "WebSocket upgrade required",
+			"detail":  "Connect with a WebSocket client (e.g., ws://host/api/v1/logs/tail). Swagger 'Try it out' uses HTTP and will fail.",
+			"example": "wscat -c ws://localhost:8080/api/v1/logs/tail?query=_time:5m",
+		})
+		return
+	}
 
-    // Translate Lucene if requested or detected (keeps frame shapes intact)
-    qlang := strings.ToLower(strings.TrimSpace(c.Query("query_language")))
-    if strings.TrimSpace(query) != "" && (qlang == "lucene" || lq.IsLikelyLucene(query)) {
-        if translated, ok := lq.Translate(query, lq.TargetLogsQL); ok {
-            query = translated
-            c.Header("X-Query-Translated-From", "lucene")
-        }
-    }
+	// Translate Lucene if requested or detected (keeps frame shapes intact)
+	qlang := strings.ToLower(strings.TrimSpace(c.Query("query_language")))
+	if strings.TrimSpace(query) != "" && (qlang == "lucene" || lq.IsLikelyLucene(query)) {
+		validator := utils.NewQueryValidator()
+		if err := validator.ValidateLucene(query); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  fmt.Sprintf("Invalid Lucene query: %s", err.Error()),
+			})
+			return
+		}
+		if translated, ok := lq.Translate(query, lq.TargetLogsQL); ok {
+			query = translated
+			c.Header("X-Query-Translated-From", "lucene")
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  "Failed to translate Lucene query",
+			})
+			return
+		}
+	}
 
-    // If query contains explicit _time, ignore 'since' to avoid conflicting filters
-    if strings.Contains(query, "_time:") {
-        since = 0
-    }
+	// If query contains explicit _time, ignore 'since' to avoid conflicting filters
+	if strings.Contains(query, "_time:") {
+		since = 0
+	}
 
-    upgrader := websocket.Upgrader{
-        ReadBufferSize:  8 << 10,
-        WriteBufferSize: 64 << 10,
-        CheckOrigin:     func(*http.Request) bool { return true }, // TODO: tighten CORS in prod
-    }
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  8 << 10,
+		WriteBufferSize: 64 << 10,
+		CheckOrigin:     func(*http.Request) bool { return true }, // TODO: tighten CORS in prod
+	}
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {

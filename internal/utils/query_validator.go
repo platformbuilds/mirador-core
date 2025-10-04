@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/blevesearch/bleve/v2"
 )
 
 type QueryValidator struct {
@@ -25,9 +27,9 @@ func NewQueryValidator() *QueryValidator {
 			`stats\s+by\s*\(`,    // Stats aggregation
 		},
 		tracesPatterns: []string{
-			`trace_id:`,           // Trace ID filter
-			`span_attr:`,          // Span attribute filter
-			`duration:`,           // Duration filter
+			`trace_id:`,  // Trace ID filter
+			`span_attr:`, // Span attribute filter
+			`duration:`,  // Duration filter
 		},
 	}
 }
@@ -77,10 +79,33 @@ func (v *QueryValidator) ValidateTracesQuery(query string) error {
 	}
 
 	// Basic validation for traces query
-	if !strings.Contains(query, "trace_id:") && 
-		!strings.Contains(query, "span_attr:") && 
+	if !strings.Contains(query, "trace_id:") &&
+		!strings.Contains(query, "span_attr:") &&
 		!strings.Contains(query, "_time:") {
 		return fmt.Errorf("traces query must contain at least one valid filter")
+	}
+
+	return nil
+}
+
+func (v *QueryValidator) ValidateLucene(query string) error {
+	if strings.TrimSpace(query) == "" {
+		return fmt.Errorf("empty Lucene query")
+	}
+
+	// Parse with Bleve to validate syntax
+	_, err := bleve.NewQueryStringQuery(query).Parse()
+	if err != nil {
+		return fmt.Errorf("invalid Lucene query syntax: %w", err)
+	}
+
+	// Check for dangerous patterns
+	dangerousPatterns := []string{"<script", "javascript:", "eval(", "exec(", "system("}
+	lowerQuery := strings.ToLower(query)
+	for _, pattern := range dangerousPatterns {
+		if strings.Contains(lowerQuery, pattern) {
+			return fmt.Errorf("potentially dangerous pattern detected: %s", pattern)
+		}
 	}
 
 	return nil

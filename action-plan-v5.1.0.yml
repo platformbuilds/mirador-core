@@ -334,12 +334,12 @@ current_progress:
   completed_tasks: 30
   total_tasks: 41
   next_milestone: "Ready for v5.1.0 production release"
-  estimated_completion: "2025-10-15"
+  estimated_completion: "2025-10-25"
   blockers: []
   notes: "Phase 7 (v5.0.0) completed successfully! Starting Phase 8 for full Lucene compliance implementation."
 
 estimated_timeline:
-  total_weeks: 18
+  total_weeks: 19
   phase_breakdown:
     "Phase 1": 1
     "Phase 2": 4
@@ -348,7 +348,7 @@ estimated_timeline:
     "Phase 5": 2
     "Phase 6": 2
     "Phase 7": 1
-    "Phase 8": 2
+    "Phase 8": 3
 
 risks:
   - name: "High endpoint count"
@@ -362,6 +362,22 @@ risks:
   - name: "Performance concerns"
     description: "Large number of endpoints could impact performance if not optimized"
     mitigation: "Implement caching, connection pooling, and monitor performance throughout"
+  
+  - name: "Lucene Parser Compatibility"
+    description: "Bleve library may not fully support all Lucene 2.9.4 features (e.g., advanced fuzzy matching, proximity searches)"
+    mitigation: "Test Bleve against the full Lucene spec early; implement fallback logic for unsupported features"
+  
+  - name: "Mapping Accuracy and Edge Cases"
+    description: "Incorrect or incomplete Lucene-to-LogsQL/trace-filters mapping could lead to query failures or unexpected results"
+    mitigation: "Create comprehensive test suite covering all Lucene syntax elements and edge cases; validate against VictoriaLogs/Traces backends"
+  
+  - name: "Performance Impact of Full Parsing"
+    description: "Full Lucene AST parsing could introduce latency in query processing"
+    mitigation: "Benchmark parsing performance early; optimize AST traversal and consider caching for repeated queries"
+  
+  - name: "Backward Compatibility"
+    description: "Switching from heuristic-based parsing to strict Lucene compliance might break existing queries"
+    mitigation: "Add a feature flag for gradual rollout; provide migration guide and deprecation warnings"
 
 known_issues:
   - name: "VictoriaMetrics multi-endpoint query routing"

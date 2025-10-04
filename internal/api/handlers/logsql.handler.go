@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
-    "strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/platformbuilds/mirador-core/internal/metrics"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/internal/utils"
+	lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
-    lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
 )
 
 type LogsQLHandler struct {
@@ -47,19 +47,33 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 		return
 	}
 
-    // Translate Lucene -> LogsQL if requested or detected
-    if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
-        if translated, ok := lq.Translate(request.Query, lq.TargetLogsQL); ok {
-            request.Query = translated
-            c.Header("X-Query-Translated-From", "lucene")
-        }
-    }
+	// Translate Lucene -> LogsQL if requested or detected
+	if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
+		validator := utils.NewQueryValidator()
+		if err := validator.ValidateLucene(request.Query); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  fmt.Sprintf("Invalid Lucene query: %s", err.Error()),
+			})
+			return
+		}
+		if translated, ok := lq.Translate(request.Query, lq.TargetLogsQL); ok {
+			request.Query = translated
+			c.Header("X-Query-Translated-From", "lucene")
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  "Failed to translate Lucene query",
+			})
+			return
+		}
+	}
 
-    // If query already contains an explicit _time filter, drop Start/End to avoid conflicts.
-    if strings.Contains(request.Query, "_time:") {
-        request.Start = 0
-        request.End = 0
-    }
+	// If query already contains an explicit _time filter, drop Start/End to avoid conflicts.
+	if strings.Contains(request.Query, "_time:") {
+		request.Start = 0
+		request.End = 0
+	}
 
 	// Validate LogsQL query
 	if err := h.validator.ValidateLogsQL(request.Query); err != nil {
@@ -171,28 +185,28 @@ func (h *LogsQLHandler) StoreEvent(c *gin.Context) {
 
 // GET /api/v1/logs/fields - Get available log fields
 func (h *LogsQLHandler) GetFields(c *gin.Context) {
-    tenantID := c.GetString("tenant_id")
+	tenantID := c.GetString("tenant_id")
 
-    fields, err := h.logsService.GetFields(c.Request.Context(), tenantID)
-    if err != nil {
-        h.logger.Error("Failed to get log fields", "tenant", tenantID, "error", err)
-        c.JSON(http.StatusInternalServerError, gin.H{
-            "status": "error",
-            "error":  "Failed to retrieve log fields",
-        })
-        return
-    }
+	fields, err := h.logsService.GetFields(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to get log fields", "tenant", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve log fields",
+		})
+		return
+	}
 
-    if fields == nil {
-        fields = []string{}
-    }
+	if fields == nil {
+		fields = []string{}
+	}
 
-    c.JSON(http.StatusOK, gin.H{
-        "status": "success",
-        "data": gin.H{
-            "fields": fields,
-        },
-    })
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"fields": fields,
+		},
+	})
 }
 
 // POST /api/v1/logs/export - Export logs in various formats
@@ -209,19 +223,35 @@ func (h *LogsQLHandler) ExportLogs(c *gin.Context) {
 		return
 	}
 
-    // Translate Lucene -> LogsQL if requested or detected
-    if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
-        if translated, ok := lq.Translate(request.Query, lq.TargetLogsQL); ok {
-            request.Query = translated
-            c.Header("X-Query-Translated-From", "lucene")
-        }
-    }
+	// Translate Lucene -> LogsQL if requested or detected
+	if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
+		validator := utils.NewQueryValidator()
+		if err := validator.ValidateLucene(request.Query); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status":  "error",
+				"error":   fmt.Sprintf("Invalid Lucene query: %s", err.Error()),
+				"details": err.Error(),
+			})
+			return
+		}
+		if translated, ok := lq.Translate(request.Query, lq.TargetLogsQL); ok {
+			request.Query = translated
+			c.Header("X-Query-Translated-From", "lucene")
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status":  "error",
+				"error":   "Failed to translate Lucene query",
+				"details": "Translation failed",
+			})
+			return
+		}
+	}
 
-    // If query already contains an explicit _time filter, drop Start/End to avoid conflicts.
-    if strings.Contains(request.Query, "_time:") {
-        request.Start = 0
-        request.End = 0
-    }
+	// If query already contains an explicit _time filter, drop Start/End to avoid conflicts.
+	if strings.Contains(request.Query, "_time:") {
+		request.Start = 0
+		request.End = 0
+	}
 
 	// Set tenant context
 	request.TenantID = tenantID
@@ -247,27 +277,27 @@ func (h *LogsQLHandler) ExportLogs(c *gin.Context) {
 		return
 	}
 
-    // Stream the exported file bytes directly as an attachment.
-    // This avoids inventing a temporary URL and matches the service, which
-    // already fetched the full payload from VictoriaLogs.
-    var contentType string
-    switch request.Format {
-    case "csv":
-        contentType = "text/csv"
-    case "json":
-        contentType = "application/json"
-    default:
-        contentType = "application/octet-stream"
-    }
+	// Stream the exported file bytes directly as an attachment.
+	// This avoids inventing a temporary URL and matches the service, which
+	// already fetched the full payload from VictoriaLogs.
+	var contentType string
+	switch request.Format {
+	case "csv":
+		contentType = "text/csv"
+	case "json":
+		contentType = "application/json"
+	default:
+		contentType = "application/octet-stream"
+	}
 
-    filename := exportResult.Filename
-    if filename == "" {
-        // Fallback filename based on format
-        filename = fmt.Sprintf("logs-%s.%s", time.Now().Format("2006-01-02"), request.Format)
-    }
+	filename := exportResult.Filename
+	if filename == "" {
+		// Fallback filename based on format
+		filename = fmt.Sprintf("logs-%s.%s", time.Now().Format("2006-01-02"), request.Format)
+	}
 
-    c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
-    c.Header("Content-Type", contentType)
-    c.Header("Content-Length", strconv.Itoa(len(exportResult.Data)))
-    c.Data(http.StatusOK, contentType, exportResult.Data)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Type", contentType)
+	c.Header("Content-Length", strconv.Itoa(len(exportResult.Data)))
+	c.Data(http.StatusOK, contentType, exportResult.Data)
 }

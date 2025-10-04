@@ -1,19 +1,21 @@
 package handlers
 
 import (
-    "encoding/json"
-    "fmt"
-    "net/http"
-    "sort"
-    "sync/atomic"
-    "time"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"sort"
+	"sync/atomic"
+	"time"
 
-    "github.com/gin-gonic/gin"
-    "github.com/platformbuilds/mirador-core/internal/models"
-    "github.com/platformbuilds/mirador-core/internal/services"
-    "github.com/platformbuilds/mirador-core/pkg/logger"
-    lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
-    "strings"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/services"
+	"github.com/platformbuilds/mirador-core/internal/utils"
+	lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // LogsHandler provides D3-friendly APIs (histogram, facets, search, tail)
@@ -39,19 +41,27 @@ func NewLogsHandler(svc *services.VictoriaLogsService, log logger.Logger) *LogsH
 
 // GET /api/v1/logs/histogram
 func (h *LogsHandler) Histogram(c *gin.Context) {
-    var req models.LogsHistogramRequest
-    if err := c.ShouldBindQuery(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "bad query params"})
-        return
-    }
-    // Lucene → LogsQL translation (does not change response shape)
-    qlang := strings.ToLower(strings.TrimSpace(c.Query("query_language")))
-    if strings.TrimSpace(req.Query) != "" && (qlang == "lucene" || lq.IsLikelyLucene(req.Query)) {
-        if translated, ok := lq.Translate(req.Query, lq.TargetLogsQL); ok {
-            req.Query = translated
-            c.Header("X-Query-Translated-From", "lucene")
-        }
-    }
+	var req models.LogsHistogramRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad query params"})
+		return
+	}
+	// Lucene → LogsQL translation (does not change response shape)
+	qlang := strings.ToLower(strings.TrimSpace(c.Query("query_language")))
+	if strings.TrimSpace(req.Query) != "" && (qlang == "lucene" || lq.IsLikelyLucene(req.Query)) {
+		validator := utils.NewQueryValidator()
+		if err := validator.ValidateLucene(req.Query); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if translated, ok := lq.Translate(req.Query, lq.TargetLogsQL); ok {
+			req.Query = translated
+			c.Header("X-Query-Translated-From", "lucene")
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to translate Lucene query"})
+			return
+		}
+	}
 	if req.Step <= 0 {
 		req.Step = h.defStepMS
 	}
@@ -82,15 +92,17 @@ func (h *LogsHandler) Histogram(c *gin.Context) {
 		sampleN = 1
 	}
 
-    start := req.Start
-    end := req.End
-    if strings.Contains(req.Query, "_time:") { start, end = 0, 0 }
-    _, err := h.logs.ExecuteQueryStream(c.Request.Context(), &models.LogsQLQueryRequest{
-        Query:    req.Query,
-        Start:    start,
-        End:      end,
-        TenantID: req.TenantID,
-    }, func(row map[string]any) error {
+	start := req.Start
+	end := req.End
+	if strings.Contains(req.Query, "_time:") {
+		start, end = 0, 0
+	}
+	_, err := h.logs.ExecuteQueryStream(c.Request.Context(), &models.LogsQLQueryRequest{
+		Query:    req.Query,
+		Start:    start,
+		End:      end,
+		TenantID: req.TenantID,
+	}, func(row map[string]any) error {
 		n := atomic.AddInt64(&rowsSeen, 1)
 		if sampleN > 1 && (n%int64(sampleN)) != 0 {
 			return nil
@@ -128,19 +140,27 @@ func (h *LogsHandler) Histogram(c *gin.Context) {
 
 // GET /api/v1/logs/facets?fields=service,level
 func (h *LogsHandler) Facets(c *gin.Context) {
-    var req models.LogsFacetsRequest
-    if err := c.ShouldBindQuery(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "bad query params"})
-        return
-    }
-    // Lucene → LogsQL translation (does not change response shape)
-    qlang := strings.ToLower(strings.TrimSpace(c.Query("query_language")))
-    if strings.TrimSpace(req.Query) != "" && (qlang == "lucene" || lq.IsLikelyLucene(req.Query)) {
-        if translated, ok := lq.Translate(req.Query, lq.TargetLogsQL); ok {
-            req.Query = translated
-            c.Header("X-Query-Translated-From", "lucene")
-        }
-    }
+	var req models.LogsFacetsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad query params"})
+		return
+	}
+	// Lucene → LogsQL translation (does not change response shape)
+	qlang := strings.ToLower(strings.TrimSpace(c.Query("query_language")))
+	if strings.TrimSpace(req.Query) != "" && (qlang == "lucene" || lq.IsLikelyLucene(req.Query)) {
+		validator := utils.NewQueryValidator()
+		if err := validator.ValidateLucene(req.Query); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if translated, ok := lq.Translate(req.Query, lq.TargetLogsQL); ok {
+			req.Query = translated
+			c.Header("X-Query-Translated-From", "lucene")
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to translate Lucene query"})
+			return
+		}
+	}
 	if req.End == 0 {
 		req.End = time.Now().UnixMilli()
 	}
@@ -170,15 +190,17 @@ func (h *LogsHandler) Facets(c *gin.Context) {
 	}
 
 	rowsSeen := int64(0)
-    start := req.Start
-    end := req.End
-    if strings.Contains(req.Query, "_time:") { start, end = 0, 0 }
-    _, err := h.logs.ExecuteQueryStream(c.Request.Context(), &models.LogsQLQueryRequest{
-        Query:    req.Query,
-        Start:    start,
-        End:      end,
-        TenantID: req.TenantID,
-    }, func(row map[string]any) error {
+	start := req.Start
+	end := req.End
+	if strings.Contains(req.Query, "_time:") {
+		start, end = 0, 0
+	}
+	_, err := h.logs.ExecuteQueryStream(c.Request.Context(), &models.LogsQLQueryRequest{
+		Query:    req.Query,
+		Start:    start,
+		End:      end,
+		TenantID: req.TenantID,
+	}, func(row map[string]any) error {
 		n := atomic.AddInt64(&rowsSeen, 1)
 		if sampleN > 1 && (n%int64(sampleN)) != 0 {
 			return nil
@@ -222,18 +244,26 @@ func (h *LogsHandler) Facets(c *gin.Context) {
 
 // POST /api/v1/logs/search
 func (h *LogsHandler) Search(c *gin.Context) {
-    var req models.LogsSearchRequest
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-        return
-    }
-    // Translate Lucene -> LogsQL if requested or detected
-    if strings.EqualFold(req.QueryLanguage, "lucene") || lq.IsLikelyLucene(req.Query) {
-        if translated, ok := lq.Translate(req.Query, lq.TargetLogsQL); ok {
-            req.Query = translated
-            c.Header("X-Query-Translated-From", "lucene")
-        }
-    }
+	var req models.LogsSearchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+	// Translate Lucene -> LogsQL if requested or detected
+	if strings.EqualFold(req.QueryLanguage, "lucene") || lq.IsLikelyLucene(req.Query) {
+		validator := utils.NewQueryValidator()
+		if err := validator.ValidateLucene(req.Query); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if translated, ok := lq.Translate(req.Query, lq.TargetLogsQL); ok {
+			req.Query = translated
+			c.Header("X-Query-Translated-From", "lucene")
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to translate Lucene query"})
+			return
+		}
+	}
 	if req.Limit <= 0 || req.Limit > 10_000 {
 		req.Limit = 1000
 	}
@@ -268,15 +298,17 @@ func (h *LogsHandler) Search(c *gin.Context) {
 	}
 
 	offsetInMS := 0
-    start := req.Start
-    end := req.End
-    if strings.Contains(req.Query, "_time:") { start, end = 0, 0 }
-    res, err := h.logs.ExecuteQueryStream(c.Request.Context(), &models.LogsQLQueryRequest{
-        Query:    req.Query,
-        Start:    start,
-        End:      end,
-        TenantID: req.TenantID,
-    }, func(row map[string]any) error {
+	start := req.Start
+	end := req.End
+	if strings.Contains(req.Query, "_time:") {
+		start, end = 0, 0
+	}
+	res, err := h.logs.ExecuteQueryStream(c.Request.Context(), &models.LogsQLQueryRequest{
+		Query:    req.Query,
+		Start:    start,
+		End:      end,
+		TenantID: req.TenantID,
+	}, func(row map[string]any) error {
 		ts := extractTS(row)
 		if skipUntilCursor(ts, &offsetInMS) {
 			return nil
