@@ -133,6 +133,60 @@ curl -X POST https://mirador-core/api/v1/metrics/query/aggregate/topk \
 
 All functions support optional parameters and return VictoriaMetrics-compatible responses.
 
+### Lucene Query Syntax Support (v5.1.0)
+
+MIRADOR-CORE v5.1.0 introduces full Lucene Query Syntax support for logs and traces queries, providing powerful search capabilities with familiar syntax.
+
+#### Logs API with Lucene
+```bash
+# Simple term search
+curl -X POST https://mirador-core/api/v1/logs/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "error", "time_range": "1h"}'
+
+# Field-specific search
+curl -X POST https://mirador-core/api/v1/logs/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "level:error AND message:\"connection timeout\"", "time_range": "1h"}'
+
+# Wildcard and range queries
+curl -X POST https://mirador-core/api/v1/logs/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "service:api* AND duration:[100 TO 500]", "time_range": "1h"}'
+```
+
+#### Traces API with Lucene
+```bash
+# Service and operation filters
+curl -X POST https://mirador-core/api/v1/traces/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "service:payment AND operation:charge", "time_range": "1h"}'
+
+# Duration and tag filters
+curl -X POST https://mirador-core/api/v1/traces/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "duration:>1s AND tag.env:production", "time_range": "1h"}'
+```
+
+#### Supported Lucene Features
+- **Term Queries**: `error`, `service:api`
+- **Phrase Queries**: `"connection timeout"`, `message:"server error"`
+- **Boolean Operators**: `AND`, `OR`, `NOT`
+- **Wildcard Queries**: `service:api*`, `level:err*`
+- **Range Queries**: `duration:[100 TO 500]`, `timestamp:{2025-01-01 TO 2025-12-31}`
+- **Field Grouping**: `(error OR timeout) AND level:critical`
+- **Special Fields**:
+  - Logs: `_msg` (default field), `level`, `service`, `timestamp`, custom fields
+  - Traces: `service`, `operation`, `duration`, `tag.*`, `span_attr.*`, `_time`
+
+#### Query Validation
+All Lucene queries are validated for syntax correctness and security before execution. Dangerous patterns like script injection are blocked.
+
 ### AI Fracture Prediction
 ```bash
 # Analyze system fractures/fatigue
