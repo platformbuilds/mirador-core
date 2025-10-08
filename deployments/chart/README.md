@@ -31,6 +31,9 @@ curl http://localhost:8080/health
 - `networkPolicy.enabled` to restrict traffic; customize ingress/egress
 - `serviceMonitor.enabled` and `prometheusRule.enabled` for Prometheus Operator
 - `topologySpreadConstraints`, `priorityClassName`, `revisionHistoryLimit`
+- `search.default_engine`: default search engine (`lucene` or `bleve`, default `lucene`)
+- `search.enable_bleve`: enable Bleve search engine (default `true`)
+- `search.enable_lucene`: enable Lucene search engine (default `true`)
 
 ## Embedded Valkey (Subchart)
 
