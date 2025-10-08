@@ -120,6 +120,12 @@ monitoring:
   tracing_enabled: true
 jaeger_endpoint: "http://jaeger-collector.observability.svc.cluster.local:14268/api/traces"
 
+# Search Engine Configuration
+search:
+  default_engine: "lucene"
+  enable_bleve: true
+  enable_lucene: true
+
 uploads:
   # Bulk CSV upload limit (bytes); default 5 MiB.
   bulk_max_bytes: 5242880

@@ -1,5 +1,6 @@
 // Packa// 2. HTTP metrics are automatically collected by the existing middleware
-//    (no need to add HTTPMetricsMiddleware) monitoring provides comprehensive Prometheus metrics for MIRADOR-CORE API.
+//
+//	(no need to add HTTPMetricsMiddleware) monitoring provides comprehensive Prometheus metrics for MIRADOR-CORE API.
 //
 // Usage:
 //
@@ -60,6 +61,19 @@
 // Weaviate Metrics:
 //   - mirador_core_weaviate_operations_total{operation, collection, status}
 //   - mirador_core_weaviate_operation_duration_seconds{operation, collection}
+//
+// Bleve Search Metrics:
+//   - mirador_core_bleve_index_operations_total{operation, tenant, status}
+//   - mirador_core_bleve_index_operation_duration_seconds{operation, tenant}
+//   - mirador_core_bleve_search_operations_total{tenant, status}
+//   - mirador_core_bleve_search_operation_duration_seconds{tenant}
+//   - mirador_core_bleve_search_results_total{tenant}
+//   - mirador_core_bleve_index_document_count{tenant, shard}
+//   - mirador_core_bleve_index_shard_count{tenant}
+//   - mirador_core_bleve_storage_memory_usage_bytes{tenant, shard}
+//   - mirador_core_bleve_storage_disk_usage_bytes{tenant, shard}
+//   - mirador_core_bleve_cluster_nodes_total
+//   - mirador_core_bleve_cluster_leadership_changes_total
 //
 // Error Metrics:
 //   - mirador_core_errors_total{type, component}
@@ -203,6 +217,114 @@ var (
 		},
 		[]string{"type", "component"}, // type: api, db, cache, auth, etc.
 	)
+
+	// Bleve search metrics
+	bleveIndexOperationsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "mirador_core_bleve_index_operations_total",
+			Help: "Total number of Bleve index operations",
+		},
+		[]string{"operation", "tenant", "status"}, // operation: index, delete, batch_index
+	)
+
+	bleveIndexOperationDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "mirador_core_bleve_index_operation_duration_seconds",
+			Help:    "Bleve index operation duration in seconds",
+			Buckets: []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5},
+		},
+		[]string{"operation", "tenant"},
+	)
+
+	bleveSearchOperationsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "mirador_core_bleve_search_operations_total",
+			Help: "Total number of Bleve search operations",
+		},
+		[]string{"tenant", "status"},
+	)
+
+	bleveSearchOperationDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "mirador_core_bleve_search_operation_duration_seconds",
+			Help:    "Bleve search operation duration in seconds",
+			Buckets: []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
+		},
+		[]string{"tenant"},
+	)
+
+	bleveSearchResultsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "mirador_core_bleve_search_results_total",
+			Help: "Total number of search results returned by Bleve",
+		},
+		[]string{"tenant"},
+	)
+
+	// Bleve index health metrics
+	bleveIndexDocumentCount = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "mirador_core_bleve_index_document_count",
+			Help: "Number of documents in Bleve indexes",
+		},
+		[]string{"tenant", "shard"},
+	)
+
+	bleveIndexShardCount = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "mirador_core_bleve_index_shard_count",
+			Help: "Number of shards in Bleve indexes",
+		},
+		[]string{"tenant"},
+	)
+
+	// Bleve storage metrics
+	bleveStorageMemoryUsage = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "mirador_core_bleve_storage_memory_usage_bytes",
+			Help: "Memory usage of Bleve storage in bytes",
+		},
+		[]string{"tenant", "shard"},
+	)
+
+	bleveStorageDiskUsage = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "mirador_core_bleve_storage_disk_usage_bytes",
+			Help: "Disk usage of Bleve storage in bytes",
+		},
+		[]string{"tenant", "shard"},
+	)
+
+	// Bleve cluster coordination metrics
+	bleveClusterNodesTotal = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "mirador_core_bleve_cluster_nodes_total",
+			Help: "Total number of nodes in Bleve cluster",
+		},
+	)
+
+	bleveClusterLeadershipChanges = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "mirador_core_bleve_cluster_leadership_changes_total",
+			Help: "Total number of leadership changes in Bleve cluster",
+		},
+	)
+
+	bleveRebalancingOperations = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "mirador_core_bleve_rebalancing_operations_total",
+			Help: "Total number of rebalancing operations performed",
+		},
+		[]string{"status"},
+	)
+
+	bleveCacheOperations = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "mirador_core_bleve_cache_operations_total",
+			Help: "Total number of Bleve cache operations",
+		},
+		[]string{"operation", "result"},
+	)
 )
 
 // SetupPrometheusMetrics configures Prometheus metrics endpoint for MIRADOR-CORE
@@ -237,6 +359,21 @@ func SetupPrometheusMetrics(router gin.IRoutes) {
 	_ = prometheus.Register(weaviateOperationDuration)
 	_ = prometheus.Register(activeConnections)
 	_ = prometheus.Register(errorsTotal)
+
+	// Register Bleve metrics
+	_ = prometheus.Register(bleveIndexOperationsTotal)
+	_ = prometheus.Register(bleveIndexOperationDuration)
+	_ = prometheus.Register(bleveSearchOperationsTotal)
+	_ = prometheus.Register(bleveSearchOperationDuration)
+	_ = prometheus.Register(bleveSearchResultsTotal)
+	_ = prometheus.Register(bleveIndexDocumentCount)
+	_ = prometheus.Register(bleveIndexShardCount)
+	_ = prometheus.Register(bleveStorageMemoryUsage)
+	_ = prometheus.Register(bleveStorageDiskUsage)
+	_ = prometheus.Register(bleveClusterNodesTotal)
+	_ = prometheus.Register(bleveClusterLeadershipChanges)
+	_ = prometheus.Register(bleveRebalancingOperations)
+	_ = prometheus.Register(bleveCacheOperations)
 
 	// Expose metrics endpoint using default registry
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
@@ -340,6 +477,71 @@ func RecordWeaviateOperation(operation, collection string, duration time.Duratio
 
 	weaviateOperationsTotal.WithLabelValues(operation, collection, status).Inc()
 	weaviateOperationDuration.WithLabelValues(operation, collection).Observe(duration.Seconds())
+}
+
+// RecordBleveIndexOperation records Bleve index operation metrics
+func RecordBleveIndexOperation(operation, tenant string, duration time.Duration, success bool) {
+	status := "success"
+	if !success {
+		status = "error"
+		errorsTotal.WithLabelValues("bleve_index", tenant).Inc()
+	}
+
+	bleveIndexOperationsTotal.WithLabelValues(operation, tenant, status).Inc()
+	bleveIndexOperationDuration.WithLabelValues(operation, tenant).Observe(duration.Seconds())
+}
+
+// RecordBleveSearchOperation records Bleve search operation metrics
+func RecordBleveSearchOperation(tenant string, duration time.Duration, resultCount int, success bool) {
+	status := "success"
+	if !success {
+		status = "error"
+		errorsTotal.WithLabelValues("bleve_search", tenant).Inc()
+	}
+
+	bleveSearchOperationsTotal.WithLabelValues(tenant, status).Inc()
+	bleveSearchOperationDuration.WithLabelValues(tenant).Observe(duration.Seconds())
+	bleveSearchResultsTotal.WithLabelValues(tenant).Add(float64(resultCount))
+}
+
+// RecordBleveIndexHealth records the health metrics for a Bleve index shard
+func RecordBleveIndexHealth(tenantID, shardNum string, docCount int64) {
+	bleveIndexDocumentCount.WithLabelValues(tenantID, shardNum).Set(float64(docCount))
+}
+
+// RecordBleveShardCount records the number of shards for a tenant
+func RecordBleveShardCount(tenantID string, shardCount int64) {
+	bleveIndexShardCount.WithLabelValues(tenantID).Set(float64(shardCount))
+}
+
+// RecordBleveStorageUsage records Bleve storage usage metrics
+func RecordBleveStorageUsage(tenant, shard string, memoryBytes, diskBytes int64) {
+	bleveStorageMemoryUsage.WithLabelValues(tenant, shard).Set(float64(memoryBytes))
+	bleveStorageDiskUsage.WithLabelValues(tenant, shard).Set(float64(diskBytes))
+}
+
+// RecordBleveClusterNodes records the number of nodes in the Bleve cluster
+func RecordBleveClusterNodes(nodeCount int) {
+	bleveClusterNodesTotal.Set(float64(nodeCount))
+}
+
+// RecordBleveLeadershipChange records leadership changes in the Bleve cluster
+func RecordBleveLeadershipChange() {
+	bleveClusterLeadershipChanges.Inc()
+}
+
+// RecordBleveRebalancingOperation records rebalancing operations
+func RecordBleveRebalancingOperation(shardCount int, success bool) {
+	status := "success"
+	if !success {
+		status = "failure"
+	}
+	bleveRebalancingOperations.WithLabelValues(status).Add(float64(shardCount))
+}
+
+// RecordBleveCacheOperation records cache operations
+func RecordBleveCacheOperation(operation, result string) {
+	bleveCacheOperations.WithLabelValues(operation, result).Inc()
 }
 
 // normalizeEndpoint normalizes API endpoints for consistent metrics

@@ -1,77 +1,78 @@
 package config
 
 type Config struct {
-    Environment string `mapstructure:"environment" yaml:"environment"`
-    Port        int    `mapstructure:"port" yaml:"port"`
-    LogLevel    string `mapstructure:"log_level" yaml:"log_level"`
+	Environment string `mapstructure:"environment" yaml:"environment"`
+	Port        int    `mapstructure:"port" yaml:"port"`
+	LogLevel    string `mapstructure:"log_level" yaml:"log_level"`
 
-    Database     DatabaseConfig     `mapstructure:"database" yaml:"database"`
-    GRPC         GRPCConfig         `mapstructure:"grpc" yaml:"grpc"`
-    Auth         AuthConfig         `mapstructure:"auth" yaml:"auth"`
-    Cache        CacheConfig        `mapstructure:"cache" yaml:"cache"`
-    CORS         CORSConfig         `mapstructure:"cors" yaml:"cors"`
-    Integrations IntegrationsConfig `mapstructure:"integrations" yaml:"integrations"`
-    WebSocket    WebSocketConfig    `mapstructure:"websocket" yaml:"websocket"`
-    Monitoring   MonitoringConfig   `mapstructure:"monitoring" yaml:"monitoring"`
-    Weaviate     WeaviateConfig     `mapstructure:"weaviate" yaml:"weaviate"`
-    Uploads      UploadsConfig      `mapstructure:"uploads" yaml:"uploads"`
+	Database     DatabaseConfig     `mapstructure:"database" yaml:"database"`
+	GRPC         GRPCConfig         `mapstructure:"grpc" yaml:"grpc"`
+	Auth         AuthConfig         `mapstructure:"auth" yaml:"auth"`
+	Cache        CacheConfig        `mapstructure:"cache" yaml:"cache"`
+	CORS         CORSConfig         `mapstructure:"cors" yaml:"cors"`
+	Integrations IntegrationsConfig `mapstructure:"integrations" yaml:"integrations"`
+	WebSocket    WebSocketConfig    `mapstructure:"websocket" yaml:"websocket"`
+	Monitoring   MonitoringConfig   `mapstructure:"monitoring" yaml:"monitoring"`
+	Weaviate     WeaviateConfig     `mapstructure:"weaviate" yaml:"weaviate"`
+	Uploads      UploadsConfig      `mapstructure:"uploads" yaml:"uploads"`
+	Search       SearchConfig       `mapstructure:"search" yaml:"search"`
 }
 
 // DatabaseConfig handles VictoriaMetrics ecosystem configuration
 type DatabaseConfig struct {
-    VictoriaMetrics VictoriaMetricsConfig `mapstructure:"victoria_metrics" yaml:"victoria_metrics"`
-    VictoriaLogs    VictoriaLogsConfig    `mapstructure:"victoria_logs" yaml:"victoria_logs"`
-    VictoriaTraces  VictoriaTracesConfig  `mapstructure:"victoria_traces" yaml:"victoria_traces"`
-    // MetricsSources allows configuring multiple independent VictoriaMetrics clusters
-    // for aggregation across sources. When non-empty, mirador will fan-out metrics
-    // queries to each source and aggregate the results. The legacy
-    // victoria_metrics block is still honored and treated as an additional source
-    // if it has endpoints or discovery enabled.
-    MetricsSources []VictoriaMetricsConfig `mapstructure:"metrics_sources" yaml:"metrics_sources"`
-    // LogsSources allows configuring multiple VictoriaLogs clusters for aggregation
-    LogsSources    []VictoriaLogsConfig    `mapstructure:"logs_sources" yaml:"logs_sources"`
-    // TracesSources allows configuring multiple VictoriaTraces clusters for aggregation
-    TracesSources  []VictoriaTracesConfig  `mapstructure:"traces_sources" yaml:"traces_sources"`
+	VictoriaMetrics VictoriaMetricsConfig `mapstructure:"victoria_metrics" yaml:"victoria_metrics"`
+	VictoriaLogs    VictoriaLogsConfig    `mapstructure:"victoria_logs" yaml:"victoria_logs"`
+	VictoriaTraces  VictoriaTracesConfig  `mapstructure:"victoria_traces" yaml:"victoria_traces"`
+	// MetricsSources allows configuring multiple independent VictoriaMetrics clusters
+	// for aggregation across sources. When non-empty, mirador will fan-out metrics
+	// queries to each source and aggregate the results. The legacy
+	// victoria_metrics block is still honored and treated as an additional source
+	// if it has endpoints or discovery enabled.
+	MetricsSources []VictoriaMetricsConfig `mapstructure:"metrics_sources" yaml:"metrics_sources"`
+	// LogsSources allows configuring multiple VictoriaLogs clusters for aggregation
+	LogsSources []VictoriaLogsConfig `mapstructure:"logs_sources" yaml:"logs_sources"`
+	// TracesSources allows configuring multiple VictoriaTraces clusters for aggregation
+	TracesSources []VictoriaTracesConfig `mapstructure:"traces_sources" yaml:"traces_sources"`
 }
 
 type VictoriaMetricsConfig struct {
-    // Optional friendly name for this metrics source
-    Name     string   `mapstructure:"name" yaml:"name"`
-    Endpoints []string `mapstructure:"endpoints" yaml:"endpoints"`
-    Timeout   int      `mapstructure:"timeout" yaml:"timeout"` // milliseconds
-    Username  string   `mapstructure:"username" yaml:"username"`
-    Password  string   `mapstructure:"password" yaml:"password"`
-    Discovery K8sDiscoveryConfig `mapstructure:"discovery" yaml:"discovery"`
+	// Optional friendly name for this metrics source
+	Name      string             `mapstructure:"name" yaml:"name"`
+	Endpoints []string           `mapstructure:"endpoints" yaml:"endpoints"`
+	Timeout   int                `mapstructure:"timeout" yaml:"timeout"` // milliseconds
+	Username  string             `mapstructure:"username" yaml:"username"`
+	Password  string             `mapstructure:"password" yaml:"password"`
+	Discovery K8sDiscoveryConfig `mapstructure:"discovery" yaml:"discovery"`
 }
 
 type VictoriaLogsConfig struct {
-    // Optional friendly name for this logs source
-    Name     string   `mapstructure:"name" yaml:"name"`
-    Endpoints []string `mapstructure:"endpoints" yaml:"endpoints"`
-    Timeout   int      `mapstructure:"timeout" yaml:"timeout"`
-    Username  string   `mapstructure:"username" yaml:"username"`
-    Password  string   `mapstructure:"password" yaml:"password"`
-    Discovery K8sDiscoveryConfig `mapstructure:"discovery" yaml:"discovery"`
+	// Optional friendly name for this logs source
+	Name      string             `mapstructure:"name" yaml:"name"`
+	Endpoints []string           `mapstructure:"endpoints" yaml:"endpoints"`
+	Timeout   int                `mapstructure:"timeout" yaml:"timeout"`
+	Username  string             `mapstructure:"username" yaml:"username"`
+	Password  string             `mapstructure:"password" yaml:"password"`
+	Discovery K8sDiscoveryConfig `mapstructure:"discovery" yaml:"discovery"`
 }
 
 type VictoriaTracesConfig struct {
-    // Optional friendly name for this traces source
-    Name     string   `mapstructure:"name" yaml:"name"`
-    Endpoints []string `mapstructure:"endpoints" yaml:"endpoints"`
-    Timeout   int      `mapstructure:"timeout" yaml:"timeout"`
-    Username  string   `mapstructure:"username" yaml:"username"`
-    Password  string   `mapstructure:"password" yaml:"password"`
-    Discovery K8sDiscoveryConfig `mapstructure:"discovery" yaml:"discovery"`
+	// Optional friendly name for this traces source
+	Name      string             `mapstructure:"name" yaml:"name"`
+	Endpoints []string           `mapstructure:"endpoints" yaml:"endpoints"`
+	Timeout   int                `mapstructure:"timeout" yaml:"timeout"`
+	Username  string             `mapstructure:"username" yaml:"username"`
+	Password  string             `mapstructure:"password" yaml:"password"`
+	Discovery K8sDiscoveryConfig `mapstructure:"discovery" yaml:"discovery"`
 }
 
 // K8sDiscoveryConfig enables dynamic endpoint discovery for a Service
 type K8sDiscoveryConfig struct {
-    Enabled        bool   `mapstructure:"enabled" yaml:"enabled"`
-    Service        string `mapstructure:"service" yaml:"service"`                 // e.g. vmselect.vm-select.svc.cluster.local
-    Port           int    `mapstructure:"port" yaml:"port"`
-    Scheme         string `mapstructure:"scheme" yaml:"scheme"`                 // http | https
-    RefreshSeconds int    `mapstructure:"refresh_seconds" yaml:"refresh_seconds"`
-    UseSRV         bool   `mapstructure:"use_srv" yaml:"use_srv"`
+	Enabled        bool   `mapstructure:"enabled" yaml:"enabled"`
+	Service        string `mapstructure:"service" yaml:"service"` // e.g. vmselect.vm-select.svc.cluster.local
+	Port           int    `mapstructure:"port" yaml:"port"`
+	Scheme         string `mapstructure:"scheme" yaml:"scheme"` // http | https
+	RefreshSeconds int    `mapstructure:"refresh_seconds" yaml:"refresh_seconds"`
+	UseSRV         bool   `mapstructure:"use_srv" yaml:"use_srv"`
 }
 
 // GRPCConfig handles AI engines gRPC configuration
@@ -101,11 +102,11 @@ type AlertEngineConfig struct {
 
 // AuthConfig handles authentication and authorization
 type AuthConfig struct {
-    Enabled bool        `mapstructure:"enabled" yaml:"enabled"`
-    LDAP  LDAPConfig  `mapstructure:"ldap" yaml:"ldap"`
-    OAuth OAuthConfig `mapstructure:"oauth" yaml:"oauth"`
-    RBAC  RBACConfig  `mapstructure:"rbac" yaml:"rbac"`
-    JWT   JWTConfig   `mapstructure:"jwt" yaml:"jwt"`
+	Enabled bool        `mapstructure:"enabled" yaml:"enabled"`
+	LDAP    LDAPConfig  `mapstructure:"ldap" yaml:"ldap"`
+	OAuth   OAuthConfig `mapstructure:"oauth" yaml:"oauth"`
+	RBAC    RBACConfig  `mapstructure:"rbac" yaml:"rbac"`
+	JWT     JWTConfig   `mapstructure:"jwt" yaml:"jwt"`
 }
 
 type LDAPConfig struct {
@@ -181,8 +182,8 @@ type EmailConfig struct {
 
 // UploadsConfig controls payload limits for uploads
 type UploadsConfig struct {
-    // BulkMaxBytes sets the maximum allowed size in bytes for bulk CSV uploads
-    BulkMaxBytes int64 `mapstructure:"bulk_max_bytes" yaml:"bulk_max_bytes"`
+	// BulkMaxBytes sets the maximum allowed size in bytes for bulk CSV uploads
+	BulkMaxBytes int64 `mapstructure:"bulk_max_bytes" yaml:"bulk_max_bytes"`
 }
 
 // WebSocketConfig handles real-time streaming configuration
@@ -204,18 +205,54 @@ type MonitoringConfig struct {
 	JaegerEndpoint    string `mapstructure:"jaeger_endpoint" yaml:"jaeger_endpoint"`
 }
 
-
 // WeaviateConfig holds connection details for Weaviate HTTP API
 type WeaviateConfig struct {
-    Enabled bool   `mapstructure:"enabled" yaml:"enabled"`
-    Scheme  string `mapstructure:"scheme" yaml:"scheme"` // http or https
-    Host    string `mapstructure:"host" yaml:"host"`     // DNS name or host
-    Port    int    `mapstructure:"port" yaml:"port"`     // default 8080
-    APIKey  string `mapstructure:"api_key" yaml:"api_key"`
-    // Optional: per-request consistency/replication knobs (passed via headers/params)
-    Consistency string `mapstructure:"consistency" yaml:"consistency"`
-    // UseOfficial toggles the official weaviate-go-client when available.
-    UseOfficial bool `mapstructure:"use_official" yaml:"use_official"`
-    // NestedKeys predeclares nestedProperties for object fields like tags/examples/etc.
-    NestedKeys []string `mapstructure:"nested_keys" yaml:"nested_keys"`
+	Enabled bool   `mapstructure:"enabled" yaml:"enabled"`
+	Scheme  string `mapstructure:"scheme" yaml:"scheme"` // http or https
+	Host    string `mapstructure:"host" yaml:"host"`     // DNS name or host
+	Port    int    `mapstructure:"port" yaml:"port"`     // default 8080
+	APIKey  string `mapstructure:"api_key" yaml:"api_key"`
+	// Optional: per-request consistency/replication knobs (passed via headers/params)
+	Consistency string `mapstructure:"consistency" yaml:"consistency"`
+	// UseOfficial toggles the official weaviate-go-client when available.
+	UseOfficial bool `mapstructure:"use_official" yaml:"use_official"`
+	// NestedKeys predeclares nestedProperties for object fields like tags/examples/etc.
+	NestedKeys []string `mapstructure:"nested_keys" yaml:"nested_keys"`
+}
+
+// SearchConfig holds configuration for search engines
+type SearchConfig struct {
+	DefaultEngine string           `mapstructure:"default_engine" yaml:"default_engine"`
+	EnableBleve   bool             `mapstructure:"enable_bleve" yaml:"enable_bleve"`
+	EnableLucene  bool             `mapstructure:"enable_lucene" yaml:"enable_lucene"`
+	QueryCache    QueryCacheConfig `mapstructure:"query_cache" yaml:"query_cache"`
+	Bleve         BleveConfig      `mapstructure:"bleve" yaml:"bleve"`
+}
+
+// QueryCacheConfig holds query caching configuration
+type QueryCacheConfig struct {
+	Enabled bool `mapstructure:"enabled" yaml:"enabled"`
+	TTL     int  `mapstructure:"ttl" yaml:"ttl"`
+}
+
+// BleveConfig holds Bleve-specific configuration
+type BleveConfig struct {
+	LogsEnabled        bool                     `mapstructure:"logs_enabled" yaml:"logs_enabled"`
+	TracesEnabled      bool                     `mapstructure:"traces_enabled" yaml:"traces_enabled"`
+	MetricsEnabled     bool                     `mapstructure:"metrics_enabled" yaml:"metrics_enabled"`
+	MemoryOptimization MemoryOptimizationConfig `mapstructure:"memory_optimization" yaml:"memory_optimization"`
+	Storage            BleveStorageConfig       `mapstructure:"storage" yaml:"storage"`
+}
+
+// MemoryOptimizationConfig holds memory optimization settings
+type MemoryOptimizationConfig struct {
+	ObjectPooling bool `mapstructure:"object_pooling" yaml:"object_pooling"`
+	AdaptiveCache bool `mapstructure:"adaptive_cache" yaml:"adaptive_cache"`
+}
+
+// BleveStorageConfig holds Bleve storage configuration
+type BleveStorageConfig struct {
+	MemoryCacheRatio     float64 `mapstructure:"memory_cache_ratio" yaml:"memory_cache_ratio"`
+	DiskCacheRatio       float64 `mapstructure:"disk_cache_ratio" yaml:"disk_cache_ratio"`
+	MaxConcurrentQueries int     `mapstructure:"max_concurrent_queries" yaml:"max_concurrent_queries"`
 }

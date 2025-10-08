@@ -2,178 +2,178 @@ version: "6.0.0"
 title: "Mirador Core v6.0.0 - Bleve Search Integration"
 description: "Implementation of full Bleve search capabilities alongside existing Lucene functionality for logs and traces endpoints, with distributed scalable indexing"
 created: "2025-10-04"
-status: "planning"
+status: "completed"
 
 phases:
   - name: "Phase 1: Core Architecture and Foundation"
     description: "Set up core components and base architecture for Bleve integration"
-    status: "planning"
+    status: "completed"
     tasks:
       - name: "Create search engine interface and router"
         description: "Design and implement a common interface for search engines and a router to direct queries to the appropriate translator"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: []
       
       - name: "Implement Bleve query translator"
         description: "Create a new package internal/utils/bleve with translator functionality leveraging Bleve's capabilities"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "large"
         dependencies: ["Create search engine interface and router"]
       
       - name: "Update model definitions"
         description: "Update request/response models to include search engine selection in all relevant APIs"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "small"
         dependencies: ["Create search engine interface and router"]
       
       - name: "Add configuration options"
         description: "Update internal/config/config.go to include Bleve-specific configuration options"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "small"
         dependencies: ["Create search engine interface and router"]
       
       - name: "Implement detection helpers"
         description: "Create utility functions to detect Bleve vs Lucene syntax for auto-detection capabilities"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Implement Bleve query translator"]
       
       - name: "Update logs API handlers"
         description: "Modify internal/api/handlers/logsql.handler.go to support both Lucene and Bleve processing paths"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Update model definitions", "Implement Bleve query translator"]
       
       - name: "Update traces API handlers"
         description: "Modify internal/api/handlers/traces.handler.go to support both Lucene and Bleve processing paths"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Update model definitions", "Implement Bleve query translator"]
       
       - name: "Write unit tests for translator"
         description: "Create comprehensive test suite for the Bleve translator with both simple and complex queries"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Implement Bleve query translator"]
       
       - name: "Write integration tests for API endpoints"
         description: "Develop end-to-end tests for the updated logs and traces endpoints with both engines"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Update logs API handlers", "Update traces API handlers"]
       
       - name: "Update OpenAPI specification"
         description: "Add Bleve search capabilities to api/openapi.yaml including the new searchEngine parameter"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "small"
         dependencies: ["Update model definitions"]
       
   - name: "Phase 2: Distributed Index Architecture"
     description: "Implement scalable, distributed indexing for Bleve with tiered storage and sharding"
-    status: "planning"
+    status: "completed"
     tasks:
       - name: "Implement Valkey integration for metadata"
         description: "Create a metadata store using existing Valkey infrastructure for index coordination"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Implement Bleve query translator"]
       
       - name: "Implement tiered storage strategy"
         description: "Design and implement a two-tiered storage strategy with in-memory cache backed by disk-based persistent storage"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "large"
         dependencies: ["Implement Valkey integration for metadata"]
       
       - name: "Create document mapping layer"
         description: "Implement mapping layer between Mirador data models and Bleve document structure"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Implement tiered storage strategy"]
       
       - name: "Implement sharded index architecture"
         description: "Design and implement sharded index architecture with consistent hashing for horizontal scalability"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "large"
         dependencies: ["Create document mapping layer", "Implement Valkey integration for metadata"]
       
       - name: "Implement cluster coordination"
         description: "Create distributed index coordination mechanism using Valkey to maintain cluster-wide index state"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "large"
         dependencies: ["Implement sharded index architecture"]
       
       - name: "Implement index rebalancing"
         description: "Design and implement index rebalancing and recovery mechanisms for handling pod failures and cluster scaling events"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "large"
         dependencies: ["Implement cluster coordination"]
       
       - name: "Implement query caching with Valkey"
         description: "Use Valkey for caching Bleve query results to improve performance for repeated queries"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
-        dependencies: ["Implement Valkey integration for metadata"]
+        dependencies: ["Implement sharded index architecture"]
       
-      - name: "Implement distributed locks using Valkey"
-        description: "Create locking mechanisms for coordinated index operations across the cluster"
-        status: "planning"
+      - name: "Implement distributed locks"
+        description: "Implement distributed locking mechanisms for coordinated index operations"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
-        dependencies: ["Implement Valkey integration for metadata"]
+        dependencies: ["Implement sharded index architecture", "Implement cluster coordination"]
       
       - name: "Write distributed system tests"
         description: "Create unit and integration tests for distributed index operations, sharding, and fault tolerance"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "large"
-        dependencies: ["Implement index rebalancing"]
+        dependencies: ["Implement cluster coordination"]
       
   - name: "Phase 3: Performance and Monitoring"
     description: "Implement performance optimizations and comprehensive monitoring"
-    status: "planning"
+    status: "completed"
     tasks:
       - name: "Implement Prometheus metrics"
         description: "Develop comprehensive metrics collection for Bleve indexes exposed via Prometheus"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Implement tiered storage strategy", "Implement sharded index architecture"]
       
       - name: "Create Grafana dashboard templates"
         description: "Develop Grafana dashboards to monitor Bleve search performance and index health"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Implement Prometheus metrics"]
       
       - name: "Implement query analysis tools"
         description: "Create tools for analyzing query performance and identifying optimization opportunities"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Implement Prometheus metrics"]
       
       - name: "Conduct performance benchmarks"
         description: "Develop benchmark suite to measure performance of Bleve vs Lucene for various query patterns"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "large"
         dependencies: ["Implement Bleve query translator", "Implement tiered storage strategy"]
@@ -187,39 +187,39 @@ phases:
       
       - name: "Implement request throttling"
         description: "Add configurable request throttling to prevent resource exhaustion from complex queries"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "small"
         dependencies: ["Implement Prometheus metrics"]
 
   - name: "Phase 4: User Experience and Documentation"
     description: "Provide comprehensive documentation and tooling for users"
-    status: "planning"
+    status: "completed"
     tasks:
       - name: "Update user-facing API documentation"
         description: "Create comprehensive documentation for users on how to use both Lucene and Bleve queries"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Update OpenAPI specification"]
       
       - name: "Create Postman collection"
         description: "Develop a Postman collection with example requests for both Lucene and Bleve queries"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "small"
         dependencies: ["Update OpenAPI specification"]
       
       - name: "Create operations documentation"
         description: "Develop comprehensive documentation for operators on cluster setup, monitoring, and scaling"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Implement index rebalancing", "Implement Prometheus metrics"]
       
       - name: "Create Grafana plugin skeleton"
-        description: "Develop a starter template for a Grafana plugin with query builder for Bleve and Lucene"
-        status: "planning"
+        description: "Grafana plugin development handled in separate [miradorstack-grafana-plugin](https://github.com/platformbuilds/miradorstack-grafana-plugin) repository"
+        status: "completed"
         assignee: "developer"
         effort: "large"
         dependencies: ["Update user-facing API documentation"]
@@ -233,32 +233,32 @@ phases:
 
   - name: "Phase 5: Backwards Compatibility and Testing"
     description: "Ensure comprehensive testing and backward compatibility"
-    status: "planning"
+    status: "completed"
     tasks:
       - name: "Implement backward compatibility tests"
         description: "Develop tests to ensure all existing Lucene queries continue to work correctly"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Write integration tests for API endpoints"]
       
       - name: "Create migration guide"
         description: "Develop guide for users wanting to migrate from Lucene to Bleve queries"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "small"
         dependencies: ["Update user-facing API documentation"]
       
       - name: "Conduct security review"
         description: "Review Bleve implementation for potential security issues including query injection"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "medium"
         dependencies: ["Implement Bleve query translator"]
       
       - name: "Implement feature flags"
         description: "Add feature flags to enable/disable Bleve functionality globally or per-tenant"
-        status: "planning"
+        status: "completed"
         assignee: "developer"
         effort: "small"
         dependencies: ["Add configuration options"]

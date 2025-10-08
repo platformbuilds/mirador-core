@@ -5,8 +5,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/search/query"
+	"github.com/grindlemire/go-lucene"
+	"github.com/grindlemire/go-lucene/pkg/lucene/expr"
 )
 
 // Target identifies which backend query language to generate.
@@ -97,13 +98,12 @@ type TraceFilters struct {
 // - _time:[start TO end] or _time:15m (relative window)
 // - tag.* or span_attr.* or any other key become tags (k=v; phrases/wildcards use value as-is)
 func TranslateTraces(q string) (TraceFilters, bool) {
-	qsq := bleve.NewQueryStringQuery(q)
-	parsed, err := qsq.Parse()
+	parsed, err := lucene.Parse(q)
 	if err != nil {
 		return TraceFilters{}, false
 	}
 	out := TraceFilters{Tags: map[string]string{}}
-	extractTraceFilters(parsed, &out)
+	extractTraceFiltersLucene(parsed, &out)
 	// If nothing parsed, return false
 	if out.Service == "" && out.Operation == "" && len(out.Tags) == 0 && out.MinDuration == "" && out.MaxDuration == "" && out.Since == "" && out.StartExpr == "" && out.EndExpr == "" {
 		return out, false
@@ -111,57 +111,84 @@ func TranslateTraces(q string) (TraceFilters, bool) {
 	return out, true
 }
 
-func extractTraceFilters(q query.Query, out *TraceFilters) {
-	if tq, ok := q.(*query.TermQuery); ok {
-		field := tq.Field()
-		val := tq.Term
-		setTraceFilter(field, val, out)
+func extractTraceFiltersLucene(e *expr.Expression, out *TraceFilters) {
+	// Handle boolean operations (AND/OR)
+	if e.Op == expr.And || e.Op == expr.Or {
+		// Recursively process left and right operands
+		if leftExpr, ok := e.Left.(*expr.Expression); ok {
+			extractTraceFiltersLucene(leftExpr, out)
+		}
+		if rightExpr, ok := e.Right.(*expr.Expression); ok {
+			extractTraceFiltersLucene(rightExpr, out)
+		}
 		return
 	}
-	if mq, ok := q.(*query.MatchQuery); ok {
-		field := mq.Field()
-		val := mq.Match
-		setTraceFilter(field, val, out)
+
+	// Handle field:value expressions
+	if e.Op == expr.Equals {
+		field := ""
+		value := ""
+
+		// Extract field name from left operand
+		if leftExpr, ok := e.Left.(*expr.Expression); ok && leftExpr.Op == expr.Literal {
+			if col, ok := leftExpr.Left.(expr.Column); ok {
+				field = string(col)
+			}
+		}
+
+		// Extract value from right operand
+		if rightExpr, ok := e.Right.(*expr.Expression); ok && rightExpr.Op == expr.Literal {
+			if str, ok := rightExpr.Left.(string); ok {
+				value = str
+			}
+		}
+
+		if field != "" && value != "" {
+			setTraceFilter(field, value, out)
+		}
 		return
 	}
-	if pq, ok := q.(*query.PhraseQuery); ok {
-		field := pq.Field()
-		val := strings.Join(pq.Terms, " ")
-		setTraceFilter(field, val, out)
-		return
-	}
-	if wq, ok := q.(*query.WildcardQuery); ok {
-		field := wq.Field()
-		val := wq.Wildcard
-		setTraceFilter(field, val, out)
-		return
-	}
-	if nrq, ok := q.(*query.NumericRangeQuery); ok {
-		field := nrq.Field()
-		// For duration, handle range
-		if field == "duration" {
+
+	// Handle range expressions
+	if e.Op == expr.Range {
+		field := ""
+
+		// Extract field name from left operand
+		if leftExpr, ok := e.Left.(*expr.Expression); ok && leftExpr.Op == expr.Literal {
+			if col, ok := leftExpr.Left.(expr.Column); ok {
+				field = string(col)
+			}
+		}
+
+		// Extract range boundaries from right operand
+		if rangeBoundary, ok := e.Right.(*expr.RangeBoundary); ok {
 			min := ""
-			if nrq.Min != nil {
-				min = fmt.Sprintf("%v", *nrq.Min)
+			if rangeBoundary.Min != nil {
+				min = fmt.Sprintf("%v", rangeBoundary.Min)
 			}
 			max := ""
-			if nrq.Max != nil {
-				max = fmt.Sprintf("%v", *nrq.Max)
+			if rangeBoundary.Max != nil {
+				max = fmt.Sprintf("%v", rangeBoundary.Max)
 			}
-			if min != "" {
+
+			if field == "_time" || field == "time" {
+				out.StartExpr = min
+				out.EndExpr = max
+			} else if field == "duration" {
 				out.MinDuration = min
-			}
-			if max != "" {
 				out.MaxDuration = max
 			}
 		}
 		return
 	}
-	if _, ok := q.(*query.BooleanQuery); ok {
-		// TODO: handle boolean queries
+
+	// Handle literal expressions (bare terms)
+	if e.Op == expr.Literal {
+		if str, ok := e.Left.(string); ok {
+			setTraceFilter("", str, out)
+		}
 		return
 	}
-	// Other types ignored
 }
 
 func setTraceFilter(field, val string, out *TraceFilters) {
@@ -176,6 +203,27 @@ func setTraceFilter(field, val string, out *TraceFilters) {
 	}
 	if key == "duration" {
 		v := strings.TrimSpace(val)
+		// Check if it's a partial range start [min
+		if strings.HasPrefix(v, "[") && !strings.Contains(v, " TO ") {
+			out.MinDuration = strings.TrimPrefix(v, "[")
+			return
+		}
+		// Check if it's a partial range end max]
+		if strings.HasSuffix(v, "]") && !strings.Contains(v, " TO ") {
+			out.MaxDuration = strings.TrimSuffix(v, "]")
+			return
+		}
+		// Check if it's a range in the format [min TO max]
+		if strings.HasPrefix(v, "[") && strings.HasSuffix(v, "]") && strings.Contains(v, " TO ") {
+			// Parse duration range
+			rangeStr := strings.Trim(v, "[]")
+			parts := strings.Split(rangeStr, " TO ")
+			if len(parts) == 2 {
+				out.MinDuration = strings.TrimSpace(parts[0])
+				out.MaxDuration = strings.TrimSpace(parts[1])
+				return
+			}
+		}
 		if strings.HasPrefix(v, ">=") || strings.HasPrefix(v, ">") {
 			out.MinDuration = strings.TrimLeft(v, ">=")
 		} else if strings.HasPrefix(v, "<=") || strings.HasPrefix(v, "<") {
@@ -186,15 +234,33 @@ func setTraceFilter(field, val string, out *TraceFilters) {
 		return
 	}
 	if key == "_time" || key == "time" {
+		// Check if it's a date range in the format [start TO end]
+		if strings.HasPrefix(val, "[") && strings.HasSuffix(val, "]") && strings.Contains(val, " TO ") {
+			// Parse date range
+			rangeStr := strings.Trim(val, "[]")
+			parts := strings.Split(rangeStr, " TO ")
+			if len(parts) == 2 {
+				out.StartExpr = strings.TrimSpace(parts[0])
+				out.EndExpr = strings.TrimSpace(parts[1])
+				return
+			}
+		}
+		// Otherwise treat as duration
 		out.Since = val
 		return
 	}
 	// Normalize tag.* or span_attr.* prefixes
-	if strings.HasPrefix(key, "tag.") {
-		key = strings.TrimPrefix(key, "tag.")
-	}
-	if strings.HasPrefix(key, "span_attr.") {
-		key = strings.TrimPrefix(key, "span_attr.")
+	key = strings.TrimPrefix(key, "tag.")
+	key = strings.TrimPrefix(key, "span_attr.")
+	// For bare terms (field empty), treat as tag with val as key
+	if key == "" {
+		// Check if it's a partial duration range end like "1s]"
+		if strings.HasSuffix(val, "]") && !strings.Contains(val, " TO ") {
+			out.MaxDuration = strings.TrimSuffix(val, "]")
+			return
+		}
+		out.Tags[val] = val
+		return
 	}
 	out.Tags[key] = val
 }
@@ -202,20 +268,147 @@ func setTraceFilter(field, val string, out *TraceFilters) {
 // ---------------- LogsQL translation ----------------
 
 func translateToLogsQL(luceneQuery string) (string, bool) {
-	qsq := bleve.NewQueryStringQuery(luceneQuery)
-	err := qsq.Parse()
+	parsed, err := lucene.Parse(luceneQuery)
 	if err != nil {
 		return "", false
 	}
-	q, ok := qsq.Query.(query.Query)
-	if !ok {
-		return "", false
-	}
-	logsQL, err := buildLogsQL(q)
+	logsQL, err := buildLogsQLFromLuceneAST(parsed)
 	if err != nil {
 		return "", false
 	}
 	return logsQL, true
+}
+
+// buildLogsQLFromLuceneAST converts a go-lucene AST expression to LogsQL string
+func buildLogsQLFromLuceneAST(e *expr.Expression) (string, error) {
+	// Handle boolean operations (AND/OR)
+	if e.Op == expr.And {
+		left, err := buildLogsQLFromLuceneAST(e.Left.(*expr.Expression))
+		if err != nil {
+			return "", err
+		}
+		right, err := buildLogsQLFromLuceneAST(e.Right.(*expr.Expression))
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%s AND %s", left, right), nil
+	}
+	if e.Op == expr.Or {
+		left, err := buildLogsQLFromLuceneAST(e.Left.(*expr.Expression))
+		if err != nil {
+			return "", err
+		}
+		right, err := buildLogsQLFromLuceneAST(e.Right.(*expr.Expression))
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%s OR %s", left, right), nil
+	}
+
+	// Handle field:value expressions
+	if e.Op == expr.Equals {
+		field := ""
+		value := ""
+
+		// Extract field name from left operand
+		if leftExpr, ok := e.Left.(*expr.Expression); ok && leftExpr.Op == expr.Literal {
+			if col, ok := leftExpr.Left.(expr.Column); ok {
+				field = string(col)
+			}
+		}
+
+		// Extract value from right operand
+		if rightExpr, ok := e.Right.(*expr.Expression); ok && rightExpr.Op == expr.Literal {
+			if str, ok := rightExpr.Left.(string); ok {
+				value = str
+			}
+		}
+
+		if field != "" && value != "" {
+			return fmt.Sprintf(`%s:"%s"`, field, value), nil
+		}
+	}
+
+	// Handle field LIKE expressions (for wildcards)
+	if e.Op == expr.Like {
+		field := ""
+		wildcardPattern := ""
+
+		// Extract field name from left operand
+		if leftExpr, ok := e.Left.(*expr.Expression); ok && leftExpr.Op == expr.Literal {
+			if col, ok := leftExpr.Left.(expr.Column); ok {
+				field = string(col)
+			}
+		}
+
+		// Extract wildcard pattern from right operand
+		if rightExpr, ok := e.Right.(*expr.Expression); ok && rightExpr.Op == expr.Wild {
+			if pattern, ok := rightExpr.Left.(string); ok {
+				wildcardPattern = pattern
+			}
+		}
+
+		if field != "" && wildcardPattern != "" {
+			regex := wildcardToRegex(wildcardPattern)
+			return fmt.Sprintf(`%s~"%s"`, field, regex), nil
+		}
+	}
+
+	// Handle range expressions
+	if e.Op == expr.Range {
+		field := ""
+
+		// Extract field name from left operand
+		if leftExpr, ok := e.Left.(*expr.Expression); ok && leftExpr.Op == expr.Literal {
+			if col, ok := leftExpr.Left.(expr.Column); ok {
+				field = string(col)
+			}
+		}
+
+		// Extract range boundaries from right operand
+		if rangeBoundary, ok := e.Right.(*expr.RangeBoundary); ok {
+			min := "*"
+			if rangeBoundary.Min != nil {
+				min = fmt.Sprintf("%v", rangeBoundary.Min)
+			}
+			max := "*"
+			if rangeBoundary.Max != nil {
+				max = fmt.Sprintf("%v", rangeBoundary.Max)
+			}
+
+			return fmt.Sprintf(`%s:[%s,%s]`, field, min, max), nil
+		}
+	}
+
+	// Handle wildcard expressions
+	if e.Op == expr.Wild {
+		// For wildcards, the pattern is directly in e.Left
+		if pattern, ok := e.Left.(string); ok {
+			// Convert wildcard to regex
+			regex := wildcardToRegex(pattern)
+			return fmt.Sprintf(`_msg~"%s"`, regex), nil
+		}
+	}
+
+	// Handle fuzzy expressions (not supported)
+	if e.Op == expr.Fuzzy {
+		return "", fmt.Errorf("fuzzy queries not supported")
+	}
+
+	// Handle literal expressions (bare terms)
+	if e.Op == expr.Literal {
+		if str, ok := e.Left.(string); ok {
+			// Check if this is a quoted phrase
+			if strings.HasPrefix(str, `"`) && strings.HasSuffix(str, `"`) {
+				phrase := strings.Trim(str, `"`)
+				return fmt.Sprintf(`_msg:"%s"`, phrase), nil
+			}
+			// Single term
+			return fmt.Sprintf(`_msg:"%s"`, str), nil
+		}
+	}
+
+	return "", fmt.Errorf("unsupported Lucene expression type: %v", e.Op)
 }
 
 func buildLogsQL(q query.Query) (string, error) {
@@ -241,9 +434,12 @@ func buildLogsQL(q query.Query) (string, error) {
 		phrase := strings.Join(pq.Terms, " ")
 		return fmt.Sprintf(`%s:"%s"`, field, phrase), nil
 	}
-	if _, ok := q.(*query.BooleanQuery); ok {
-		// TODO: handle boolean queries
-		return "", fmt.Errorf("boolean queries not supported yet")
+	if mpq, ok := q.(*query.MatchPhraseQuery); ok {
+		field := mpq.Field()
+		if field == "" {
+			field = "_msg"
+		}
+		return fmt.Sprintf(`%s:"%s"`, field, mpq.MatchPhrase), nil
 	}
 	if wq, ok := q.(*query.WildcardQuery); ok {
 		field := wq.Field()
@@ -265,7 +461,98 @@ func buildLogsQL(q query.Query) (string, error) {
 		}
 		return fmt.Sprintf(`%s:[%s,%s]`, field, min, max), nil
 	}
+	if _, ok := q.(*query.FuzzyQuery); ok {
+		return "", fmt.Errorf("fuzzy queries not supported")
+	}
+	if conj, ok := q.(*query.ConjunctionQuery); ok {
+		var parts []string
+		for _, subq := range conj.Conjuncts {
+			part, err := buildLogsQL(subq)
+			if err != nil {
+				return "", err
+			}
+			parts = append(parts, part)
+		}
+		return strings.Join(parts, " AND "), nil
+	}
+	if disj, ok := q.(*query.DisjunctionQuery); ok {
+		var parts []string
+		for _, subq := range disj.Disjuncts {
+			part, err := buildLogsQL(subq)
+			if err != nil {
+				return "", err
+			}
+			parts = append(parts, part)
+		}
+		return strings.Join(parts, " OR "), nil
+	}
+	if bq, ok := q.(*query.BooleanQuery); ok {
+		return buildBooleanLogsQL(bq)
+	}
 	return "", fmt.Errorf("unsupported Lucene query type: %T", q)
+}
+
+// buildBooleanLogsQL handles boolean queries (AND/OR/NOT)
+func buildBooleanLogsQL(bq *query.BooleanQuery) (string, error) {
+	// Handle simple queries that get wrapped in BooleanQuery
+	// Check if this is actually a simple query wrapped in a boolean
+
+	// If only Should clause exists and it's a disjunction with one element
+	if bq.Should != nil && bq.Must == nil && bq.MustNot == nil {
+		if disj, ok := bq.Should.(*query.DisjunctionQuery); ok && len(disj.Disjuncts) == 1 {
+			return buildLogsQL(disj.Disjuncts[0])
+		}
+		// Handle disjunction with multiple elements
+		if disj, ok := bq.Should.(*query.DisjunctionQuery); ok && len(disj.Disjuncts) > 1 {
+			var parts []string
+			for _, subq := range disj.Disjuncts {
+				part, err := buildLogsQL(subq)
+				if err != nil {
+					return "", err
+				}
+				parts = append(parts, part)
+			}
+			return strings.Join(parts, " OR "), nil
+		}
+	}
+
+	// If only Must clause exists
+	if bq.Must != nil && bq.Should == nil && bq.MustNot == nil {
+		if conj, ok := bq.Must.(*query.ConjunctionQuery); ok && len(conj.Conjuncts) == 1 {
+			return buildLogsQL(conj.Conjuncts[0])
+		}
+		// Handle conjunction with multiple elements
+		if conj, ok := bq.Must.(*query.ConjunctionQuery); ok && len(conj.Conjuncts) > 1 {
+			var parts []string
+			for _, subq := range conj.Conjuncts {
+				part, err := buildLogsQL(subq)
+				if err != nil {
+					return "", err
+				}
+				parts = append(parts, part)
+			}
+			return strings.Join(parts, " AND "), nil
+		}
+		// If Must is not a conjunction, try to build directly
+		return buildLogsQL(bq.Must)
+	}
+
+	// Handle complex boolean queries with both Must and Should
+	if bq.Must != nil && bq.Should != nil {
+		mustPart, err := buildLogsQL(bq.Must)
+		if err != nil {
+			return "", err
+		}
+		shouldPart, err := buildLogsQL(bq.Should)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%s AND %s", mustPart, shouldPart), nil
+	}
+
+	// For other complex cases, return error for now
+	// TODO: Implement proper BooleanQuery handling for more complex queries
+	return "", fmt.Errorf("complex boolean queries not fully supported yet")
 }
 
 func toMetricsQL(q string) (string, bool) {

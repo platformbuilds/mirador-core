@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Mirador Core API",
-    "description": "Postman collection for testing MIRADOR-CORE endpoints, including Lucene-compatible queries (translated server-side).",
+    "description": "Postman collection for testing MIRADOR-CORE endpoints, including Lucene-compatible and Bleve search queries (translated server-side).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -4736,7 +4736,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query_language\": \"lucene\",\n  \"query\": \"_time:5m AND service:web AND level:error\",\n  \"limit\": 100\n}"
+              "raw": "{\n  \"query_language\": \"lucene\",\n  \"search_engine\": \"lucene\",\n  \"query\": \"_time:5m AND service:web AND level:error\",\n  \"limit\": 100\n}"
             },
             "description": "Logs query via VictoriaLogs; Lucene is translated server-side."
           }
@@ -4756,7 +4756,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query_language\": \"lucene\",\n  \"query\": \"_time:15m level:error\",\n  \"limit\": 200\n}"
+              "raw": "{\n  \"query_language\": \"lucene\",\n  \"search_engine\": \"lucene\",\n  \"query\": \"_time:15m level:error\",\n  \"limit\": 200\n}"
             }
           }
         },
@@ -4994,6 +4994,46 @@
               "raw": "{{baseUrl}}/logs/tail"
             },
             "description": "Tail logs (WebSocket)"
+          }
+        },
+        {
+          "name": "POST /logs/search (Bleve)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/logs/search"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query_language\": \"lucene\",\n  \"search_engine\": \"bleve\",\n  \"query\": \"_time:15m level:error service:web\",\n  \"limit\": 200\n}"
+            },
+            "description": "Search logs using Bleve search engine with structured field:value syntax"
+          }
+        },
+        {
+          "name": "POST /logs/search (Bleve, Complex)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/logs/search"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query_language\": \"lucene\",\n  \"search_engine\": \"bleve\",\n  \"query\": \"_time:30m +level:error -service:database host:prod*\",\n  \"limit\": 100\n}"
+            },
+            "description": "Complex Bleve query with required (+) and excluded (-) terms, wildcards"
           }
         }
       ]
@@ -5757,7 +5797,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query_language\": \"lucene\",\n  \"query\": \"_time:[now-15m TO now] AND service:{{traceService}} AND duration:[10ms TO *]\",\n  \"limit\": 10\n}"
+              "raw": "{\n  \"query_language\": \"lucene\",\n  \"search_engine\": \"lucene\",\n  \"query\": \"_time:[now-15m TO now] AND service:{{traceService}} AND duration:[10ms TO *]\",\n  \"limit\": 10\n}"
             }
           }
         },
@@ -5872,6 +5912,46 @@
               "mode": "raw",
               "raw": "{}"
             }
+          }
+        },
+        {
+          "name": "POST /traces/search (Bleve)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/traces/search"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query_language\": \"lucene\",\n  \"search_engine\": \"bleve\",\n  \"query\": \"_time:15m service:{{traceService}} operation:GET duration:[100ms TO *]\",\n  \"limit\": 10\n}"
+            },
+            "description": "Search traces using Bleve search engine with structured field:value syntax"
+          }
+        },
+        {
+          "name": "POST /traces/search (Bleve, Complex)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/traces/search"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query_language\": \"lucene\",\n  \"search_engine\": \"bleve\",\n  \"query\": \"_time:30m +service:api* -operation:health duration:[50ms TO 2s] status:error\",\n  \"limit\": 20\n}"
+            },
+            "description": "Complex Bleve trace query with required services, excluded operations, and multiple filters"
           }
         }
       ]

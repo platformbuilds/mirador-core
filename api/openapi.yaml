@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: MIRADOR-CORE API
   description: Advanced Observability Platform REST API
-  version: 5.0.0
+  version: 6.0.0
   contact:
     name: Platformbuilds Team
     email: rv@platformbuilds.org
@@ -1680,8 +1680,9 @@ paths:
       tags: [logs]
       summary: LogsQL query (VictoriaLogs)
       description: |
-        Accepts Lucene expressions via `query` when `query_language` is `lucene` (or when auto-detected).
-        Mirador translates Lucene to VictoriaLogs query syntax.
+        Accepts Lucene or Bleve expressions via `query` when `query_language` is `lucene` (or when auto-detected).
+        Specify `search_engine` as `bleve` to use Bleve search capabilities alongside existing Lucene functionality.
+        Mirador translates queries to VictoriaLogs query syntax.
         Note: Use either `_time` inside `query` or top-level `start`/`end`, not both. If both are provided, the
         server prioritizes `_time` in `query` to avoid conflicting time filters.
         When multiple logs sources are configured in config.yaml (database.victoria_logs + database.logs_sources),
@@ -1700,6 +1701,10 @@ paths:
                   type: string
                   enum: [lucene, logsql]
                   description: If `lucene`, the server translates to VictoriaLogs query.
+                search_engine:
+                  type: string
+                  enum: [lucene, bleve]
+                  description: Search engine to use for query processing (default is lucene for backward compatibility)
                 start:
                   type: integer
                   format: int64
@@ -1714,10 +1719,21 @@ paths:
                 tenantId:
                   type: string
                   description: Optional tenant override
-            example:
-              query_language: lucene
-              query: '_time:[now-15m, now] AND service.name:telemetrygen AND severity:Info'
-              limit: 200
+            examples:
+              lucene_query:
+                summary: Query logs using Lucene syntax with Lucene search engine
+                value:
+                  query_language: lucene
+                  search_engine: lucene
+                  query: '_time:[now-15m, now] AND service.name:telemetrygen AND severity:Info'
+                  limit: 200
+              bleve_query:
+                summary: Query logs using Lucene syntax with Bleve search engine
+                value:
+                  query_language: lucene
+                  search_engine: bleve
+                  query: '_time:[now-15m, now] AND service.name:telemetrygen AND severity:Info'
+                  limit: 200
       responses:
         '200': { description: OK }
   /logs/streams:
@@ -1883,6 +1899,10 @@ paths:
                 query_language:
                   type: string
                   enum: [lucene, logsql]
+                search_engine:
+                  type: string
+                  enum: [lucene, bleve]
+                  description: Search engine to use for query processing (default is lucene for backward compatibility)
                 start:
                   type: integer
                   format: int64
@@ -1907,10 +1927,21 @@ paths:
                 tenantId:
                   type: string
                   description: Optional tenant override
-            example:
-              query_language: lucene
-              query: "_time:15m AND level:error"
-              limit: 200
+            examples:
+              lucene_search:
+                summary: Search logs using Lucene query syntax
+                value:
+                  query_language: lucene
+                  query: "_time:15m AND level:error AND service:checkout"
+                  search_engine: lucene
+                  limit: 200
+              bleve_search:
+                summary: Search logs using Bleve query syntax
+                value:
+                  query_language: lucene
+                  query: "_time:15m AND level:error AND service:checkout"
+                  search_engine: bleve
+                  limit: 200
       responses:
         '200': { description: OK }
   /logs/tail:
@@ -2053,9 +2084,10 @@ paths:
       tags: [traces]
       summary: Search traces
       description: |
-        Jaeger-compatible search across traces. This endpoint also accepts a Lucene expression via
+        Jaeger-compatible search across traces. This endpoint accepts Lucene or Bleve expressions via
         `query_language=lucene` and `query`, which Mirador translates into Jaeger filters (service,
-        operation, tags, durations, and time window). Note: Use either `_time` in `query` or top-level `start`/`end`,
+        operation, tags, durations, and time window). Specify `search_engine` as `bleve` to use Bleve search capabilities.
+        Note: Use either `_time` in `query` or top-level `start`/`end`,
         not both. If both are provided, `_time` in `query` takes precedence. Alternatively, discover trace IDs via
         `/logs/search` with a Lucene filter on `trace_id`, then fetch traces by ID using `/traces/{traceId}`.
         When multiple traces sources are configured in config.yaml (database.victoria_traces + database.traces_sources),
@@ -2074,6 +2106,10 @@ paths:
                   type: string
                   enum: [lucene]
                   description: Set to `lucene` to enable translation
+                search_engine:
+                  type: string
+                  enum: [lucene, bleve]
+                  description: Search engine to use for query processing (default is lucene for backward compatibility)
                 service: { type: string }
                 operation: { type: string }
                 tags: { type: string, description: Comma-separated key=value pairs }
@@ -2082,6 +2118,39 @@ paths:
                 start: { type: string, format: date-time }
                 end: { type: string, format: date-time }
                 limit: { type: integer }
+            examples:
+              lucene_search:
+                summary: Search traces using Lucene query syntax
+                value:
+                  query: "_time:[now-15m TO now] AND service:checkout AND operation:CreateOrder"
+                  query_language: lucene
+                  search_engine: lucene
+                  limit: 100
+              bleve_search:
+                summary: Search traces using Bleve query syntax
+                value:
+                  query: "_time:[now-15m TO now] AND service:checkout AND operation:CreateOrder"
+                  query_language: lucene
+                  search_engine: bleve
+                  limit: 100
+              lucene_with_tags:
+                summary: Search traces with specific tags using Lucene
+                value:
+                  query: "service:otelgen AND span.kind:client"
+                  query_language: lucene
+                  search_engine: lucene
+                  start: "2025-10-04T00:00:00.000Z"
+                  end: "2025-10-04T23:59:59.999Z"
+                  limit: 100
+              bleve_with_tags:
+                summary: Search traces with specific tags using Bleve
+                value:
+                  query: "service:otelgen AND span.kind:client"
+                  query_language: lucene
+                  search_engine: bleve
+                  start: "2025-10-04T00:00:00.000Z"
+                  end: "2025-10-04T23:59:59.999Z"
+                  limit: 100
       responses:
         '200': { description: OK }
 

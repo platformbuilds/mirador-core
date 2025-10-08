@@ -58,6 +58,26 @@ data:
         - "redis-cluster-1.redis-cluster:6379" 
         - "redis-cluster-2.redis-cluster:6379"
       ttl: 300
+    
+    # Search Engine Configuration for Bleve clustering
+    search:
+      default_engine: "lucene"
+      enable_bleve: true
+      enable_lucene: true
+      query_cache:
+        enabled: true
+        ttl: 1800  # 30 minutes
+      bleve:
+        logs_enabled: true
+        traces_enabled: true
+        metrics_enabled: false
+        memory_optimization:
+          object_pooling: true
+          adaptive_cache: true
+        storage:
+          memory_cache_ratio: 0.3
+          disk_cache_ratio: 0.7
+          max_concurrent_queries: 50
 
 ---
 apiVersion: apps/v1

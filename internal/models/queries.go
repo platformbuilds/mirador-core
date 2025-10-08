@@ -131,6 +131,7 @@ type LogsQLQueryRequest struct {
 	Limit         int               `json:"limit" form:"limit"`
 	TenantID      string            `json:"tenantId" form:"tenantId"`
 	QueryLanguage string            `json:"query_language,omitempty"`
+	SearchEngine  string            `json:"search_engine,omitempty"`  // "lucene" or "bleve"
 	Extra         map[string]string `json:"extra,omitempty" form:"-"` // passthrough flags (dedup, order, etc.)
 }
 
@@ -183,6 +184,7 @@ type TraceSearchRequest struct {
 	TenantID      string       `json:"-"`
 	Query         string       `json:"query,omitempty"`
 	QueryLanguage string       `json:"query_language,omitempty"`
+	SearchEngine  string       `json:"search_engine,omitempty"` // "lucene" or "bleve"
 }
 
 type TraceSearchResult struct {

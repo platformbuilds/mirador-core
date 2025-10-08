@@ -207,6 +207,34 @@ mirador:
     nodes: []
     ttl: 300
 
+  search:
+    # Search engine configuration
+    default_engine: "lucene"  # Default search engine (lucene or bleve)
+    enable_bleve: true        # Enable Bleve search engine
+    enable_lucene: true       # Enable Lucene search engine
+    
+    # Query result caching configuration
+    query_cache:
+      enabled: true           # Enable query result caching
+      ttl: 1800               # Cache TTL in seconds (30 minutes)
+    
+    # Bleve-specific configuration
+    bleve:
+      logs_enabled: true      # Enable Bleve for logs search
+      traces_enabled: true    # Enable Bleve for traces search
+      metrics_enabled: false  # Enable Bleve for metrics search (future)
+      
+      # Memory optimization settings
+      memory_optimization:
+        object_pooling: true  # Enable object pooling for documents
+        adaptive_cache: true  # Enable adaptive cache sizing
+      
+      # Storage configuration
+      storage:
+        memory_cache_ratio: 0.5  # Memory cache ratio (0.0-1.0)
+        disk_cache_ratio: 0.5    # Disk cache ratio (0.0-1.0)
+        max_concurrent_queries: 50  # Maximum concurrent queries
+
   # Weaviate connection for schema/semantic features (migration target)
   weaviate:
     enabled: false
