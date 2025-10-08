@@ -17,6 +17,65 @@ How to run
 - Database tests (Valkey cluster): set env and run
   - `VALKEY_NODES=127.0.0.1:7000,127.0.0.1:7001 go test -tags=db ./pkg/cache`
 
+## Search Engine Testing (v6.0.0)
+
+### Unit Tests
+Comprehensive unit tests for search engine integration:
+
+```bash
+# Run all search-related unit tests
+go test ./internal/utils/search -v
+
+# Run Bleve translator tests
+go test ./internal/utils/bleve -v
+
+# Run search router tests
+go test ./internal/utils/search -run TestSearchRouter -v
+
+# Run API handler integration tests
+go test ./internal/api/handlers -run TestLogsQLHandler_EngineSelection -v
+go test ./internal/api/handlers -run TestTracesHandler_EngineSelection -v
+```
+
+**Coverage**: Complete test coverage for:
+- Search router engine selection logic
+- Bleve translator query parsing and conversion
+- API handler engine parameter validation
+- Backward compatibility with Lucene queries
+
+### Integration Tests
+End-to-end testing for dual search engine functionality:
+
+```bash
+# Run search integration tests
+go test -tags=integration ./internal/api/handlers -run TestSearchEngineIntegration -v
+
+# Run cross-engine comparison tests
+go test -tags=integration ./internal/api/handlers -run TestEngineComparison -v
+```
+
+**Features Tested**:
+- Full HTTP request/response cycle with search engine selection
+- Query translation accuracy between Lucene and Bleve syntax
+- VictoriaMetrics backend integration for both engines
+- Error handling for unsupported query types
+- Performance comparison between engines
+
+### Search Engine Test Architecture
+- **Mock VictoriaMetrics Server**: HTTP server that simulates VictoriaMetrics LogsQL/Traces API responses
+- **Dual Engine Testing**: Parallel test execution for both Lucene and Bleve engines
+- **Query Translation Validation**: Ensures translated queries produce equivalent results
+- **Performance Benchmarks**: Latency and throughput comparisons between engines
+
+### Backward Compatibility Tests
+```bash
+# Run regression tests for Lucene functionality
+go test ./internal/api/handlers -run TestLuceneBackwardCompatibility -v
+
+# Run migration tests (no engine specified defaults to Lucene)
+go test ./internal/api/handlers -run TestDefaultEngineBehavior -v
+```
+
 ## MetricsQL API Testing (v5.0.0)
 
 ### Unit Tests
