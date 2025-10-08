@@ -11,10 +11,11 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/internal/utils"
-	lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
+	"github.com/platformbuilds/mirador-core/internal/utils/search"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -23,13 +24,17 @@ type TracesHandler struct {
 	tracesService *services.VictoriaTracesService
 	cache         cache.ValkeyCluster
 	logger        logger.Logger
+	searchRouter  *search.SearchRouter
+	config        *config.Config
 }
 
-func NewTracesHandler(tracesService *services.VictoriaTracesService, cache cache.ValkeyCluster, logger logger.Logger) *TracesHandler {
+func NewTracesHandler(tracesService *services.VictoriaTracesService, cache cache.ValkeyCluster, logger logger.Logger, searchRouter *search.SearchRouter, config *config.Config) *TracesHandler {
 	return &TracesHandler{
 		tracesService: tracesService,
 		cache:         cache,
 		logger:        logger,
+		searchRouter:  searchRouter,
+		config:        config,
 	}
 }
 
@@ -126,9 +131,45 @@ func (h *TracesHandler) SearchTraces(c *gin.Context) {
 
 	request.TenantID = c.GetString("tenant_id")
 
-	// Lucene translation: if query_language=lucene or auto-detected, translate into Jaeger filters
-	if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
-		validator := utils.NewQueryValidator()
+	// Determine search engine (default to lucene for backward compatibility)
+	searchEngine := request.SearchEngine
+	if searchEngine == "" {
+		searchEngine = "lucene"
+	}
+
+	// Check feature flags for Bleve access
+	if searchEngine == "bleve" {
+		featureFlags := h.config.GetFeatureFlags(request.TenantID)
+		if !featureFlags.BleveSearch || !featureFlags.BleveTraces {
+			c.JSON(http.StatusForbidden, gin.H{
+				"status": "error",
+				"error":  "Bleve search engine is not enabled for this tenant",
+			})
+			return
+		}
+	}
+
+	// Validate that the requested engine is supported
+	if !h.searchRouter.IsEngineSupported(searchEngine) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  fmt.Sprintf("Unsupported search engine: %s", searchEngine),
+		})
+		return
+	}
+
+	// Validate query based on search engine
+	validator := utils.NewQueryValidator()
+	if searchEngine == "bleve" {
+		if err := validator.ValidateBleve(request.Query); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  fmt.Sprintf("Invalid Bleve query: %s", err.Error()),
+			})
+			return
+		}
+	} else {
+		// Default to Lucene validation for backward compatibility
 		if err := validator.ValidateLucene(request.Query); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"status": "error",
@@ -136,49 +177,71 @@ func (h *TracesHandler) SearchTraces(c *gin.Context) {
 			})
 			return
 		}
-		if filters, ok := lq.TranslateTraces(request.Query); ok {
-			if filters.Service != "" {
-				request.Service = filters.Service
-			}
-			if filters.Operation != "" {
-				request.Operation = filters.Operation
-			}
-			// Tags: join as comma-separated key=value
-			if len(filters.Tags) > 0 {
-				parts := make([]string, 0, len(filters.Tags))
-				for k, v := range filters.Tags {
-					// preserve value as-is; quote not needed for Jaeger tags param (string)
-					parts = append(parts, fmt.Sprintf("%s=%s", k, v))
-				}
-				// stable order helps caching
-				sort.Strings(parts)
-				request.Tags = strings.Join(parts, ",")
-			}
-			if filters.MinDuration != "" {
-				request.MinDuration = filters.MinDuration
-			}
-			if filters.MaxDuration != "" {
-				request.MaxDuration = filters.MaxDuration
-			}
-			// Time window: prefer explicit [start TO end], else use Since shorthand
-			now := time.Now().UTC()
-			if filters.StartExpr != "" || filters.EndExpr != "" {
-				// Parse simple forms: now, now-<dur>, RFC3339 timestamps
-				if t, ok := parseNowLike(filters.StartExpr, now); ok {
-					request.Start = models.FlexibleTime{Time: t}
-				}
-				if t, ok := parseNowLike(filters.EndExpr, now); ok {
-					request.End = models.FlexibleTime{Time: t}
-				}
-			} else if filters.Since != "" {
-				if dur, err := time.ParseDuration(filters.Since); err == nil {
-					request.End = models.FlexibleTime{Time: now}
-					request.Start = models.FlexibleTime{Time: now.Add(-dur)}
-				}
-			}
-			c.Header("X-Query-Translated-From", "lucene")
+	}
+
+	// Get the appropriate translator
+	translator, err := h.searchRouter.GetTranslator(searchEngine)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  fmt.Sprintf("Failed to get translator for engine %s: %s", searchEngine, err.Error()),
+		})
+		return
+	}
+
+	// Translate the query to trace filters
+	filters, err := translator.TranslateToTraces(request.Query)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  fmt.Sprintf("Failed to translate query with %s engine: %s", searchEngine, err.Error()),
+		})
+		return
+	}
+
+	// Apply the translated filters to the request
+	if filters.Service != "" {
+		request.Service = filters.Service
+	}
+	if filters.Operation != "" {
+		request.Operation = filters.Operation
+	}
+	// Tags: join as comma-separated key=value
+	if len(filters.Tags) > 0 {
+		parts := make([]string, 0, len(filters.Tags))
+		for k, v := range filters.Tags {
+			// preserve value as-is; quote not needed for Jaeger tags param (string)
+			parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+		}
+		// stable order helps caching
+		sort.Strings(parts)
+		request.Tags = strings.Join(parts, ",")
+	}
+	if filters.MinDuration != "" {
+		request.MinDuration = filters.MinDuration
+	}
+	if filters.MaxDuration != "" {
+		request.MaxDuration = filters.MaxDuration
+	}
+	// Time window: prefer explicit [start TO end], else use Since shorthand
+	now := time.Now().UTC()
+	if filters.StartExpr != "" || filters.EndExpr != "" {
+		// Parse simple forms: now, now-<dur>, RFC3339 timestamps
+		if t, ok := parseNowLike(filters.StartExpr, now); ok {
+			request.Start = models.FlexibleTime{Time: t}
+		}
+		if t, ok := parseNowLike(filters.EndExpr, now); ok {
+			request.End = models.FlexibleTime{Time: t}
+		}
+	} else if filters.Since != "" {
+		if dur, err := time.ParseDuration(filters.Since); err == nil {
+			request.End = models.FlexibleTime{Time: now}
+			request.Start = models.FlexibleTime{Time: now.Add(-dur)}
 		}
 	}
+
+	c.Header("X-Query-Translated-From", request.Query)
+	c.Header("X-Search-Engine", searchEngine)
 
 	traces, err := h.tracesService.SearchTraces(c.Request.Context(), &request)
 	if err != nil {

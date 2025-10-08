@@ -3,7 +3,7 @@
   "info": {
     "title": "MIRADOR-CORE API",
     "description": "Advanced Observability Platform REST API",
-    "version": "5.0.0",
+    "version": "6.0.0",
     "contact": {
       "name": "Platformbuilds Team",
       "email": "rv@platformbuilds.org"
@@ -3054,7 +3054,7 @@
           "logs"
         ],
         "summary": "LogsQL query (VictoriaLogs)",
-        "description": "Accepts Lucene expressions via `query` when `query_language` is `lucene` (or when auto-detected).\nMirador translates Lucene to VictoriaLogs query syntax.\nNote: Use either `_time` inside `query` or top-level `start`/`end`, not both. If both are provided, the\nserver prioritizes `_time` in `query` to avoid conflicting time filters.\nWhen multiple logs sources are configured in config.yaml (database.victoria_logs + database.logs_sources),\nthe server fans out the query and concatenates rows from all sources; the `fields` list is the union.\n",
+        "description": "Accepts Lucene or Bleve expressions via `query` when `query_language` is `lucene` (or when auto-detected).\nSpecify `search_engine` as `bleve` to use Bleve search capabilities alongside existing Lucene functionality.\nMirador translates queries to VictoriaLogs query syntax.\nNote: Use either `_time` inside `query` or top-level `start`/`end`, not both. If both are provided, the\nserver prioritizes `_time` in `query` to avoid conflicting time filters.\nWhen multiple logs sources are configured in config.yaml (database.victoria_logs + database.logs_sources),\nthe server fans out the query and concatenates rows from all sources; the `fields` list is the union.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -3073,6 +3073,14 @@
                       "logsql"
                     ],
                     "description": "If `lucene`, the server translates to VictoriaLogs query."
+                  },
+                  "search_engine": {
+                    "type": "string",
+                    "enum": [
+                      "lucene",
+                      "bleve"
+                    ],
+                    "description": "Search engine to use for query processing (default is lucene for backward compatibility)"
                   },
                   "start": {
                     "type": "integer",
@@ -3094,10 +3102,25 @@
                   }
                 }
               },
-              "example": {
-                "query_language": "lucene",
-                "query": "_time:[now-15m, now] AND service.name:telemetrygen AND severity:Info",
-                "limit": 200
+              "examples": {
+                "lucene_query": {
+                  "summary": "Query logs using Lucene syntax with Lucene search engine",
+                  "value": {
+                    "query_language": "lucene",
+                    "search_engine": "lucene",
+                    "query": "_time:[now-15m, now] AND service.name:telemetrygen AND severity:Info",
+                    "limit": 200
+                  }
+                },
+                "bleve_query": {
+                  "summary": "Query logs using Lucene syntax with Bleve search engine",
+                  "value": {
+                    "query_language": "lucene",
+                    "search_engine": "bleve",
+                    "query": "_time:[now-15m, now] AND service.name:telemetrygen AND severity:Info",
+                    "limit": 200
+                  }
+                }
               }
             }
           }
@@ -3410,6 +3433,14 @@
                       "logsql"
                     ]
                   },
+                  "search_engine": {
+                    "type": "string",
+                    "enum": [
+                      "lucene",
+                      "bleve"
+                    ],
+                    "description": "Search engine to use for query processing (default is lucene for backward compatibility)"
+                  },
                   "start": {
                     "type": "integer",
                     "format": "int64",
@@ -3444,10 +3475,25 @@
                   }
                 }
               },
-              "example": {
-                "query_language": "lucene",
-                "query": "_time:15m AND level:error",
-                "limit": 200
+              "examples": {
+                "lucene_search": {
+                  "summary": "Search logs using Lucene query syntax",
+                  "value": {
+                    "query_language": "lucene",
+                    "query": "_time:15m AND level:error AND service:checkout",
+                    "search_engine": "lucene",
+                    "limit": 200
+                  }
+                },
+                "bleve_search": {
+                  "summary": "Search logs using Bleve query syntax",
+                  "value": {
+                    "query_language": "lucene",
+                    "query": "_time:15m AND level:error AND service:checkout",
+                    "search_engine": "bleve",
+                    "limit": 200
+                  }
+                }
               }
             }
           }
@@ -3712,7 +3758,7 @@
           "traces"
         ],
         "summary": "Search traces",
-        "description": "Jaeger-compatible search across traces. This endpoint also accepts a Lucene expression via\n`query_language=lucene` and `query`, which Mirador translates into Jaeger filters (service,\noperation, tags, durations, and time window). Note: Use either `_time` in `query` or top-level `start`/`end`,\nnot both. If both are provided, `_time` in `query` takes precedence. Alternatively, discover trace IDs via\n`/logs/search` with a Lucene filter on `trace_id`, then fetch traces by ID using `/traces/{traceId}`.\nWhen multiple traces sources are configured in config.yaml (database.victoria_traces + database.traces_sources),\nresults from all sources are concatenated.\n",
+        "description": "Jaeger-compatible search across traces. This endpoint accepts Lucene or Bleve expressions via\n`query_language=lucene` and `query`, which Mirador translates into Jaeger filters (service,\noperation, tags, durations, and time window). Specify `search_engine` as `bleve` to use Bleve search capabilities.\nNote: Use either `_time` in `query` or top-level `start`/`end`,\nnot both. If both are provided, `_time` in `query` takes precedence. Alternatively, discover trace IDs via\n`/logs/search` with a Lucene filter on `trace_id`, then fetch traces by ID using `/traces/{traceId}`.\nWhen multiple traces sources are configured in config.yaml (database.victoria_traces + database.traces_sources),\nresults from all sources are concatenated.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -3730,6 +3776,14 @@
                       "lucene"
                     ],
                     "description": "Set to `lucene` to enable translation"
+                  },
+                  "search_engine": {
+                    "type": "string",
+                    "enum": [
+                      "lucene",
+                      "bleve"
+                    ],
+                    "description": "Search engine to use for query processing (default is lucene for backward compatibility)"
                   },
                   "service": {
                     "type": "string"
@@ -3757,6 +3811,48 @@
                   },
                   "limit": {
                     "type": "integer"
+                  }
+                }
+              },
+              "examples": {
+                "lucene_search": {
+                  "summary": "Search traces using Lucene query syntax",
+                  "value": {
+                    "query": "_time:[now-15m TO now] AND service:checkout AND operation:CreateOrder",
+                    "query_language": "lucene",
+                    "search_engine": "lucene",
+                    "limit": 100
+                  }
+                },
+                "bleve_search": {
+                  "summary": "Search traces using Bleve query syntax",
+                  "value": {
+                    "query": "_time:[now-15m TO now] AND service:checkout AND operation:CreateOrder",
+                    "query_language": "lucene",
+                    "search_engine": "bleve",
+                    "limit": 100
+                  }
+                },
+                "lucene_with_tags": {
+                  "summary": "Search traces with specific tags using Lucene",
+                  "value": {
+                    "query": "service:otelgen AND span.kind:client",
+                    "query_language": "lucene",
+                    "search_engine": "lucene",
+                    "start": "2025-10-04T00:00:00.000Z",
+                    "end": "2025-10-04T23:59:59.999Z",
+                    "limit": 100
+                  }
+                },
+                "bleve_with_tags": {
+                  "summary": "Search traces with specific tags using Bleve",
+                  "value": {
+                    "query": "service:otelgen AND span.kind:client",
+                    "query_language": "lucene",
+                    "search_engine": "bleve",
+                    "start": "2025-10-04T00:00:00.000Z",
+                    "end": "2025-10-04T23:59:59.999Z",
+                    "limit": 100
                   }
                 }
               }

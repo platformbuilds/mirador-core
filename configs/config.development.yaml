@@ -70,6 +70,12 @@ monitoring:
   prometheus_enabled: true
   tracing_enabled: true
 
+# Search Engine Configuration
+search:
+  default_engine: "lucene"
+  enable_bleve: true
+  enable_lucene: true
+
 uploads:
   # Configurable bulk CSV upload limit (bytes). Default is 5 MiB if omitted.
   bulk_max_bytes: 5242880

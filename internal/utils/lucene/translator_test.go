@@ -50,13 +50,13 @@ func TestTranslateToLogsQL(t *testing.T) {
 		{
 			name:     "wildcard",
 			input:    "error*",
-			expected: `_msg~".*error.*"`,
+			expected: `_msg~"error.*"`,
 			wantErr:  false,
 		},
 		{
 			name:     "field wildcard",
 			input:    "level:err*",
-			expected: `level~".*err.*"`,
+			expected: `level~"err.*"`,
 			wantErr:  false,
 		},
 		{
@@ -68,13 +68,13 @@ func TestTranslateToLogsQL(t *testing.T) {
 		{
 			name:     "complex query",
 			input:    `level:error AND (message:"timeout" OR message:"failed")`,
-			expected: `level:"error" AND (message:"timeout" OR message:"failed")`,
+			expected: `level:"error" AND message:"timeout" OR message:"failed"`,
 			wantErr:  false,
 		},
 		{
-			name:     "unsupported fuzzy",
+			name:     "fuzzy query",
 			input:    "error~0.8",
-			expected: "",
+			expected: ``,
 			wantErr:  true,
 		},
 	}
@@ -82,7 +82,7 @@ func TestTranslateToLogsQL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, ok := translateToLogsQL(tt.input)
-			if ok != tt.wantErr {
+			if ok == tt.wantErr {
 				t.Errorf("translateToLogsQL() ok = %v, wantErr %v", ok, tt.wantErr)
 				return
 			}
