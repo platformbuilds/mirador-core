@@ -1,0 +1,17 @@
+{{- if and .Values.search.enable_bleve .Values.bleveStorage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "mirador-core.fullname" . }}-bleve
+  labels:
+    {{- include "mirador-core.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.bleveStorage.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.bleveStorage.size }}
+  {{- with .Values.bleveStorage.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}

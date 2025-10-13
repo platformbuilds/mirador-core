@@ -223,6 +223,9 @@ mirador:
       logs_enabled: true      # Enable Bleve for logs search
       traces_enabled: true    # Enable Bleve for traces search
       metrics_enabled: false  # Enable Bleve for metrics search (future)
+      index_path: "/var/lib/mirador/bleve"  # Disk path for Bleve indexes
+      batch_size: 1000        # Batch size for index operations
+      max_memory_mb: 512      # Maximum memory usage in MB
       
       # Memory optimization settings
       memory_optimization:
@@ -243,7 +246,15 @@ mirador:
     port: 8080
     api_key: ""
     use_official: false
-      
+
+# Bleve storage configuration
+bleveStorage:
+  enabled: true
+  size: "50Gi"
+  storageClassName: ""  # Use default storage class if empty
+  accessModes:
+    - ReadWriteOnce
+
 alertRules:
   enabled: true
   # Set to use an existing ConfigMap with alert-rules.yaml key

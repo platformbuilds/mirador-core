@@ -146,9 +146,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+    volumes:
+      - ../../configs:/configs:ro
+      - bleve-data:/var/lib/mirador/bleve
 
 volumes:
   vmdata: {}
   vldata: {}
   vtdata: {}
   weavdata: {}
+  bleve-data: {}

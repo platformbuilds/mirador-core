@@ -71,6 +71,9 @@ data:
         logs_enabled: true
         traces_enabled: true
         metrics_enabled: false
+        index_path: "/var/lib/mirador/bleve"
+        batch_size: 1000
+        max_memory_mb: 512
         memory_optimization:
           object_pooling: true
           adaptive_cache: true
@@ -148,6 +151,8 @@ spec:
           mountPath: /etc/mirador/alert-rules.yaml
           subPath: alert-rules.yaml
           readOnly: true
+        - name: bleve-storage
+          mountPath: /var/lib/mirador/bleve
         resources:
           requests:
             memory: "512Mi"
@@ -186,6 +191,9 @@ spec:
       - name: alert-rules
         configMap:
           name: mirador-alert-rules
+      - name: bleve-storage
+        persistentVolumeClaim:
+          claimName: mirador-core-bleve
 
 ---
 apiVersion: v1
@@ -246,6 +254,24 @@ subjects:
 - kind: ServiceAccount
   name: mirador-core
   namespace: mirador
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mirador-core-bleve
+  namespace: mirador
+  labels:
+    app: mirador-core
+    component: bleve-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+
+/*
 */
 
 // ================================

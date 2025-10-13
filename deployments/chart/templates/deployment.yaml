@@ -133,6 +133,10 @@ spec:
               subPath: alert-rules.yaml
               readOnly: true
             {{- end }}
+            {{- if and .Values.search.enable_bleve .Values.bleveStorage.enabled }}
+            - name: bleve-storage
+              mountPath: /var/lib/mirador/bleve
+            {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -175,6 +179,11 @@ spec:
         - name: alert-rules
           configMap:
             name: {{ default (printf "%s-alert-rules" (include "mirador-core.fullname" .)) .Values.alertRules.existingConfigMap }}
+        {{- end }}
+        {{- if and .Values.search.enable_bleve .Values.bleveStorage.enabled }}
+        - name: bleve-storage
+          persistentVolumeClaim:
+            claimName: {{ include "mirador-core.fullname" . }}-bleve
         {{- end }}
         {{- if .Values.extraVolumes }}
         {{- toYaml .Values.extraVolumes | nindent 8 }}
