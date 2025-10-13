@@ -240,6 +240,9 @@ type BleveConfig struct {
 	LogsEnabled        bool                     `mapstructure:"logs_enabled" yaml:"logs_enabled"`
 	TracesEnabled      bool                     `mapstructure:"traces_enabled" yaml:"traces_enabled"`
 	MetricsEnabled     bool                     `mapstructure:"metrics_enabled" yaml:"metrics_enabled"`
+	IndexPath          string                   `mapstructure:"index_path" yaml:"index_path"`
+	BatchSize          int                      `mapstructure:"batch_size" yaml:"batch_size"`
+	MaxMemoryMB        int                      `mapstructure:"max_memory_mb" yaml:"max_memory_mb"`
 	MemoryOptimization MemoryOptimizationConfig `mapstructure:"memory_optimization" yaml:"memory_optimization"`
 	Storage            BleveStorageConfig       `mapstructure:"storage" yaml:"storage"`
 }
