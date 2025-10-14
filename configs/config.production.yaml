@@ -120,6 +120,29 @@ monitoring:
   tracing_enabled: true
 jaeger_endpoint: "http://jaeger-collector.observability.svc.cluster.local:14268/api/traces"
 
+# Search Engine Configuration
+search:
+  default_engine: "lucene"
+  enable_bleve: true
+  enable_lucene: true
+  query_cache:
+    enabled: true
+    ttl: 1800
+  bleve:
+    logs_enabled: true
+    traces_enabled: true
+    metrics_enabled: false
+    index_path: "/var/lib/mirador/bleve"
+    batch_size: 1000
+    max_memory_mb: 512
+    memory_optimization:
+      object_pooling: true
+      adaptive_cache: true
+    storage:
+      memory_cache_ratio: 0.3
+      disk_cache_ratio: 0.7
+      max_concurrent_queries: 50
+
 uploads:
   # Bulk CSV upload limit (bytes); default 5 MiB.
   bulk_max_bytes: 5242880

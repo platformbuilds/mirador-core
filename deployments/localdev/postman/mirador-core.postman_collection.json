@@ -242,7 +242,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query\": \"service.name:\\\"telemetrygen\\\"\",\n  \"start\": {{start_ms}},\n  \"end\": {{now_ms}},\n  \"limit\": 20000\n}"
+              "raw": "{\n  \"query_language\": \"lucene\",\n  \"search_engine\": \"lucene\",\n  \"query\": \"service.name:\\\"telemetrygen\\\"\",\n  \"start\": {{start_ms}},\n  \"end\": {{now_ms}},\n  \"limit\": 20000\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/logs/query",

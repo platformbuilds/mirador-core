@@ -1,41 +1,65 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
-    "strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/metrics"
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/internal/utils"
+	lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
+	"github.com/platformbuilds/mirador-core/internal/utils/search"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
-    lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
 )
 
 type LogsQLHandler struct {
-	logsService *services.VictoriaLogsService
-	cache       cache.ValkeyCluster
-	logger      logger.Logger
-	validator   *utils.QueryValidator
+	logsService  *services.VictoriaLogsService
+	cache        cache.ValkeyCluster
+	logger       logger.Logger
+	validator    *utils.QueryValidator
+	searchRouter *search.SearchRouter
+	config       *config.Config
 }
 
-func NewLogsQLHandler(logsService *services.VictoriaLogsService, cache cache.ValkeyCluster, logger logger.Logger) *LogsQLHandler {
+func NewLogsQLHandler(logsService *services.VictoriaLogsService, cache cache.ValkeyCluster, logger logger.Logger, searchRouter *search.SearchRouter, config *config.Config) *LogsQLHandler {
 	return &LogsQLHandler{
-		logsService: logsService,
-		cache:       cache,
-		logger:      logger,
-		validator:   utils.NewQueryValidator(),
+		logsService:  logsService,
+		cache:        cache,
+		logger:       logger,
+		validator:    utils.NewQueryValidator(),
+		searchRouter: searchRouter,
+		config:       config,
 	}
 }
 
 // POST /api/v1/logs/query - Execute LogsQL query
 func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			h.logger.Error("Panic in LogsQL query handler", "panic", r)
+			// If response not written yet, write error
+			if !c.Writer.Written() {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"status": "error",
+					"error":  "Internal server error",
+				})
+			}
+			// If response already written, just log
+		}
+	}()
+
 	start := time.Now()
+	var executionTime time.Duration
 	tenantID := c.GetString("tenant_id")
 
 	var request models.LogsQLQueryRequest
@@ -47,19 +71,82 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 		return
 	}
 
-    // Translate Lucene -> LogsQL if requested or detected
-    if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
-        if translated, ok := lq.Translate(request.Query, lq.TargetLogsQL); ok {
-            request.Query = translated
-            c.Header("X-Query-Translated-From", "lucene")
-        }
-    }
+	// Determine search engine (default to lucene for backward compatibility)
+	searchEngine := request.SearchEngine
+	if searchEngine == "" {
+		searchEngine = "lucene"
+	}
 
-    // If query already contains an explicit _time filter, drop Start/End to avoid conflicts.
-    if strings.Contains(request.Query, "_time:") {
-        request.Start = 0
-        request.End = 0
-    }
+	// Check feature flags for Bleve access
+	if searchEngine == "bleve" {
+		featureFlags := h.config.GetFeatureFlags(tenantID)
+		if !featureFlags.BleveSearch || !featureFlags.BleveLogs {
+			c.JSON(http.StatusForbidden, gin.H{
+				"status": "error",
+				"error":  "Bleve search engine is not enabled for this tenant",
+			})
+			return
+		}
+	}
+
+	// Validate that the requested engine is supported
+	if !h.searchRouter.IsEngineSupported(searchEngine) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  fmt.Sprintf("Unsupported search engine: %s", searchEngine),
+		})
+		return
+	}
+
+	// Validate query based on search engine
+	if searchEngine == "bleve" {
+		if err := h.validator.ValidateBleve(request.Query); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  fmt.Sprintf("Invalid Bleve query: %s", err.Error()),
+			})
+			return
+		}
+	} else {
+		// Default to Lucene validation for backward compatibility
+		if err := h.validator.ValidateLucene(request.Query); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  fmt.Sprintf("Invalid Lucene query: %s", err.Error()),
+			})
+			return
+		}
+	}
+
+	// Get the appropriate translator
+	translator, err := h.searchRouter.GetTranslator(searchEngine)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  fmt.Sprintf("Failed to get translator for engine %s: %s", searchEngine, err.Error()),
+		})
+		return
+	}
+
+	// Translate the query
+	translated, err := translator.TranslateToLogsQL(request.Query)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  fmt.Sprintf("Failed to translate query with %s engine: %s", searchEngine, err.Error()),
+		})
+		return
+	}
+
+	request.Query = translated
+	c.Header("X-Query-Translated-From", request.Query)
+	c.Header("X-Search-Engine", searchEngine)
+
+	// If query already contains an explicit _time filter, drop Start/End to avoid conflicts.
+	if strings.Contains(request.Query, "_time:") {
+		request.Start = 0
+		request.End = 0
+	}
 
 	// Validate LogsQL query
 	if err := h.validator.ValidateLogsQL(request.Query); err != nil {
@@ -68,6 +155,33 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 			"error":  fmt.Sprintf("Invalid LogsQL query: %s", err.Error()),
 		})
 		return
+	}
+
+	// Check cache for Bleve queries before executing
+	var cacheKey string
+	if searchEngine == "bleve" {
+		cacheKey = h.generateQueryCacheKey(tenantID, &request, searchEngine)
+		if cachedResult, err := h.getCachedQueryResult(c.Request.Context(), cacheKey); err == nil && cachedResult != nil {
+			// Cache hit - return cached result
+			c.Header("X-Cache", "HIT")
+			c.Header("X-Search-Engine", searchEngine)
+			c.JSON(http.StatusOK, gin.H{
+				"status": "success",
+				"data": gin.H{
+					"logs":   cachedResult.Logs,
+					"fields": cachedResult.Fields,
+					"stats":  cachedResult.Stats,
+				},
+				"metadata": gin.H{
+					"executionTime": 0,
+					"logCount":      len(cachedResult.Logs),
+					"fieldsFound":   len(cachedResult.Fields),
+					"cached":        true,
+				},
+			})
+			return
+		}
+		c.Header("X-Cache", "MISS")
 	}
 
 	// Execute LogsQL query
@@ -89,8 +203,13 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 		return
 	}
 
-	executionTime := time.Since(start)
+	executionTime = time.Since(start)
 	metrics.QueryExecutionDuration.WithLabelValues("logsql", tenantID).Observe(executionTime.Seconds())
+
+	// Cache the result for Bleve queries
+	if searchEngine == "bleve" && cacheKey != "" {
+		h.cacheQueryResult(c.Request.Context(), cacheKey, result, 10*time.Minute) // Cache for 10 minutes
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
@@ -105,6 +224,60 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 			"fieldsFound":   len(result.Fields),
 		},
 	})
+}
+
+// generateQueryCacheKey generates a cache key for query results
+func (h *LogsQLHandler) generateQueryCacheKey(tenantID string, request *models.LogsQLQueryRequest, searchEngine string) string {
+	// Create a deterministic key based on query parameters
+	key := fmt.Sprintf("bleve_logs:%s:%s:%d:%d:%d",
+		tenantID,
+		request.Query,
+		request.Start,
+		request.End,
+		request.Limit)
+	return key
+}
+
+// getCachedQueryResult retrieves a cached query result
+func (h *LogsQLHandler) getCachedQueryResult(ctx context.Context, cacheKey string) (*models.LogsQLQueryResult, error) {
+	cached, err := h.cache.GetCachedQueryResult(ctx, cacheKey)
+	if err != nil {
+		monitoring.RecordBleveCacheOperation("get", "error")
+		return nil, err
+	}
+
+	if len(cached) == 0 {
+		monitoring.RecordBleveCacheOperation("get", "miss")
+		return nil, fmt.Errorf("cache miss")
+	}
+
+	var result models.LogsQLQueryResult
+	if err := json.Unmarshal(cached, &result); err != nil {
+		h.logger.Warn("Failed to unmarshal cached query result", "error", err)
+		monitoring.RecordBleveCacheOperation("get", "error")
+		return nil, err
+	}
+
+	monitoring.RecordBleveCacheOperation("get", "hit")
+	return &result, nil
+}
+
+// cacheQueryResult caches a query result
+func (h *LogsQLHandler) cacheQueryResult(ctx context.Context, cacheKey string, result *models.LogsQLQueryResult, ttl time.Duration) {
+	data, err := json.Marshal(result)
+	if err != nil {
+		h.logger.Warn("Failed to marshal query result for caching", "error", err)
+		monitoring.RecordBleveCacheOperation("set", "error")
+		return
+	}
+
+	if err := h.cache.CacheQueryResult(ctx, cacheKey, data, ttl); err != nil {
+		h.logger.Warn("Failed to cache query result", "error", err)
+		monitoring.RecordBleveCacheOperation("set", "error")
+		return
+	}
+
+	monitoring.RecordBleveCacheOperation("set", "success")
 }
 
 // GET /api/v1/logs/streams - Get available log streams
@@ -171,28 +344,28 @@ func (h *LogsQLHandler) StoreEvent(c *gin.Context) {
 
 // GET /api/v1/logs/fields - Get available log fields
 func (h *LogsQLHandler) GetFields(c *gin.Context) {
-    tenantID := c.GetString("tenant_id")
+	tenantID := c.GetString("tenant_id")
 
-    fields, err := h.logsService.GetFields(c.Request.Context(), tenantID)
-    if err != nil {
-        h.logger.Error("Failed to get log fields", "tenant", tenantID, "error", err)
-        c.JSON(http.StatusInternalServerError, gin.H{
-            "status": "error",
-            "error":  "Failed to retrieve log fields",
-        })
-        return
-    }
+	fields, err := h.logsService.GetFields(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to get log fields", "tenant", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve log fields",
+		})
+		return
+	}
 
-    if fields == nil {
-        fields = []string{}
-    }
+	if fields == nil {
+		fields = []string{}
+	}
 
-    c.JSON(http.StatusOK, gin.H{
-        "status": "success",
-        "data": gin.H{
-            "fields": fields,
-        },
-    })
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"fields": fields,
+		},
+	})
 }
 
 // POST /api/v1/logs/export - Export logs in various formats
@@ -209,19 +382,35 @@ func (h *LogsQLHandler) ExportLogs(c *gin.Context) {
 		return
 	}
 
-    // Translate Lucene -> LogsQL if requested or detected
-    if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
-        if translated, ok := lq.Translate(request.Query, lq.TargetLogsQL); ok {
-            request.Query = translated
-            c.Header("X-Query-Translated-From", "lucene")
-        }
-    }
+	// Translate Lucene -> LogsQL if requested or detected
+	if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
+		validator := utils.NewQueryValidator()
+		if err := validator.ValidateLucene(request.Query); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status":  "error",
+				"error":   fmt.Sprintf("Invalid Lucene query: %s", err.Error()),
+				"details": err.Error(),
+			})
+			return
+		}
+		if translated, ok := lq.Translate(request.Query, lq.TargetLogsQL); ok {
+			request.Query = translated
+			c.Header("X-Query-Translated-From", "lucene")
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status":  "error",
+				"error":   "Failed to translate Lucene query",
+				"details": "Translation failed",
+			})
+			return
+		}
+	}
 
-    // If query already contains an explicit _time filter, drop Start/End to avoid conflicts.
-    if strings.Contains(request.Query, "_time:") {
-        request.Start = 0
-        request.End = 0
-    }
+	// If query already contains an explicit _time filter, drop Start/End to avoid conflicts.
+	if strings.Contains(request.Query, "_time:") {
+		request.Start = 0
+		request.End = 0
+	}
 
 	// Set tenant context
 	request.TenantID = tenantID
@@ -247,27 +436,27 @@ func (h *LogsQLHandler) ExportLogs(c *gin.Context) {
 		return
 	}
 
-    // Stream the exported file bytes directly as an attachment.
-    // This avoids inventing a temporary URL and matches the service, which
-    // already fetched the full payload from VictoriaLogs.
-    var contentType string
-    switch request.Format {
-    case "csv":
-        contentType = "text/csv"
-    case "json":
-        contentType = "application/json"
-    default:
-        contentType = "application/octet-stream"
-    }
+	// Stream the exported file bytes directly as an attachment.
+	// This avoids inventing a temporary URL and matches the service, which
+	// already fetched the full payload from VictoriaLogs.
+	var contentType string
+	switch request.Format {
+	case "csv":
+		contentType = "text/csv"
+	case "json":
+		contentType = "application/json"
+	default:
+		contentType = "application/octet-stream"
+	}
 
-    filename := exportResult.Filename
-    if filename == "" {
-        // Fallback filename based on format
-        filename = fmt.Sprintf("logs-%s.%s", time.Now().Format("2006-01-02"), request.Format)
-    }
+	filename := exportResult.Filename
+	if filename == "" {
+		// Fallback filename based on format
+		filename = fmt.Sprintf("logs-%s.%s", time.Now().Format("2006-01-02"), request.Format)
+	}
 
-    c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
-    c.Header("Content-Type", contentType)
-    c.Header("Content-Length", strconv.Itoa(len(exportResult.Data)))
-    c.Data(http.StatusOK, contentType, exportResult.Data)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Type", contentType)
+	c.Header("Content-Length", strconv.Itoa(len(exportResult.Data)))
+	c.Data(http.StatusOK, contentType, exportResult.Data)
 }

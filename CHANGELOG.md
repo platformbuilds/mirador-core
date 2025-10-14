@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.0] - 2025-10-08
+
+### Added
+- **Bleve Search Engine Integration**: Full parallel search engine support alongside existing Lucene functionality
+- **Dual Search Engine Architecture**: Users can choose between Lucene and Bleve search engines for logs and traces queries
+- **Search Router Component**: Central routing system for engine selection and query translation
+- **Bleve Translator**: Query translation layer converting Bleve syntax to VictoriaMetrics LogsQL/Traces format
+- **Enhanced Query Capabilities**: Support for term, match, phrase, wildcard, numeric range, and boolean queries in both engines
+- **API Compatibility**: Backward-compatible API with optional `search_engine` field in request bodies
+- **Configuration System**: Flexible search engine configuration with feature flags and per-engine settings
+
+### Technical Implementation
+- **Search Router**: `internal/utils/search/router.go` - Central component for engine selection and routing
+- **Bleve Translator**: `internal/utils/bleve/translator.go` - Query translation and parsing logic
+- **API Handler Updates**: Enhanced logs and traces handlers with engine selection support
+- **Model Extensions**: Added `search_engine` field to `LogsQLQueryRequest` and `TraceSearchRequest`
+- **Configuration Integration**: New `SearchConfig` struct with Bleve-specific settings
+
+### Features
+- **Engine Selection**: Choose between "lucene" (default) and "bleve" via `search_engine` request parameter
+- **Query Syntax Support**:
+  - **Lucene**: `+error -debug service:auth`, range queries `[100 TO 500]`
+  - **Bleve**: `error AND NOT debug AND service:auth`, range queries `>=100 AND <=500`
+- **Unified API**: Same endpoints and response formats regardless of search engine
+- **Performance Monitoring**: Query translation metrics and engine selection tracking
+
+### Quality Assurance
+- **Unit Tests**: Comprehensive test coverage for search router and Bleve translator
+- **Integration Tests**: End-to-end testing for both search engines
+- **Backward Compatibility**: Extensive regression testing ensuring Lucene functionality unchanged
+- **Performance Benchmarks**: Latency comparisons between search engines
+
+### Breaking Changes
+- None - All changes are backward compatible with existing Lucene queries
+
+### Dependencies
+- No new external dependencies added
+- Leverages existing VictoriaMetrics and Valkey integrations
+
 ## [5.0.0] - 2025-09-30
 
 ### Added

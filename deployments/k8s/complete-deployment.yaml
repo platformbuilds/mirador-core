@@ -58,6 +58,29 @@ data:
         - "redis-cluster-1.redis-cluster:6379" 
         - "redis-cluster-2.redis-cluster:6379"
       ttl: 300
+    
+    # Search Engine Configuration for Bleve clustering
+    search:
+      default_engine: "lucene"
+      enable_bleve: true
+      enable_lucene: true
+      query_cache:
+        enabled: true
+        ttl: 1800  # 30 minutes
+      bleve:
+        logs_enabled: true
+        traces_enabled: true
+        metrics_enabled: false
+        index_path: "/var/lib/mirador/bleve"
+        batch_size: 1000
+        max_memory_mb: 512
+        memory_optimization:
+          object_pooling: true
+          adaptive_cache: true
+        storage:
+          memory_cache_ratio: 0.3
+          disk_cache_ratio: 0.7
+          max_concurrent_queries: 50
 
 ---
 apiVersion: apps/v1
@@ -128,6 +151,8 @@ spec:
           mountPath: /etc/mirador/alert-rules.yaml
           subPath: alert-rules.yaml
           readOnly: true
+        - name: bleve-storage
+          mountPath: /var/lib/mirador/bleve
         resources:
           requests:
             memory: "512Mi"
@@ -166,6 +191,9 @@ spec:
       - name: alert-rules
         configMap:
           name: mirador-alert-rules
+      - name: bleve-storage
+        persistentVolumeClaim:
+          claimName: mirador-core-bleve
 
 ---
 apiVersion: v1
@@ -226,6 +254,24 @@ subjects:
 - kind: ServiceAccount
   name: mirador-core
   namespace: mirador
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mirador-core-bleve
+  namespace: mirador
+  labels:
+    app: mirador-core
+    component: bleve-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+
+/*
 */
 
 // ================================

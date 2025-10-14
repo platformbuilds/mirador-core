@@ -70,6 +70,29 @@ monitoring:
   prometheus_enabled: true
   tracing_enabled: true
 
+# Search Engine Configuration
+search:
+  default_engine: "lucene"
+  enable_bleve: true
+  enable_lucene: true
+  query_cache:
+    enabled: true
+    ttl: 1800
+  bleve:
+    logs_enabled: true
+    traces_enabled: true
+    metrics_enabled: false
+    index_path: "/var/lib/mirador/bleve"
+    batch_size: 1000
+    max_memory_mb: 256  # Lower for development
+    memory_optimization:
+      object_pooling: true
+      adaptive_cache: true
+    storage:
+      memory_cache_ratio: 0.5
+      disk_cache_ratio: 0.5
+      max_concurrent_queries: 10  # Lower for development
+
 uploads:
   # Configurable bulk CSV upload limit (bytes). Default is 5 MiB if omitted.
   bulk_max_bytes: 5242880

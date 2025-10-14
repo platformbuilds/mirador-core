@@ -1,0 +1,418 @@
+version: "5.1.0"
+title: "Mirador Core v5.1.0 - Full Lucene Compliance Implementation"
+description: "Implementation of full Lucene Query Syntax compliance for /api/v1/logs and /api/v1/traces endpoints"
+created: "2025-09-30"
+status: "completed"
+
+# Total scope: 226 API endpoints across 4 categories
+# - Rollup functions: 70 endpoints
+# - Transform functions: 90 endpoints
+# - Label manipulation functions: 22 endpoints
+# - Aggregate functions: 44 endpoints
+
+phases:
+  - name: "Phase 1: Infrastructure Setup"
+    description: "Set up routing, base handlers, and common utilities"
+    status: "completed"
+    tasks:
+      - name: "Create metrics query service"
+        description: "Create internal/services/victoria_metrics_query.service.go for handling MetricsQL queries"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: []
+      
+      - name: "Set up base routing structure"
+        description: "Add /api/v1/metrics/query routes to internal/api/server.go"
+        status: "completed"
+        assignee: "developer"
+        effort: "small"
+        dependencies: ["Create metrics query service"]
+      
+      - name: "Create common request/response models"
+        description: "Define shared structs for query parameters, time ranges, and responses"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: []
+      
+      - name: "Implement category-level endpoints"
+        description: "Create handlers for /rollup, /transform, /label, /aggregate endpoints"
+        status: "completed"
+        assignee: "developer"
+        effort: "small"
+        dependencies: ["Set up base routing structure"]
+      
+      - name: "Add middleware for query validation"
+        description: "Create middleware to validate MetricsQL expressions and parameters"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Create common request/response models"]
+
+phases:
+  - name: "Phase 2: Rollup Functions Implementation"
+    description: "Implement all 70 rollup function endpoints"
+    status: "completed"
+    tasks:
+      - name: "Implement core rollup functions (rate, increase, delta)"
+        description: "absent_over_time, rate, increase, delta, irate, deriv, idelta, ideriv"
+        status: "completed"
+        assignee: "developer"
+        effort: "large"
+        dependencies: ["Phase 1 complete"]
+      
+      - name: "Implement aggregation over time functions"
+        description: "avg_over_time, min_over_time, max_over_time, sum_over_time, count_over_time, quantile_over_time"
+        status: "completed"
+        assignee: "developer"
+        effort: "large"
+        dependencies: ["Implement core rollup functions"]
+      
+      - name: "Implement statistical rollup functions"
+        description: "stddev_over_time, stdvar_over_time, mad_over_time, zscore_over_time, distinct_over_time"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Implement aggregation over time functions"]
+      
+      - name: "Implement specialized rollup functions"
+        description: "histogram_over_time, changes, resets, lifetime, lag, timestamp functions"
+        status: "completed"
+        assignee: "developer"
+        effort: "large"
+        dependencies: ["Implement statistical rollup functions"]
+      
+      - name: "Implement remaining rollup functions"
+        description: "All remaining rollup functions (predict_linear, holt_winters, rollup variants, etc.)"
+        status: "completed"
+        assignee: "developer"
+        effort: "large"
+        dependencies: ["Implement specialized rollup functions"]
+
+  - name: "Phase 3: Transform Functions Implementation"
+    description: "Implement all 90 transform function endpoints"
+    status: "completed"
+    tasks:
+      - name: "Implement mathematical transform functions"
+        description: "abs, ceil, floor, round, exp, ln, log2, log10, sqrt, trigonometric functions"
+        status: "completed"
+        assignee: "developer"
+        effort: "large"
+        dependencies: ["Phase 2 complete"]
+      
+      - name: "Implement time-related transform functions"
+        description: "day_of_*, hour, minute, month, year, time, now, timezone_offset"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Implement mathematical transform functions"]
+      
+      - name: "Implement data manipulation functions"
+        description: "clamp*, interpolate, keep_*, remove_resets, scalar, union, vector"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Implement time-related transform functions"]
+      
+      - name: "Implement histogram transform functions"
+        description: "histogram_quantile, histogram_avg, histogram_stddev, prometheus_buckets"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Implement data manipulation functions"]
+      
+      - name: "Implement remaining transform functions"
+        description: "range_*, running_*, rand*, sort*, smooth_exponential, and utility functions"
+        status: "completed"
+        assignee: "developer"
+        effort: "large"
+        dependencies: ["Implement histogram transform functions"]
+
+  - name: "Phase 4: Label Manipulation Functions Implementation"
+    description: "Implement all 22 label manipulation function endpoints"
+    status: "completed"
+    tasks:
+      - name: "Implement basic label functions"
+        description: "alias, label_set, label_del, label_keep, label_copy, label_move"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Phase 3 complete"]
+      
+      - name: "Implement label transformation functions"
+        description: "label_join, label_replace, label_map, label_transform, label_lowercase, label_uppercase"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Implement basic label functions"]
+      
+      - name: "Implement label filtering and sorting functions"
+        description: "label_match, label_mismatch, labels_equal, sort_by_label*"
+        status: "completed"
+        assignee: "developer"
+        effort: "small"
+        dependencies: ["Implement label transformation functions"]
+      
+      - name: "Implement specialized label functions"
+        description: "label_graphite_group, label_value, drop_common_labels"
+        status: "completed"
+        assignee: "developer"
+        effort: "small"
+        dependencies: ["Implement label filtering and sorting functions"]
+
+  - name: "Phase 5: Aggregate Functions Implementation"
+    description: "Implement all 44 aggregate function endpoints"
+    status: "completed"
+    tasks:
+      - name: "Implement basic aggregate functions"
+        description: "sum, avg, min, max, count, stddev, stdvar, median, mode"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Phase 4 complete"]
+      
+      - name: "Implement top/bottom aggregate functions"
+        description: "topk, bottomk, topk_*, bottomk_* variants"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Implement basic aggregate functions"]
+      
+      - name: "Implement statistical aggregate functions"
+        description: "quantile, quantiles, mad, geomean, distinct, histogram, share"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Implement top/bottom aggregate functions"]
+      
+      - name: "Implement outlier detection functions"
+        description: "outliers_iqr, outliers_mad, outliersk"
+        status: "completed"
+        assignee: "developer"
+        effort: "small"
+        dependencies: ["Implement statistical aggregate functions"]
+      
+      - name: "Implement remaining aggregate functions"
+        description: "any, group, limitk, count_values, sum2, zscore"
+        status: "completed"
+        assignee: "developer"
+        effort: "small"
+        dependencies: ["Implement outlier detection functions"]
+
+  - name: "Phase 6: Testing and Documentation"
+    description: "Comprehensive testing and documentation updates"
+    status: "completed"
+    tasks:
+      - name: "Create unit tests for all handlers"
+        description: "Write comprehensive unit tests for each API endpoint"
+        status: "completed"
+        assignee: "developer"
+        effort: "large"
+        dependencies: ["Phase 5 complete"]
+      
+      - name: "Create integration tests"
+        description: "Test end-to-end functionality with VictoriaMetrics"
+        status: "completed"
+        assignee: "developer"
+        effort: "large"
+        dependencies: ["Create unit tests for all handlers"]
+      
+      - name: "Update OpenAPI specification"
+        description: "Add all new endpoints to api/openapi.yaml and api/openapi.json"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Phase 5 complete"]
+      
+      - name: "Update Postman collections"
+        description: "Add all new endpoints to Postman collections for testing"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Update OpenAPI specification"]
+      
+      - name: "Update README and documentation"
+        description: "Document the new MetricsQL API capabilities"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Update OpenAPI specification"]
+      
+      - name: "Performance testing and optimization"
+        description: "Load test the APIs and optimize performance bottlenecks"
+        status: "completed"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Create integration tests"]
+
+  - name: "Phase 8: Full Lucene Compliance Implementation"
+    description: "Implement full Lucene Query Syntax compliance for /api/v1/logs and /api/v1/traces endpoints"
+    status: "pending"
+    tasks:
+      - name: "Integrate Bleve Lucene Parser"
+        description: "Add Bleve library (github.com/blevesearch/bleve/v2) to parse full Lucene queries into AST"
+        status: "pending"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Phase 7 complete"]
+      
+      - name: "Update Lucene Translator for Logs"
+        description: "Modify internal/utils/lucene/translator.go Translate() function to use Bleve parser and map all Lucene elements to LogsQL"
+        status: "pending"
+        assignee: "developer"
+        effort: "large"
+        dependencies: ["Integrate Bleve Lucene Parser"]
+      
+      - name: "Update Lucene Translator for Traces"
+        description: "Modify internal/utils/lucene/translator.go TranslateTraces() function to use Bleve parser and map to trace filters"
+        status: "pending"
+        assignee: "developer"
+        effort: "large"
+        dependencies: ["Integrate Bleve Lucene Parser"]
+      
+      - name: "Implement Lucene-to-LogsQL Mapping"
+        description: "Create comprehensive mapping for all Lucene features: terms, phrases, booleans, wildcards, ranges, fields, escaping"
+        status: "pending"
+        assignee: "developer"
+        effort: "large"
+        dependencies: ["Update Lucene Translator for Logs"]
+      
+      - name: "Handle Unsupported Features"
+        description: "Add error handling for Lucene features not supported in LogsQL (e.g., fuzzy searches, boosting) with clear error messages"
+        status: "pending"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Implement Lucene-to-LogsQL Mapping"]
+      
+      - name: "Update Query Validators"
+        description: "Enhance internal/utils/query_validator.go to validate full Lucene syntax compliance"
+        status: "pending"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Handle Unsupported Features"]
+      
+      - name: "Update API Handlers"
+        description: "Modify internal/api/handlers/logs_handlers.go and traces.handler.go to use updated translator functions"
+        status: "pending"
+        assignee: "developer"
+        effort: "small"
+        dependencies: ["Update Query Validators"]
+      
+      - name: "Add Comprehensive Unit Tests"
+        description: "Create unit tests covering all Lucene syntax elements and edge cases in translator_test.go"
+        status: "pending"
+        assignee: "developer"
+        effort: "large"
+        dependencies: ["Update API Handlers"]
+      
+      - name: "Add Integration Tests"
+        description: "Test end-to-end Lucene query translation with VictoriaLogs and VictoriaTraces backends"
+        status: "pending"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Add Comprehensive Unit Tests"]
+      
+      - name: "Update Documentation"
+        description: "Update README.md, OpenAPI spec, and Postman collections to reflect full Lucene compliance"
+        status: "pending"
+        assignee: "developer"
+        effort: "medium"
+        dependencies: ["Add Integration Tests"]
+      
+      - name: "Performance Testing"
+        description: "Benchmark query parsing and translation performance, optimize if needed"
+        status: "pending"
+        assignee: "developer"
+        effort: "small"
+        dependencies: ["Update Documentation"]
+
+current_progress:
+  phase: "Phase 8: Full Lucene Compliance Implementation - PENDING"
+  completed_endpoints: 226
+  total_endpoints: 226
+  completed_tasks: 30
+  total_tasks: 41
+  next_milestone: "Ready for v5.1.0 production release"
+  estimated_completion: "2025-10-15"
+  blockers: []
+  notes: "Phase 7 (v5.0.0) completed successfully! Starting Phase 8 for full Lucene compliance implementation."
+
+estimated_timeline:
+  total_weeks: 18
+  phase_breakdown:
+    "Phase 1": 1
+    "Phase 2": 4
+    "Phase 3": 4
+    "Phase 4": 2
+    "Phase 5": 2
+    "Phase 6": 2
+    "Phase 7": 1
+    "Phase 8": 2
+
+risks:
+  - name: "High endpoint count"
+    description: "226 endpoints is a large scope - need careful planning and consistent patterns"
+    mitigation: "Use code generation for repetitive handlers, establish clear patterns early"
+  
+  - name: "VictoriaMetrics integration complexity"
+    description: "Ensuring proper query construction and error handling for all function types"
+    mitigation: "Create comprehensive query builder utilities and extensive testing"
+  
+  - name: "Performance concerns"
+    description: "Large number of endpoints could impact performance if not optimized"
+    mitigation: "Implement caching, connection pooling, and monitor performance throughout"
+
+known_issues:
+  - name: "VictoriaMetrics multi-endpoint query routing"
+    description: "mirador-core should send the query to all configured VictoriaMetrics endpoints, currently it is sending to only one of the multiple configured VictoriaMetrics endpoints"
+    severity: "high"
+    status: "resolved"
+    assignee: "developer"
+    effort: "medium"
+    fix_required: "Update query routing logic to fan-out queries to all configured VictoriaMetrics endpoints"
+    resolution: "Implemented multi-endpoint fan-out for ExecuteQuery, ExecuteRangeQuery, GetSeries, GetLabels, GetLabelValues, and HealthCheck methods. Added exponential backoff retry logic with 3 attempts (1s, 2s, 4s delays) to prevent memory leaks and infinite retries."
+    
+  - name: "VictoriaLogs multi-endpoint query routing"
+    description: "mirador-core should send the query to all configured VictoriaLogs endpoints, currently it is sending to only one of the multiple configured VictoriaLogs endpoints"
+    severity: "high"
+    status: "resolved"
+    assignee: "developer"
+    effort: "medium"
+    fix_required: "Update query routing logic to fan-out queries to all configured VictoriaLogs endpoints"
+    resolution: "Implemented multi-endpoint fan-out for ExecuteQuery, QueryPredictionEvents, GetStreams, GetFields, and HealthCheck methods. Added exponential backoff retry logic with 3 attempts (1s, 2s, 4s delays) to prevent memory leaks and infinite retries."
+    
+  - name: "VictoriaTraces multi-endpoint query routing"
+    description: "mirador-core should send the query to all configured VictoriaTraces endpoints, currently it is sending to only one of the multiple configured VictoriaTraces endpoints"
+    severity: "high"
+    status: "resolved"
+    assignee: "developer"
+    effort: "medium"
+    fix_required: "Update query routing logic to fan-out queries to all configured VictoriaTraces endpoints"
+    resolution: "Implemented multi-endpoint fan-out for GetOperations, GetServices, SearchTraces, and HealthCheck methods. Added exponential backoff retry logic with 3 attempts (1s, 2s, 4s delays) to prevent memory leaks and infinite retries."
+    
+  - name: "Missing /api/v1/microservices/status endpoint"
+    description: "/microservices/status endpoint was only available at root level but not under /api/v1/ group, despite being documented in OpenAPI spec"
+    severity: "medium"
+    status: "resolved"
+    assignee: "developer"
+    effort: "small"
+    fix_required: "Add v1.GET('/microservices/status', healthHandler.MicroservicesStatus) route registration in server.go"
+    resolution: "Added missing v1 route registration for /api/v1/microservices/status endpoint to maintain consistency with other health endpoints (/health, /ready) that are available at both root and v1 levels."
+
+success_criteria:
+  - All 226 API endpoints implemented and functional
+  - Comprehensive test coverage (>80%)
+  - Updated OpenAPI documentation
+  - Updated Postman collections for testing
+  - Performance benchmarks meet requirements
+  - No breaking changes to existing APIs
+  - Phase 1 infrastructure complete and tested ✅
+  - Full Lucene Query Syntax compliance for /api/v1/logs and /api/v1/traces
+  - Comprehensive Lucene-to-LogsQL and Lucene-to-trace-filters translation
+  - Updated documentation reflecting full Lucene support
+
+dependencies:
+  - VictoriaMetrics service integration
+  - Existing API framework in internal/api/
+  - OpenAPI specification tools

@@ -1,10 +1,10 @@
 package cache
 
 import (
-    "context"
-    "encoding/json"
-    "fmt"
-    "time"
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/platformbuilds/mirador-core/internal/models"
@@ -17,6 +17,10 @@ type ValkeyCluster interface {
 	Get(ctx context.Context, key string) ([]byte, error)
 	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
 	Delete(ctx context.Context, key string) error
+
+	// Distributed locks
+	AcquireLock(ctx context.Context, key string, ttl time.Duration) (bool, error)
+	ReleaseLock(ctx context.Context, key string) error
 
 	// Session management (as shown in diagram)
 	GetSession(ctx context.Context, sessionID string) (*models.UserSession, error)
@@ -61,29 +65,29 @@ func NewValkeyCluster(nodes []string, defaultTTL time.Duration) (ValkeyCluster, 
 
 // HealthCheck pings the Valkey cluster.
 func (v *valkeyClusterImpl) HealthCheck(ctx context.Context) error {
-    if ctx == nil {
-        c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-        defer cancel()
-        ctx = c
-    }
-    return v.client.Ping(ctx).Err()
+	if ctx == nil {
+		c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		ctx = c
+	}
+	return v.client.Ping(ctx).Err()
 }
 
 /* ---------------------------- generic cache ---------------------------- */
 
 func (v *valkeyClusterImpl) Get(ctx context.Context, key string) ([]byte, error) {
 	b, err := v.client.Get(ctx, key).Bytes()
-	
+
 	if err == redis.Nil {
 		monitoring.RecordCacheOperation("get", "miss")
 		return nil, fmt.Errorf("key not found: %s", key)
 	}
-	
+
 	if err != nil {
 		monitoring.RecordCacheOperation("get", "error")
 		return nil, err
 	}
-	
+
 	monitoring.RecordCacheOperation("get", "hit")
 	return b, nil
 }
@@ -210,4 +214,38 @@ func (v *valkeyClusterImpl) CacheQueryResult(ctx context.Context, queryHash stri
 func (v *valkeyClusterImpl) GetCachedQueryResult(ctx context.Context, queryHash string) ([]byte, error) {
 	key := fmt.Sprintf("query_cache:%s", queryHash)
 	return v.Get(ctx, key)
+}
+
+/* --------------------------- distributed locks --------------------------- */
+
+func (v *valkeyClusterImpl) AcquireLock(ctx context.Context, key string, ttl time.Duration) (bool, error) {
+	lockKey := fmt.Sprintf("lock:%s", key)
+
+	// Use SET with NX (not exists) and PX (milliseconds TTL) for atomic locking
+	set, err := v.client.SetNX(ctx, lockKey, "locked", ttl).Result()
+	if err != nil {
+		monitoring.RecordCacheOperation("acquire_lock", "error")
+		return false, err
+	}
+
+	if set {
+		monitoring.RecordCacheOperation("acquire_lock", "success")
+	} else {
+		monitoring.RecordCacheOperation("acquire_lock", "conflict")
+	}
+
+	return set, nil
+}
+
+func (v *valkeyClusterImpl) ReleaseLock(ctx context.Context, key string) error {
+	lockKey := fmt.Sprintf("lock:%s", key)
+
+	err := v.client.Del(ctx, lockKey).Err()
+	if err != nil {
+		monitoring.RecordCacheOperation("release_lock", "error")
+		return err
+	}
+
+	monitoring.RecordCacheOperation("release_lock", "success")
+	return nil
 }
