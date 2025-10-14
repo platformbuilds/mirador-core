@@ -12,7 +12,7 @@ func GetDefaultConfig() *Config {
 				Endpoints: []string{"http://localhost:8481"},
 				Timeout:   30000,
 			},
-            MetricsSources: []VictoriaMetricsConfig{},
+			MetricsSources: []VictoriaMetricsConfig{},
 			VictoriaLogs: VictoriaLogsConfig{
 				Endpoints: []string{"http://localhost:9428"},
 				Timeout:   30000,
@@ -22,7 +22,7 @@ func GetDefaultConfig() *Config {
 				Endpoints: []string{"http://localhost:10428"},
 				Timeout:   30000,
 			},
-            TracesSources: []VictoriaTracesConfig{},
+			TracesSources: []VictoriaTracesConfig{},
 		},
 
 		GRPC: GRPCConfig{
@@ -101,6 +101,12 @@ func GetDefaultConfig() *Config {
 			MetricsPath:       "/metrics",
 			PrometheusEnabled: true,
 			TracingEnabled:    false,
+		},
+
+		Search: SearchConfig{
+			DefaultEngine: "lucene",
+			EnableBleve:   false,
+			EnableLucene:  true,
 		},
 	}
 }

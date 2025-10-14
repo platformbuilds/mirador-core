@@ -23,6 +23,7 @@ MIRADOR-CORE serves as the central orchestration layer for the MIRADOR observabi
 - **Unified REST API** with OpenAPI 3.0 specification
 - **AI Engine Integration** via gRPC + Protocol Buffers
 - **VictoriaMetrics Ecosystem** connectivity (Metrics, Logs, Traces)
+- **Flexible Search Engines** (Lucene & Bleve) for advanced query capabilities
 - **Enterprise Authentication** (LDAP/AD, OAuth 2.0, RBAC)
 - **Valkey Cluster Caching** for high-performance data access
 - **Real-time WebSocket Streams** for live data
@@ -38,6 +39,7 @@ MIRADOR-CORE serves as the central orchestration layer for the MIRADOR observabi
 - **MetricsQL**: Enhanced PromQL with 150+ functions
 - **LogsQL**: Pipe-based log analysis with billions of entries support
 - **VictoriaTraces**: Distributed tracing with Jaeger compatibility
+- **Dual Search Engines**: Choose between Lucene and Bleve for logs/traces queries
 
 ### 🚀 High Performance
 - **10x less RAM** usage compared to traditional solutions
@@ -132,6 +134,179 @@ curl -X POST https://mirador-core/api/v1/metrics/query/aggregate/topk \
 - **Advanced Math**: `geomean`, `harmean`
 
 All functions support optional parameters and return VictoriaMetrics-compatible responses.
+
+### Lucene Query Syntax Support (v5.1.0)
+
+MIRADOR-CORE v5.1.0 introduces full Lucene Query Syntax support for logs and traces queries, providing powerful search capabilities with familiar syntax.
+
+#### Logs API with Lucene
+```bash
+# Simple term search
+curl -X POST https://mirador-core/api/v1/logs/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "error", "time_range": "1h"}'
+
+# Field-specific search
+curl -X POST https://mirador-core/api/v1/logs/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "level:error AND message:\"connection timeout\"", "time_range": "1h"}'
+
+# Wildcard and range queries
+curl -X POST https://mirador-core/api/v1/logs/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "service:api* AND duration:[100 TO 500]", "time_range": "1h"}'
+```
+
+#### Traces API with Lucene
+```bash
+# Service and operation filters
+curl -X POST https://mirador-core/api/v1/traces/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "service:payment AND operation:charge", "time_range": "1h"}'
+
+# Duration and tag filters
+curl -X POST https://mirador-core/api/v1/traces/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "duration:>1s AND tag.env:production", "time_range": "1h"}'
+```
+
+#### Supported Lucene Features
+- **Term Queries**: `error`, `service:api`
+- **Phrase Queries**: `"connection timeout"`, `message:"server error"`
+- **Boolean Operators**: `AND`, `OR`, `NOT`
+- **Wildcard Queries**: `service:api*`, `level:err*`
+- **Range Queries**: `duration:[100 TO 500]`, `timestamp:{2025-01-01 TO 2025-12-31}`
+- **Field Grouping**: `(error OR timeout) AND level:critical`
+- **Special Fields**:
+  - Logs: `_msg` (default field), `level`, `service`, `timestamp`, custom fields
+  - Traces: `service`, `operation`, `duration`, `tag.*`, `span_attr.*`, `_time`
+
+#### Query Validation
+All Lucene queries are validated for syntax correctness and security before execution. Dangerous patterns like script injection are blocked.
+
+### Bleve Search Engine Support (v6.0.0) 🆕
+
+MIRADOR-CORE v6.0.0 introduces full Bleve search engine support alongside existing Lucene functionality. Users can now choose between search engines for logs and traces queries while maintaining the same API interface.
+
+#### Engine Selection
+Specify the search engine in your request body using the `search_engine` field:
+
+```json
+{
+  "query": "error AND status:500",
+  "search_engine": "bleve",  // "lucene" or "bleve"
+  "time_range": "1h"
+}
+```
+
+If `search_engine` is omitted, the system defaults to Lucene for backward compatibility.
+
+#### Logs API with Bleve
+```bash
+# Simple term search with Bleve
+curl -X POST https://mirador-core/api/v1/logs/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "error AND status:500",
+    "search_engine": "bleve",
+    "time_range": "1h"
+  }'
+
+# Field-specific search with Bleve
+curl -X POST https://mirador-core/api/v1/logs/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "level:error AND message:\"connection timeout\"",
+    "search_engine": "bleve",
+    "time_range": "1h"
+  }'
+
+# Wildcard and range queries with Bleve
+curl -X POST https://mirador-core/api/v1/logs/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "service:api* AND duration:>100",
+    "search_engine": "bleve",
+    "time_range": "1h"
+  }'
+```
+
+#### Traces API with Bleve
+```bash
+# Service and operation filters with Bleve
+curl -X POST https://mirador-core/api/v1/traces/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "service:payment AND operation:charge",
+    "search_engine": "bleve",
+    "time_range": "1h"
+  }'
+
+# Duration and tag filters with Bleve
+curl -X POST https://mirador-core/api/v1/traces/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "duration:>1 AND tag.env:production",
+    "search_engine": "bleve",
+    "time_range": "1h"
+  }'
+```
+
+#### Supported Bleve Features
+- **Term Queries**: `error`, `service:api`
+- **Match Queries**: `message:timeout` (fuzzy matching)
+- **Phrase Queries**: `"connection timeout"`, `message:"server error"`
+- **Boolean Operators**: `AND`, `OR`, `NOT`
+- **Wildcard Queries**: `service:api*`, `level:err*`
+- **Numeric Range Queries**: `duration:>100`, `status:>=500`
+- **Field Grouping**: `(error OR timeout) AND level:critical`
+
+#### Bleve vs Lucene Syntax Comparison
+
+| Query Type | Lucene Syntax | Bleve Syntax | Example |
+|------------|---------------|--------------|---------|
+| Boolean AND | `error AND timeout` | `error AND timeout` | Same |
+| Boolean OR | `error OR timeout` | `error OR timeout` | Same |
+| Field Search | `level:error` | `level:error` | Same |
+| Phrase Search | `"server error"` | `"server error"` | Same |
+| Wildcard | `service:api*` | `service:api*` | Same |
+| Range | `duration:[100 TO 500]` | `duration:>=100 AND duration:<=500` | Different |
+| Exclusion | `NOT error` | `NOT error` | Same |
+
+#### Configuration
+Enable Bleve support in your configuration:
+
+```yaml
+search:
+  enable_bleve: true
+  default_engine: "lucene"  # or "bleve"
+  bleve:
+    index_path: "/tmp/bleve"
+    batch_size: 1000
+    max_memory_mb: 512
+```
+
+#### Performance Characteristics
+- **Bleve**: Better for complex boolean queries and fuzzy matching
+- **Lucene**: Optimized for range queries and exact phrase matching
+- **Memory**: Both engines maintain similar memory footprints
+- **Latency**: Translation overhead for Bleve queries (~5-10ms additional)
+
+#### Migration Guide
+- **No Breaking Changes**: Existing Lucene queries continue to work
+- **Opt-in Bleve**: Add `"search_engine": "bleve"` to try Bleve
+- **A/B Testing**: Compare results between engines for validation
+- **Gradual Rollout**: Use feature flags for controlled deployment
 
 ### AI Fracture Prediction
 ```bash

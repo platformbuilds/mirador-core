@@ -14,6 +14,7 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
+	"github.com/platformbuilds/mirador-core/internal/utils/search"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 	swaggerFiles "github.com/swaggo/files"
@@ -21,14 +22,16 @@ import (
 )
 
 type Server struct {
-	config      *config.Config
-	logger      logger.Logger
-	cache       cache.ValkeyCluster
-	grpcClients *clients.GRPCClients
-	vmServices  *services.VictoriaMetricsServices
-	schemaRepo  repo.SchemaStore
-	router      *gin.Engine
-	httpServer  *http.Server
+	config           *config.Config
+	logger           logger.Logger
+	cache            cache.ValkeyCluster
+	grpcClients      *clients.GRPCClients
+	vmServices       *services.VictoriaMetricsServices
+	schemaRepo       repo.SchemaStore
+	searchRouter     *search.SearchRouter
+	searchThrottling *middleware.SearchQueryThrottlingMiddleware
+	router           *gin.Engine
+	httpServer       *http.Server
 }
 
 func NewServer(
@@ -55,6 +58,19 @@ func NewServer(
 		router:      router,
 	}
 
+	// Create search router
+	searchConfig := &search.SearchConfig{
+		DefaultEngine: cfg.Search.DefaultEngine,
+		EnableBleve:   cfg.Search.EnableBleve,
+		EnableLucene:  cfg.Search.EnableLucene,
+	}
+	searchRouter, err := search.NewSearchRouter(searchConfig, log)
+	if err != nil {
+		log.Error("Failed to create search router", "error", err)
+		return nil
+	}
+	server.searchRouter = searchRouter
+
 	server.setupMiddleware()
 	server.setupRoutes()
 
@@ -76,6 +92,9 @@ func (s *Server) setupMiddleware() {
 
 	// Rate limiting using Valkey cluster
 	s.router.Use(middleware.RateLimiter(s.cache))
+
+	// Search query throttling based on complexity
+	s.searchThrottling = middleware.NewSearchQueryThrottlingMiddleware(s.cache, s.logger)
 
 	// Authentication (can be disabled via config.auth.enabled)
 	if s.config.Auth.Enabled {
@@ -169,8 +188,8 @@ func (s *Server) setupRoutes() {
 	v1.POST("/metrics/query/aggregate/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteAggregateRangeFunction)
 
 	// LogsQL endpoints (VictoriaLogs integration)
-	logsHandler := handlers.NewLogsQLHandler(s.vmServices.Logs, s.cache, s.logger)
-	v1.POST("/logs/query", logsHandler.ExecuteQuery)
+	logsHandler := handlers.NewLogsQLHandler(s.vmServices.Logs, s.cache, s.logger, s.searchRouter, s.config)
+	v1.POST("/logs/query", s.searchThrottling.ThrottleLogsQuery(), logsHandler.ExecuteQuery)
 	v1.GET("/logs/streams", logsHandler.GetStreams)
 	v1.GET("/logs/fields", logsHandler.GetFields)
 	v1.POST("/logs/export", logsHandler.ExportLogs)
@@ -184,12 +203,12 @@ func (s *Server) setupRoutes() {
 	v1.GET("/logs/tail", d3Logs.TailWS) // WebSocket upgrade for tailing logs
 
 	// VictoriaTraces endpoints (Jaeger-compatible HTTP API)
-	tracesHandler := handlers.NewTracesHandler(s.vmServices.Traces, s.cache, s.logger)
+	tracesHandler := handlers.NewTracesHandler(s.vmServices.Traces, s.cache, s.logger, s.searchRouter, s.config)
 	v1.GET("/traces/services", tracesHandler.GetServices)
 	v1.GET("/traces/services/:service/operations", tracesHandler.GetOperations)
 	v1.GET("/traces/:traceId", tracesHandler.GetTrace)
 	v1.GET("/traces/:traceId/flamegraph", tracesHandler.GetFlameGraph)
-	v1.POST("/traces/search", tracesHandler.SearchTraces)
+	v1.POST("/traces/search", s.searchThrottling.ThrottleTracesQuery(), tracesHandler.SearchTraces)
 	v1.POST("/traces/flamegraph/search", tracesHandler.SearchFlameGraph)
 
 	// AI PREDICT-ENGINE endpoints (gRPC + protobuf communication)
