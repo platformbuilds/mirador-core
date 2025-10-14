@@ -6,7 +6,7 @@ require (
 	github.com/blevesearch/bleve/v2 v2.5.3
 	github.com/blevesearch/upsidedown_store_api v1.0.2
 	github.com/gin-gonic/gin v1.11.0
-	github.com/go-ldap/ldap/v3 v3.4.11
+	github.com/go-ldap/ldap/v3 v3.4.12
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
