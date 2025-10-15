@@ -281,7 +281,7 @@ func translateToLogsQL(luceneQuery string) (string, bool) {
 
 // buildLogsQLFromLuceneAST converts a go-lucene AST expression to LogsQL string
 func buildLogsQLFromLuceneAST(e *expr.Expression) (string, error) {
-	// Handle boolean operations (AND/OR)
+	// Handle boolean operations (AND/OR/NOT)
 	if e.Op == expr.And {
 		left, err := buildLogsQLFromLuceneAST(e.Left.(*expr.Expression))
 		if err != nil {
@@ -303,6 +303,13 @@ func buildLogsQLFromLuceneAST(e *expr.Expression) (string, error) {
 			return "", err
 		}
 		return fmt.Sprintf("%s OR %s", left, right), nil
+	}
+	if e.Op == expr.Not {
+		right, err := buildLogsQLFromLuceneAST(e.Right.(*expr.Expression))
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("NOT %s", right), nil
 	}
 
 	// Handle field:value expressions

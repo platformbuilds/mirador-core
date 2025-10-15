@@ -8,11 +8,11 @@ receivers:
 
 exporters:
   prometheusremotewrite:
-    endpoint: http://victoriametrics:8428/prometheus/api/v1/write
+    endpoint: http://127.0.0.1:8428/prometheus/api/v1/write
   otlphttp/logs:
-    logs_endpoint: http://victorialogs:9428/insert/opentelemetry/v1/logs
+    logs_endpoint: http://127.0.0.1:9428/insert/opentelemetry/v1/logs
   otlphttp/traces:
-    traces_endpoint: http://victoriatraces:10428/insert/opentelemetry/v1/traces
+    traces_endpoint: http://127.0.0.1:10428/insert/opentelemetry/v1/traces
 
 processors:
   batch:

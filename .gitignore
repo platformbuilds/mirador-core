@@ -47,6 +47,7 @@ vmdata
 # Build binaries
 bin/
 bin/*
+bin/mirador-core-*
 
 # Local TestReports
 ./deployments/localdev/e2e-report.json 

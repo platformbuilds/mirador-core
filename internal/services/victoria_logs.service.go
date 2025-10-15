@@ -387,28 +387,29 @@ func (s *VictoriaLogsService) ExecuteQueryStream(
 	}
 
 	q := url.Values{}
-	// Prefer JSON output to simplify parsing across VL versions
-	q.Set("format", "json")
+	// Use stream+json format to match direct curl
 	if strings.TrimSpace(req.Query) != "" {
 		q.Set("query", req.Query)
 	}
 	if req.Start > 0 {
-		q.Set("start", strconv.FormatInt(normalizeToMillis(req.Start), 10))
+		startTime := time.UnixMilli(normalizeToMillis(req.Start))
+		q.Set("start", startTime.Format(time.RFC3339))
 	}
 	if req.End > 0 {
-		q.Set("end", strconv.FormatInt(normalizeToMillis(req.End), 10))
+		endTime := time.UnixMilli(normalizeToMillis(req.End))
+		q.Set("end", endTime.Format(time.RFC3339))
 	}
 	if req.Limit > 0 {
 		q.Set("limit", strconv.Itoa(req.Limit))
 	}
-	u.RawQuery = q.Encode()
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), strings.NewReader(q.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
 	}
-	httpReq.Header.Set("Accept", "*/*")
+	httpReq.Header.Set("Accept", "application/stream+json")
 	httpReq.Header.Set("Accept-Encoding", "gzip")
+	httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8")
 	if s.username != "" {
 		httpReq.SetBasicAuth(s.username, s.password)
 	}
@@ -475,11 +476,9 @@ func (s *VictoriaLogsService) ExecuteQueryStream(
 	data := bytes.TrimSpace(payload)
 	if len(data) == 0 {
 		// Some older builds may ignore format param; retry without it
-		qp := u.Query()
+		qp := q
 		qp.Del("format")
-		u2 := *u
-		u2.RawQuery = qp.Encode()
-		httpReq2, _ := http.NewRequestWithContext(ctx, http.MethodGet, u2.String(), nil)
+		httpReq2, _ := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), strings.NewReader(qp.Encode()))
 		httpReq2.Header = httpReq.Header.Clone()
 		_ = resp.Body.Close()
 		resp, err = s.doRequestWithRetry(ctx, httpReq2)
@@ -505,6 +504,7 @@ func (s *VictoriaLogsService) ExecuteQueryStream(
 		if err != nil {
 			return nil, fmt.Errorf("read response: %w", err)
 		}
+		data = bytes.TrimSpace(payload)
 	}
 
 	if len(data) > 0 {

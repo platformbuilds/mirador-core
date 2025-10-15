@@ -12,8 +12,8 @@ helm upgrade --install mirador-core ./chart \
 Port-forward to test locally:
 
 ```bash
-kubectl -n mirador port-forward svc/mirador-core 8080:8080
-curl http://localhost:8080/health
+kubectl -n mirador port-forward svc/mirador-core 8010:8010
+curl http://localhost:8010/health
 ```
 
 ## Common Values

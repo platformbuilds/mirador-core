@@ -23,7 +23,7 @@ rbac:
 
 podAnnotations:
   prometheus.io/scrape: "true"
-  prometheus.io/port: "8080"
+  prometheus.io/port: "8010"
   prometheus.io/path: "/metrics"
 
 # Optional additional Pod labels
@@ -41,7 +41,7 @@ service:
   type: ClusterIP
   ports:
     http:
-      port: 8080
+      port: 8010
       targetPort: http-api
     grpc:
       port: 9090
@@ -138,7 +138,7 @@ config:
 mirador:
   environment: production
   log_level: info
-  port: 8080
+  port: 8010
   uploads:
     # Maximum size (in bytes) for CSV bulk uploads (services/operations/metrics/logs)
     # Defaults to 5 MiB when omitted.

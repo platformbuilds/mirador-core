@@ -343,7 +343,7 @@ curl -X POST https://mirador-core/api/v1/rca/investigate \
 ### Environment Variables
 ```bash
 # Core settings
-export PORT=8080
+export PORT=8010
 export ENVIRONMENT=production
 export LOG_LEVEL=info
 
@@ -705,7 +705,7 @@ MIRADOR-CORE exposes Prometheus metrics at `/metrics`:
 - Resilience: Round‑robin endpoints and exponential backoff for VictoriaMetrics; structured error logging.
 
 ### Ports / Protocols
-- REST & WebSocket on `:8080`
+- REST & WebSocket on `:8010`
 - gRPC to AI engines: Predict `:9091`, RCA `:9092`, Alert `:9093`
 - Backends (default): VM `:8481`, VL `:9428`, VT `:10428`
 - Prometheus scrape: `/metrics`
@@ -789,7 +789,7 @@ Common Targets:
   help                 Show this help with available targets and options.
   localdev             Full local E2E flow: up → wait → seed OTEL → test → down.
   localdev-up          Build and start localdev Docker stack (Compose) in background.
-  localdev-wait        Wait until the app is ready (probes http://localhost:8080/ready by default).
+  localdev-wait        Wait until the app is ready (probes http://localhost:8010/ready by default).
   localdev-seed-otel   Seed synthetic OpenTelemetry metrics/logs/traces via telemetrygen.
   localdev-test        Run end-to-end tests against a running localdev server.
   localdev-down        Tear down the localdev stack and remove volumes.
@@ -802,7 +802,7 @@ Key Paths & Files:
   deployments/localdev/e2e-report.xml                 Optional JUnit XML report (if go-junit-report present)
 
 Environment Variables:
-  BASE_URL          Base URL for the running app (default: http://localhost:8080).
+  BASE_URL          Base URL for the running app (default: http://localhost:8010).
                     Used by localdev-wait and passed to tests as E2E_BASE_URL.
 
 External Tools:
@@ -814,7 +814,7 @@ External Tools:
 Examples:
   make help
   make localdev
-  make localdev BASE_URL=http://127.0.0.1:8080
+  make localdev BASE_URL=http://127.0.0.1:8010
   make localdev-up && make localdev-wait && make localdev-seed-otel && make localdev-test
 
 Notes:

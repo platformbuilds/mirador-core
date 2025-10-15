@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL=${E2E_BASE_URL:-${1:-http://localhost:8080}}
+BASE_URL=${E2E_BASE_URL:-${1:-http://localhost:8010}}
 OUT_DIR="deployments/localdev"
 REPORT_JSON="$OUT_DIR/e2e-report.json"
 REPORT_TXT="$OUT_DIR/e2e-report.txt"

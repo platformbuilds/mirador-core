@@ -58,7 +58,7 @@ COPY --from=builder /app/api/openapi.yaml /api/openapi.yaml
 COPY --from=builder /app/configs/ /configs/
 
 # Expose ports
-EXPOSE 8080 9090
+EXPOSE 8010 9090
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

@@ -29,7 +29,7 @@ spec:
           service:
             name: mirador-core
             port:
-              number: 8080
+              number: 8010
       # WebSocket endpoints
       - path: /ws
         pathType: Prefix
@@ -37,7 +37,7 @@ spec:
           service:
             name: mirador-core
             port:
-              number: 8080
+              number: 8010
 
 ---
 apiVersion: networking.k8s.io/v1
@@ -63,12 +63,12 @@ spec:
           app: mirador-ui
     ports:
     - protocol: TCP
-      port: 8080
+      port: 8010
   # Allow health checks
   - from: []
     ports:
     - protocol: TCP
-      port: 8080
+      port: 8010
   egress:
   # Allow egress to VictoriaMetrics ecosystem
   - to:

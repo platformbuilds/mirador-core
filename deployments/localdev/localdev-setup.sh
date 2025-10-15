@@ -35,9 +35,9 @@ else
   docker compose -f "$here/docker-compose.yaml" up -d --build 
 fi
 
-echo "Waiting for MIRADOR-CORE to be healthy (http://localhost:8080/health)..."
+echo "Waiting for MIRADOR-CORE to be healthy (http://localhost:8010/health)..."
 for i in {1..60}; do
-  if curl -fsS http://localhost:8080/health >/dev/null 2>&1; then
+  if curl -fsS http://localhost:8010/health >/dev/null 2>&1; then
     echo "MIRADOR-CORE is up."
     break
   fi
@@ -92,7 +92,7 @@ Services:
 - VictoriaLogs:    http://localhost:9428
 - VictoriaTraces:  http://localhost:10428 (enable Jaeger HTTP on 14268 if needed)
 - OTEL Collector:  OTLP gRPC :4317, OTLP HTTP :4318
-- MIRADOR-CORE:    http://localhost:8080
+- MIRADOR-CORE:    http://localhost:8010
 
 Generate telemetry (requires Go: telemetrygen installed):
   go install github.com/open-telemetry/opentelemetry-collector-contrib/cmd/telemetrygen@latest
@@ -111,15 +111,15 @@ Query via MIRADOR-CORE (auth disabled; no token required):
 - MetricsQL instant query:
   curl -sS -H "Content-Type: application/json" \
     -d '{"query":"up"}' \
-    http://localhost:8080/api/v1/metrics/query | jq .
+    http://localhost:8010/api/v1/metrics/query | jq .
 
 - LogsQL query (last 5 minutes):
   curl -sS -H "Content-Type: application/json" \
     -d '{"query":"_time:5m"}' \
-    http://localhost:8080/api/v1/logs/query | jq .
+    http://localhost:8010/api/v1/logs/query | jq .
 
 - Traces (list services via Jaeger-compatible API):
-  curl -sS http://localhost:8080/api/v1/traces/services | jq .
+  curl -sS http://localhost:8010/api/v1/traces/services | jq .
 
 Cleanup:
   docker compose -f "$here/docker-compose.yaml" down

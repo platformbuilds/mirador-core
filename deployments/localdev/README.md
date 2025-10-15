@@ -56,8 +56,8 @@ cd public/mirador-core/deployments/localdev
 docker compose -f mirador-core-docker-compose.yaml up -d --build
 ```
 
-- MIRADOR-CORE: http://localhost:8080
-- Health: http://localhost:8080/health
+- MIRADOR-CORE: http://localhost:8010
+- Health: http://localhost:8010/health
 
 Tip: The `mirador-core` service is configured to `build` locally, which produces a native binary for your host (arm64 on Apple Silicon, amd64 on Intel/AMD). If you prefer to pull a published image instead, comment out the `build:` block and set `image: platformbuilds/mirador-core:<multi-arch-tag>`. On Linux, if `host.docker.internal` doesn’t resolve, uncomment `extra_hosts: ["host.docker.internal:host-gateway"]` in the compose file.
 
@@ -113,9 +113,9 @@ telemetrygen logs \
 
 ## 6) Check MIRADOR-CORE
 
-- Health: `curl http://localhost:8080/health`
-- OpenAPI: `http://localhost:8080/api/openapi.yaml`
-- Metrics: `http://localhost:8080/metrics`
+- Health: `curl http://localhost:8010/health`
+- OpenAPI: `http://localhost:8010/api/openapi.yaml`
+- Metrics: `http://localhost:8010/metrics`
 
 ## Cleanup
 

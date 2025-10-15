@@ -110,7 +110,7 @@ spec:
         version: v2.1.3
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
+        prometheus.io/port: "8010"
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: mirador-core
@@ -125,7 +125,7 @@ spec:
         imagePullPolicy: IfNotPresent
         ports:
         - name: http-api
-          containerPort: 8080
+          containerPort: 8010
           protocol: TCP
         - name: grpc
           containerPort: 9090
@@ -205,13 +205,13 @@ metadata:
     app: mirador-core
   annotations:
     prometheus.io/scrape: "true"
-    prometheus.io/port: "8080"
+    prometheus.io/port: "8010"
     prometheus.io/path: "/metrics"
 spec:
   type: ClusterIP
   ports:
   - name: http-api
-    port: 8080
+    port: 8010
     targetPort: http-api
     protocol: TCP
   - name: grpc
