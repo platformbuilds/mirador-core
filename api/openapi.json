@@ -22,7 +22,7 @@
           "default": "http"
         },
         "host": {
-          "default": "localhost:8080",
+          "default": "127.0.0.1:8010",
           "description": "Hostname:port of mirador-core"
         },
         "basePath": {
@@ -3511,7 +3511,7 @@
           "logs"
         ],
         "summary": "Tail logs (WebSocket)",
-        "description": "Upgrades to a WebSocket connection and streams log rows as JSON frames.\nNote: Swagger \"Try it out\" sends a normal HTTP request and will not work here.\nUse a WebSocket client, for example:\n\n- wscat: `wscat -c ws://localhost:8080/api/v1/logs/tail?query=_time:5m&sampling=10`\n- websocat: `websocat -n ws://localhost:8080/api/v1/logs/tail?query=_time:5m`\n- Browser console: `new WebSocket(\"ws://localhost:8080/api/v1/logs/tail?query=_time:5m\")`\n\nQuery parameters:\n- `query`: LogsQL expression (e.g., `_time:5m`)\n- `since`: Start time in milliseconds since epoch (defaults to last 5 minutes)\n- `sampling`: Send every Nth row (integer, default 1)\n- `tenantId`: Optional tenant override\n",
+        "description": "Upgrades to a WebSocket connection and streams log rows as JSON frames.\nNote: Swagger \"Try it out\" sends a normal HTTP request and will not work here.\nUse a WebSocket client, for example:\n\n- wscat: `wscat -c ws://127.0.0.1:8010/api/v1/logs/tail?query=_time:5m&sampling=10`\n- websocat: `websocat -n ws://127.0.0.1:8010/api/v1/logs/tail?query=_time:5m`\n- Browser console: `new WebSocket(\"ws://127.0.0.1:8010/api/v1/logs/tail?query=_time:5m\")`\n\nQuery parameters:\n- `query`: LogsQL expression (e.g., `_time:5m`)\n- `since`: Start time in milliseconds since epoch (defaults to last 5 minutes)\n- `sampling`: Send every Nth row (integer, default 1)\n- `tenantId`: Optional tenant override\n",
         "parameters": [
           {
             "in": "query",

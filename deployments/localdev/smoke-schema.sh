@@ -4,7 +4,7 @@ set -euo pipefail
 # Simple smoke tests for /api/v1/schema endpoints.
 # Requires mirador-core running locally and Weaviate enabled.
 
-BASE_URL="${BASE_URL:-http://localhost:8080/api/v1}"
+BASE_URL="${BASE_URL:-http://localhost:8010/api/v1}"
 
 pass=0
 fail=0

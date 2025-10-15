@@ -2,7 +2,7 @@
 # Complete configuration with all available options
 
 environment: development
-port: 8080
+port: 8010
 log_level: info
 
 # VictoriaMetrics Ecosystem Configuration

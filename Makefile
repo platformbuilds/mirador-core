@@ -7,7 +7,7 @@ SHELL := /bin/bash
 	release test clean proto vendor lint run dev setup tools check-tools dev-stack dev-stack-down fmt version proto-clean clean-build \
 	tag-release helm-bump version-human version-ci vuln dockerx-build-local-multi buildx-ensure helm-sync-deps helm-dep-update
 
-BASE_URL ?= http://localhost:8080
+BASE_URL ?= http://localhost:8010
 
 # -----------------------------
 # Build and release variables
@@ -109,7 +109,7 @@ help:
 	"  dev-stack-down            Stop root docker-compose services." \
 	"" \
 	"Environment Variables:" \
-	"  BASE_URL                  Base URL for the running app (default: http://localhost:8080)." \
+	"  BASE_URL                  Base URL for the running app (default: http://localhost:8010)." \
 	"                            Used by localdev-wait and passed to tests as E2E_BASE_URL." \
 	"" \
 	"Notes:" \

@@ -35,11 +35,11 @@ func Load() (*Config, error) {
 		if err := tryRead(v); err != nil {
 			return nil, err
 		}
-    } else {
-        // 2) ./configs/config.<env>.yaml  or 3) ./configs/config.yaml
-        // Honor common env selectors in this order: MIRADOR_ENV, ENV, ENVIRONMENT
-        env := firstNonEmpty(os.Getenv("MIRADOR_ENV"), os.Getenv("ENV"), os.Getenv("ENVIRONMENT"), "development")
-        envPath := "./configs/config." + strings.ToLower(env) + ".yaml"
+	} else {
+		// 2) ./configs/config.<env>.yaml  or 3) ./configs/config.yaml
+		// Honor common env selectors in this order: MIRADOR_ENV, ENV, ENVIRONMENT
+		env := firstNonEmpty(os.Getenv("MIRADOR_ENV"), os.Getenv("ENV"), os.Getenv("ENVIRONMENT"), "development")
+		envPath := "./configs/config." + strings.ToLower(env) + ".yaml"
 
 		if fileExists(envPath) {
 			v.SetConfigFile(envPath)
@@ -130,7 +130,7 @@ func splitCSV(s string) []string {
 func setDefaults(v *viper.Viper) {
 	// Server
 	v.SetDefault("environment", "development")
-	v.SetDefault("port", 8080)
+	v.SetDefault("port", 8010)
 	v.SetDefault("log_level", "info")
 
 	// Databases
@@ -143,18 +143,18 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("database.victoria_logs.timeout", 30000)
 	v.SetDefault("database.victoria_logs.discovery.enabled", false)
 	v.SetDefault("database.victoria_logs.discovery.scheme", "http")
-    v.SetDefault("database.victoria_logs.discovery.refresh_seconds", 30)
-    v.SetDefault("database.victoria_traces.endpoints", []string{"http://localhost:10428"})
-    v.SetDefault("database.victoria_traces.timeout", 30000)
-    v.SetDefault("database.victoria_traces.discovery.enabled", false)
-    v.SetDefault("database.victoria_traces.discovery.scheme", "http")
-    v.SetDefault("database.victoria_traces.discovery.refresh_seconds", 30)
-    // Optional multi-source metrics aggregation list (default empty)
-    v.SetDefault("database.metrics_sources", []map[string]any{})
-    // Optional multi-source logs aggregation list (default empty)
-    v.SetDefault("database.logs_sources", []map[string]any{})
-    // Optional multi-source traces aggregation list (default empty)
-    v.SetDefault("database.traces_sources", []map[string]any{})
+	v.SetDefault("database.victoria_logs.discovery.refresh_seconds", 30)
+	v.SetDefault("database.victoria_traces.endpoints", []string{"http://localhost:10428"})
+	v.SetDefault("database.victoria_traces.timeout", 30000)
+	v.SetDefault("database.victoria_traces.discovery.enabled", false)
+	v.SetDefault("database.victoria_traces.discovery.scheme", "http")
+	v.SetDefault("database.victoria_traces.discovery.refresh_seconds", 30)
+	// Optional multi-source metrics aggregation list (default empty)
+	v.SetDefault("database.metrics_sources", []map[string]any{})
+	// Optional multi-source logs aggregation list (default empty)
+	v.SetDefault("database.logs_sources", []map[string]any{})
+	// Optional multi-source traces aggregation list (default empty)
+	v.SetDefault("database.traces_sources", []map[string]any{})
 
 	// gRPC
 	v.SetDefault("grpc.predict_engine.endpoint", "localhost:9091")
@@ -167,13 +167,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("grpc.alert_engine.rules_path", "/etc/mirador/alert-rules.yaml")
 	v.SetDefault("grpc.alert_engine.timeout", 30000)
 
-    // Auth
-    v.SetDefault("auth.enabled", true)
-    v.SetDefault("auth.ldap.enabled", false)
-    v.SetDefault("auth.oauth.enabled", false)
-    v.SetDefault("auth.rbac.enabled", true)
-    v.SetDefault("auth.rbac.admin_role", "mirador-admin")
-    v.SetDefault("auth.jwt.expiry_minutes", 1440)
+	// Auth
+	v.SetDefault("auth.enabled", true)
+	v.SetDefault("auth.ldap.enabled", false)
+	v.SetDefault("auth.oauth.enabled", false)
+	v.SetDefault("auth.rbac.enabled", true)
+	v.SetDefault("auth.rbac.admin_role", "mirador-admin")
+	v.SetDefault("auth.jwt.expiry_minutes", 1440)
 
 	// Cache (Valkey)
 	v.SetDefault("cache.nodes", []string{"localhost:6379"})
@@ -206,19 +206,17 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("monitoring.enabled", true)
 	v.SetDefault("monitoring.metrics_path", "/metrics")
 	v.SetDefault("monitoring.prometheus_enabled", true)
-    v.SetDefault("monitoring.tracing_enabled", false)
+	v.SetDefault("monitoring.tracing_enabled", false)
 
-    // Uploads
-    v.SetDefault("uploads.bulk_max_bytes", int64(5<<20)) // 5 MiB default
+	// Uploads
+	v.SetDefault("uploads.bulk_max_bytes", int64(5<<20)) // 5 MiB default
 
-    
-
-    // Weaviate (disabled by default)
-    v.SetDefault("weaviate.enabled", false)
-    v.SetDefault("weaviate.scheme", "http")
-    v.SetDefault("weaviate.host", "weaviate.mirador.svc.cluster.local")
-    v.SetDefault("weaviate.port", 8080)
-    v.SetDefault("weaviate.use_official", false)
+	// Weaviate (disabled by default)
+	v.SetDefault("weaviate.enabled", false)
+	v.SetDefault("weaviate.scheme", "http")
+	v.SetDefault("weaviate.host", "weaviate.mirador.svc.cluster.local")
+	v.SetDefault("weaviate.port", 8080)
+	v.SetDefault("weaviate.use_official", false)
 }
 
 /* ---------------------------- legacy overrides --------------------------- */
@@ -258,12 +256,12 @@ func overrideWithEnvVars(v *viper.Viper) {
 		v.Set("grpc.alert_engine.endpoint", a)
 	}
 
-    // Prefer VALKEY_CACHE_NODES; keep VALLEY_CACHE_NODES for backward compatibility
-    if nodes := os.Getenv("VALKEY_CACHE_NODES"); nodes != "" {
-        v.Set("cache.nodes", splitCSV(nodes))
-    } else if nodes := os.Getenv("VALLEY_CACHE_NODES"); nodes != "" {
-        v.Set("cache.nodes", splitCSV(nodes))
-    }
+	// Prefer VALKEY_CACHE_NODES; keep VALLEY_CACHE_NODES for backward compatibility
+	if nodes := os.Getenv("VALKEY_CACHE_NODES"); nodes != "" {
+		v.Set("cache.nodes", splitCSV(nodes))
+	} else if nodes := os.Getenv("VALLEY_CACHE_NODES"); nodes != "" {
+		v.Set("cache.nodes", splitCSV(nodes))
+	}
 	if ttl := os.Getenv("CACHE_TTL"); ttl != "" {
 		if i, err := strconv.Atoi(ttl); err == nil {
 			v.Set("cache.ttl", i)
@@ -274,14 +272,14 @@ func overrideWithEnvVars(v *viper.Viper) {
 		v.Set("auth.ldap.url", ldapURL)
 		v.Set("auth.ldap.enabled", true)
 	}
-    if ldapBase := os.Getenv("LDAP_BASE_DN"); ldapBase != "" {
-        v.Set("auth.ldap.base_dn", ldapBase)
-    }
-    if ae := os.Getenv("AUTH_ENABLED"); ae != "" {
-        if b, err := strconv.ParseBool(ae); err == nil {
-            v.Set("auth.enabled", b)
-        }
-    }
+	if ldapBase := os.Getenv("LDAP_BASE_DN"); ldapBase != "" {
+		v.Set("auth.ldap.base_dn", ldapBase)
+	}
+	if ae := os.Getenv("AUTH_ENABLED"); ae != "" {
+		if b, err := strconv.ParseBool(ae); err == nil {
+			v.Set("auth.enabled", b)
+		}
+	}
 	if rbac := os.Getenv("RBAC_ENABLED"); rbac != "" {
 		if b, err := strconv.ParseBool(rbac); err == nil {
 			v.Set("auth.rbac.enabled", b)
@@ -298,66 +296,87 @@ func overrideWithEnvVars(v *viper.Viper) {
 		v.Set("integrations.ms_teams.webhook_url", teams)
 		v.Set("integrations.ms_teams.enabled", true)
 	}
-    if smtp := os.Getenv("SMTP_HOST"); smtp != "" {
-        v.Set("integrations.email.smtp_host", smtp)
-        v.Set("integrations.email.enabled", true)
-    }
+	if smtp := os.Getenv("SMTP_HOST"); smtp != "" {
+		v.Set("integrations.email.smtp_host", smtp)
+		v.Set("integrations.email.enabled", true)
+	}
 
-    
+	// Weaviate overrides
+	if wh := os.Getenv("WEAVIATE_HOST"); wh != "" {
+		v.Set("weaviate.host", wh)
+	}
+	if wp := os.Getenv("WEAVIATE_PORT"); wp != "" {
+		if i, err := strconv.Atoi(wp); err == nil {
+			v.Set("weaviate.port", i)
+		}
+	}
+	if ws := os.Getenv("WEAVIATE_SCHEME"); ws != "" {
+		v.Set("weaviate.scheme", ws)
+	}
+	if wk := os.Getenv("WEAVIATE_API_KEY"); wk != "" {
+		v.Set("weaviate.api_key", wk)
+	}
+	if wc := os.Getenv("WEAVIATE_CONSISTENCY"); wc != "" {
+		v.Set("weaviate.consistency", wc)
+	}
+	if we := os.Getenv("WEAVIATE_ENABLED"); we != "" {
+		if b, err := strconv.ParseBool(we); err == nil {
+			v.Set("weaviate.enabled", b)
+		}
+	}
+	if wo := os.Getenv("WEAVIATE_USE_OFFICIAL"); wo != "" {
+		if b, err := strconv.ParseBool(wo); err == nil {
+			v.Set("weaviate.use_official", b)
+		}
+	}
 
-    // Weaviate overrides
-    if wh := os.Getenv("WEAVIATE_HOST"); wh != "" { v.Set("weaviate.host", wh) }
-    if wp := os.Getenv("WEAVIATE_PORT"); wp != "" { if i, err := strconv.Atoi(wp); err == nil { v.Set("weaviate.port", i) } }
-    if ws := os.Getenv("WEAVIATE_SCHEME"); ws != "" { v.Set("weaviate.scheme", ws) }
-    if wk := os.Getenv("WEAVIATE_API_KEY"); wk != "" { v.Set("weaviate.api_key", wk) }
-    if wc := os.Getenv("WEAVIATE_CONSISTENCY"); wc != "" { v.Set("weaviate.consistency", wc) }
-    if we := os.Getenv("WEAVIATE_ENABLED"); we != "" { if b, err := strconv.ParseBool(we); err == nil { v.Set("weaviate.enabled", b) } }
-    if wo := os.Getenv("WEAVIATE_USE_OFFICIAL"); wo != "" { if b, err := strconv.ParseBool(wo); err == nil { v.Set("weaviate.use_official", b) } }
-
-    // Uploads (CSV bulk)
-    if s := os.Getenv("BULK_UPLOAD_MAX_BYTES"); s != "" {
-        if vbytes, err := strconv.ParseInt(s, 10, 64); err == nil && vbytes > 0 {
-            v.Set("uploads.bulk_max_bytes", vbytes)
-        }
-    }
-    if s := os.Getenv("BULK_UPLOAD_MAX_MIB"); s != "" {
-        if vmib, err := strconv.ParseInt(s, 10, 64); err == nil && vmib > 0 {
-            v.Set("uploads.bulk_max_bytes", vmib*(1<<20))
-        }
-    }
+	// Uploads (CSV bulk)
+	if s := os.Getenv("BULK_UPLOAD_MAX_BYTES"); s != "" {
+		if vbytes, err := strconv.ParseInt(s, 10, 64); err == nil && vbytes > 0 {
+			v.Set("uploads.bulk_max_bytes", vbytes)
+		}
+	}
+	if s := os.Getenv("BULK_UPLOAD_MAX_MIB"); s != "" {
+		if vmib, err := strconv.ParseInt(s, 10, 64); err == nil && vmib > 0 {
+			v.Set("uploads.bulk_max_bytes", vmib*(1<<20))
+		}
+	}
 }
 
 /* ------------------------------- validation ------------------------------ */
 
 // Note: JWT secret enforcement is handled in secrets.go (LoadSecrets).
 func validateConfig(cfg *Config) error {
-    // Metrics must have at least one source: either legacy single-source
-    // config or at least one item in metrics_sources list where endpoints
-    // exist or discovery is enabled.
-    hasPrimary := len(cfg.Database.VictoriaMetrics.Endpoints) > 0 || cfg.Database.VictoriaMetrics.Discovery.Enabled
-    hasMulti := false
-    if len(cfg.Database.MetricsSources) > 0 {
-        for _, s := range cfg.Database.MetricsSources {
-            if len(s.Endpoints) > 0 || s.Discovery.Enabled {
-                hasMulti = true
-                break
-            }
-        }
-    }
-    if !hasPrimary && !hasMulti {
-        return fmt.Errorf("at least one VictoriaMetrics source is required (set database.victoria_metrics or database.metrics_sources)")
-    }
-    // Logs: require at least one source from primary or logs_sources
-    hasLogsPrimary := len(cfg.Database.VictoriaLogs.Endpoints) > 0 || cfg.Database.VictoriaLogs.Discovery.Enabled
-    hasLogsMulti := false
-    if len(cfg.Database.LogsSources) > 0 {
-        for _, s := range cfg.Database.LogsSources {
-            if len(s.Endpoints) > 0 || s.Discovery.Enabled { hasLogsMulti = true; break }
-        }
-    }
-    if !hasLogsPrimary && !hasLogsMulti {
-        return fmt.Errorf("at least one VictoriaLogs source is required (set database.victoria_logs or database.logs_sources)")
-    }
+	// Metrics must have at least one source: either legacy single-source
+	// config or at least one item in metrics_sources list where endpoints
+	// exist or discovery is enabled.
+	hasPrimary := len(cfg.Database.VictoriaMetrics.Endpoints) > 0 || cfg.Database.VictoriaMetrics.Discovery.Enabled
+	hasMulti := false
+	if len(cfg.Database.MetricsSources) > 0 {
+		for _, s := range cfg.Database.MetricsSources {
+			if len(s.Endpoints) > 0 || s.Discovery.Enabled {
+				hasMulti = true
+				break
+			}
+		}
+	}
+	if !hasPrimary && !hasMulti {
+		return fmt.Errorf("at least one VictoriaMetrics source is required (set database.victoria_metrics or database.metrics_sources)")
+	}
+	// Logs: require at least one source from primary or logs_sources
+	hasLogsPrimary := len(cfg.Database.VictoriaLogs.Endpoints) > 0 || cfg.Database.VictoriaLogs.Discovery.Enabled
+	hasLogsMulti := false
+	if len(cfg.Database.LogsSources) > 0 {
+		for _, s := range cfg.Database.LogsSources {
+			if len(s.Endpoints) > 0 || s.Discovery.Enabled {
+				hasLogsMulti = true
+				break
+			}
+		}
+	}
+	if !hasLogsPrimary && !hasLogsMulti {
+		return fmt.Errorf("at least one VictoriaLogs source is required (set database.victoria_logs or database.logs_sources)")
+	}
 	if len(cfg.Cache.Nodes) == 0 {
 		return fmt.Errorf("at least one Valkey cluster cache node is required")
 	}

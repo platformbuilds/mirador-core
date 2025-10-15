@@ -2,6 +2,7 @@ package bleve
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -94,6 +95,77 @@ func (t *Translator) TranslateToTraces(bleveQuery string) (TraceFilters, error) 
 	return out, nil
 }
 
+// TranslateLuceneToLogsQL converts a Lucene query string to LogsQL format
+func (t *Translator) TranslateLuceneToLogsQL(luceneQuery string) (string, error) {
+	if strings.TrimSpace(luceneQuery) == "" {
+		return "", nil
+	}
+
+	// Start with the input query
+	logsQL := luceneQuery
+
+	// Handle AND: replace " AND " with space (implicit AND in LogsQL)
+	logsQL = strings.ReplaceAll(logsQL, " AND ", " ")
+
+	// Handle NOT: replace " NOT " with " -"
+	logsQL = strings.ReplaceAll(logsQL, " NOT ", " -")
+
+	// Handle ! negation: replace " !" with " -"
+	// This handles cases like "error !debug" -> "error -debug"
+	logsQL = regexp.MustCompile(`(\w)\s+!(\w)`).ReplaceAllString(logsQL, "$1 -$2")
+
+	// Handle range queries: [min TO max] -> >=min <=max
+	// Use regex to find patterns like field:[value TO value]
+	rangeRegex := regexp.MustCompile(`(\w+):\[([^\]]+)\s+TO\s+([^\]]+)\]`)
+	logsQL = rangeRegex.ReplaceAllStringFunc(logsQL, func(match string) string {
+		parts := rangeRegex.FindStringSubmatch(match)
+		if len(parts) == 4 {
+			field := parts[1]
+			min := strings.TrimSpace(parts[2])
+			max := strings.TrimSpace(parts[3])
+			return fmt.Sprintf("%s:>=%s %s:<=%s", field, min, field, max)
+		}
+		return match
+	})
+
+	// Handle regex: /pattern/ -> ~"pattern"
+	regexRegex := regexp.MustCompile(`/([^/]+)/`)
+	logsQL = regexRegex.ReplaceAllStringFunc(logsQL, func(match string) string {
+		parts := regexRegex.FindStringSubmatch(match)
+		if len(parts) == 2 {
+			pattern := parts[1]
+			return fmt.Sprintf(`~"%s"`, pattern)
+		}
+		return match
+	})
+
+	// Handle field-specific regex: field:/pattern/ -> field:~"pattern"
+	fieldRegexRegex := regexp.MustCompile(`(\w+):/([^/]+)/`)
+	logsQL = fieldRegexRegex.ReplaceAllStringFunc(logsQL, func(match string) string {
+		parts := fieldRegexRegex.FindStringSubmatch(match)
+		if len(parts) == 3 {
+			field := parts[1]
+			pattern := parts[2]
+			return fmt.Sprintf(`%s:~"%s"`, field, pattern)
+		}
+		return match
+	})
+
+	// Handle negation with - at start of terms
+	// Already handled NOT, but for -term, it's already -term
+
+	// For wildcards, they stay as is: error* -> error*
+
+	// For phrases, they stay as is: "connection refused" -> "connection refused"
+
+	// For field in list: status:(500 OR 404) stays as is
+
+	// Trim spaces
+	logsQL = strings.TrimSpace(logsQL)
+
+	return logsQL, nil
+}
+
 // buildLogsQL converts a Bleve query to LogsQL format
 func (t *Translator) buildLogsQL(q query.Query) (string, error) {
 	if tq, ok := q.(*query.TermQuery); ok {
@@ -160,6 +232,37 @@ func (t *Translator) buildLogsQL(q query.Query) (string, error) {
 		return fmt.Sprintf(`%s:"%s"`, field, phrase), nil
 	}
 
+	if conj, ok := q.(*query.ConjunctionQuery); ok {
+		var parts []string
+		for _, subq := range conj.Conjuncts {
+			part, err := t.buildLogsQL(subq)
+			if err != nil {
+				return "", fmt.Errorf("failed to build conjunction part: %w", err)
+			}
+			if part != "" {
+				parts = append(parts, part)
+			}
+		}
+		return strings.Join(parts, " "), nil
+	}
+
+	if disj, ok := q.(*query.DisjunctionQuery); ok {
+		var parts []string
+		for _, subq := range disj.Disjuncts {
+			part, err := t.buildLogsQL(subq)
+			if err != nil {
+				return "", fmt.Errorf("failed to build disjunction part: %w", err)
+			}
+			if part != "" {
+				parts = append(parts, part)
+			}
+		}
+		if len(parts) == 1 {
+			return parts[0], nil
+		}
+		return strings.Join(parts, " OR "), nil
+	}
+
 	if bq, ok := q.(*query.BooleanQuery); ok {
 		return t.buildBooleanLogsQL(bq)
 	}
@@ -169,28 +272,72 @@ func (t *Translator) buildLogsQL(q query.Query) (string, error) {
 
 // buildBooleanLogsQL handles boolean queries (AND/OR/NOT)
 func (t *Translator) buildBooleanLogsQL(bq *query.BooleanQuery) (string, error) {
-	// Handle simple queries that get wrapped in BooleanQuery
-	// Check if this is actually a simple query wrapped in a boolean
+	var parts []string
 
-	// If only Must clause exists and it's a conjunction with one element
-	if bq.Must != nil && bq.Should == nil && bq.MustNot == nil {
-		if conj, ok := bq.Must.(*query.ConjunctionQuery); ok && len(conj.Conjuncts) == 1 {
-			return t.buildLogsQL(conj.Conjuncts[0])
+	// Handle Must clauses (AND logic) - these are required to match
+	if bq.Must != nil {
+		mustPart, err := t.buildLogsQL(bq.Must)
+		if err != nil {
+			return "", fmt.Errorf("failed to build Must clause: %w", err)
 		}
-		// If Must is not a conjunction, try to build directly
-		return t.buildLogsQL(bq.Must)
-	}
-
-	// If only Should clause exists
-	if bq.Should != nil && bq.Must == nil && bq.MustNot == nil {
-		if disj, ok := bq.Should.(*query.DisjunctionQuery); ok && len(disj.Disjuncts) == 1 {
-			return t.buildLogsQL(disj.Disjuncts[0])
+		if mustPart != "" {
+			parts = append(parts, mustPart)
 		}
 	}
 
-	// For complex boolean queries, return error for now
-	// TODO: Implement proper BooleanQuery handling for complex queries
-	return "", fmt.Errorf("complex boolean queries not fully supported yet")
+	// Handle Should clauses (OR logic) - at least one should match
+	if bq.Should != nil {
+		shouldPart, err := t.buildLogsQL(bq.Should)
+		if err != nil {
+			return "", fmt.Errorf("failed to build Should clause: %w", err)
+		}
+		if shouldPart != "" {
+			// Only wrap in parentheses if it's actually an OR expression (contains " OR ")
+			// Don't wrap single terms even if they contain spaces
+			if strings.Contains(shouldPart, " OR ") && !strings.HasPrefix(shouldPart, "(") {
+				shouldPart = "(" + shouldPart + ")"
+			}
+			parts = append(parts, shouldPart)
+		}
+	}
+
+	// Handle MustNot clauses (NOT logic) - these must not match
+	if bq.MustNot != nil {
+		mustNotPart, err := t.buildLogsQL(bq.MustNot)
+		if err != nil {
+			return "", fmt.Errorf("failed to build MustNot clause: %w", err)
+		}
+		if mustNotPart != "" {
+			// Split MustNot terms and add - prefix to each
+			terms := strings.Fields(mustNotPart)
+			for _, term := range terms {
+				// Skip empty terms
+				term = strings.TrimSpace(term)
+				if term == "" {
+					continue
+				}
+				// Add - prefix for negation
+				if !strings.HasPrefix(term, "-") {
+					term = "-" + term
+				}
+				parts = append(parts, term)
+			}
+		}
+	}
+
+	// If no parts were added, this might be an empty boolean query
+	if len(parts) == 0 {
+		return "", nil
+	}
+
+	// Join all parts with spaces (implicit AND in LogsQL)
+	result := strings.Join(parts, " ")
+
+	// Clean up any double spaces
+	result = regexp.MustCompile(`\s+`).ReplaceAllString(result, " ")
+	result = strings.TrimSpace(result)
+
+	return result, nil
 }
 
 // wildcardToRegex converts Bleve wildcard pattern to regex

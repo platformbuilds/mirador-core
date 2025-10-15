@@ -1,6 +1,6 @@
 # Development Environment Configuration
 environment: development
-port: 8080
+port: 8010
 log_level: debug
 
 database:
@@ -19,15 +19,15 @@ database:
 
 grpc:
   predict_engine:
-    endpoint: "localhost:9091"
+    endpoint: "127.0.0.1:9091"
     models: ["isolation_forest", "lstm_trend"]
     timeout: 10000
   rca_engine:
-    endpoint: "localhost:9092"
+    endpoint: "127.0.0.1:9092"
     correlation_threshold: 0.8
     timeout: 10000
   alert_engine:
-    endpoint: "localhost:9093"
+    endpoint: "127.0.0.1:9093"
     timeout: 10000
 
 auth:
