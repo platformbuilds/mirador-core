@@ -22,6 +22,6 @@ Ingress enabled. Try:
   https://{{ (index .Values.ingress.hosts 0).host }}
 {{- else }}
 If using port-forward:
-  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "mirador-core.fullname" . }} 8080:{{ .Values.service.ports.http.port }}
-  then open http://localhost:8080/health
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "mirador-core.fullname" . }} 8010:{{ .Values.service.ports.http.port }}
+  then open http://localhost:8010/health
 {{- end }}

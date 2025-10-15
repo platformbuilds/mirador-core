@@ -15,7 +15,7 @@ servers:
         enum: [http, https]
         default: http
       host:
-        default: localhost:8080
+        default: 127.0.0.1:8010
         description: Hostname:port of mirador-core
       basePath:
         default: /api/v1
@@ -1953,9 +1953,9 @@ paths:
         Note: Swagger "Try it out" sends a normal HTTP request and will not work here.
         Use a WebSocket client, for example:
 
-        - wscat: `wscat -c ws://localhost:8080/api/v1/logs/tail?query=_time:5m&sampling=10`
-        - websocat: `websocat -n ws://localhost:8080/api/v1/logs/tail?query=_time:5m`
-        - Browser console: `new WebSocket("ws://localhost:8080/api/v1/logs/tail?query=_time:5m")`
+        - wscat: `wscat -c ws://127.0.0.1:8010/api/v1/logs/tail?query=_time:5m&sampling=10`
+        - websocat: `websocat -n ws://127.0.0.1:8010/api/v1/logs/tail?query=_time:5m`
+        - Browser console: `new WebSocket("ws://127.0.0.1:8010/api/v1/logs/tail?query=_time:5m")`
 
         Query parameters:
         - `query`: LogsQL expression (e.g., `_time:5m`)

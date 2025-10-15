@@ -83,7 +83,7 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           ports:
             - name: http-api
-              containerPort: 8080
+              containerPort: 8010
               protocol: TCP
             - name: grpc
               containerPort: 9090

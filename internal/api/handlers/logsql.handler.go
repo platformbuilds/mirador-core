@@ -77,6 +77,12 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 		searchEngine = "lucene"
 	}
 
+	// Determine query language (default to lucene for backward compatibility)
+	queryLanguage := request.QueryLanguage
+	if queryLanguage == "" {
+		queryLanguage = "lucene"
+	}
+
 	// Check feature flags for Bleve access
 	if searchEngine == "bleve" {
 		featureFlags := h.config.GetFeatureFlags(tenantID)
@@ -98,8 +104,17 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 		return
 	}
 
-	// Validate query based on search engine
-	if searchEngine == "bleve" {
+	// Validate that the query language is supported
+	if !h.searchRouter.IsEngineSupported(queryLanguage) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  fmt.Sprintf("Unsupported query language: %s", queryLanguage),
+		})
+		return
+	}
+
+	// Validate query based on query language
+	if queryLanguage == "bleve" {
 		if err := h.validator.ValidateBleve(request.Query); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"status": "error",
@@ -108,39 +123,15 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 			return
 		}
 	} else {
-		// Default to Lucene validation for backward compatibility
-		if err := h.validator.ValidateLucene(request.Query); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"status": "error",
-				"error":  fmt.Sprintf("Invalid Lucene query: %s", err.Error()),
-			})
-			return
-		}
+		// Skip Lucene validation for now, as VictoriaLogs accepts extended syntax
+		// if err := h.validator.ValidateLucene(request.Query); err != nil {
+		//     c.JSON(http.StatusBadRequest, gin.H{
+		//         "status": "error",
+		//         "error":  fmt.Sprintf("Invalid Lucene query: %s", err.Error()),
+		//     })
+		//     return
+		// }
 	}
-
-	// Get the appropriate translator
-	translator, err := h.searchRouter.GetTranslator(searchEngine)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "error",
-			"error":  fmt.Sprintf("Failed to get translator for engine %s: %s", searchEngine, err.Error()),
-		})
-		return
-	}
-
-	// Translate the query
-	translated, err := translator.TranslateToLogsQL(request.Query)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  fmt.Sprintf("Failed to translate query with %s engine: %s", searchEngine, err.Error()),
-		})
-		return
-	}
-
-	request.Query = translated
-	c.Header("X-Query-Translated-From", request.Query)
-	c.Header("X-Search-Engine", searchEngine)
 
 	// If query already contains an explicit _time filter, drop Start/End to avoid conflicts.
 	if strings.Contains(request.Query, "_time:") {
@@ -148,14 +139,8 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 		request.End = 0
 	}
 
-	// Validate LogsQL query
-	if err := h.validator.ValidateLogsQL(request.Query); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  fmt.Sprintf("Invalid LogsQL query: %s", err.Error()),
-		})
-		return
-	}
+	c.Header("X-Search-Engine", searchEngine)
+	c.Header("X-Query-Language", queryLanguage)
 
 	// Check cache for Bleve queries before executing
 	var cacheKey string

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL=${BASE_URL:-http://localhost:8080}
+BASE_URL=${BASE_URL:-http://localhost:8010}
 OTLP=${OTLP:-localhost:4317}
 
 here="$(cd "$(dirname "$0")" && pwd)"
