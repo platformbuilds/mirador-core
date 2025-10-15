@@ -10,7 +10,7 @@
   - OpenTelemetry Collector: OTLP gRPC `4317`, HTTP `4318`
   - Valkey (Redis-compatible): `localhost:6379`
   - Weaviate for schema storage: `http://localhost:8081`
-  - MIRADOR‑CORE: `http://localhost:8080`
+  - MIRADOR‑CORE: `http://localhost:8010`
 - E2E tests under `deployments/localdev/e2e`.
 - Readiness helper: `deployments/localdev/scripts/wait-for-url.sh`.
 
@@ -31,11 +31,11 @@
 - `localdev-up`:
   - `docker compose -f deployments/localdev/docker-compose.yaml up -d --build`
 - `localdev-wait`:
-  - `deployments/localdev/scripts/wait-for-url.sh http://localhost:8080/ready`
+  - `deployments/localdev/scripts/wait-for-url.sh http://localhost:8010/ready`
 - `localdev-seed-otel`:
   - Seeds OpenTelemetry traces/metrics/logs to `localhost:4317` via `telemetrygen`.
 - `localdev-test`:
-  - Runs `go test -v ./deployments/localdev/e2e` with `E2E_BASE_URL=http://localhost:8080`.
+  - Runs `go test -v ./deployments/localdev/e2e` with `E2E_BASE_URL=http://localhost:8010`.
   - Emits JSON report at `localdev/e2e-report.json`; optional JUnit XML at `localdev/e2e-report.xml` if `go-junit-report` is present.
 - `localdev-down`:
   - `docker compose -f deployments/localdev/docker-compose.yaml down -v`
@@ -50,17 +50,17 @@
 
 **Manual Steps**
 - Bring up services: `docker compose -f deployments/localdev/docker-compose.yaml up -d --build`
-- Wait until ready: `deployments/localdev/scripts/wait-for-url.sh http://localhost:8080/ready`
+- Wait until ready: `deployments/localdev/scripts/wait-for-url.sh http://localhost:8010/ready`
 - Seed OTEL data manually:
   - `go install github.com/open-telemetry/opentelemetry-collector-contrib/cmd/telemetrygen@latest`
   - `telemetrygen metrics --otlp-endpoint localhost:4317 --otlp-insecure --duration 10s --rate 200`
   - `telemetrygen logs --otlp-endpoint localhost:4317 --otlp-insecure --duration 10s --rate 20`
   - `telemetrygen traces --otlp-endpoint localhost:4317 --otlp-insecure --duration 10s --rate 10`
-- Run E2E: `E2E_BASE_URL=http://localhost:8080 go test -v ./deployments/localdev/e2e`
+- Run E2E: `E2E_BASE_URL=http://localhost:8010 go test -v ./deployments/localdev/e2e`
 - Tear down: `docker compose -f deployments/localdev/docker-compose.yaml down -v`
 
 **Customization**
-- Change base URL: `make localdev BASE_URL=http://127.0.0.1:8080`
+- Change base URL: `make localdev BASE_URL=http://127.0.0.1:8010`
 - Keep stack up after tests: run individual targets (`localdev-up`, `localdev-wait`, `localdev-seed-otel`, `localdev-test`) and skip `localdev-down`.
 - Auth: To test auth flows, enable in compose env and provide tokens/sessions.
 

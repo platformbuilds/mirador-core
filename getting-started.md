@@ -52,10 +52,10 @@ docker compose -f mirador-core-docker-compose.yaml up -d --build
 ```
 
 Key endpoints once the service comes up:
-- Core API: http://localhost:8080
-- Health: http://localhost:8080/health
-- OpenAPI spec: http://localhost:8080/api/openapi.yaml
-- Prometheus metrics: http://localhost:8080/metrics
+- Core API: http://localhost:8010
+- Health: http://localhost:8010/health
+- OpenAPI spec: http://localhost:8010/api/openapi.yaml
+- Prometheus metrics: http://localhost:8010/metrics
 
 Authentication is disabled in the local compose file (`AUTH_ENABLED=false`). All requests run as the `default` tenant unless you set an `X-Tenant-ID` header.
 
@@ -87,7 +87,7 @@ Switch to `--otlp-http` and `localhost:4318` if you prefer HTTP OTLP.
 - VictoriaMetrics UI/API: http://localhost:8428 (try a PromQL query such as `up`)
 - VictoriaLogs UI/API: http://localhost:9428 (search for the telemetrygen log entries)
 - VictoriaTraces (Jaeger UI): http://localhost:10428 (ensure Jaeger HTTP ingestion is enabled on port `14268`)
-- mirador-core: `curl http://localhost:8080/health`
+- mirador-core: `curl http://localhost:8010/health`
 
 ## 7. Ingesting Your Own Metrics, Logs, and Traces
 

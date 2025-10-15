@@ -1,6 +1,6 @@
 # Production Environment Configuration
 environment: production
-port: 8080
+port: 8010
 log_level: warn
 
 database:

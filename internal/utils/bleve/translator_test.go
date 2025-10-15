@@ -120,9 +120,9 @@ func TestTranslateToLogsQL(t *testing.T) {
 		},
 		{
 			name:        "boolean query",
-			query:       "error AND timeout",
-			expected:    "",
-			expectError: true, // Boolean queries not fully supported yet
+			query:       "+error +timeout",
+			expected:    `_msg:"error" _msg:"timeout"`,
+			expectError: false,
 		},
 		{
 			name:        "invalid query",
@@ -340,5 +340,129 @@ func TestNewTranslator(t *testing.T) {
 	translator := NewTranslator()
 	if translator == nil {
 		t.Error("NewTranslator() returned nil")
+	}
+}
+
+func TestTranslateLuceneToLogsQL(t *testing.T) {
+	translator := NewTranslator()
+
+	tests := []struct {
+		name        string
+		query       string
+		expected    string
+		expectError bool
+	}{
+		{
+			name:        "basic word search",
+			query:       "error",
+			expected:    "error",
+			expectError: false,
+		},
+		{
+			name:        "field-specific search",
+			query:       "level:ERROR",
+			expected:    "level:ERROR",
+			expectError: false,
+		},
+		{
+			name:        "phrase search",
+			query:       `"connection refused"`,
+			expected:    `"connection refused"`,
+			expectError: false,
+		},
+		{
+			name:        "AND logic",
+			query:       "error AND timeout",
+			expected:    "error timeout",
+			expectError: false,
+		},
+		{
+			name:        "OR logic",
+			query:       "error OR timeout",
+			expected:    "error OR timeout",
+			expectError: false,
+		},
+		{
+			name:        "NOT logic",
+			query:       "error NOT debug",
+			expected:    "error -debug",
+			expectError: false,
+		},
+		{
+			name:        "grouping",
+			query:       "(error OR fail) AND timeout",
+			expected:    "(error OR fail) timeout",
+			expectError: false,
+		},
+		{
+			name:        "wildcard search",
+			query:       "error*",
+			expected:    "error*",
+			expectError: false,
+		},
+		{
+			name:        "field value in list",
+			query:       "status:(500 OR 404)",
+			expected:    "status:(500 OR 404)",
+			expectError: false,
+		},
+		{
+			name:        "range query",
+			query:       "duration:[100 TO 200]",
+			expected:    "duration:>=100 duration:<=200",
+			expectError: false,
+		},
+		{
+			name:        "regular expression",
+			query:       "message:/timeout.*/",
+			expected:    `message:~"timeout.*"`,
+			expectError: false,
+		},
+		{
+			name:        "negation",
+			query:       "-debug",
+			expected:    "-debug",
+			expectError: false,
+		},
+		{
+			name:        "bang negation",
+			query:       "error !debug",
+			expected:    "error -debug",
+			expectError: false,
+		},
+		{
+			name:        "complex query",
+			query:       "error AND (timeout OR fail) NOT debug",
+			expected:    "error (timeout OR fail) -debug",
+			expectError: false,
+		},
+		{
+			name:        "empty query",
+			query:       "",
+			expected:    "",
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := translator.TranslateLuceneToLogsQL(tt.query)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("TranslateLuceneToLogsQL(%q) expected error but got none", tt.query)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("TranslateLuceneToLogsQL(%q) unexpected error: %v", tt.query, err)
+				return
+			}
+
+			if result != tt.expected {
+				t.Errorf("TranslateLuceneToLogsQL(%q) = %q, want %q", tt.query, result, tt.expected)
+			}
+		})
 	}
 }

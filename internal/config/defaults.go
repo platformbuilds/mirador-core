@@ -4,7 +4,7 @@ package config
 func GetDefaultConfig() *Config {
 	return &Config{
 		Environment: "development",
-		Port:        8080,
+		Port:        8010,
 		LogLevel:    "info",
 
 		Database: DatabaseConfig{

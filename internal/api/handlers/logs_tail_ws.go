@@ -32,7 +32,7 @@ func (h *LogsHandler) TailWS(c *gin.Context) {
 			"status":  "error",
 			"error":   "WebSocket upgrade required",
 			"detail":  "Connect with a WebSocket client (e.g., ws://host/api/v1/logs/tail). Swagger 'Try it out' uses HTTP and will fail.",
-			"example": "wscat -c ws://localhost:8080/api/v1/logs/tail?query=_time:5m",
+			"example": "wscat -c ws://localhost:8010/api/v1/logs/tail?query=_time:5m",
 		})
 		return
 	}
