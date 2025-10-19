@@ -532,11 +532,31 @@ test_config_endpoints() {
 # Schema API Tests
 test_schema_endpoints() {
     log_info "Testing Schema Endpoints..."
-    
-    http_request "GET" "$API_BASE/schema/metrics" "200" "" "Get Metrics Schema"
-    http_request "GET" "$API_BASE/schema/logs/fields" "200" "" "Get Logs Fields Schema"
-    http_request "GET" "$API_BASE/schema/traces/services" "200" "" "Get Traces Services Schema"
-    http_request "GET" "$API_BASE/schema/labels" "200" "" "Get Labels Schema"
+
+    # Test sample CSV downloads (these work and validate our camelCase headers)
+    http_request "GET" "$API_BASE/schema/metrics/bulk/sample" "200" "" "Download Metrics Sample CSV"
+    http_request "GET" "$API_BASE/schema/logs/fields/bulk/sample" "200" "" "Download Log Fields Sample CSV"
+    http_request "GET" "$API_BASE/schema/traces/services/bulk/sample" "200" "" "Download Trace Services Sample CSV"
+    http_request "GET" "$API_BASE/schema/labels/bulk/sample" "200" "" "Download Labels Sample CSV"
+
+    # Test individual schema operations (create sample data)
+    local timestamp=$(get_unix_timestamp)
+    local metric_data='{"metric": "e2e_metric_'$timestamp'", "description": "E2E test metric", "author": "test"}'
+    http_request "POST" "$API_BASE/schema/metrics" "200" "$metric_data" "Create Metric Schema"
+
+    local log_field_data='{"field": "e2e_field_'$timestamp'", "type": "string", "description": "E2E test field", "author": "test"}'
+    http_request "POST" "$API_BASE/schema/logs/fields" "200" "$log_field_data" "Create Log Field Schema"
+
+    local trace_service_data='{"service": "e2e_service_'$timestamp'", "purpose": "E2E test service", "author": "test"}'
+    http_request "POST" "$API_BASE/schema/traces/services" "200" "$trace_service_data" "Create Trace Service Schema"
+
+    local trace_operation_data='{"service": "e2e_service_'$timestamp'", "operation": "e2e_operation_'$timestamp'", "purpose": "E2E test operation", "author": "test"}'
+    http_request "POST" "$API_BASE/schema/traces/operations" "200" "$trace_operation_data" "Create Trace Operation Schema"
+
+    # Test retrieving individual schema items
+    http_request "GET" "$API_BASE/schema/metrics/e2e_metric_$timestamp" "200" "" "Get Metric Schema"
+    http_request "GET" "$API_BASE/schema/logs/fields/e2e_field_$timestamp" "200" "" "Get Log Field Schema"
+    http_request "GET" "$API_BASE/schema/traces/services/e2e_service_$timestamp" "200" "" "Get Trace Service Schema"
 }
 
 # Session Management Tests

@@ -476,7 +476,7 @@ Routes (under `/api/v1`):
   - `GET /schema/logs/fields/{field}/versions` — list versions
   - `GET /schema/logs/fields/{field}/versions/{version}` — fetch version payload
   - `POST /schema/logs/fields/bulk` — bulk upsert via CSV (secure upload)
-    - Columns: `tenant_id, field, type, description, tags_json (JSON array), examples_json, author`
+    - Columns: `tenant_id, category, logfieldname, logfieldtype, logfielddefinition, sentiment, tags_json (JSON array), examples_json, author`
     - Tags note: `tags_json` must be a JSON array of strings. Example: `["category:security", "format:json", "indexed:true"]`.
     - Security: 5MiB limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota
   - `GET /schema/logs/fields/bulk/sample` — download a sample CSV template (one row per discovered log field)

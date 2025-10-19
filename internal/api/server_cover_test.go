@@ -48,7 +48,7 @@ func (stubSchemaRepo) ListLogFieldVersions(ctx context.Context, tenantID, field 
 func (stubSchemaRepo) GetLogFieldVersion(ctx context.Context, tenantID, field string, version int64) (map[string]any, repo.VersionInfo, error) {
 	return map[string]any{}, repo.VersionInfo{Version: version}, nil
 }
-func (stubSchemaRepo) UpsertLabel(ctx context.Context, tenantID, name, typ string, required bool, allowed map[string]any, description, author string) error {
+func (stubSchemaRepo) UpsertLabel(ctx context.Context, tenantID, name, typ string, required bool, allowed map[string]any, description, category, sentiment, author string) error {
 	return nil
 }
 func (stubSchemaRepo) GetLabel(ctx context.Context, tenantID, name string) (*repo.LabelDef, error) {
@@ -61,7 +61,7 @@ func (stubSchemaRepo) GetLabelVersion(ctx context.Context, tenantID, name string
 	return map[string]any{}, repo.VersionInfo{Version: version}, nil
 }
 func (stubSchemaRepo) DeleteLabel(ctx context.Context, tenantID, name string) error { return nil }
-func (stubSchemaRepo) UpsertTraceServiceWithAuthor(ctx context.Context, tenantID, service, purpose, owner string, tags []string, author string) error {
+func (stubSchemaRepo) UpsertTraceServiceWithAuthor(ctx context.Context, tenantID, service, servicePurpose, owner, category, sentiment string, tags []string, author string) error {
 	return nil
 }
 func (stubSchemaRepo) GetTraceService(ctx context.Context, tenantID, service string) (*repo.TraceServiceDef, error) {
@@ -73,7 +73,7 @@ func (stubSchemaRepo) ListTraceServiceVersions(ctx context.Context, tenantID, se
 func (stubSchemaRepo) GetTraceServiceVersion(ctx context.Context, tenantID, service string, version int64) (map[string]any, repo.VersionInfo, error) {
 	return map[string]any{}, repo.VersionInfo{Version: version}, nil
 }
-func (stubSchemaRepo) UpsertTraceOperationWithAuthor(ctx context.Context, tenantID, service, operation, purpose, owner string, tags []string, author string) error {
+func (stubSchemaRepo) UpsertTraceOperationWithAuthor(ctx context.Context, tenantID, service, operation, servicePurpose, owner, category, sentiment string, tags []string, author string) error {
 	return nil
 }
 func (stubSchemaRepo) GetTraceOperation(ctx context.Context, tenantID, service, operation string) (*repo.TraceOperationDef, error) {
