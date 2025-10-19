@@ -16,13 +16,13 @@ import (
 
 // Default query patterns based on realistic usage
 var defaultQueryPatterns = []loadtest.QueryPattern{
-	{"error", 30},               // 30% - Error searches
-	{"service:api-gateway", 20}, // 20% - Service-specific searches
-	{"level:info", 15},          // 15% - Level searches
-	{"response_time:>1000", 10}, // 10% - Performance queries
-	{"user_id:123", 10},         // 10% - User-specific searches
-	{"level:(info OR warn) AND service:(user-service OR order-service)", 10}, // 10% - Complex queries
-	{"message:test*", 5}, // 5% - Wildcard searches
+	{Query: "error", Weight: 30},                                                            // 30% - Error searches
+	{Query: "service:api-gateway", Weight: 20},                                              // 20% - Service-specific searches
+	{Query: "level:info", Weight: 15},                                                       // 15% - Level searches
+	{Query: "response_time:>1000", Weight: 10},                                              // 10% - Performance queries
+	{Query: "user_id:123", Weight: 10},                                                      // 10% - User-specific searches
+	{Query: "level:(info OR warn) AND service:(user-service OR order-service)", Weight: 10}, // 10% - Complex queries
+	{Query: "message:test*", Weight: 5},                                                     // 5% - Wildcard searches
 }
 
 func main() {

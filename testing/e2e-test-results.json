@@ -1,0 +1,1288 @@
+[
+  {
+    "name": "Health Check",
+    "method": "GET",
+    "url": "http://localhost:8010/health",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 118,
+    "timestamp": "2025-10-19T03:34:33Z",
+    "error": ""
+  },
+  {
+    "name": "API Health Check",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/health",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 135,
+    "timestamp": "2025-10-19T03:34:33Z",
+    "error": ""
+  },
+  {
+    "name": "Readiness Check",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/ready",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 118,
+    "timestamp": "2025-10-19T03:34:34Z",
+    "error": ""
+  },
+  {
+    "name": "Microservices Status",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/microservices/status",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 129,
+    "timestamp": "2025-10-19T03:34:34Z",
+    "error": ""
+  },
+  {
+    "name": "Get Metric Names",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/metrics/names",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 123,
+    "timestamp": "2025-10-19T03:34:34Z",
+    "error": ""
+  },
+  {
+    "name": "Get Metric Names with Limit",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/metrics/names?limit=10",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 117,
+    "timestamp": "2025-10-19T03:34:34Z",
+    "error": ""
+  },
+  {
+    "name": "Get __name__ Label Values",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/label/__name__/values",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 122,
+    "timestamp": "2025-10-19T03:34:35Z",
+    "error": ""
+  },
+  {
+    "name": "Get Series",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/series?match[]=up",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 120,
+    "timestamp": "2025-10-19T03:34:35Z",
+    "error": ""
+  },
+  {
+    "name": "Execute Instant Query",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 117,
+    "timestamp": "2025-10-19T03:34:35Z",
+    "error": ""
+  },
+  {
+    "name": "Execute Range Query",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query_range",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 116,
+    "timestamp": "2025-10-19T03:34:36Z",
+    "error": ""
+  },
+  {
+    "name": "Get Labels for Metric",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/labels",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:34:36Z",
+    "error": ""
+  },
+  {
+    "name": "Aggregate Function: sum",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/aggregate/sum",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 120,
+    "timestamp": "2025-10-19T03:34:36Z",
+    "error": ""
+  },
+  {
+    "name": "Aggregate Function: avg",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/aggregate/avg",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:34:36Z",
+    "error": ""
+  },
+  {
+    "name": "Aggregate Function: count",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/aggregate/count",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 121,
+    "timestamp": "2025-10-19T03:34:37Z",
+    "error": ""
+  },
+  {
+    "name": "Aggregate Function: min",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/aggregate/min",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 128,
+    "timestamp": "2025-10-19T03:34:37Z",
+    "error": ""
+  },
+  {
+    "name": "Aggregate Function: max",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/aggregate/max",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:34:37Z",
+    "error": ""
+  },
+  {
+    "name": "Aggregate Function: median",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/aggregate/median",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 125,
+    "timestamp": "2025-10-19T03:34:37Z",
+    "error": ""
+  },
+  {
+    "name": "Aggregate Function: quantile",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/aggregate/quantile",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 118,
+    "timestamp": "2025-10-19T03:34:38Z",
+    "error": ""
+  },
+  {
+    "name": "Transform Function: abs",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/transform/abs",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 120,
+    "timestamp": "2025-10-19T03:34:38Z",
+    "error": ""
+  },
+  {
+    "name": "Transform Function: ceil",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/transform/ceil",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 118,
+    "timestamp": "2025-10-19T03:34:38Z",
+    "error": ""
+  },
+  {
+    "name": "Transform Function: floor",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/transform/floor",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 118,
+    "timestamp": "2025-10-19T03:34:38Z",
+    "error": ""
+  },
+  {
+    "name": "Transform Function: round",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/transform/round",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 116,
+    "timestamp": "2025-10-19T03:34:39Z",
+    "error": ""
+  },
+  {
+    "name": "Transform Function: sqrt",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/transform/sqrt",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 118,
+    "timestamp": "2025-10-19T03:34:39Z",
+    "error": ""
+  },
+  {
+    "name": "Rollup Function: rate",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/rollup/rate",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 121,
+    "timestamp": "2025-10-19T03:34:39Z",
+    "error": ""
+  },
+  {
+    "name": "Rollup Function: increase",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/rollup/increase",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:34:40Z",
+    "error": ""
+  },
+  {
+    "name": "Rollup Function: delta",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/rollup/delta",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 117,
+    "timestamp": "2025-10-19T03:34:40Z",
+    "error": ""
+  },
+  {
+    "name": "Rollup Function: avg_over_time",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/rollup/avg_over_time",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 120,
+    "timestamp": "2025-10-19T03:34:40Z",
+    "error": ""
+  },
+  {
+    "name": "Rollup Function: max_over_time",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/rollup/max_over_time",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 116,
+    "timestamp": "2025-10-19T03:34:40Z",
+    "error": ""
+  },
+  {
+    "name": "Get Log Fields",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/logs/fields",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 123,
+    "timestamp": "2025-10-19T03:34:41Z",
+    "error": ""
+  },
+  {
+    "name": "Get Log Streams",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/logs/streams",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:34:41Z",
+    "error": ""
+  },
+  {
+    "name": "Execute Logs Query",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/logs/query",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 121,
+    "timestamp": "2025-10-19T03:34:41Z",
+    "error": ""
+  },
+  {
+    "name": "Search Logs",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/logs/search",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 123,
+    "timestamp": "2025-10-19T03:34:42Z",
+    "error": ""
+  },
+  {
+    "name": "Export Logs",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/logs/export",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 120,
+    "timestamp": "2025-10-19T03:34:42Z",
+    "error": ""
+  },
+  {
+    "name": "Get Trace Services",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/traces/services",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 130,
+    "timestamp": "2025-10-19T03:34:42Z",
+    "error": ""
+  },
+  {
+    "name": "Search Traces",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/traces/search",
+    "status": 400,
+    "success": false,
+    "response_time_ms": 117,
+    "timestamp": "2025-10-19T03:34:42Z",
+    "error": "Expected status 200, got 400"
+  },
+  {
+    "name": "Search Flame Graphs",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/traces/flamegraph/search",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:34:43Z",
+    "error": ""
+  },
+  {
+    "name": "Get RCA Correlations",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rca/correlations",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 127,
+    "timestamp": "2025-10-19T03:34:43Z",
+    "error": ""
+  },
+  {
+    "name": "Get Failure Patterns",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rca/patterns",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 115,
+    "timestamp": "2025-10-19T03:34:43Z",
+    "error": ""
+  },
+  {
+    "name": "Get Service Graph",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/rca/service-graph",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 120,
+    "timestamp": "2025-10-19T03:34:44Z",
+    "error": ""
+  },
+  {
+    "name": "Predict Engine Health",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/predict/health",
+    "status": 503,
+    "success": false,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:34:44Z",
+    "error": "Expected status 200, got 503"
+  },
+  {
+    "name": "Get Active Models",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/predict/models",
+    "status": 500,
+    "success": false,
+    "response_time_ms": 117,
+    "timestamp": "2025-10-19T03:34:44Z",
+    "error": "Expected status 200, got 500"
+  },
+  {
+    "name": "Get Predicted Fractures",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/predict/fractures",
+    "status": 500,
+    "success": false,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:34:44Z",
+    "error": "Expected status 200, got 500"
+  },
+  {
+    "name": "Get Data Sources",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/config/datasources",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 113,
+    "timestamp": "2025-10-19T03:34:45Z",
+    "error": ""
+  },
+  {
+    "name": "Get Integrations",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/config/integrations",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 121,
+    "timestamp": "2025-10-19T03:34:45Z",
+    "error": ""
+  },
+  {
+    "name": "Get User Settings",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/config/user-settings",
+    "status": 500,
+    "success": false,
+    "response_time_ms": 114,
+    "timestamp": "2025-10-19T03:34:45Z",
+    "error": "Expected status 200, got 500"
+  },
+  {
+    "name": "Get Metrics Schema",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/schema/metrics",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 118,
+    "timestamp": "2025-10-19T03:34:45Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Get Logs Fields Schema",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/schema/logs/fields",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 114,
+    "timestamp": "2025-10-19T03:34:46Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Get Traces Services Schema",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/schema/traces/services",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:34:46Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Get Labels Schema",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/schema/labels",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 136,
+    "timestamp": "2025-10-19T03:34:46Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Get Active Sessions",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/sessions/active",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 123,
+    "timestamp": "2025-10-19T03:34:46Z",
+    "error": ""
+  },
+  {
+    "name": "Get RBAC Roles",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/roles",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 115,
+    "timestamp": "2025-10-19T03:34:47Z",
+    "error": ""
+  },
+  {
+    "name": "Legacy: Get Metric Names",
+    "method": "GET",
+    "url": "http://localhost:8010/metrics/names",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:34:47Z",
+    "error": ""
+  },
+  {
+    "name": "Legacy: Get Series",
+    "method": "GET",
+    "url": "http://localhost:8010/series?match[]=up",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 124,
+    "timestamp": "2025-10-19T03:34:47Z",
+    "error": ""
+  },
+  {
+    "name": "Legacy: Get Labels",
+    "method": "GET",
+    "url": "http://localhost:8010/labels",
+    "status": 400,
+    "success": false,
+    "response_time_ms": 117,
+    "timestamp": "2025-10-19T03:34:47Z",
+    "error": "Expected status 200, got 400"
+  },
+  {
+    "name": "Legacy: Execute Query",
+    "method": "POST",
+    "url": "http://localhost:8010/query",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 118,
+    "timestamp": "2025-10-19T03:34:48Z",
+    "error": ""
+  },
+  {
+    "name": "Swagger UI",
+    "method": "GET",
+    "url": "http://localhost:8010/swagger/index.html",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:34:48Z",
+    "error": ""
+  },
+  {
+    "name": "OpenAPI Spec (YAML)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/openapi.yaml",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 122,
+    "timestamp": "2025-10-19T03:34:48Z",
+    "error": ""
+  },
+  {
+    "name": "OpenAPI Spec (JSON)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/openapi.json",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 130,
+    "timestamp": "2025-10-19T03:34:49Z",
+    "error": ""
+  },
+  {
+    "name": "Non-existent Endpoint",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/nonexistent",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 115,
+    "timestamp": "2025-10-19T03:34:49Z",
+    "error": ""
+  },
+  {
+    "name": "Invalid Method",
+    "method": "DELETE",
+    "url": "http://localhost:8010/api/v1/health",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 117,
+    "timestamp": "2025-10-19T03:34:49Z",
+    "error": "Expected status 405, got 404"
+  },
+  {
+    "name": "Invalid JSON",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query",
+    "status": 400,
+    "success": true,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:34:49Z",
+    "error": ""
+  },
+  {
+    "name": "Missing Required Parameters",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/series",
+    "status": 400,
+    "success": true,
+    "response_time_ms": 118,
+    "timestamp": "2025-10-19T03:34:50Z",
+    "error": ""
+  },
+  {
+    "comprehensive_summary": {
+      "platform": "macOS",
+      "os_type": "Darwin",
+      "timestamp": "2025-10-19T03:34:50.346902Z",
+      "code_quality": {
+        "tests_run": true,
+        "passed": 5,
+        "failed": 0,
+        "success_rate": 100.00
+      },
+      "api_tests": {
+        "total_tests": 62,
+        "passed_tests": 51,
+        "failed_tests": 11,
+        "success_rate": 82.25
+      },
+      "files": {
+        "json_results": "e2e-test-results.json",
+        "failures_table": "test-failures-table.md"
+      }
+    }
+  },
+  {
+    "name": "Health Check",
+    "method": "GET",
+    "url": "http://localhost:8010/health",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 126,
+    "timestamp": "2025-10-19T03:37:48Z",
+    "error": ""
+  },
+  {
+    "name": "API Health Check",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/health",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 114,
+    "timestamp": "2025-10-19T03:37:48Z",
+    "error": ""
+  },
+  {
+    "name": "Readiness Check",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/ready",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 116,
+    "timestamp": "2025-10-19T03:37:49Z",
+    "error": ""
+  },
+  {
+    "name": "Microservices Status",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/microservices/status",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 135,
+    "timestamp": "2025-10-19T03:37:49Z",
+    "error": ""
+  },
+  {
+    "name": "Get Metric Names",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/metrics/names",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:37:49Z",
+    "error": ""
+  },
+  {
+    "name": "Get Metric Names with Limit",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/metrics/names?limit=10",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 123,
+    "timestamp": "2025-10-19T03:37:49Z",
+    "error": ""
+  },
+  {
+    "name": "Get __name__ Label Values",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/label/__name__/values",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 117,
+    "timestamp": "2025-10-19T03:37:50Z",
+    "error": ""
+  },
+  {
+    "name": "Get Series",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/series?match[]=up",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 126,
+    "timestamp": "2025-10-19T03:37:50Z",
+    "error": ""
+  },
+  {
+    "name": "Execute Instant Query",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 120,
+    "timestamp": "2025-10-19T03:37:50Z",
+    "error": ""
+  },
+  {
+    "name": "Execute Range Query",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query_range",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 123,
+    "timestamp": "2025-10-19T03:37:51Z",
+    "error": ""
+  },
+  {
+    "name": "Get Labels for Metric",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/labels",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:37:51Z",
+    "error": ""
+  },
+  {
+    "name": "Aggregate Function: sum",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/aggregate/sum",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 122,
+    "timestamp": "2025-10-19T03:37:51Z",
+    "error": ""
+  },
+  {
+    "name": "Aggregate Function: avg",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/aggregate/avg",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 114,
+    "timestamp": "2025-10-19T03:37:51Z",
+    "error": ""
+  },
+  {
+    "name": "Aggregate Function: count",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/aggregate/count",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 121,
+    "timestamp": "2025-10-19T03:37:52Z",
+    "error": ""
+  },
+  {
+    "name": "Aggregate Function: min",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/aggregate/min",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:37:52Z",
+    "error": ""
+  },
+  {
+    "name": "Aggregate Function: max",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/aggregate/max",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 121,
+    "timestamp": "2025-10-19T03:37:52Z",
+    "error": ""
+  },
+  {
+    "name": "Aggregate Function: median",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/aggregate/median",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 117,
+    "timestamp": "2025-10-19T03:37:53Z",
+    "error": ""
+  },
+  {
+    "name": "Aggregate Function: quantile",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/aggregate/quantile",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 121,
+    "timestamp": "2025-10-19T03:37:53Z",
+    "error": ""
+  },
+  {
+    "name": "Transform Function: abs",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/transform/abs",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 133,
+    "timestamp": "2025-10-19T03:37:53Z",
+    "error": ""
+  },
+  {
+    "name": "Transform Function: ceil",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/transform/ceil",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 120,
+    "timestamp": "2025-10-19T03:37:53Z",
+    "error": ""
+  },
+  {
+    "name": "Transform Function: floor",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/transform/floor",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 117,
+    "timestamp": "2025-10-19T03:37:54Z",
+    "error": ""
+  },
+  {
+    "name": "Transform Function: round",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/transform/round",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 155,
+    "timestamp": "2025-10-19T03:37:54Z",
+    "error": ""
+  },
+  {
+    "name": "Transform Function: sqrt",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/transform/sqrt",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 115,
+    "timestamp": "2025-10-19T03:37:54Z",
+    "error": ""
+  },
+  {
+    "name": "Rollup Function: rate",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/rollup/rate",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 125,
+    "timestamp": "2025-10-19T03:37:54Z",
+    "error": ""
+  },
+  {
+    "name": "Rollup Function: increase",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/rollup/increase",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 117,
+    "timestamp": "2025-10-19T03:37:55Z",
+    "error": ""
+  },
+  {
+    "name": "Rollup Function: delta",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/rollup/delta",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 128,
+    "timestamp": "2025-10-19T03:37:55Z",
+    "error": ""
+  },
+  {
+    "name": "Rollup Function: avg_over_time",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/rollup/avg_over_time",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 122,
+    "timestamp": "2025-10-19T03:37:55Z",
+    "error": ""
+  },
+  {
+    "name": "Rollup Function: max_over_time",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query/rollup/max_over_time",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 123,
+    "timestamp": "2025-10-19T03:37:55Z",
+    "error": ""
+  },
+  {
+    "name": "Get Log Fields",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/logs/fields",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 125,
+    "timestamp": "2025-10-19T03:37:56Z",
+    "error": ""
+  },
+  {
+    "name": "Get Log Streams",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/logs/streams",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 120,
+    "timestamp": "2025-10-19T03:37:56Z",
+    "error": ""
+  },
+  {
+    "name": "Execute Logs Query",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/logs/query",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 129,
+    "timestamp": "2025-10-19T03:37:56Z",
+    "error": ""
+  },
+  {
+    "name": "Search Logs",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/logs/search",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 124,
+    "timestamp": "2025-10-19T03:37:57Z",
+    "error": ""
+  },
+  {
+    "name": "Export Logs",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/logs/export",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 118,
+    "timestamp": "2025-10-19T03:37:57Z",
+    "error": ""
+  },
+  {
+    "name": "Get Trace Services",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/traces/services",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 142,
+    "timestamp": "2025-10-19T03:37:57Z",
+    "error": ""
+  },
+  {
+    "name": "Search Traces",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/traces/search",
+    "status": 400,
+    "success": false,
+    "response_time_ms": 128,
+    "timestamp": "2025-10-19T03:37:58Z",
+    "error": "Expected status 200, got 400"
+  },
+  {
+    "name": "Search Flame Graphs",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/traces/flamegraph/search",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 132,
+    "timestamp": "2025-10-19T03:37:58Z",
+    "error": ""
+  },
+  {
+    "name": "Get RCA Correlations",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rca/correlations",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 121,
+    "timestamp": "2025-10-19T03:37:58Z",
+    "error": ""
+  },
+  {
+    "name": "Get Failure Patterns",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rca/patterns",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 117,
+    "timestamp": "2025-10-19T03:37:59Z",
+    "error": ""
+  },
+  {
+    "name": "Get Service Graph",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/rca/service-graph",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 128,
+    "timestamp": "2025-10-19T03:37:59Z",
+    "error": ""
+  },
+  {
+    "name": "Predict Engine Health",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/predict/health",
+    "status": 503,
+    "success": false,
+    "response_time_ms": 170,
+    "timestamp": "2025-10-19T03:37:59Z",
+    "error": "Expected status 200, got 503"
+  },
+  {
+    "name": "Get Active Models",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/predict/models",
+    "status": 500,
+    "success": false,
+    "response_time_ms": 128,
+    "timestamp": "2025-10-19T03:38:00Z",
+    "error": "Expected status 200, got 500"
+  },
+  {
+    "name": "Get Predicted Fractures",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/predict/fractures",
+    "status": 500,
+    "success": false,
+    "response_time_ms": 120,
+    "timestamp": "2025-10-19T03:38:00Z",
+    "error": "Expected status 200, got 500"
+  },
+  {
+    "name": "Get Data Sources",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/config/datasources",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 114,
+    "timestamp": "2025-10-19T03:38:00Z",
+    "error": ""
+  },
+  {
+    "name": "Get Integrations",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/config/integrations",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 135,
+    "timestamp": "2025-10-19T03:38:00Z",
+    "error": ""
+  },
+  {
+    "name": "Get User Settings",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/config/user-settings",
+    "status": 500,
+    "success": false,
+    "response_time_ms": 120,
+    "timestamp": "2025-10-19T03:38:01Z",
+    "error": "Expected status 200, got 500"
+  },
+  {
+    "name": "Get Metrics Schema",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/schema/metrics",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 134,
+    "timestamp": "2025-10-19T03:38:01Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Get Logs Fields Schema",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/schema/logs/fields",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 125,
+    "timestamp": "2025-10-19T03:38:01Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Get Traces Services Schema",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/schema/traces/services",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 124,
+    "timestamp": "2025-10-19T03:38:01Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Get Labels Schema",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/schema/labels",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 138,
+    "timestamp": "2025-10-19T03:38:02Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Get Active Sessions",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/sessions/active",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 142,
+    "timestamp": "2025-10-19T03:38:02Z",
+    "error": ""
+  },
+  {
+    "name": "Get RBAC Roles",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/roles",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 129,
+    "timestamp": "2025-10-19T03:38:02Z",
+    "error": ""
+  },
+  {
+    "name": "Legacy: Get Metric Names",
+    "method": "GET",
+    "url": "http://localhost:8010/metrics/names",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 137,
+    "timestamp": "2025-10-19T03:38:03Z",
+    "error": ""
+  },
+  {
+    "name": "Legacy: Get Series",
+    "method": "GET",
+    "url": "http://localhost:8010/series?match[]=up",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 138,
+    "timestamp": "2025-10-19T03:38:03Z",
+    "error": ""
+  },
+  {
+    "name": "Legacy: Get Labels",
+    "method": "GET",
+    "url": "http://localhost:8010/labels",
+    "status": 400,
+    "success": false,
+    "response_time_ms": 131,
+    "timestamp": "2025-10-19T03:38:03Z",
+    "error": "Expected status 200, got 400"
+  },
+  {
+    "name": "Legacy: Execute Query",
+    "method": "POST",
+    "url": "http://localhost:8010/query",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 133,
+    "timestamp": "2025-10-19T03:38:03Z",
+    "error": ""
+  },
+  {
+    "name": "Swagger UI",
+    "method": "GET",
+    "url": "http://localhost:8010/swagger/index.html",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 129,
+    "timestamp": "2025-10-19T03:38:04Z",
+    "error": ""
+  },
+  {
+    "name": "OpenAPI Spec (YAML)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/openapi.yaml",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 121,
+    "timestamp": "2025-10-19T03:38:04Z",
+    "error": ""
+  },
+  {
+    "name": "OpenAPI Spec (JSON)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/openapi.json",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 129,
+    "timestamp": "2025-10-19T03:38:04Z",
+    "error": ""
+  },
+  {
+    "name": "Non-existent Endpoint",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/nonexistent",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 121,
+    "timestamp": "2025-10-19T03:38:05Z",
+    "error": ""
+  },
+  {
+    "name": "Invalid Method",
+    "method": "DELETE",
+    "url": "http://localhost:8010/api/v1/health",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:38:05Z",
+    "error": "Expected status 405, got 404"
+  },
+  {
+    "name": "Invalid JSON",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/query",
+    "status": 400,
+    "success": true,
+    "response_time_ms": 123,
+    "timestamp": "2025-10-19T03:38:05Z",
+    "error": ""
+  },
+  {
+    "name": "Missing Required Parameters",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/series",
+    "status": 400,
+    "success": true,
+    "response_time_ms": 119,
+    "timestamp": "2025-10-19T03:38:05Z",
+    "error": ""
+  },
+  {
+    "comprehensive_summary": {
+      "platform": "macOS",
+      "os_type": "Darwin",
+      "timestamp": "2025-10-19T03:38:06.127814Z",
+      "code_quality": {
+        "tests_run": true,
+        "passed": 5,
+        "failed": 0,
+        "success_rate": 100.00
+      },
+      "api_tests": {
+        "total_tests": 62,
+        "passed_tests": 51,
+        "failed_tests": 11,
+        "success_rate": 82.25
+      },
+      "files": {
+        "json_results": "testing/e2e-test-results.json",
+        "failures_table": "test-failures-table.md"
+      }
+    }
+  }
+]

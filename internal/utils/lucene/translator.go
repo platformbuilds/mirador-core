@@ -15,7 +15,6 @@ type Target int
 
 const (
 	TargetLogsQL Target = iota
-	TargetMetricsQL
 	TargetTraces
 )
 
@@ -65,8 +64,6 @@ func Translate(q string, t Target) (string, bool) {
 	switch t {
 	case TargetLogsQL:
 		return translateToLogsQL(q)
-	case TargetMetricsQL:
-		return toMetricsQL(q)
 	case TargetTraces:
 		// For traces we return empty string here; use TranslateTraces for structured output.
 		if _, ok := TranslateTraces(q); ok {

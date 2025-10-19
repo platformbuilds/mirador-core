@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
 .PHONY: help \
-	localdev localdev-up localdev-down localdev-wait localdev-test localdev-seed-otel \
+	localdev localdev-up localdev-down localdev-wait localdev-test localdev-test-all-api localdev-test-api-only localdev-test-code-only localdev-seed-otel \
 	build build-native build-linux-multi build-linux-amd64 build-linux-arm64 build-darwin-arm64 build-windows-amd64 build-all \
 	docker docker-build docker-build-native dockerx-build dockerx-push docker-publish-release docker-publish-canary docker-publish-pr \
 	release test clean proto vendor lint run dev setup tools check-tools dev-stack dev-stack-down fmt version proto-clean clean-build \
@@ -50,8 +50,11 @@ help:
 	"  localdev-up               Start localdev compose stack in background." \
 	"  localdev-wait             Wait for readiness at $(BASE_URL)/ready." \
 	"  localdev-seed-otel        Seed synthetic OTEL metrics/logs/traces via telemetrygen." \
-	"  localdev-test             Run E2E tests against a running localdev server." \
-	"  localdev-down             Tear down localdev stack and remove volumes." \
+	"  localdev-test             Run E2E tests against a running localdev server."
+	"  localdev-test-all-api     Run comprehensive E2E pipeline (code quality + API tests)."
+	"  localdev-test-api-only    Run API endpoint tests only (skip code quality checks)."
+	"  localdev-test-code-only   Run code quality tests only (go test, fmt, vet, govulncheck)."
+	"  localdev-down             Tear down localdev stack and remove volumes."
 	"" \
 	"Development & Build:" \
 	"  setup                     Install tools, generate proto, download deps." \
@@ -179,6 +182,26 @@ localdev-test:
 	  echo "Report not found: $$REPORT"; \
 	fi
 	@echo "=========================================================="
+
+localdev-test-all-api:
+	@echo "🧪 Running comprehensive E2E pipeline (code quality + API tests)..."
+	@echo "Base URL: $(BASE_URL)"
+	@echo "============================================"
+	@./testing/e2e-tests.sh --base-url "$(BASE_URL)" --output "testing/e2e-test-results.json" --verbose || true
+	@echo "============================================"
+	@echo "✅ E2E pipeline completed!"
+	@echo "📊 Results: testing/e2e-test-results.json"
+	@echo "📋 Failures: testing/test-failures-table.md"
+	@echo "💡 For code tests only: ./testing/e2e-tests.sh --code-tests-only"
+	@echo "💡 For API tests only: ./testing/e2e-tests.sh --no-code-tests"
+
+localdev-test-api-only:
+	@echo "🌐 Running API tests only..."
+	@./testing/e2e-tests.sh --base-url "$(BASE_URL)" --no-code-tests --verbose
+
+localdev-test-code-only:
+	@echo "🔍 Running code quality tests only..."
+	@./testing/e2e-tests.sh --code-tests-only
 
 localdev-seed-otel:
 	@echo "Seeding synthetic OpenTelemetry data via telemetrygen..."

@@ -30,18 +30,18 @@ type SchemaStore interface {
 	UpsertTraceOperationWithAuthor(ctx context.Context, tenantID, service, operation, purpose, owner string, tags []string, author string) error
 	GetTraceOperation(ctx context.Context, tenantID, service, operation string) (*TraceOperationDef, error)
 	ListTraceOperationVersions(ctx context.Context, tenantID, service, operation string) ([]VersionInfo, error)
-    GetTraceOperationVersion(ctx context.Context, tenantID, service, operation string, version int64) (map[string]any, VersionInfo, error)
+	GetTraceOperationVersion(ctx context.Context, tenantID, service, operation string, version int64) (map[string]any, VersionInfo, error)
 
-    // Label definitions (independent of metric)
-    UpsertLabel(ctx context.Context, tenantID, name, typ string, required bool, allowed map[string]any, description, author string) error
-    GetLabel(ctx context.Context, tenantID, name string) (*LabelDef, error)
-    ListLabelVersions(ctx context.Context, tenantID, name string) ([]VersionInfo, error)
-    GetLabelVersion(ctx context.Context, tenantID, name string, version int64) (map[string]any, VersionInfo, error)
-    DeleteLabel(ctx context.Context, tenantID, name string) error
+	// Label definitions (independent of metric)
+	UpsertLabel(ctx context.Context, tenantID, name, typ string, required bool, allowed map[string]any, description, author string) error
+	GetLabel(ctx context.Context, tenantID, name string) (*LabelDef, error)
+	ListLabelVersions(ctx context.Context, tenantID, name string) ([]VersionInfo, error)
+	GetLabelVersion(ctx context.Context, tenantID, name string, version int64) (map[string]any, VersionInfo, error)
+	DeleteLabel(ctx context.Context, tenantID, name string) error
 
-    // Deletes for other schema types
-    DeleteMetric(ctx context.Context, tenantID, metric string) error
-    DeleteLogField(ctx context.Context, tenantID, field string) error
-    DeleteTraceService(ctx context.Context, tenantID, service string) error
-    DeleteTraceOperation(ctx context.Context, tenantID, service, operation string) error
+	// Deletes for other schema types
+	DeleteMetric(ctx context.Context, tenantID, metric string) error
+	DeleteLogField(ctx context.Context, tenantID, field string) error
+	DeleteTraceService(ctx context.Context, tenantID, service string) error
+	DeleteTraceOperation(ctx context.Context, tenantID, service, operation string) error
 }

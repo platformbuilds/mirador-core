@@ -22,12 +22,12 @@ func NewSessionHandler(c cache.ValkeyCluster, l logger.Logger) *SessionHandler {
 // For now returns the current caller's session (from Authorization header).
 // Later: expand to list all tenant sessions via Valkey index.
 func (h *SessionHandler) GetActiveSessions(c *gin.Context) {
-    sessionID := c.GetString("session_id")
-    if sessionID == "" {
-        c.JSON(http.StatusOK, gin.H{"status": "success", "data": gin.H{"sessions": []interface{}{}, "total": 0}})
-        return
-    }
-    sess, err := h.cache.GetSession(c.Request.Context(), sessionID)
+	sessionID := c.GetString("session_id")
+	if sessionID == "" {
+		c.JSON(http.StatusOK, gin.H{"status": "success", "data": gin.H{"sessions": []interface{}{}, "total": 0}})
+		return
+	}
+	sess, err := h.cache.GetSession(c.Request.Context(), sessionID)
 	if err != nil || sess == nil {
 		c.JSON(http.StatusOK, gin.H{"status": "success", "data": gin.H{"sessions": []interface{}{}, "total": 0}})
 		return
@@ -48,11 +48,13 @@ func (h *SessionHandler) GetActiveSessions(c *gin.Context) {
 // POST /api/v1/sessions/invalidate
 // Body: { "token": "..." }  (falls back to Authorization header)
 func (h *SessionHandler) InvalidateSession(c *gin.Context) {
-    var body struct { Token string `json:"token"` }
-    _ = c.ShouldBindJSON(&body)
-    if body.Token == "" {
-        body.Token = c.GetString("session_id")
-    }
+	var body struct {
+		Token string `json:"token"`
+	}
+	_ = c.ShouldBindJSON(&body)
+	if body.Token == "" {
+		body.Token = c.GetString("session_id")
+	}
 	if body.Token == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "missing token"})
 		return
@@ -75,13 +77,13 @@ func (h *SessionHandler) InvalidateSession(c *gin.Context) {
 // Minimal: if the current token belongs to that user, return it.
 // Later: list all tokens for user via sess_index:<tenant>:<user>.
 func (h *SessionHandler) GetUserSessions(c *gin.Context) {
-    userID := c.Param("userId")
-    sessionID := c.GetString("session_id")
-    if sessionID == "" {
-        c.JSON(http.StatusOK, gin.H{"status": "success", "data": gin.H{"sessions": []interface{}{}, "total": 0}})
-        return
-    }
-    sess, err := h.cache.GetSession(c.Request.Context(), sessionID)
+	userID := c.Param("userId")
+	sessionID := c.GetString("session_id")
+	if sessionID == "" {
+		c.JSON(http.StatusOK, gin.H{"status": "success", "data": gin.H{"sessions": []interface{}{}, "total": 0}})
+		return
+	}
+	sess, err := h.cache.GetSession(c.Request.Context(), sessionID)
 	if err != nil || sess == nil || sess.UserID != userID {
 		c.JSON(http.StatusOK, gin.H{"status": "success", "data": gin.H{"sessions": []interface{}{}, "total": 0}})
 		return

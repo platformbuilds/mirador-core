@@ -1,19 +1,43 @@
 #!/bin/bash
 
 # Generate Protocol Buffer Go code for MIRADOR-CORE
-# This script generates proper protobuf code from your existing .proto files
+# Compatible with Linux (Debian/RedHat) and macOS (Darwin)
 
-set -e
+set -euo pipefail
 
 echo "🔧 Generating Protocol Buffer Go code for MIRADOR-CORE..."
 
-# Check if protoc is installed
-if ! command -v protoc &> /dev/null; then
+# Platform detection
+OS_TYPE="$(uname -s)"
+case "$OS_TYPE" in
+    Darwin*)    OS_NAME="macOS" ;;
+    Linux*)     OS_NAME="Linux" ;;
+    *)          OS_NAME="Unknown" ;;
+esac
+
+# Check if protoc is installed with cross-platform instructions
+if ! command -v protoc >/dev/null 2>&1; then
     echo "❌ protoc is required but not installed."
     echo "Install it with:"
-    echo "  macOS: brew install protobuf"
-    echo "  Ubuntu: apt-get install protobuf-compiler" 
-    echo "  Or download from: https://github.com/protocolbuffers/protobuf/releases"
+    case "$OS_NAME" in
+        "macOS")
+            echo "  brew install protobuf"
+            ;;
+        "Linux")
+            if command -v apt-get >/dev/null 2>&1; then
+                echo "  sudo apt-get update && sudo apt-get install protobuf-compiler"
+            elif command -v yum >/dev/null 2>&1; then
+                echo "  sudo yum install protobuf-compiler"
+            elif command -v dnf >/dev/null 2>&1; then
+                echo "  sudo dnf install protobuf-compiler"
+            else
+                echo "  Use your package manager to install protobuf-compiler"
+            fi
+            ;;
+        *)
+            echo "  Download from: https://github.com/protocolbuffers/protobuf/releases"
+            ;;
+    esac
     exit 1
 fi
 

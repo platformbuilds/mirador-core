@@ -9,8 +9,8 @@ log_level: info
 database:
   victoria_metrics:
     endpoints:
-      - "http://vm-select-0.vm-select:8481"
-      - "http://vm-select-1.vm-select:8481"
+      - "http://vm-select-0.vm-select:8428"
+      - "http://vm-select-1.vm-select:8428"
     timeout: 30000
     username: ""
     password: "" # Set via environment variable

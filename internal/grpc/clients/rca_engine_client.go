@@ -22,13 +22,13 @@ type RCAEngineClient struct {
 
 // NewRCAEngineClient creates a new RCA-ENGINE gRPC client
 func NewRCAEngineClient(endpoint string, logger logger.Logger) (*RCAEngineClient, error) {
-    // Non-blocking dial; let grpc reconnect in background
-    conn, err := grpc.Dial(endpoint,
-        grpc.WithTransportCredentials(insecure.NewCredentials()),
-    )
-    if err != nil {
-        return nil, fmt.Errorf("failed to connect to RCA-ENGINE: %w", err)
-    }
+	// Non-blocking dial; let grpc reconnect in background
+	conn, err := grpc.Dial(endpoint,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to RCA-ENGINE: %w", err)
+	}
 
 	client := rca.NewRCAEngineServiceClient(conn)
 

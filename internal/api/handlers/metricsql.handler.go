@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
+	"strconv"
 	"time"
 
 	"context"
@@ -16,7 +16,6 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/internal/utils"
-	lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -53,11 +52,19 @@ func NewMetricsQLHandlerWithSchema(metricsService *services.VictoriaMetricsServi
 // GET /api/v1/metrics/names - List metric names (__name__) from VictoriaMetrics
 func (h *MetricsQLHandler) GetMetricNames(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
+	limitStr := c.Query("limit")
+	limit := 0
+	if limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
 	req := &models.LabelValuesRequest{
 		Label:    "__name__",
 		Start:    c.Query("start"),
 		End:      c.Query("end"),
 		Match:    c.QueryArray("match[]"),
+		Limit:    limit,
 		TenantID: tenantID,
 	}
 	names, err := h.metricsService.GetLabelValues(c.Request.Context(), req)
@@ -68,7 +75,7 @@ func (h *MetricsQLHandler) GetMetricNames(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
-		"data":   gin.H{"names": names, "total": len(names)},
+		"data":   names,
 	})
 }
 
@@ -86,30 +93,6 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 			"details": err.Error(),
 		})
 		return
-	}
-
-	// Translate Lucene query to PromQL/MetricsQL if requested or detected
-	if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
-		validator := utils.NewQueryValidator()
-		if err := validator.ValidateLucene(request.Query); err != nil {
-			metrics.HTTPRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), "400", tenantID).Inc()
-			c.JSON(http.StatusBadRequest, gin.H{
-				"status": "error",
-				"error":  fmt.Sprintf("Invalid Lucene query: %s", err.Error()),
-			})
-			return
-		}
-		if translated, ok := lq.Translate(request.Query, lq.TargetMetricsQL); ok {
-			request.Query = translated
-			c.Header("X-Query-Translated-From", "lucene")
-		} else {
-			metrics.HTTPRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), "400", tenantID).Inc()
-			c.JSON(http.StatusBadRequest, gin.H{
-				"status": "error",
-				"error":  "Failed to translate Lucene query",
-			})
-			return
-		}
 	}
 
 	// Validate MetricsQL query syntax
@@ -252,28 +235,6 @@ func (h *MetricsQLHandler) ExecuteRangeQuery(c *gin.Context) {
 			"error":  "Invalid range query request",
 		})
 		return
-	}
-
-	// Translate Lucene query to PromQL/MetricsQL if requested or detected
-	if strings.EqualFold(request.QueryLanguage, "lucene") || lq.IsLikelyLucene(request.Query) {
-		validator := utils.NewQueryValidator()
-		if err := validator.ValidateLucene(request.Query); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"status": "error",
-				"error":  fmt.Sprintf("Invalid Lucene query: %s", err.Error()),
-			})
-			return
-		}
-		if translated, ok := lq.Translate(request.Query, lq.TargetMetricsQL); ok {
-			request.Query = translated
-			c.Header("X-Query-Translated-From", "lucene")
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"status": "error",
-				"error":  "Failed to translate Lucene query",
-			})
-			return
-		}
 	}
 
 	// Validate query
@@ -514,21 +475,34 @@ func (h *MetricsQLHandler) GetSeries(c *gin.Context) {
 func (h *MetricsQLHandler) GetLabels(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
-	// Parse query parameters
-	start := c.Query("start")
-	end := c.Query("end")
-	match := c.QueryArray("match[]")
+	// Parse JSON payload
+	var requestBody struct {
+		Metric string `json:"metric" binding:"required"`
+		Start  string `json:"start,omitempty"`
+		End    string `json:"end,omitempty"`
+	}
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"error":   "Invalid request format. 'metric' field is required",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Construct PromQL selector for the metric
+	match := []string{fmt.Sprintf("{__name__=\"%s\"}", requestBody.Metric)}
 
 	request := &models.LabelsRequest{
-		Start:    start,
-		End:      end,
+		Start:    requestBody.Start,
+		End:      requestBody.End,
 		Match:    match,
 		TenantID: tenantID,
 	}
 
 	labels, err := h.metricsService.GetLabels(c.Request.Context(), request)
 	if err != nil {
-		h.logger.Error("Failed to get labels", "tenant", tenantID, "error", err)
+		h.logger.Error("Failed to get labels", "tenant", tenantID, "metric", requestBody.Metric, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
 			"error":  "Failed to retrieve labels",
@@ -536,10 +510,7 @@ func (h *MetricsQLHandler) GetLabels(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data":   labels,
-	})
+	c.JSON(http.StatusOK, labels)
 }
 
 // GET /api/v1/label/:name/values - Get values for a specific label
@@ -559,12 +530,20 @@ func (h *MetricsQLHandler) GetLabelValues(c *gin.Context) {
 	start := c.Query("start")
 	end := c.Query("end")
 	match := c.QueryArray("match[]")
+	limitStr := c.Query("limit")
+	limit := 0
+	if limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
 
 	request := &models.LabelValuesRequest{
 		Label:    labelName,
 		Start:    start,
 		End:      end,
 		Match:    match,
+		Limit:    limit,
 		TenantID: tenantID,
 	}
 

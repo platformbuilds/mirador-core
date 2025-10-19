@@ -2,7 +2,6 @@ package mapping
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/platformbuilds/mirador-core/pkg/logger"
@@ -31,32 +30,32 @@ type BleveDocumentMapper struct {
 	logger logger.Logger
 }
 
-// Object pools for memory optimization
-var (
-	logDocumentPool = sync.Pool{
-		New: func() interface{} {
-			return &LogDocument{}
-		},
-	}
+// Object pools for memory optimization (currently disabled to avoid data sharing issues)
+// var (
+// 	logDocumentPool = sync.Pool{
+// 		New: func() interface{} {
+// 			return &LogDocument{}
+// 		},
+// 	}
 
-	traceDocumentPool = sync.Pool{
-		New: func() interface{} {
-			return &TraceDocument{}
-		},
-	}
+// 	traceDocumentPool = sync.Pool{
+// 		New: func() interface{} {
+// 			return &TraceDocument{}
+// 		},
+// 	}
 
-	spanDocumentPool = sync.Pool{
-		New: func() interface{} {
-			return &SpanDocument{}
-		},
-	}
+// 	spanDocumentPool = sync.Pool{
+// 		New: func() interface{} {
+// 			return &SpanDocument{}
+// 		},
+// 	}
 
-	mapPool = sync.Pool{
-		New: func() interface{} {
-			return make(map[string]interface{}, 10)
-		},
-	}
-)
+// 	mapPool = sync.Pool{
+// 		New: func() interface{} {
+// 			return make(map[string]interface{}, 10)
+// 		},
+// 	}
+// )
 
 // NewBleveDocumentMapper creates a new document mapper
 func NewBleveDocumentMapper(logger logger.Logger) DocumentMapper {
@@ -133,12 +132,8 @@ func (m *BleveDocumentMapper) mapLogEntry(logEntry map[string]any, tenantID stri
 	// Generate unique ID
 	id := fmt.Sprintf("log_%s_%d_%d", tenantID, timestamp.UnixNano(), index)
 
-	// Get document from pool
-	doc := logDocumentPool.Get().(*LogDocument)
-	defer logDocumentPool.Put(doc)
-
-	// Reset document fields
-	*doc = LogDocument{
+	// Create new document (don't use pool to avoid data sharing)
+	doc := &LogDocument{
 		ID:        id,
 		TenantID:  tenantID,
 		Timestamp: timestamp,
@@ -146,13 +141,8 @@ func (m *BleveDocumentMapper) mapLogEntry(logEntry map[string]any, tenantID stri
 		Message:   message,
 		Service:   service,
 		Host:      host,
-		Fields:    mapPool.Get().(map[string]interface{}),
+		Fields:    make(map[string]interface{}),
 		Raw:       logEntry,
-	}
-
-	// Ensure Fields map is clean
-	for k := range doc.Fields {
-		delete(doc.Fields, k)
 	}
 
 	// Extract additional fields
@@ -235,12 +225,8 @@ func (m *BleveDocumentMapper) mapTrace(traceData map[string]interface{}, tenantI
 
 	id := fmt.Sprintf("trace_%s_%s", tenantID, traceID)
 
-	// Get document from pool
-	doc := traceDocumentPool.Get().(*TraceDocument)
-	defer traceDocumentPool.Put(doc)
-
-	// Reset document fields
-	*doc = TraceDocument{
+	// Create new document (don't use pool to avoid data sharing)
+	doc := &TraceDocument{
 		ID:          id,
 		TenantID:    tenantID,
 		TraceID:     traceID,

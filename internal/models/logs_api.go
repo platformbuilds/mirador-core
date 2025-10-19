@@ -80,13 +80,13 @@ type LogsFacetsResponse struct {
 
 // Search (paged)
 type LogsSearchRequest struct {
-    Query     string      `json:"query"`
-    Start     int64       `json:"start"`
-    End       int64       `json:"end"`
-    Limit     int         `json:"limit"` // rows per page
-    PageAfter *PageCursor `json:"page_after,omitempty"`
-    TenantID  string      `json:"tenantId"`
-    QueryLanguage string  `json:"query_language,omitempty"`
+	Query         string      `json:"query"`
+	Start         int64       `json:"start"`
+	End           int64       `json:"end"`
+	Limit         int         `json:"limit"` // rows per page
+	PageAfter     *PageCursor `json:"page_after,omitempty"`
+	TenantID      string      `json:"tenantId"`
+	QueryLanguage string      `json:"query_language,omitempty"`
 }
 
 type PageCursor struct {
