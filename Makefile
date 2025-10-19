@@ -187,21 +187,21 @@ localdev-test-all-api:
 	@echo "🧪 Running comprehensive E2E pipeline (code quality + API tests)..."
 	@echo "Base URL: $(BASE_URL)"
 	@echo "============================================"
-	@./testing/e2e-tests.sh --base-url "$(BASE_URL)" --output "testing/e2e-test-results.json" --verbose || true
+	@./localtesting/e2e-tests.sh --base-url "$(BASE_URL)" --output "localtesting/e2e-test-results.json" --verbose || true
 	@echo "============================================"
 	@echo "✅ E2E pipeline completed!"
-	@echo "📊 Results: testing/e2e-test-results.json"
-	@echo "📋 Failures: testing/test-failures-table.md"
-	@echo "💡 For code tests only: ./testing/e2e-tests.sh --code-tests-only"
-	@echo "💡 For API tests only: ./testing/e2e-tests.sh --no-code-tests"
+	@echo "📊 Results: localtesting/e2e-test-results.json"
+	@echo "📋 Failures: localtesting/test-failures-table.md"
+	@echo "💡 For code tests only: ./localtesting/e2e-tests.sh --code-tests-only"
+	@echo "💡 For API tests only: ./localtesting/e2e-tests.sh --no-code-tests"
 
 localdev-test-api-only:
 	@echo "🌐 Running API tests only..."
-	@./testing/e2e-tests.sh --base-url "$(BASE_URL)" --no-code-tests --verbose
+	@./localtesting/e2e-tests.sh --base-url "$(BASE_URL)" --no-code-tests --verbose
 
 localdev-test-code-only:
 	@echo "🔍 Running code quality tests only..."
-	@./testing/e2e-tests.sh --code-tests-only
+	@./localtesting/e2e-tests.sh --code-tests-only
 
 localdev-seed-otel:
 	@echo "Seeding synthetic OpenTelemetry data via telemetrygen..."

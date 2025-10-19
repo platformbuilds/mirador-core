@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -234,6 +233,8 @@ func labelVersionPayload() map[string]any {
 				},
 			},
 			map[string]any{"name": "definition", "dataType": []string{"text"}},
+			map[string]any{"name": "category", "dataType": []string{"text"}},
+			map[string]any{"name": "sentiment", "dataType": []string{"text"}},
 			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
 		},
 	}
@@ -306,6 +307,8 @@ func (r *WeaviateRepo) UpsertMetric(ctx context.Context, m MetricDef, author str
 		"definition": m.Description,
 		"owner":      m.Owner,
 		"tags":       m.Tags,
+		"category":   m.Category,
+		"sentiment":  m.Sentiment,
 		"unit":       "",
 		"source":     "",
 		"version":    next,
@@ -315,7 +318,7 @@ func (r *WeaviateRepo) UpsertMetric(ctx context.Context, m MetricDef, author str
 	if err := r.putObject(ctx, "Metric", id, props); err != nil {
 		return err
 	}
-	payload := map[string]any{"tenantId": m.TenantID, "name": m.Metric, "definition": m.Description, "owner": m.Owner, "tags": m.Tags, "unit": "", "source": "", "updatedAt": time.Now()}
+	payload := map[string]any{"tenantId": m.TenantID, "name": m.Metric, "definition": m.Description, "owner": m.Owner, "tags": m.Tags, "category": m.Category, "sentiment": m.Sentiment, "unit": "", "source": "", "updatedAt": time.Now()}
 	vid := makeID("MetricVersion", m.TenantID, m.Metric, fmt.Sprintf("%d", next))
 	vprops := map[string]any{"tenantId": m.TenantID, "name": m.Metric, "version": next, "payload": payload, "author": author, "createdAt": nowRFC}
 	return r.putObject(ctx, "MetricVersion", vid, vprops)
@@ -341,6 +344,8 @@ func (r *WeaviateRepo) GetMetric(ctx context.Context, tenantID, metric string) (
 	      definition
 	      owner
 	      tags
+	      category
+	      sentiment
 	      updatedAt
 	    }
 	  }
@@ -389,6 +394,8 @@ func (r *WeaviateRepo) GetMetric(ctx context.Context, tenantID, metric string) (
 	// fields map 1:1 with UpsertMetric props: name->Metric, definition->Description
 	desc, _ := it["definition"].(string)
 	owner, _ := it["owner"].(string)
+	category, _ := it["category"].(string)
+	sentiment, _ := it["sentiment"].(string)
 
 	return &MetricDef{
 		TenantID:    tenantID,
@@ -396,6 +403,8 @@ func (r *WeaviateRepo) GetMetric(ctx context.Context, tenantID, metric string) (
 		Description: desc,
 		Owner:       owner,
 		Tags:        tags,
+		Category:    category,
+		Sentiment:   sentiment,
 		UpdatedAt:   updated,
 	}, nil
 }
@@ -463,44 +472,20 @@ func (r *WeaviateRepo) UpsertLogField(ctx context.Context, f LogFieldDef, author
 	next, _ := r.maxVersion(ctx, "LogFieldVersion", map[string]string{"tenantId": f.TenantID, "name": f.Field})
 	nowRFC := time.Now().UTC().Format(time.RFC3339Nano)
 
-	// Convert []string examples to []interface{} for Weaviate text[]
-	var examplesArr []interface{}
-	if len(f.Examples) > 0 {
-		examplesArr = make([]interface{}, len(f.Examples))
-		for i, s := range f.Examples {
-			examplesArr[i] = s
-		}
-	}
-
 	props := map[string]any{
 		"tenantId":   f.TenantID,
 		"name":       f.Field,
 		"type":       f.Type,
 		"definition": f.Description,
 		"tags":       f.Tags,
-		"examples":   examplesArr,
+		"category":   f.Category,
+		"sentiment":  f.Sentiment,
 		"version":    next,
 		"updatedAt":  nowRFC,
 	}
 	id := makeID("LogField", f.TenantID, f.Field)
 	if err := r.putObject(ctx, "LogField", id, props); err != nil {
-		// Back-compat fallback: older schema may define examples as object, not text[]
-		msg := err.Error()
-		if strings.Contains(msg, "invalid object property 'examples'") && strings.Contains(msg, "must be a map") {
-			// Convert []string -> map[string]any with numeric keys
-			exObj := map[string]any{}
-			for i, s := range f.Examples {
-				exObj[strconv.Itoa(i)] = s
-			}
-			props["examples"] = exObj
-			if e2 := r.putObject(ctx, "LogField", id, props); e2 == nil {
-				// proceed to version write with same fallback
-			} else {
-				return e2
-			}
-		} else {
-			return err
-		}
+		return err
 	}
 	vid := makeID("LogFieldVersion", f.TenantID, f.Field, fmt.Sprintf("%d", next))
 	vprops := map[string]any{
@@ -513,28 +498,14 @@ func (r *WeaviateRepo) UpsertLogField(ctx context.Context, f LogFieldDef, author
 			"type":       f.Type,
 			"definition": f.Description,
 			"tags":       f.Tags,
-			"examples":   examplesArr,
+			"category":   f.Category,
+			"sentiment":  f.Sentiment,
 			"updatedAt":  nowRFC,
 		},
 		"author":    author,
 		"createdAt": nowRFC,
 	}
-	if err := r.putObject(ctx, "LogFieldVersion", vid, vprops); err != nil {
-		msg := err.Error()
-		if strings.Contains(msg, "invalid object property 'payload'") && strings.Contains(msg, "examples") && strings.Contains(msg, "must be a map") {
-			// For version payload, also fallback to object for examples
-			exObj := map[string]any{}
-			for i, s := range f.Examples {
-				exObj[strconv.Itoa(i)] = s
-			}
-			if payload, ok := vprops["payload"].(map[string]any); ok {
-				payload["examples"] = exObj
-			}
-			return r.putObject(ctx, "LogFieldVersion", vid, vprops)
-		}
-		return err
-	}
-	return nil
+	return r.putObject(ctx, "LogFieldVersion", vid, vprops)
 }
 
 // GetLogField reads a single log field by (tenantID, fieldName) from Weaviate.
@@ -565,7 +536,8 @@ func (r *WeaviateRepo) GetLogField(ctx context.Context, tenantID, fieldName stri
           type
           definition
           tags
-          examples
+          category
+          sentiment
           updatedAt
           _additional { id }
         }
@@ -598,7 +570,6 @@ func (r *WeaviateRepo) GetLogField(ctx context.Context, tenantID, fieldName stri
               type
               definition
               tags
-              examples
               updatedAt
               _additional { id }
             }
@@ -637,55 +608,6 @@ func (r *WeaviateRepo) GetLogField(ctx context.Context, tenantID, fieldName stri
 		tags = raw2
 	}
 
-	// examples: handle both text[] and object legacy; normalize to []string
-	var examples []string
-	if arr, ok := it["examples"].([]interface{}); ok {
-		examples = make([]string, 0, len(arr))
-		for _, v := range arr {
-			if s, ok := v.(string); ok {
-				examples = append(examples, s)
-			} else {
-				examples = append(examples, fmt.Sprintf("%v", v))
-			}
-		}
-	} else if sarr, ok := it["examples"].([]string); ok {
-		examples = sarr
-	} else if m, ok := it["examples"].(map[string]any); ok {
-		// Convert map to stable []string by numeric key order if possible
-		type kv struct {
-			k   string
-			i   int
-			v   any
-			num bool
-		}
-		tmp := make([]kv, 0, len(m))
-		for k, v := range m {
-			n, err := strconv.Atoi(k)
-			tmp = append(tmp, kv{k: k, i: n, v: v, num: err == nil})
-		}
-		// Try numeric sort; if not all numeric, fall back to lexicographic
-		allNum := true
-		for _, t := range tmp {
-			if !t.num {
-				allNum = false
-				break
-			}
-		}
-		if allNum {
-			sort.Slice(tmp, func(i, j int) bool { return tmp[i].i < tmp[j].i })
-		} else {
-			sort.Slice(tmp, func(i, j int) bool { return tmp[i].k < tmp[j].k })
-		}
-		examples = make([]string, 0, len(tmp))
-		for _, t := range tmp {
-			if s, ok := t.v.(string); ok {
-				examples = append(examples, s)
-			} else {
-				examples = append(examples, fmt.Sprintf("%v", t.v))
-			}
-		}
-	}
-
 	// type/description (support legacy "description")
 	typ, _ := it["type"].(string)
 	desc, _ := it["definition"].(string)
@@ -707,7 +629,8 @@ func (r *WeaviateRepo) GetLogField(ctx context.Context, tenantID, fieldName stri
 		Type:        typ,
 		Description: desc,
 		Tags:        tags,
-		Examples:    examples,
+		Category:    it["category"].(string),
+		Sentiment:   it["sentiment"].(string),
 		UpdatedAt:   updated,
 	}, nil
 }
@@ -716,7 +639,7 @@ func (r *WeaviateRepo) GetLogField(ctx context.Context, tenantID, fieldName stri
 
 func (r *WeaviateRepo) UpsertTraceServiceWithAuthor(
 	ctx context.Context,
-	tenantID, service, purpose, owner string,
+	tenantID, service, purpose, owner, category, sentiment string,
 	tags []string,
 	author string,
 ) error {
@@ -737,6 +660,8 @@ func (r *WeaviateRepo) UpsertTraceServiceWithAuthor(
 		"purpose":    purpose,
 		"owner":      owner,
 		"tags":       weaviateTags,
+		"category":   category,
+		"sentiment":  sentiment,
 		"version":    next,
 		"updatedAt":  nowRFC, // keep timestamps consistent as strings
 	}
@@ -758,6 +683,8 @@ func (r *WeaviateRepo) UpsertTraceServiceWithAuthor(
 			"purpose":    purpose,
 			"owner":      owner,
 			"tags":       weaviateTags,
+			"category":   category,
+			"sentiment":  sentiment,
 			"updatedAt":  nowRFC, // match type
 		},
 		"author":    author,
@@ -768,7 +695,7 @@ func (r *WeaviateRepo) UpsertTraceServiceWithAuthor(
 
 func (r *WeaviateRepo) GetTraceService(ctx context.Context, tenantID, service string) (*TraceServiceDef, error) {
 	// Use inline values instead of variables to avoid GraphQL type issues
-	q := fmt.Sprintf(`{ Get { Service(where: {operator: And, operands: [{path: ["tenantId"], operator: Equal, valueString: "%s"}, {path: ["name"], operator: Equal, valueString: "%s"}]}, limit: 1) { purpose owner tags updatedAt } } }`, tenantID, service)
+	q := fmt.Sprintf(`{ Get { Service(where: {operator: And, operands: [{path: ["tenantId"], operator: Equal, valueString: "%s"}, {path: ["name"], operator: Equal, valueString: "%s"}]}, limit: 1) { purpose owner tags category sentiment updatedAt } } }`, tenantID, service)
 
 	var resp struct {
 		Data struct {
@@ -809,12 +736,14 @@ func (r *WeaviateRepo) GetTraceService(ctx context.Context, tenantID, service st
 	}
 
 	return &TraceServiceDef{
-		TenantID:  tenantID,
-		Service:   service,
-		Purpose:   it["purpose"].(string),
-		Owner:     it["owner"].(string),
-		Tags:      tags, // Now correctly []string
-		UpdatedAt: updated,
+		TenantID:       tenantID,
+		Service:        service,
+		ServicePurpose: it["purpose"].(string),
+		Owner:          it["owner"].(string),
+		Tags:           tags, // Now correctly []string
+		Category:       it["category"].(string),
+		Sentiment:      it["sentiment"].(string),
+		UpdatedAt:      updated,
 	}, nil
 }
 
@@ -831,16 +760,16 @@ func (r *WeaviateRepo) DebugListServices(ctx context.Context, tenantID string) (
 	return resp.Data.Get.Service, nil
 }
 
-func (r *WeaviateRepo) UpsertTraceOperationWithAuthor(ctx context.Context, tenantID, service, operation, purpose, owner string, tags []string, author string) error {
+func (r *WeaviateRepo) UpsertTraceOperationWithAuthor(ctx context.Context, tenantID, service, operation, purpose, owner, category, sentiment string, tags []string, author string) error {
 	next, _ := r.maxVersion(ctx, "OperationVersion", map[string]string{"tenantId": tenantID, "service": service, "name": operation})
 	nowRFC := time.Now().UTC().Format(time.RFC3339Nano)
-	props := map[string]any{"tenantId": tenantID, "service": service, "name": operation, "definition": purpose, "purpose": purpose, "owner": owner, "tags": tags, "version": next, "updatedAt": nowRFC}
+	props := map[string]any{"tenantId": tenantID, "service": service, "name": operation, "definition": purpose, "purpose": purpose, "owner": owner, "tags": tags, "category": category, "sentiment": sentiment, "version": next, "updatedAt": nowRFC}
 	id := makeID("Operation", tenantID, service, operation)
 	if err := r.putObject(ctx, "Operation", id, props); err != nil {
 		return err
 	}
 	vid := makeID("OperationVersion", tenantID, service, operation, fmt.Sprintf("%d", next))
-	vprops := map[string]any{"tenantId": tenantID, "service": service, "name": operation, "version": next, "payload": map[string]any{"tenantId": tenantID, "service": service, "name": operation, "definition": purpose, "purpose": purpose, "owner": owner, "tags": tags, "updatedAt": time.Now()}, "author": author, "createdAt": nowRFC}
+	vprops := map[string]any{"tenantId": tenantID, "service": service, "name": operation, "version": next, "payload": map[string]any{"tenantId": tenantID, "service": service, "name": operation, "definition": purpose, "purpose": purpose, "owner": owner, "tags": tags, "category": category, "sentiment": sentiment, "updatedAt": time.Now()}, "author": author, "createdAt": nowRFC}
 	return r.putObject(ctx, "OperationVersion", vid, vprops)
 }
 
@@ -868,6 +797,8 @@ func (r *WeaviateRepo) GetTraceOperation(ctx context.Context, tenantID, service,
 	      purpose
 	      owner
 	      tags
+	      category
+	      sentiment
 	      updatedAt
 	      _additional { id }
 	    }
@@ -928,13 +859,15 @@ func (r *WeaviateRepo) GetTraceOperation(ctx context.Context, tenantID, service,
 	}
 
 	return &TraceOperationDef{
-		TenantID:  tenantID,
-		Service:   service,
-		Operation: operation,
-		Purpose:   getStr(it, "purpose"),
-		Owner:     getStr(it, "owner"),
-		Tags:      tags,
-		UpdatedAt: updated,
+		TenantID:       tenantID,
+		Service:        service,
+		Operation:      operation,
+		ServicePurpose: getStr(it, "purpose"),
+		Owner:          getStr(it, "owner"),
+		Tags:           tags,
+		Category:       getStr(it, "category"),
+		Sentiment:      getStr(it, "sentiment"),
+		UpdatedAt:      updated,
 	}, nil
 }
 
@@ -1101,6 +1034,8 @@ func serviceVersionPayload() map[string]any {
 			map[string]any{"name": "purpose", "dataType": []string{"text"}},
 			map[string]any{"name": "owner", "dataType": []string{"text"}},
 			stringArray("tags"), // Use string dictionary for tags
+			map[string]any{"name": "category", "dataType": []string{"text"}},
+			map[string]any{"name": "sentiment", "dataType": []string{"text"}},
 			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
 		},
 	}
@@ -1119,6 +1054,8 @@ func operationVersionPayload() map[string]any {
 			map[string]any{"name": "purpose", "dataType": []string{"text"}},
 			map[string]any{"name": "owner", "dataType": []string{"text"}},
 			stringArray("tags"), // Use string dictionary for tags
+			map[string]any{"name": "category", "dataType": []string{"text"}},
+			map[string]any{"name": "sentiment", "dataType": []string{"text"}},
 			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
 		},
 	}
@@ -1135,6 +1072,8 @@ func metricVersionPayload() map[string]any {
 			map[string]any{"name": "definition", "dataType": []string{"text"}},
 			map[string]any{"name": "owner", "dataType": []string{"text"}},
 			stringArray("tags"), // Use string dictionary for tags
+			map[string]any{"name": "category", "dataType": []string{"text"}},
+			map[string]any{"name": "sentiment", "dataType": []string{"text"}},
 			map[string]any{"name": "unit", "dataType": []string{"text"}},
 			map[string]any{"name": "source", "dataType": []string{"text"}},
 			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
@@ -1142,7 +1081,7 @@ func metricVersionPayload() map[string]any {
 	}
 }
 
-// Log field version payload with string dictionary tags and examples
+// Log field version payload with string dictionary tags
 func logFieldVersionPayload() map[string]any {
 	return map[string]any{
 		"name":     "payload",
@@ -1153,7 +1092,8 @@ func logFieldVersionPayload() map[string]any {
 			map[string]any{"name": "type", "dataType": []string{"text"}},
 			map[string]any{"name": "definition", "dataType": []string{"text"}},
 			stringArray("tags"),
-			stringArray("examples"),
+			map[string]any{"name": "category", "dataType": []string{"text"}},
+			map[string]any{"name": "sentiment", "dataType": []string{"text"}},
 			map[string]any{"name": "updatedAt", "dataType": []string{"date"}},
 		},
 	}
@@ -1169,22 +1109,22 @@ func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
 		// Primary classes first (referenced by version classes)
 		{"Label", class("Label", props(
 			text("tenantId"), text("metric"), text("name"), text("definition"), text("type"),
-			boolp("required"), object("allowedValues"), intp("version"), date("updatedAt"),
+			boolp("required"), object("allowedValues"), text("category"), text("sentiment"), intp("version"), date("updatedAt"),
 		))},
 		{"Metric", class("Metric", props(
-			text("tenantId"), text("name"), text("definition"), text("owner"), stringArray("tags"), // Updated to stringDict
+			text("tenantId"), text("name"), text("definition"), text("owner"), stringArray("tags"), text("category"), text("sentiment"),
 			text("unit"), text("source"), intp("version"), date("updatedAt"),
 			refp("labels", "Label"),
 		))},
 		{"LogField", class("LogField", props(
 			text("tenantId"), text("name"), text("type"), text("definition"),
-			stringArray("tags"), stringArray("examples"), intp("version"), date("updatedAt"),
+			stringArray("tags"), text("category"), text("sentiment"), intp("version"), date("updatedAt"),
 		))},
 		{"Service", class("Service", props(
-			text("tenantId"), text("name"), text("definition"), text("purpose"), text("owner"), stringArray("tags"), intp("version"), date("updatedAt"), // Updated to stringDict
+			text("tenantId"), text("name"), text("definition"), text("purpose"), text("owner"), stringArray("tags"), text("category"), text("sentiment"), intp("version"), date("updatedAt"), // Updated to stringDict
 		))},
 		{"Operation", class("Operation", props(
-			text("tenantId"), text("service"), text("name"), text("definition"), text("purpose"), text("owner"), stringArray("tags"), intp("version"), date("updatedAt"), // Updated to stringDict
+			text("tenantId"), text("service"), text("name"), text("definition"), text("purpose"), text("owner"), stringArray("tags"), text("category"), text("sentiment"), intp("version"), date("updatedAt"), // Updated to stringDict
 		))},
 		// Version classes with proper payload schemas
 		{"MetricVersion", class("MetricVersion", props(text("tenantId"), text("name"), intp("version"), metricVersionPayload(), text("author"), date("createdAt")))},
@@ -1205,7 +1145,7 @@ func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
 }
 
 // UpsertLabel creates/updates an independent label definition (not metric-scoped)
-func (r *WeaviateRepo) UpsertLabel(ctx context.Context, tenantID, name, typ string, required bool, allowed map[string]any, description, author string) error {
+func (r *WeaviateRepo) UpsertLabel(ctx context.Context, tenantID, name, typ string, required bool, allowed map[string]any, description, category, sentiment, author string) error {
 	next, _ := r.maxVersion(ctx, "LabelVersion", map[string]string{"tenantId": tenantID, "name": name})
 	nowRFC := time.Now().UTC().Format(time.RFC3339Nano)
 	obj := map[string]any{
@@ -1215,6 +1155,8 @@ func (r *WeaviateRepo) UpsertLabel(ctx context.Context, tenantID, name, typ stri
 		"required":      required,
 		"allowedValues": allowed,
 		"definition":    description,
+		"category":      category,
+		"sentiment":     sentiment,
 		"version":       next,
 		"updatedAt":     nowRFC,
 	}
@@ -1234,6 +1176,8 @@ func (r *WeaviateRepo) UpsertLabel(ctx context.Context, tenantID, name, typ stri
 			"required":      required,
 			"allowedValues": allowed,
 			"definition":    description,
+			"category":      category,
+			"sentiment":     sentiment,
 			"updatedAt":     nowRFC,
 		},
 		"author":    author,
@@ -1254,7 +1198,7 @@ func (r *WeaviateRepo) GetLabel(ctx context.Context, tenantID, name string) (*La
           { path: ["tenantId"], operator: Equal, valueString: "%s" },
           { path: ["name"], operator: Equal, valueString: "%s" }
         ]}, limit: 1) {
-          type required allowedValues definition updatedAt
+          type required allowedValues definition category sentiment updatedAt
         }
       }
     }`, esc(tenantID), esc(name))
@@ -1285,7 +1229,9 @@ func (r *WeaviateRepo) GetLabel(ctx context.Context, tenantID, name string) (*La
 	tstr, _ := it["type"].(string)
 	req, _ := it["required"].(bool)
 	def, _ := it["definition"].(string)
-	return &LabelDef{TenantID: tenantID, Name: name, Type: tstr, Required: req, AllowedVals: allowed, Description: def, UpdatedAt: upd}, nil
+	cat, _ := it["category"].(string)
+	sent, _ := it["sentiment"].(string)
+	return &LabelDef{TenantID: tenantID, Name: name, Type: tstr, Required: req, AllowedVals: allowed, Description: def, Category: cat, Sentiment: sent, UpdatedAt: upd}, nil
 }
 
 func (r *WeaviateRepo) ListLabelVersions(ctx context.Context, tenantID, name string) ([]VersionInfo, error) {

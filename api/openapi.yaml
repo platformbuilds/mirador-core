@@ -569,9 +569,9 @@ paths:
       description: |
         Upload a CSV to create/update trace service definitions.
         CSV columns (header required; strict header mode):
-        - tenant_id (optional; defaults to request tenant)
+        - tenantId (optional; defaults to request tenant)
         - service (required)
-        - purpose, owner, tags_json (JSON array), author
+        - servicePurpose, owner, tags (JSON array), author
         Security: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.
         Limits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).
       requestBody:
@@ -671,10 +671,10 @@ paths:
       description: |
         Upload a CSV to create/update trace operation definitions. Operations are scoped per service; rows referencing undefined services are rejected.
         CSV columns (header required; strict header mode):
-        - tenant_id (optional; defaults to request tenant)
+        - tenantId (optional; defaults to request tenant)
         - service (required)
         - operation (required)
-        - purpose, owner, tags_json (JSON array), author
+        - servicePurpose, owner, tags (JSON array), author
         Security: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.
         Limits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).
       requestBody:
@@ -783,6 +783,8 @@ paths:
                 tags:
                   type: array
                   items: { type: string }
+                category: { type: string }
+                sentiment: { type: string }
                 author: { type: string }
       responses:
         '200': { description: OK }
@@ -797,16 +799,18 @@ paths:
 
         Columns (header required):
 
-        - tenant_id (optional; defaults to authenticated tenant)
+        - tenantId (optional; defaults to authenticated tenant)
         - metric (required)
         - description
         - owner
-        - tags_json (JSON array)
+        - tags (JSON array)
+        - category
+        - sentiment
         - label
-        - label_type
-        - label_required (true/false/1/0/yes/no)
-        - label_allowed_json (JSON object)
-        - label_description
+        - labelType
+        - labelRequired (true/false/1/0/yes/no)
+        - labelAllowed (JSON object)
+        - labelDescription
         - author
 
         Note: Use the sample endpoint below to generate a pre-filled template.
@@ -919,6 +923,43 @@ paths:
           description: OK
         '404': { description: Not Found }
 
+  /schema/metrics/{metric}/labels:
+    post:
+      tags: [schema]
+      summary: Upsert metric label definition
+      description: Create or update a label definition for a specific metric and record a new version.
+      parameters:
+        - in: path
+          name: metric
+          required: true
+          schema: { type: string }
+          description: The metric name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label]
+              properties:
+                tenantId: { type: string, description: Optional tenant ID (defaults to request tenant) }
+                label: { type: string, description: Label name }
+                type: { type: string, description: Data type (string, number, bool, etc.) }
+                required: { type: boolean, description: Whether the label is required }
+                allowedValues: { type: object, additionalProperties: true, description: Optional allowed set or constraints map }
+                description: { type: string, description: Label description }
+                author: { type: string, description: Author of this change }
+            example:
+              label: "instance"
+              type: "string"
+              required: false
+              allowedValues: {}
+              description: "Pod or host instance label"
+              author: "aarvee"
+      responses:
+        '200': { description: OK }
+        '400': { description: Bad Request }
+        '500': { description: Internal Server Error }
   # Independent Labels Schema
   /schema/labels:
     post:
@@ -1021,11 +1062,11 @@ paths:
         Security: 5MiB payload limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota.
 
         Columns (header required):
-        - tenant_id (optional)
+        - tenantId (optional)
         - name (required)
         - type
         - required (true/false/1/0/yes/no)
-        - allowed_json (JSON object)
+        - allowed (JSON object)
         - description
         - author
       requestBody:
@@ -1073,10 +1114,11 @@ paths:
                 field: { type: string }
                 type: { type: string }
                 description: { type: string }
+                category: { type: string }
+                sentiment: { type: string }
                 tags:
                   type: array
                   items: { type: string }
-                examples: { type: object, additionalProperties: true }
                 author: { type: string }
       responses:
         '200': { description: OK }
@@ -1090,13 +1132,14 @@ paths:
         Security: 5MiB payload limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota.
 
         Columns (header required):
-        - tenant_id (optional)
-        - field (required)
-        - type
-        - description
-        - tags_json (JSON array)
-        - examples_json (JSON object)
-        - author
+        - tenantId (optional)
+        - category (optional)
+        - logFieldName (required)
+        - logFieldType (optional)
+        - logFieldDefinition (optional)
+        - sentiment (optional)
+        - tags (optional, JSON array)
+        - author (optional)
       requestBody:
         required: true
         content:
@@ -1579,7 +1622,7 @@ paths:
     post:
       tags: [metrics]
       summary: Execute MetricsQL transform function (range)
-      description: Executes a MetricsQL transform function over a time range specified by the {function} path parameter. Supported functions include abs, absent, ceil, clamp, clamp_max, clamp_min, day_of_month, day_of_week, days_in_month, deg, exp, floor, histogram_quantile, hour, ln, log10, log2, minute, month, pi, rad, rate, round, scalar, sgn, sin, sqrt, tan, time, timestamp, vector, year, and more.
+      description: Executes a MetricsQL transform function over a time range specified by the {function} path parameter. Supported functions include abs, absent, ceil, clamp, clamp_max, clamp_min, day_of_month, day_of_week, days_in_month, deg, exp, floor, histogram_quantile, hour, ln, log10, log2, minute, month, pi, rad, rate, round, scalar, sgn, sin, sqrt, tan, time, timestamp, vector, year, label_replace, label_join, label_set, label_keep, label_drop, label_match, label_mismatch]
       parameters:
         - name: function
           in: path
@@ -1668,7 +1711,7 @@ paths:
     post:
       tags: [metrics]
       summary: Execute MetricsQL aggregate function (range)
-      description: Executes a MetricsQL aggregate function over a time range specified by the {function} path parameter. Supported functions include sum, avg, count, min, max, stddev, stdvar, quantile, topk, bottomk, count_values, absent, increase, delta, rate, irate, deriv, idelta, ideriv, and more.
+      description: Executes a MetricsQL aggregate function over a time range specified by the {function} path parameter. Supported functions include sum, avg, count, min, max, stddev, stdvar, quantile, topk, bottomk, count_values, absent, increase, delta, rate, irate, deriv, idelta, ideriv, group, histogram, and, or, unless]
       parameters:
         - name: function
           in: path
@@ -2401,142 +2444,3 @@ paths:
       summary: Predictions stream (WebSocket)
       responses:
         '101': { description: Switching Protocols }
-
-# Trace Service Schema
-TraceServiceRequest:
-  type: object
-  properties:
-    tenantId: 
-      type: string
-      description: Optional tenant ID (defaults to request tenant)
-    service: 
-      type: string
-      description: Service name
-    purpose: 
-      type: string
-      description: Service purpose/description
-    owner: 
-      type: string
-      description: Service owner
-    tags:
-      type: array
-      items: { type: string }
-      description: Flat list of tags (e.g., "key:value" or free-form labels)
-      example: ["environment:production", "team:platform", "version:1.2.3"]
-    author: 
-      type: string
-      description: Author of this change
-  required: [service]
-
-# Trace Operation Schema  
-TraceOperationRequest:
-  type: object
-  properties:
-    tenantId: 
-      type: string
-      description: Optional tenant ID (defaults to request tenant)
-    service: 
-      type: string
-      description: Service name
-    operation: 
-      type: string
-      description: Operation name
-    purpose: 
-      type: string
-      description: Operation purpose/description
-    owner: 
-      type: string
-      description: Operation owner
-    tags:
-      type: array
-      items: { type: string }
-      description: Flat list of tags
-      example: ["GET", "/api/v1/users", "30s"]
-    author: 
-      type: string
-      description: Author of this change
-  required: [service, operation]
-
-# Metric Schema
-MetricRequest:
-  type: object
-  properties:
-    tenantId: 
-      type: string
-      description: Optional tenant ID (defaults to request tenant)
-    metric: 
-      type: string
-      description: Metric name
-    description: 
-      type: string
-      description: Metric description
-    owner: 
-      type: string
-      description: Metric owner
-    tags:
-      type: array
-      items: { type: string }
-      description: Flat list of tags
-      example: ["category:performance", "unit:seconds", "source:prometheus"]
-    author: 
-      type: string
-      description: Author of this change
-  required: [metric]
-
-# Log Field Schema
-LogFieldRequest:
-  type: object
-  properties:
-    tenantId: 
-      type: string
-      description: Optional tenant ID (defaults to request tenant)
-    field: 
-      type: string
-      description: Log field name
-    type: 
-      type: string
-      description: Field data type
-    description: 
-      type: string
-      description: Field description
-    tags:
-      type: array
-      items: { type: string }
-      description: Flat list of tags
-      example: ["category:security", "format:json", "indexed:true"]
-    examples: 
-      type: object
-      additionalProperties:
-        type: string
-      description: Example values as key-value string pairs
-      example:
-        normal: "INFO"
-        error: "ERROR"
-        debug: "DEBUG"
-    author: 
-      type: string
-      description: Author of this change
-  required: [field]
-LabelRequest:
-  type: object
-  properties:
-    tenantId:
-      type: string
-      description: Optional tenant ID (defaults to request tenant)
-    name:
-      type: string
-      description: Label name (e.g., instance)
-    type:
-      type: string
-      description: Data type (string, number, bool, etc.)
-    required:
-      type: boolean
-    allowedValues:
-      type: object
-      additionalProperties: true
-      description: Optional allowed set or constraints map
-    description:
-      type: string
-    author:
-      type: string
-      description: Author of this change

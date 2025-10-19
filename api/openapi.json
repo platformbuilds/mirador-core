@@ -885,7 +885,7 @@
           "schema"
         ],
         "summary": "Bulk upsert trace services via CSV",
-        "description": "Upload a CSV to create/update trace service definitions.\nCSV columns (header required; strict header mode):\n- tenant_id (optional; defaults to request tenant)\n- service (required)\n- purpose, owner, tags_json (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).\n",
+        "description": "Upload a CSV to create/update trace service definitions.\nCSV columns (header required; strict header mode):\n- tenantId (optional; defaults to request tenant)\n- service (required)\n- servicePurpose, owner, tags_json (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -1078,7 +1078,7 @@
           "schema"
         ],
         "summary": "Bulk upsert trace operations via CSV",
-        "description": "Upload a CSV to create/update trace operation definitions. Operations are scoped per service; rows referencing undefined services are rejected.\nCSV columns (header required; strict header mode):\n- tenant_id (optional; defaults to request tenant)\n- service (required)\n- operation (required)\n- purpose, owner, tags_json (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).\n",
+        "description": "Upload a CSV to create/update trace operation definitions. Operations are scoped per service; rows referencing undefined services are rejected.\nCSV columns (header required; strict header mode):\n- tenantId (optional; defaults to request tenant)\n- service (required)\n- operation (required)\n- servicePurpose, owner, tags_json (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -4297,7 +4297,7 @@
         "type": "string",
         "description": "Service name"
       },
-      "purpose": {
+      "servicePurpose": {
         "type": "string",
         "description": "Service purpose/description"
       },
@@ -4341,7 +4341,7 @@
         "type": "string",
         "description": "Operation name"
       },
-      "purpose": {
+      "servicePurpose": {
         "type": "string",
         "description": "Operation purpose/description"
       },
@@ -4418,15 +4418,15 @@
         "type": "string",
         "description": "Optional tenant ID (defaults to request tenant)"
       },
-      "field": {
+      "logFieldName": {
         "type": "string",
         "description": "Log field name"
       },
-      "type": {
+      "logFieldType": {
         "type": "string",
         "description": "Field data type"
       },
-      "description": {
+      "logFieldDefinition": {
         "type": "string",
         "description": "Field description"
       },
@@ -4460,7 +4460,7 @@
       }
     },
     "required": [
-      "field"
+      "logFieldName"
     ]
   },
   "LabelRequest": {

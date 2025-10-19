@@ -5079,7 +5079,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"field\": \"service\",\n  \"type\": \"string\",\n  \"description\": \"Service name\",\n  \"tags\": [\"category:identity\"],\n  \"examples\": {\"normal\": \"auth\"},\n  \"author\": \"user@example.com\"\n}"
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"logFieldName\": \"service\",\n  \"logFieldType\": \"string\",\n  \"logFieldDefinition\": \"Service name\",\n  \"tags\": [\"category:identity\"],\n  \"examples\": {\"normal\": \"auth\"},\n  \"author\": \"user@example.com\"\n}"
             }
           }
         },
@@ -5098,7 +5098,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"service\": \"checkout\",\n  \"purpose\": \"handles customer checkout\",\n  \"owner\": \"team-payments\",\n  \"tags\": [\"environment:production\", \"team:platform\"],\n  \"author\": \"user@example.com\"\n}"
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"service\": \"checkout\",\n  \"servicePurpose\": \"handles customer checkout\",\n  \"owner\": \"team-payments\",\n  \"tags\": [\"environment:production\", \"team:platform\"],\n  \"author\": \"user@example.com\"\n}"
             }
           }
         },
@@ -5117,7 +5117,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"service\": \"checkout\",\n  \"operation\": \"CreateOrder\",\n  \"purpose\": \"creates orders\",\n  \"owner\": \"team-payments\",\n  \"tags\": [\"method:POST\", \"endpoint:/api/v1/orders\"],\n  \"author\": \"user@example.com\"\n}"
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"service\": \"checkout\",\n  \"operation\": \"CreateOrder\",\n  \"servicePurpose\": \"creates orders\",\n  \"owner\": \"team-payments\",\n  \"tags\": [\"method:POST\", \"endpoint:/api/v1/orders\"],\n  \"author\": \"user@example.com\"\n}"
             }
           }
         },

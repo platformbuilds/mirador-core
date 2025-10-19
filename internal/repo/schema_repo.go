@@ -14,6 +14,8 @@ type MetricDef struct {
 	Description string    `json:"description"`
 	Owner       string    `json:"owner"`
 	Tags        []string  `json:"tags"`
+	Category    string    `json:"category"`
+	Sentiment   string    `json:"sentiment"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
@@ -23,7 +25,8 @@ type LogFieldDef struct {
 	Type        string    `json:"type"`
 	Description string    `json:"description"`
 	Tags        []string  `json:"tags"`
-	Examples    []string  `json:"examples"`
+	Category    string    `json:"category"`
+	Sentiment   string    `json:"sentiment"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
@@ -39,9 +42,9 @@ func (r *SchemaRepo) UpsertMetric(ctx context.Context, m MetricDef, author strin
 	}
 	defer func() { _ = tx.Rollback() }()
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO metric_def (tenant_id, metric, description, owner, tags, current_version) VALUES (?,?,?,?,?,current_version)
-         ON DUPLICATE KEY UPDATE description=VALUES(description), owner=VALUES(owner), tags=VALUES(tags), updated_at=CURRENT_TIMESTAMP`,
-		m.TenantID, m.Metric, m.Description, m.Owner, string(tagsJSON)); err != nil {
+		`INSERT INTO metric_def (tenant_id, metric, description, owner, tags, category, sentiment, current_version) VALUES (?,?,?,?,?,?,?,current_version)
+         ON DUPLICATE KEY UPDATE description=VALUES(description), owner=VALUES(owner), tags=VALUES(tags), category=VALUES(category), sentiment=VALUES(sentiment), updated_at=CURRENT_TIMESTAMP`,
+		m.TenantID, m.Metric, m.Description, m.Owner, string(tagsJSON), m.Category, m.Sentiment); err != nil {
 		return err
 	}
 	// bump version counter
@@ -61,32 +64,31 @@ func (r *SchemaRepo) UpsertMetric(ctx context.Context, m MetricDef, author strin
 }
 
 func (r *SchemaRepo) GetMetric(ctx context.Context, tenantID, metric string) (*MetricDef, error) {
-	row := r.DB.QueryRowContext(ctx, `SELECT description, owner, tags, updated_at FROM metric_def WHERE tenant_id=? AND metric=?`, tenantID, metric)
-	var desc, owner string
+	row := r.DB.QueryRowContext(ctx, `SELECT description, owner, tags, category, sentiment, updated_at FROM metric_def WHERE tenant_id=? AND metric=?`, tenantID, metric)
+	var desc, owner, category, sentiment string
 	var tagsRaw sql.NullString
 	var updated time.Time
-	if err := row.Scan(&desc, &owner, &tagsRaw, &updated); err != nil {
+	if err := row.Scan(&desc, &owner, &tagsRaw, &category, &sentiment, &updated); err != nil {
 		return nil, err
 	}
 	var tags []string
 	if tagsRaw.Valid {
 		_ = json.Unmarshal([]byte(tagsRaw.String), &tags)
 	}
-	return &MetricDef{TenantID: tenantID, Metric: metric, Description: desc, Owner: owner, Tags: tags, UpdatedAt: updated}, nil
+	return &MetricDef{TenantID: tenantID, Metric: metric, Description: desc, Owner: owner, Tags: tags, Category: category, Sentiment: sentiment, UpdatedAt: updated}, nil
 }
 
 func (r *SchemaRepo) UpsertLogField(ctx context.Context, f LogFieldDef, author string) error {
 	tagsJSON, _ := json.Marshal(f.Tags)
-	exJSON, _ := json.Marshal(f.Examples)
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO log_field_def (tenant_id, field, type, description, tags, examples) VALUES (?,?,?,?,?,?)
-         ON DUPLICATE KEY UPDATE type=VALUES(type), description=VALUES(description), tags=VALUES(tags), examples=VALUES(examples), updated_at=CURRENT_TIMESTAMP`,
-		f.TenantID, f.Field, f.Type, f.Description, string(tagsJSON), string(exJSON)); err != nil {
+		`INSERT INTO log_field_def (tenant_id, field, type, description, tags, category, sentiment) VALUES (?,?,?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE type=VALUES(type), description=VALUES(description), tags=VALUES(tags), category=VALUES(category), sentiment=VALUES(sentiment), updated_at=CURRENT_TIMESTAMP`,
+		f.TenantID, f.Field, f.Type, f.Description, string(tagsJSON), f.Category, f.Sentiment); err != nil {
 		return err
 	}
 	// bump & version
@@ -103,38 +105,51 @@ func (r *SchemaRepo) UpsertLogField(ctx context.Context, f LogFieldDef, author s
 }
 
 func (r *SchemaRepo) GetLogField(ctx context.Context, tenantID, field string) (*LogFieldDef, error) {
-	row := r.DB.QueryRowContext(ctx, `SELECT type, description, tags, examples, updated_at FROM log_field_def WHERE tenant_id=? AND field=?`, tenantID, field)
-	var typ, desc string
-	var tagsRaw, exRaw sql.NullString
+	row := r.DB.QueryRowContext(ctx, `SELECT type, description, tags, category, sentiment, updated_at FROM log_field_def WHERE tenant_id=? AND field=?`, tenantID, field)
+	var typ, desc, category, sentiment string
+	var tagsRaw sql.NullString
 	var updated time.Time
-	if err := row.Scan(&typ, &desc, &tagsRaw, &exRaw, &updated); err != nil {
+	if err := row.Scan(&typ, &desc, &tagsRaw, &category, &sentiment, &updated); err != nil {
 		return nil, err
 	}
 	var tags []string
-	var ex []string
 
 	if tagsRaw.Valid {
 		_ = json.Unmarshal([]byte(tagsRaw.String), &tags)
 	}
-	if exRaw.Valid {
-		_ = json.Unmarshal([]byte(exRaw.String), &ex)
-	}
-	return &LogFieldDef{TenantID: tenantID, Field: field, Type: typ, Description: desc, Tags: tags, Examples: ex, UpdatedAt: updated}, nil
+	return &LogFieldDef{TenantID: tenantID, Field: field, Type: typ, Description: desc, Tags: tags, Category: category, Sentiment: sentiment, UpdatedAt: updated}, nil
 }
 
-// UpsertMetricLabel inserts or updates a metric label definition.
-func (r *SchemaRepo) UpsertMetricLabel(ctx context.Context, tenantID, metric, label, typ string, required bool, allowed map[string]any, description string) error {
+// UpsertLabel inserts or updates a label definition.
+func (r *SchemaRepo) UpsertLabel(ctx context.Context, tenantID, name, typ string, required bool, allowed map[string]any, description, category, sentiment, author string) error {
 	allowedJSON, _ := json.Marshal(allowed)
 	_, err := r.DB.ExecContext(ctx,
-		`INSERT INTO metric_label_def (tenant_id, metric, label, type, required, allowed_values, description)
-         VALUES (?,?,?,?,?,?,?)
-         ON DUPLICATE KEY UPDATE type=VALUES(type), required=VALUES(required), allowed_values=VALUES(allowed_values), description=VALUES(description)`,
-		tenantID, metric, label, typ, required, string(allowedJSON), description)
+		`INSERT INTO label_def (tenant_id, name, type, required, allowed_values, description, category, sentiment)
+         VALUES (?,?,?,?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE type=VALUES(type), required=VALUES(required), allowed_values=VALUES(allowed_values), description=VALUES(description), category=VALUES(category), sentiment=VALUES(sentiment), updated_at=CURRENT_TIMESTAMP`,
+		tenantID, name, typ, required, string(allowedJSON), description, category, sentiment)
 	return err
 }
 
+// GetLabel retrieves a label definition.
+func (r *SchemaRepo) GetLabel(ctx context.Context, tenantID, name string) (*LabelDef, error) {
+	row := r.DB.QueryRowContext(ctx, `SELECT type, required, allowed_values, description, category, sentiment, updated_at FROM label_def WHERE tenant_id=? AND name=?`, tenantID, name)
+	var typ, desc, category, sentiment string
+	var req bool
+	var allowed sql.NullString
+	var updated time.Time
+	if err := row.Scan(&typ, &req, &allowed, &desc, &category, &sentiment, &updated); err != nil {
+		return nil, err
+	}
+	var allowedMap map[string]any
+	if allowed.Valid {
+		_ = json.Unmarshal([]byte(allowed.String), &allowedMap)
+	}
+	return &LabelDef{TenantID: tenantID, Name: name, Type: typ, Required: req, AllowedVals: allowedMap, Description: desc, Category: category, Sentiment: sentiment, UpdatedAt: updated}, nil
+}
+
 // Versioned upserts with author for traces service/operation
-func (r *SchemaRepo) UpsertTraceServiceWithAuthor(ctx context.Context, tenantID, service, purpose, owner string, tags []string, author string) error {
+func (r *SchemaRepo) UpsertTraceServiceWithAuthor(ctx context.Context, tenantID, service, servicePurpose, owner, category, sentiment string, tags []string, author string) error {
 	tagsJSON, _ := json.Marshal(tags)
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -142,10 +157,10 @@ func (r *SchemaRepo) UpsertTraceServiceWithAuthor(ctx context.Context, tenantID,
 	}
 	defer func() { _ = tx.Rollback() }()
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO traces_service_def (tenant_id, service, purpose, owner, tags)
-         VALUES (?,?,?,?,?)
-         ON DUPLICATE KEY UPDATE purpose=VALUES(purpose), owner=VALUES(owner), tags=VALUES(tags), updated_at=CURRENT_TIMESTAMP`,
-		tenantID, service, purpose, owner, string(tagsJSON)); err != nil {
+		`INSERT INTO traces_service_def (tenant_id, service, service_purpose, owner, tags, category, sentiment)
+         VALUES (?,?,?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE service_purpose=VALUES(service_purpose), owner=VALUES(owner), tags=VALUES(tags), category=VALUES(category), sentiment=VALUES(sentiment), updated_at=CURRENT_TIMESTAMP`,
+		tenantID, service, servicePurpose, owner, string(tagsJSON), category, sentiment); err != nil {
 		return err
 	}
 	var ver int64
@@ -153,12 +168,14 @@ func (r *SchemaRepo) UpsertTraceServiceWithAuthor(ctx context.Context, tenantID,
 		return err
 	}
 	payload, _ := json.Marshal(map[string]any{
-		"tenantId":  tenantID,
-		"service":   service,
-		"purpose":   purpose,
-		"owner":     owner,
-		"tags":      tags,
-		"updatedAt": time.Now(),
+		"tenantId":       tenantID,
+		"service":        service,
+		"servicePurpose": servicePurpose,
+		"owner":          owner,
+		"tags":           tags,
+		"category":       category,
+		"sentiment":      sentiment,
+		"updatedAt":      time.Now(),
 	})
 	if _, err := tx.ExecContext(ctx, `INSERT INTO traces_service_def_versions(tenant_id,service,version,payload,author) VALUES (?,?,?,?,?)`, tenantID, service, ver, string(payload), author); err != nil {
 		return err
@@ -166,7 +183,7 @@ func (r *SchemaRepo) UpsertTraceServiceWithAuthor(ctx context.Context, tenantID,
 	return tx.Commit()
 }
 
-func (r *SchemaRepo) UpsertTraceOperationWithAuthor(ctx context.Context, tenantID, service, operation, purpose, owner string, tags []string, author string) error {
+func (r *SchemaRepo) UpsertTraceOperationWithAuthor(ctx context.Context, tenantID, service, operation, servicePurpose, owner, category, sentiment string, tags []string, author string) error {
 	tagsJSON, _ := json.Marshal(tags)
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -174,10 +191,10 @@ func (r *SchemaRepo) UpsertTraceOperationWithAuthor(ctx context.Context, tenantI
 	}
 	defer func() { _ = tx.Rollback() }()
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO traces_operation_def (tenant_id, service, operation, purpose, owner, tags)
-         VALUES (?,?,?,?,?,?)
-         ON DUPLICATE KEY UPDATE purpose=VALUES(purpose), owner=VALUES(owner), tags=VALUES(tags), updated_at=CURRENT_TIMESTAMP`,
-		tenantID, service, operation, purpose, owner, string(tagsJSON)); err != nil {
+		`INSERT INTO traces_operation_def (tenant_id, service, operation, service_purpose, owner, tags, category, sentiment)
+         VALUES (?,?,?,?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE service_purpose=VALUES(service_purpose), owner=VALUES(owner), tags=VALUES(tags), category=VALUES(category), sentiment=VALUES(sentiment), updated_at=CURRENT_TIMESTAMP`,
+		tenantID, service, operation, servicePurpose, owner, string(tagsJSON), category, sentiment); err != nil {
 		return err
 	}
 	var ver int64
@@ -185,13 +202,15 @@ func (r *SchemaRepo) UpsertTraceOperationWithAuthor(ctx context.Context, tenantI
 		return err
 	}
 	payload, _ := json.Marshal(map[string]any{
-		"tenantId":  tenantID,
-		"service":   service,
-		"operation": operation,
-		"purpose":   purpose,
-		"owner":     owner,
-		"tags":      tags,
-		"updatedAt": time.Now(),
+		"tenantId":       tenantID,
+		"service":        service,
+		"operation":      operation,
+		"servicePurpose": servicePurpose,
+		"owner":          owner,
+		"tags":           tags,
+		"category":       category,
+		"sentiment":      sentiment,
+		"updatedAt":      time.Now(),
 	})
 	if _, err := tx.ExecContext(ctx, `INSERT INTO traces_operation_def_versions(tenant_id,service,operation,version,payload,author) VALUES (?,?,?,?,?,?)`, tenantID, service, operation, ver, string(payload), author); err != nil {
 		return err
@@ -201,22 +220,26 @@ func (r *SchemaRepo) UpsertTraceOperationWithAuthor(ctx context.Context, tenantI
 
 // Trace schema models and getters
 type TraceServiceDef struct {
-	TenantID  string    `json:"tenantId"`
-	Service   string    `json:"service"`
-	Purpose   string    `json:"purpose"`
-	Owner     string    `json:"owner"`
-	Tags      []string  `json:"tags"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	TenantID       string    `json:"tenantId"`
+	Service        string    `json:"service"`
+	ServicePurpose string    `json:"servicePurpose"`
+	Owner          string    `json:"owner"`
+	Tags           []string  `json:"tags"`
+	Category       string    `json:"category"`
+	Sentiment      string    `json:"sentiment"`
+	UpdatedAt      time.Time `json:"updatedAt"`
 }
 
 type TraceOperationDef struct {
-	TenantID  string    `json:"tenantId"`
-	Service   string    `json:"service"`
-	Operation string    `json:"operation"`
-	Purpose   string    `json:"purpose"`
-	Owner     string    `json:"owner"`
-	Tags      []string  `json:"tags"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	TenantID       string    `json:"tenantId"`
+	Service        string    `json:"service"`
+	Operation      string    `json:"operation"`
+	ServicePurpose string    `json:"servicePurpose"`
+	Owner          string    `json:"owner"`
+	Tags           []string  `json:"tags"`
+	Category       string    `json:"category"`
+	Sentiment      string    `json:"sentiment"`
+	UpdatedAt      time.Time `json:"updatedAt"`
 }
 
 // Independent Label definition
@@ -227,37 +250,39 @@ type LabelDef struct {
 	Required    bool           `json:"required"`
 	AllowedVals map[string]any `json:"allowedValues"`
 	Description string         `json:"description"`
+	Category    string         `json:"category"`
+	Sentiment   string         `json:"sentiment"`
 	UpdatedAt   time.Time      `json:"updatedAt"`
 }
 
 func (r *SchemaRepo) GetTraceService(ctx context.Context, tenantID, service string) (*TraceServiceDef, error) {
-	row := r.DB.QueryRowContext(ctx, `SELECT purpose, owner, tags, updated_at FROM traces_service_def WHERE tenant_id=? AND service=?`, tenantID, service)
-	var purpose, owner string
+	row := r.DB.QueryRowContext(ctx, `SELECT service_purpose, owner, tags, category, sentiment, updated_at FROM traces_service_def WHERE tenant_id=? AND service=?`, tenantID, service)
+	var servicePurpose, owner, category, sentiment string
 	var tagsRaw sql.NullString
 	var updated time.Time
-	if err := row.Scan(&purpose, &owner, &tagsRaw, &updated); err != nil {
+	if err := row.Scan(&servicePurpose, &owner, &tagsRaw, &category, &sentiment, &updated); err != nil {
 		return nil, err
 	}
 	var tags []string
 	if tagsRaw.Valid {
 		_ = json.Unmarshal([]byte(tagsRaw.String), &tags)
 	}
-	return &TraceServiceDef{TenantID: tenantID, Service: service, Purpose: purpose, Owner: owner, Tags: tags, UpdatedAt: updated}, nil
+	return &TraceServiceDef{TenantID: tenantID, Service: service, ServicePurpose: servicePurpose, Owner: owner, Tags: tags, Category: category, Sentiment: sentiment, UpdatedAt: updated}, nil
 }
 
 func (r *SchemaRepo) GetTraceOperation(ctx context.Context, tenantID, service, operation string) (*TraceOperationDef, error) {
-	row := r.DB.QueryRowContext(ctx, `SELECT purpose, owner, tags, updated_at FROM traces_operation_def WHERE tenant_id=? AND service=? AND operation=?`, tenantID, service, operation)
-	var purpose, owner string
+	row := r.DB.QueryRowContext(ctx, `SELECT service_purpose, owner, tags, category, sentiment, updated_at FROM traces_operation_def WHERE tenant_id=? AND service=? AND operation=?`, tenantID, service, operation)
+	var servicePurpose, owner, category, sentiment string
 	var tagsRaw sql.NullString
 	var updated time.Time
-	if err := row.Scan(&purpose, &owner, &tagsRaw, &updated); err != nil {
+	if err := row.Scan(&servicePurpose, &owner, &tagsRaw, &category, &sentiment, &updated); err != nil {
 		return nil, err
 	}
 	var tags []string
 	if tagsRaw.Valid {
 		_ = json.Unmarshal([]byte(tagsRaw.String), &tags)
 	}
-	return &TraceOperationDef{TenantID: tenantID, Service: service, Operation: operation, Purpose: purpose, Owner: owner, Tags: tags, UpdatedAt: updated}, nil
+	return &TraceOperationDef{TenantID: tenantID, Service: service, Operation: operation, ServicePurpose: servicePurpose, Owner: owner, Tags: tags, Category: category, Sentiment: sentiment, UpdatedAt: updated}, nil
 }
 
 func (r *SchemaRepo) ListTraceServiceVersions(ctx context.Context, tenantID, service string) ([]VersionInfo, error) {

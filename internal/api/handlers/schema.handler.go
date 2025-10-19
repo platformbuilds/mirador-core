@@ -43,6 +43,8 @@ type upsertLabelReq struct {
 	Required    bool           `json:"required"`
 	Allowed     map[string]any `json:"allowedValues"`
 	Description string         `json:"description"`
+	Category    string         `json:"category"`
+	Sentiment   string         `json:"sentiment"`
 	Author      string         `json:"author"`
 }
 
@@ -55,7 +57,20 @@ func (h *SchemaHandler) UpsertLabel(c *gin.Context) {
 	if req.TenantID == "" {
 		req.TenantID = c.GetString("tenant_id")
 	}
-	if err := h.repo.UpsertLabel(c.Request.Context(), req.TenantID, req.Name, req.Type, req.Required, req.Allowed, req.Description, req.Author); err != nil {
+	if req.Category == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "category is required"})
+		return
+	}
+	if req.Sentiment == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "sentiment is required"})
+		return
+	}
+	validSentiments := map[string]bool{"NEGATIVE": true, "POSITIVE": true, "NEUTRAL": true}
+	if !validSentiments[strings.ToUpper(req.Sentiment)] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "sentiment must be one of: NEGATIVE, POSITIVE, NEUTRAL"})
+		return
+	}
+	if err := h.repo.UpsertLabel(c.Request.Context(), req.TenantID, req.Name, req.Type, req.Required, req.Allowed, req.Description, req.Category, req.Sentiment, req.Author); err != nil {
 		h.logger.Error("label upsert failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "upsert failed"})
 		return
@@ -124,7 +139,7 @@ func (h *SchemaHandler) DeleteLabel(c *gin.Context) {
 }
 
 // Bulk upsert labels via CSV
-// Columns: tenant_id (optional), name (required), type, required, allowed_json, description, author
+// Columns: tenant_id (optional), name (required), type, required, allowed_json, description, category (required), sentiment (required), author
 func (h *SchemaHandler) BulkUpsertLabelsCSV(c *gin.Context) {
 	if limited := h.enforceQuota(c, "labels", 20); limited {
 		return
@@ -159,7 +174,7 @@ func (h *SchemaHandler) BulkUpsertLabelsCSV(c *gin.Context) {
 	for i, col := range headerRow {
 		idx[strings.ToLower(strings.TrimSpace(col))] = i
 	}
-	allowed := map[string]struct{}{"tenant_id": {}, "name": {}, "type": {}, "required": {}, "allowed_json": {}, "description": {}, "author": {}}
+	allowed := map[string]struct{}{"tenantid": {}, "name": {}, "type": {}, "required": {}, "allowed": {}, "description": {}, "category": {}, "sentiment": {}, "author": {}}
 	for k := range idx {
 		if _, ok := allowed[k]; !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown column: " + k})
@@ -168,6 +183,14 @@ func (h *SchemaHandler) BulkUpsertLabelsCSV(c *gin.Context) {
 	}
 	if _, ok := idx["name"]; !ok {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: name"})
+		return
+	}
+	if _, ok := idx["category"]; !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: category"})
+		return
+	}
+	if _, ok := idx["sentiment"]; !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: sentiment"})
 		return
 	}
 	tenantOverride := c.GetString("tenant_id")
@@ -190,7 +213,7 @@ func (h *SchemaHandler) BulkUpsertLabelsCSV(c *gin.Context) {
 			}
 			return ""
 		}
-		tenant := get("tenant_id")
+		tenant := get("tenantid")
 		if tenant == "" {
 			tenant = tenantOverride
 		}
@@ -202,14 +225,29 @@ func (h *SchemaHandler) BulkUpsertLabelsCSV(c *gin.Context) {
 		ltype := get("type")
 		reqStr := strings.ToLower(get("required"))
 		required := reqStr == "true" || reqStr == "1" || reqStr == "yes"
-		allowedJSON := get("allowed_json")
+		allowedJSON := get("allowed")
 		var allowed map[string]any
 		if allowedJSON != "" {
 			_ = json.Unmarshal([]byte(allowedJSON), &allowed)
 		}
 		desc := get("description")
+		category := get("category")
+		if category == "" {
+			rowErrs = append(rowErrs, "missing category")
+			continue
+		}
+		sentiment := get("sentiment")
+		if sentiment == "" {
+			rowErrs = append(rowErrs, "missing sentiment")
+			continue
+		}
+		validSentiments := map[string]bool{"NEGATIVE": true, "POSITIVE": true, "NEUTRAL": true}
+		if !validSentiments[strings.ToUpper(sentiment)] {
+			rowErrs = append(rowErrs, "invalid sentiment: "+sentiment+" (must be NEGATIVE, POSITIVE, or NEUTRAL)")
+			continue
+		}
 		author := get("author")
-		if err := h.repo.UpsertLabel(c.Request.Context(), tenant, name, ltype, required, allowed, desc, author); err != nil {
+		if err := h.repo.UpsertLabel(c.Request.Context(), tenant, name, ltype, required, allowed, desc, category, sentiment, author); err != nil {
 			rowErrs = append(rowErrs, "upsert failed: "+name)
 		} else {
 			count++
@@ -223,9 +261,9 @@ func (h *SchemaHandler) SampleCSVLabels(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=labels-sample.csv")
 	c.Header("Content-Type", "text/csv")
 	w := csv.NewWriter(c.Writer)
-	_ = w.Write([]string{"tenant_id", "name", "type", "required", "allowed_json", "description", "author"})
-	_ = w.Write([]string{"", "instance", "string", "false", "{}", "Pod or host instance label", ""})
-	_ = w.Write([]string{"", "service", "string", "false", "{}", "Service name", ""})
+	_ = w.Write([]string{"tenantId", "name", "type", "required", "allowed", "description", "category", "sentiment", "author"})
+	_ = w.Write([]string{"", "instance", "string", "false", "{}", "Pod or host instance label", "infrastructure", "NEUTRAL", ""})
+	_ = w.Write([]string{"", "service", "string", "false", "{}", "Service name", "application", "POSITIVE", ""})
 	w.Flush()
 }
 
@@ -235,6 +273,8 @@ type upsertMetricReq struct {
 	Description string   `json:"description"`
 	Owner       string   `json:"owner"`
 	Tags        []string `json:"tags"` // Changed from map[string]interface{} to map[string]string
+	Category    string   `json:"category"`
+	Sentiment   string   `json:"sentiment"`
 	Author      string   `json:"author"`
 }
 
@@ -313,6 +353,8 @@ func (h *SchemaHandler) UpsertMetric(c *gin.Context) {
 		Description: req.Description,
 		Owner:       req.Owner,
 		Tags:        req.Tags,
+		Category:    req.Category,
+		Sentiment:   req.Sentiment,
 	}
 	if err := h.repo.UpsertMetric(c.Request.Context(), metric, req.Author); err != nil {
 		h.logger.Error("metric upsert failed", "error", err)
@@ -383,43 +425,42 @@ func (h *SchemaHandler) GetMetricVersion(c *gin.Context) {
 }
 
 type upsertLogFieldReq struct {
-	TenantID    string   `json:"tenantId"`
-	Field       string   `json:"field"`
-	Type        string   `json:"type"`
-	Description string   `json:"description"`
-	Tags        []string `json:"tags"`
-	Examples    []string `json:"examples"`
-	Author      string   `json:"author"`
+	TenantID           string   `json:"tenantId"`
+	LogFieldName       string   `json:"logFieldName"`
+	LogFieldType       string   `json:"logFieldType"`
+	LogFieldDefinition string   `json:"logFieldDefinition"`
+	Category           string   `json:"category"`
+	Sentiment          string   `json:"sentiment"`
+	Tags               []string `json:"tags"`
+	Author             string   `json:"author"`
 }
 
-func (h *SchemaHandler) UpsertLogField(c *gin.Context) {
-	var req upsertLogFieldReq
-	if err := c.ShouldBindJSON(&req); err != nil || req.Field == "" {
+type upsertMetricLabelReq struct {
+	TenantID    string         `json:"tenantId"`
+	Label       string         `json:"label"`
+	Type        string         `json:"type"`
+	Required    bool           `json:"required"`
+	Allowed     map[string]any `json:"allowedValues"`
+	Description string         `json:"description"`
+	Author      string         `json:"author"`
+}
+
+func (h *SchemaHandler) UpsertMetricLabel(c *gin.Context) {
+	var req upsertMetricLabelReq
+	if err := c.ShouldBindJSON(&req); err != nil || req.Label == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 		return
 	}
 	if req.TenantID == "" {
 		req.TenantID = c.GetString("tenant_id")
 	}
-
-	// arrays -> as-is for tags
-	tags := make([]string, 0, len(req.Tags))
-	for _, s := range req.Tags {
-		if s != "" {
-			tags = append(tags, s)
-		}
+	metric := c.Param("metric")
+	if metric == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing metric"})
+		return
 	}
-
-	field := repo.LogFieldDef{
-		TenantID:    req.TenantID,
-		Field:       req.Field,
-		Type:        req.Type,
-		Description: req.Description,
-		Tags:        tags,
-		Examples:    req.Examples,
-	}
-	if err := h.repo.UpsertLogField(c.Request.Context(), field, req.Author); err != nil {
-		h.logger.Error("upsert log field failed", "error", err)
+	if err := h.repo.UpsertMetricLabel(c.Request.Context(), req.TenantID, metric, req.Label, req.Type, req.Required, req.Allowed, req.Description); err != nil {
+		h.logger.Error("metric label upsert failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "upsert failed"})
 		return
 	}
@@ -489,17 +530,19 @@ func (h *SchemaHandler) GetLogFieldVersion(c *gin.Context) {
 // ---------- Traces: Services and Operations (CRUD + Versions) ----------
 
 type upsertTraceServiceReq struct {
-	TenantID string   `json:"tenantId"`
-	Service  string   `json:"service"`
-	Purpose  string   `json:"purpose"`
-	Owner    string   `json:"owner"`
-	Tags     []string `json:"tags"`
-	Author   string   `json:"author"`
+	TenantID       string   `json:"tenantId"`
+	Service        string   `json:"service"`
+	ServicePurpose string   `json:"servicePurpose"`
+	Owner          string   `json:"owner"`
+	Tags           []string `json:"tags"`
+	Category       string   `json:"category"`
+	Sentiment      string   `json:"sentiment"`
+	Author         string   `json:"author"`
 }
 
 func (h *SchemaHandler) UpsertTraceService(c *gin.Context) {
 	var req upsertTraceServiceReq
-	if err := c.ShouldBindJSON(&req); err != nil || req.Service == "" {
+	if err := c.ShouldBindJSON(&req); err != nil || req.Service == "" || req.Category == "" || req.Sentiment == "" || req.ServicePurpose == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 		return
 	}
@@ -507,7 +550,7 @@ func (h *SchemaHandler) UpsertTraceService(c *gin.Context) {
 		req.TenantID = c.GetString("tenant_id")
 	}
 
-	if err := h.repo.UpsertTraceServiceWithAuthor(c.Request.Context(), req.TenantID, req.Service, req.Purpose, req.Owner, req.Tags, req.Author); err != nil {
+	if err := h.repo.UpsertTraceServiceWithAuthor(c.Request.Context(), req.TenantID, req.Service, req.ServicePurpose, req.Owner, req.Category, req.Sentiment, req.Tags, req.Author); err != nil {
 		h.logger.Error("trace service upsert failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "upsert failed"})
 		return
@@ -576,18 +619,20 @@ func (h *SchemaHandler) GetTraceServiceVersion(c *gin.Context) {
 }
 
 type upsertTraceOperationReq struct {
-	TenantID  string   `json:"tenantId"`
-	Service   string   `json:"service"`
-	Operation string   `json:"operation"`
-	Purpose   string   `json:"purpose"`
-	Owner     string   `json:"owner"`
-	Tags      []string `json:"tags"`
-	Author    string   `json:"author"`
+	TenantID       string   `json:"tenantId"`
+	Service        string   `json:"service"`
+	Operation      string   `json:"operation"`
+	ServicePurpose string   `json:"servicePurpose"`
+	Owner          string   `json:"owner"`
+	Tags           []string `json:"tags"`
+	Category       string   `json:"category"`
+	Sentiment      string   `json:"sentiment"`
+	Author         string   `json:"author"`
 }
 
 func (h *SchemaHandler) UpsertTraceOperation(c *gin.Context) {
 	var req upsertTraceOperationReq
-	if err := c.ShouldBindJSON(&req); err != nil || req.Service == "" || req.Operation == "" {
+	if err := c.ShouldBindJSON(&req); err != nil || req.Service == "" || req.Operation == "" || req.Category == "" || req.Sentiment == "" || req.ServicePurpose == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 		return
 	}
@@ -595,7 +640,7 @@ func (h *SchemaHandler) UpsertTraceOperation(c *gin.Context) {
 		req.TenantID = c.GetString("tenant_id")
 	}
 
-	if err := h.repo.UpsertTraceOperationWithAuthor(c.Request.Context(), req.TenantID, req.Service, req.Operation, req.Purpose, req.Owner, req.Tags, req.Author); err != nil {
+	if err := h.repo.UpsertTraceOperationWithAuthor(c.Request.Context(), req.TenantID, req.Service, req.Operation, req.ServicePurpose, req.Owner, req.Category, req.Sentiment, req.Tags, req.Author); err != nil {
 		h.logger.Error("trace operation upsert failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "upsert failed"})
 		return
@@ -668,7 +713,7 @@ func (h *SchemaHandler) GetTraceOperationVersion(c *gin.Context) {
 }
 
 // BulkUpsertTraceServicesCSV ingests trace service definitions via CSV with strict headers.
-// Columns: tenant_id, service (required), purpose, owner, tags_json, author
+// Columns: tenant_id, service (required), service_purpose (required), owner, tags_json, category (required), sentiment (required), author
 func (h *SchemaHandler) BulkUpsertTraceServicesCSV(c *gin.Context) {
 	if limited := h.enforceQuota(c, "traces_services", 20); limited {
 		return
@@ -726,14 +771,14 @@ func (h *SchemaHandler) BulkUpsertTraceServicesCSV(c *gin.Context) {
 		idx[strings.ToLower(strings.TrimSpace(col))] = i
 	}
 	// Strict header allowlist for trace services
-	allowed := map[string]struct{}{"tenant_id": {}, "service": {}, "purpose": {}, "owner": {}, "tags_json": {}, "author": {}}
+	allowed := map[string]struct{}{"tenantid": {}, "service": {}, "servicepurpose": {}, "owner": {}, "tags": {}, "category": {}, "sentiment": {}, "author": {}}
 	for k := range idx {
 		if _, ok := allowed[k]; !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown column: " + k})
 			return
 		}
 	}
-	required := []string{"service"}
+	required := []string{"service", "servicepurpose", "category", "sentiment"}
 	for _, col := range required {
 		if _, ok := idx[col]; !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: " + col})
@@ -775,7 +820,7 @@ func (h *SchemaHandler) BulkUpsertTraceServicesCSV(c *gin.Context) {
 			}
 			return ""
 		}
-		tenant := get("tenant_id")
+		tenant := get("tenantid")
 		if tenant == "" {
 			tenant = tenantOverride
 		}
@@ -784,14 +829,20 @@ func (h *SchemaHandler) BulkUpsertTraceServicesCSV(c *gin.Context) {
 			rowErrs = append(rowErrs, "missing service")
 			continue
 		}
-		purpose := get("purpose")
+		servicePurpose := get("servicepurpose")
+		if servicePurpose == "" {
+			rowErrs = append(rowErrs, "missing servicepurpose")
+			continue
+		}
 		owner := get("owner")
-		tags := get("tags_json")
+		tags := get("tags")
+		category := get("category")
+		sentiment := get("sentiment")
 		author := get("author")
 
 		tagsList := parseTagsJSONToSlice(tags)
 
-		if err := h.repo.UpsertTraceServiceWithAuthor(c.Request.Context(), tenant, service, purpose, owner, tagsList, author); err != nil {
+		if err := h.repo.UpsertTraceServiceWithAuthor(c.Request.Context(), tenant, service, servicePurpose, owner, category, sentiment, tagsList, author); err != nil {
 			rowErrs = append(rowErrs, "service upsert failed: "+service)
 		} else {
 			count++
@@ -801,7 +852,7 @@ func (h *SchemaHandler) BulkUpsertTraceServicesCSV(c *gin.Context) {
 }
 
 // BulkUpsertTraceOperationsCSV ingests operation definitions; enforces service scoping.
-// Columns: tenant_id, service (required), operation (required), purpose, owner, tags_json, author
+// Columns: tenant_id, service (required), operation (required), service_purpose (required), owner, tags_json, category (required), sentiment (required), author
 func (h *SchemaHandler) BulkUpsertTraceOperationsCSV(c *gin.Context) {
 	if limited := h.enforceQuota(c, "traces_operations", 20); limited {
 		return
@@ -855,7 +906,7 @@ func (h *SchemaHandler) BulkUpsertTraceOperationsCSV(c *gin.Context) {
 	for i, col := range headerRow {
 		idx[strings.ToLower(strings.TrimSpace(col))] = i
 	}
-	allowed := map[string]struct{}{"tenant_id": {}, "service": {}, "operation": {}, "purpose": {}, "owner": {}, "tags_json": {}, "author": {}}
+	allowed := map[string]struct{}{"tenantid": {}, "service": {}, "operation": {}, "servicepurpose": {}, "owner": {}, "tags": {}, "category": {}, "sentiment": {}, "author": {}}
 	for k := range idx {
 		if _, ok := allowed[k]; !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown column: " + k})
@@ -868,6 +919,18 @@ func (h *SchemaHandler) BulkUpsertTraceOperationsCSV(c *gin.Context) {
 	}
 	if _, ok := idx["operation"]; !ok {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: operation"})
+		return
+	}
+	if _, ok := idx["servicepurpose"]; !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: servicepurpose"})
+		return
+	}
+	if _, ok := idx["category"]; !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: category"})
+		return
+	}
+	if _, ok := idx["sentiment"]; !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: sentiment"})
 		return
 	}
 	tenantOverride := c.GetString("tenant_id")
@@ -901,7 +964,7 @@ func (h *SchemaHandler) BulkUpsertTraceOperationsCSV(c *gin.Context) {
 			}
 			return ""
 		}
-		tenant := get("tenant_id")
+		tenant := get("tenantid")
 		if tenant == "" {
 			tenant = tenantOverride
 		}
@@ -911,19 +974,25 @@ func (h *SchemaHandler) BulkUpsertTraceOperationsCSV(c *gin.Context) {
 			errs = append(errs, "missing service/operation")
 			continue
 		}
+		servicePurpose := get("servicepurpose")
+		if servicePurpose == "" {
+			errs = append(errs, "missing servicepurpose")
+			continue
+		}
 		// Ensure service exists to maintain sanity that operations are per service
 		if _, err := h.repo.GetTraceService(c.Request.Context(), tenant, service); err != nil {
 			errs = append(errs, "undefined service: "+service)
 			continue
 		}
-		purpose := get("purpose")
 		owner := get("owner")
-		tags := get("tags_json")
+		tags := get("tags")
+		category := get("category")
+		sentiment := get("sentiment")
 		author := get("author")
 
 		tagsList := parseTagsJSONToSlice(tags)
 
-		if err := h.repo.UpsertTraceOperationWithAuthor(c.Request.Context(), tenant, service, operation, purpose, owner, tagsList, author); err != nil {
+		if err := h.repo.UpsertTraceOperationWithAuthor(c.Request.Context(), tenant, service, operation, servicePurpose, owner, category, sentiment, tagsList, author); err != nil {
 			errs = append(errs, "operation upsert failed: "+service+":"+operation)
 		} else {
 			count++
@@ -935,7 +1004,7 @@ func (h *SchemaHandler) BulkUpsertTraceOperationsCSV(c *gin.Context) {
 // BulkUpsertMetricsCSV ingests metric and label definitions in CSV format.
 // Security: MIME check, size limit, in-memory processing only, no disk writes.
 // CSV Columns:
-// tenant_id, metric, description, owner, tags_json, label, label_type, label_required, label_allowed_json, label_description, author
+// tenantId, metric, description, owner, tags, category, sentiment, label, labelType, labelRequired, labelAllowed, labelDescription, author
 func (h *SchemaHandler) BulkUpsertMetricsCSV(c *gin.Context) {
 	// Per-tenant daily quota (default 20/day)
 	if limited := h.enforceQuota(c, "metrics", 20); limited {
@@ -994,7 +1063,7 @@ func (h *SchemaHandler) BulkUpsertMetricsCSV(c *gin.Context) {
 		idx[strings.ToLower(strings.TrimSpace(col))] = i
 	}
 	// Strict header allowlist for metrics
-	allowed := map[string]struct{}{"tenant_id": {}, "metric": {}, "description": {}, "owner": {}, "tags_json": {}, "label": {}, "label_type": {}, "label_required": {}, "label_allowed_json": {}, "label_description": {}, "author": {}}
+	allowed := map[string]struct{}{"tenantid": {}, "metric": {}, "description": {}, "owner": {}, "tags": {}, "category": {}, "sentiment": {}, "label": {}, "labeltype": {}, "labelrequired": {}, "labelallowed": {}, "labeldescription": {}, "author": {}}
 	for k := range idx {
 		if _, ok := allowed[k]; !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown column: " + k})
@@ -1011,7 +1080,7 @@ func (h *SchemaHandler) BulkUpsertMetricsCSV(c *gin.Context) {
 
 	tenantOverride := c.GetString("tenant_id")
 	// Aggregate metrics to reduce version bumps
-	type metricRow struct{ tenant, metric, desc, owner, tags, author string }
+	type metricRow struct{ tenant, metric, desc, owner, tags, category, sentiment, author string }
 	metricsSeen := map[string]metricRow{}
 	labelsCount := 0
 	metricsCount := 0
@@ -1047,7 +1116,7 @@ func (h *SchemaHandler) BulkUpsertMetricsCSV(c *gin.Context) {
 			}
 			return ""
 		}
-		tenant := get("tenant_id")
+		tenant := get("tenantid")
 		if tenant == "" {
 			tenant = tenantOverride
 		}
@@ -1058,20 +1127,22 @@ func (h *SchemaHandler) BulkUpsertMetricsCSV(c *gin.Context) {
 		}
 		desc := get("description")
 		owner := get("owner")
-		tags := get("tags_json")
+		tags := get("tags")
+		category := get("category")
+		sentiment := get("sentiment")
 		author := get("author")
 		key := tenant + "|" + metric
 		if _, ok := metricsSeen[key]; !ok {
-			metricsSeen[key] = metricRow{tenant: tenant, metric: metric, desc: desc, owner: owner, tags: tags, author: author}
+			metricsSeen[key] = metricRow{tenant: tenant, metric: metric, desc: desc, owner: owner, tags: tags, category: category, sentiment: sentiment, author: author}
 		}
 		// label columns optional
 		label := get("label")
 		if label != "" {
-			ltype := get("label_type")
-			lreqStr := strings.ToLower(get("label_required"))
+			ltype := get("labeltype")
+			lreqStr := strings.ToLower(get("labelrequired"))
 			lreq := lreqStr == "true" || lreqStr == "1" || lreqStr == "yes"
-			lallowed := get("label_allowed_json")
-			ldesc := get("label_description")
+			lallowed := get("labelallowed")
+			ldesc := get("labeldescription")
 			var allowed map[string]any
 			if lallowed != "" {
 				_ = json.Unmarshal([]byte(lallowed), &allowed)
@@ -1094,6 +1165,8 @@ func (h *SchemaHandler) BulkUpsertMetricsCSV(c *gin.Context) {
 			Description: mr.desc,
 			Owner:       mr.owner,
 			Tags:        tagsSlice,
+			Category:    mr.category,
+			Sentiment:   mr.sentiment,
 			UpdatedAt:   time.Now(),
 		}
 		if err := h.repo.UpsertMetric(c.Request.Context(), m, mr.author); err != nil {
@@ -1141,7 +1214,7 @@ func (h *SchemaHandler) SampleCSV(c *gin.Context) {
 	c.Header("X-Content-Type-Options", "nosniff")
 	c.Header("Content-Disposition", "attachment; filename=metric_definitions_sample.csv")
 	w := csv.NewWriter(c.Writer)
-	header := []string{"tenant_id", "metric", "description", "owner", "tags_json", "label", "label_type", "label_required", "label_allowed_json", "label_description", "author"}
+	header := []string{"tenantId", "metric", "description", "owner", "tags", "category", "sentiment", "label", "labelType", "labelRequired", "labelAllowed", "labelDescription", "author"}
 	_ = w.Write(header)
 
 	metricsCSV := c.Query("metrics")
@@ -1167,18 +1240,18 @@ func (h *SchemaHandler) SampleCSV(c *gin.Context) {
 			continue
 		}
 		if len(labels) == 0 {
-			_ = w.Write([]string{"", mname, "", "", "[]", "", "", "", "{}", "", ""})
+			_ = w.Write([]string{"", mname, "", "", "[]", "", "", "", "", "", "{}", "", ""})
 			continue
 		}
 		for _, lk := range labels {
-			_ = w.Write([]string{"", mname, "", "", "[]", lk, "", "", "{}", "", ""})
+			_ = w.Write([]string{"", mname, "", "", "[]", "", "", lk, "", "", "{}", "", ""})
 		}
 	}
 	w.Flush()
 }
 
 // BulkUpsertLogFieldsCSV ingests log field definitions via CSV.
-// Columns: tenant_id, field, type, description, tags_json, examples_json, author
+// Columns: tenant_id, category, logfieldname, logfieldtype, logfielddefinition, sentiment, tags_json, author
 func (h *SchemaHandler) BulkUpsertLogFieldsCSV(c *gin.Context) {
 	if limited := h.enforceQuota(c, "logs", 20); limited {
 		return
@@ -1233,15 +1306,27 @@ func (h *SchemaHandler) BulkUpsertLogFieldsCSV(c *gin.Context) {
 	for i, col := range headerRow {
 		idx[strings.ToLower(strings.TrimSpace(col))] = i
 	}
-	allowed := map[string]struct{}{"tenant_id": {}, "field": {}, "type": {}, "description": {}, "tags_json": {}, "examples_json": {}, "author": {}}
+	allowed := map[string]struct{}{"tenantid": {}, "category": {}, "logfieldname": {}, "logfieldtype": {}, "logfielddefinition": {}, "sentiment": {}, "tags": {}, "author": {}}
 	for k := range idx {
 		if _, ok := allowed[k]; !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown column: " + k})
 			return
 		}
 	}
-	if _, ok := idx["field"]; !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: field"})
+	if _, ok := idx["logfieldname"]; !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: logfieldname"})
+		return
+	}
+	if _, ok := idx["category"]; !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: category"})
+		return
+	}
+	if _, ok := idx["logfieldtype"]; !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: logfieldtype"})
+		return
+	}
+	if _, ok := idx["sentiment"]; !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing column: sentiment"})
 		return
 	}
 
@@ -1276,28 +1361,34 @@ func (h *SchemaHandler) BulkUpsertLogFieldsCSV(c *gin.Context) {
 			}
 			return ""
 		}
-		tenant := get("tenant_id")
+		tenant := get("tenantid")
 		if tenant == "" {
 			tenant = tenantOverride
 		}
-		field := get("field")
+		category := get("category")
+		field := get("logfieldname")
 		if field == "" {
-			rowErrs = append(rowErrs, "missing field")
+			rowErrs = append(rowErrs, "missing logfieldname")
 			continue
 		}
-		typ := get("type")
-		desc := get("description")
-		tags := get("tags_json")
-		examples := get("examples_json")
+		typ := get("logfieldtype")
+		if typ == "" {
+			rowErrs = append(rowErrs, "missing logfieldtype")
+			continue
+		}
+		desc := get("logfielddefinition")
+		sentiment := get("sentiment")
+		if sentiment == "" {
+			rowErrs = append(rowErrs, "missing sentiment")
+			continue
+		}
+		tags := get("tags")
 		author := get("author")
 
 		// Tags: prefer JSON array of strings; legacy object -> ["k=v", ...]
 		tagsSlice := parseTagsJSONToSlice(tags)
 
-		// Examples: parse JSON array of strings (preferred) or stringify generic arrays
-		exSlice := parseTagsJSONToSlice(examples)
-
-		f := repo.LogFieldDef{TenantID: tenant, Field: field, Type: typ, Description: desc, Tags: tagsSlice, Examples: exSlice, UpdatedAt: time.Now()}
+		f := repo.LogFieldDef{TenantID: tenant, Field: field, Type: typ, Description: desc, Category: category, Sentiment: sentiment, Tags: tagsSlice, UpdatedAt: time.Now()}
 		if err := h.repo.UpsertLogField(c.Request.Context(), f, author); err != nil {
 			rowErrs = append(rowErrs, "field upsert failed: "+field)
 		} else {
@@ -1313,7 +1404,7 @@ func (h *SchemaHandler) SampleCSVLogFields(c *gin.Context) {
 	c.Header("X-Content-Type-Options", "nosniff")
 	c.Header("Content-Disposition", "attachment; filename=log_field_definitions_sample.csv")
 	w := csv.NewWriter(c.Writer)
-	header := []string{"tenant_id", "field", "type", "description", "tags_json", "examples_json", "author"}
+	header := []string{"tenantId", "category", "logFieldName", "logFieldType", "logFieldDefinition", "sentiment", "tags", "author"}
 	_ = w.Write(header)
 	if h.logsService == nil {
 		w.Flush()
@@ -1323,9 +1414,37 @@ func (h *SchemaHandler) SampleCSVLogFields(c *gin.Context) {
 	fields, err := h.logsService.GetFields(c.Request.Context(), tenantID)
 	if err == nil {
 		for _, f := range fields {
-			_ = w.Write([]string{"", f, "", "", "[]", "[]", ""})
+			_ = w.Write([]string{"", "", f, "", "", "", "[]", ""})
 		}
 	}
+	w.Flush()
+}
+
+// SampleCSVTraceServices downloads a CSV template for trace service definitions.
+func (h *SchemaHandler) SampleCSVTraceServices(c *gin.Context) {
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Content-Disposition", "attachment; filename=trace_service_definitions_sample.csv")
+	w := csv.NewWriter(c.Writer)
+	header := []string{"tenantId", "service", "servicePurpose", "owner", "tags", "category", "sentiment", "author"}
+	_ = w.Write(header)
+	// Provide sample rows for users to fill
+	_ = w.Write([]string{"", "my-service", "web-api", "", "[]", "infrastructure", "neutral", ""})
+	_ = w.Write([]string{"", "payment-service", "payment-processing", "", "[]", "business", "critical", ""})
+	w.Flush()
+}
+
+// SampleCSVTraceOperations downloads a CSV template for trace operation definitions.
+func (h *SchemaHandler) SampleCSVTraceOperations(c *gin.Context) {
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Content-Disposition", "attachment; filename=trace_operation_definitions_sample.csv")
+	w := csv.NewWriter(c.Writer)
+	header := []string{"tenantId", "service", "operation", "servicePurpose", "owner", "tags", "category", "sentiment", "author"}
+	_ = w.Write(header)
+	// Provide sample rows for users to fill
+	_ = w.Write([]string{"", "my-service", "GET /api/users", "web-api", "", "[]", "infrastructure", "neutral", ""})
+	_ = w.Write([]string{"", "payment-service", "POST /api/payments", "payment-processing", "", "[]", "business", "critical", ""})
 	w.Flush()
 }
 
@@ -1392,4 +1511,39 @@ func sanitizeCSVCell(s string) string {
 		return "'" + s
 	}
 	return s
+}
+
+func (h *SchemaHandler) UpsertLogField(c *gin.Context) {
+	var req upsertLogFieldReq
+	if err := c.ShouldBindJSON(&req); err != nil || req.LogFieldName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+	if req.TenantID == "" {
+		req.TenantID = c.GetString("tenant_id")
+	}
+
+	// arrays -> as-is for tags
+	tags := make([]string, 0, len(req.Tags))
+	for _, s := range req.Tags {
+		if s != "" {
+			tags = append(tags, s)
+		}
+	}
+
+	field := repo.LogFieldDef{
+		TenantID:    req.TenantID,
+		Field:       req.LogFieldName,
+		Type:        req.LogFieldType,
+		Description: req.LogFieldDefinition,
+		Category:    req.Category,
+		Sentiment:   req.Sentiment,
+		Tags:        tags,
+	}
+	if err := h.repo.UpsertLogField(c.Request.Context(), field, req.Author); err != nil {
+		h.logger.Error("upsert log field failed", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "upsert failed"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }

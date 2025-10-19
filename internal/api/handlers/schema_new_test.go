@@ -68,7 +68,7 @@ func (*fakeSchemaRepo) ListLogFieldVersions(_ context.Context, _, _ string) ([]r
 func (*fakeSchemaRepo) GetLogFieldVersion(_ context.Context, _, _ string, _ int64) (map[string]any, repo.VersionInfo, error) {
 	return nil, repo.VersionInfo{}, errors.New("not implemented")
 }
-func (*fakeSchemaRepo) UpsertLabel(_ context.Context, _, _, _ string, _ bool, _ map[string]any, _, _ string) error {
+func (*fakeSchemaRepo) UpsertLabel(_ context.Context, _, _, _ string, _ bool, _ map[string]any, _, _, _, _ string) error {
 	return errors.New("not implemented")
 }
 func (*fakeSchemaRepo) GetLabel(_ context.Context, _, _ string) (*repo.LabelDef, error) {
@@ -81,7 +81,7 @@ func (*fakeSchemaRepo) GetLabelVersion(_ context.Context, _, _ string, _ int64) 
 	return nil, repo.VersionInfo{}, errors.New("not implemented")
 }
 func (*fakeSchemaRepo) DeleteLabel(_ context.Context, _, _ string) error { return nil }
-func (*fakeSchemaRepo) UpsertTraceServiceWithAuthor(_ context.Context, _, _, _, _ string, _ []string, _ string) error {
+func (*fakeSchemaRepo) UpsertTraceServiceWithAuthor(_ context.Context, _, _, _, _, _, _ string, _ []string, _ string) error {
 	return errors.New("not implemented")
 }
 func (*fakeSchemaRepo) GetTraceService(_ context.Context, _, _ string) (*repo.TraceServiceDef, error) {
@@ -93,7 +93,7 @@ func (*fakeSchemaRepo) ListTraceServiceVersions(_ context.Context, _, _ string) 
 func (*fakeSchemaRepo) GetTraceServiceVersion(_ context.Context, _, _ string, _ int64) (map[string]any, repo.VersionInfo, error) {
 	return nil, repo.VersionInfo{}, errors.New("not implemented")
 }
-func (*fakeSchemaRepo) UpsertTraceOperationWithAuthor(_ context.Context, _, _, _, _, _ string, _ []string, _ string) error {
+func (*fakeSchemaRepo) UpsertTraceOperationWithAuthor(_ context.Context, _, _, _, _, _, _, _ string, _ []string, _ string) error {
 	return errors.New("not implemented")
 }
 func (*fakeSchemaRepo) GetTraceOperation(_ context.Context, _, _, _ string) (*repo.TraceOperationDef, error) {
