@@ -158,7 +158,7 @@ func (s *Server) setupRoutes() {
 	v1.GET("/labels", metricsHandler.GetLabels)
 	v1.GET("/metrics/names", metricsHandler.GetMetricNames)
 	v1.GET("/metrics/series", metricsHandler.GetSeries)
-	v1.GET("/metrics/labels", metricsHandler.GetLabels)
+	v1.POST("/metrics/labels", metricsHandler.GetLabels)
 	// Back-compat aliases at root so Swagger with base "/" also works
 	// Back-compat aliases at root so Swagger with base "/" also works
 	s.router.POST("/query", metricsHandler.ExecuteQuery)
@@ -167,7 +167,7 @@ func (s *Server) setupRoutes() {
 	s.router.GET("/labels", metricsHandler.GetLabels)
 	s.router.GET("/metrics/names", metricsHandler.GetMetricNames)
 	s.router.GET("/metrics/series", metricsHandler.GetSeries)
-	s.router.GET("/metrics/labels", metricsHandler.GetLabels)
+	s.router.POST("/metrics/labels", metricsHandler.GetLabels)
 	v1.GET("/label/:name/values", metricsHandler.GetLabelValues)
 
 	// MetricsQL function query endpoints (hierarchical by category)

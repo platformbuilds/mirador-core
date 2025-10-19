@@ -81,7 +81,7 @@ func (t *httpTransport) GraphQL(ctx context.Context, query string, variables map
 }
 
 func (t *httpTransport) DeleteObject(ctx context.Context, id string) error {
-    return t.doJSON(ctx, http.MethodDelete, "/v1/objects/"+id, nil, nil)
+	return t.doJSON(ctx, http.MethodDelete, "/v1/objects/"+id, nil, nil)
 }
 
 func (t *httpTransport) doJSON(ctx context.Context, method, path string, body any, out any) error {

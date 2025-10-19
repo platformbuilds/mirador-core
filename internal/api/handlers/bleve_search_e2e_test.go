@@ -293,7 +293,7 @@ func TestBleveSearchE2E(t *testing.T) {
 			{"service:checkout", false, ""},
 			{"level:error", false, ""},
 			{"message:timeout", false, ""},
-			{"+service:api -level:debug", true, "complex boolean queries not fully supported yet"},
+			{"+service:api -level:debug", false, ""}, // Complex boolean queries are now supported
 		}
 
 		for _, testCase := range testQueries {

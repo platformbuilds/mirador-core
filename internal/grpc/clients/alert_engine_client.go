@@ -21,13 +21,13 @@ type AlertEngineClient struct {
 
 // NewAlertEngineClient creates a new ALERT-ENGINE gRPC client
 func NewAlertEngineClient(endpoint string, logger logger.Logger) (*AlertEngineClient, error) {
-    // Non-blocking dial; gRPC will attempt to connect in background
-    conn, err := grpc.Dial(endpoint,
-        grpc.WithTransportCredentials(insecure.NewCredentials()),
-    )
-    if err != nil {
-        return nil, fmt.Errorf("failed to connect to ALERT-ENGINE: %w", err)
-    }
+	// Non-blocking dial; gRPC will attempt to connect in background
+	conn, err := grpc.Dial(endpoint,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to ALERT-ENGINE: %w", err)
+	}
 
 	client := alert.NewAlertEngineServiceClient(conn)
 

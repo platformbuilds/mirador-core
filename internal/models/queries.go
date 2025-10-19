@@ -25,11 +25,10 @@ type VictoriaMetricsResponse struct {
 }
 
 type MetricsQLQueryRequest struct {
-	Query         string `json:"query" binding:"required"`
-	Time          string `json:"time,omitempty"`
-	Timeout       string `json:"timeout,omitempty"`
-	TenantID      string `json:"-"`                        // Set by middleware
-	QueryLanguage string `json:"query_language,omitempty"` // e.g., "lucene", "promql"
+	Query    string `json:"query" binding:"required"`
+	Time     string `json:"time,omitempty"`
+	Timeout  string `json:"timeout,omitempty"`
+	TenantID string `json:"-"` // Set by middleware
 	// Optional: include definitions and restrict label keys
 	IncludeDefinitions *bool    `json:"include_definitions,omitempty"`
 	DefinitionsMinimal *bool    `json:"definitions_minimal,omitempty"`
@@ -42,7 +41,6 @@ type MetricsQLRangeQueryRequest struct {
 	End                string   `json:"end" binding:"required"`
 	Step               string   `json:"step" binding:"required"`
 	TenantID           string   `json:"-"`
-	QueryLanguage      string   `json:"query_language,omitempty"`
 	IncludeDefinitions *bool    `json:"include_definitions,omitempty"`
 	DefinitionsMinimal *bool    `json:"definitions_minimal,omitempty"`
 	LabelKeys          []string `json:"label_keys,omitempty"`
@@ -119,6 +117,7 @@ type LabelValuesRequest struct {
 	Start    string   `json:"start,omitempty"`
 	End      string   `json:"end,omitempty"`
 	Match    []string `json:"match[],omitempty"`
+	Limit    int      `json:"limit,omitempty"`
 	TenantID string   `json:"-"`
 }
 

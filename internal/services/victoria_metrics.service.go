@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -851,8 +852,8 @@ func (s *VictoriaMetricsService) GetLabels(ctx context.Context, request *models.
 		params.Add("match[]", match)
 	}
 
-	urlCluster := fmt.Sprintf("%s/select/0/prometheus/api/v1/labels?%s", endpoint, params.Encode())
-	urlSingle := fmt.Sprintf("%s/api/v1/labels?%s", endpoint, params.Encode())
+	urlCluster := fmt.Sprintf("%s/select/0/prometheus/api/v1/series?%s", strings.TrimSuffix(endpoint, "/"), params.Encode())
+	urlSingle := fmt.Sprintf("%s/api/v1/series?%s", strings.TrimSuffix(endpoint, "/"), params.Encode())
 	headers := map[string]string{"Accept": "application/json"}
 	if request.TenantID != "" {
 		headers["AccountID"] = request.TenantID
@@ -969,8 +970,8 @@ func (s *VictoriaMetricsService) getLabelsSingleEndpoint(ctx context.Context, re
 		params.Add("match[]", match)
 	}
 
-	urlCluster := fmt.Sprintf("%s/select/0/prometheus/api/v1/labels?%s", endpoint, params.Encode())
-	urlSingle := fmt.Sprintf("%s/api/v1/labels?%s", endpoint, params.Encode())
+	urlCluster := fmt.Sprintf("%s/select/0/prometheus/api/v1/series?%s", endpoint, params.Encode())
+	urlSingle := fmt.Sprintf("%s/api/v1/series?%s", endpoint, params.Encode())
 	headers := map[string]string{"Accept": "application/json"}
 	if request.TenantID != "" {
 		headers["AccountID"] = request.TenantID
@@ -998,13 +999,35 @@ func (s *VictoriaMetricsService) getLabelsSingleEndpoint(ctx context.Context, re
 	}
 
 	var vmResponse struct {
-		Status string   `json:"status"`
-		Data   []string `json:"data"`
+		Status string      `json:"status"`
+		Data   interface{} `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&vmResponse); err != nil {
 		return nil, err
 	}
-	return vmResponse.Data, nil
+
+	// Extract unique label names from series data
+	if dataStr, ok := vmResponse.Data.([]string); ok {
+		return dataStr, nil
+	}
+
+	if data, ok := vmResponse.Data.([]interface{}); ok {
+		labelSet := make(map[string]struct{})
+		for _, item := range data {
+			if series, ok := item.(map[string]interface{}); ok {
+				for labelName := range series {
+					labelSet[labelName] = struct{}{}
+				}
+			}
+		}
+		labels := make([]string, 0, len(labelSet))
+		for label := range labelSet {
+			labels = append(labels, label)
+		}
+		return labels, nil
+	}
+
+	return nil, fmt.Errorf("unexpected data type")
 }
 
 func (s *VictoriaMetricsService) GetLabelValues(ctx context.Context, request *models.LabelValuesRequest) ([]string, error) {
@@ -1065,6 +1088,9 @@ func (s *VictoriaMetricsService) GetLabelValues(ctx context.Context, request *mo
 	}
 	if request.End != "" {
 		params.Set("end", request.End)
+	}
+	if request.Limit > 0 {
+		params.Set("limit", strconv.Itoa(request.Limit))
 	}
 	for _, match := range request.Match {
 		params.Add("match[]", match)
@@ -1184,6 +1210,9 @@ func (s *VictoriaMetricsService) getLabelValuesSingleEndpoint(ctx context.Contex
 	}
 	if request.End != "" {
 		params.Set("end", request.End)
+	}
+	if request.Limit > 0 {
+		params.Set("limit", strconv.Itoa(request.Limit))
 	}
 	for _, match := range request.Match {
 		params.Add("match[]", match)

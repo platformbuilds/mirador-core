@@ -50,7 +50,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"sum(http_requests_total) by (job)\"\n}"
                 },
                 "description": "MetricsQL sum aggregate function"
               }
@@ -70,7 +70,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"avg(cpu_usage) by (instance)\"\n}"
                 },
                 "description": "MetricsQL avg aggregate function"
               }
@@ -90,7 +90,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"count(http_requests_total)\"\n}"
                 },
                 "description": "MetricsQL count aggregate function"
               }
@@ -110,7 +110,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"min(response_time)\"\n}"
                 },
                 "description": "MetricsQL min aggregate function"
               }
@@ -130,7 +130,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"max(memory_usage)\"\n}"
                 },
                 "description": "MetricsQL max aggregate function"
               }
@@ -150,7 +150,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"quantile(0.5, response_time)\"\n}"
                 },
                 "description": "MetricsQL median aggregate function"
               }
@@ -170,7 +170,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"quantile(0.95, http_request_duration_seconds)\",\n  \"params\": {\n    \"quantile\": 0.95\n  }\n}"
                 },
                 "description": "MetricsQL quantile aggregate function"
               }
@@ -190,7 +190,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"topk(5, rate(http_requests_total[5m]))\",\n  \"params\": {\n    \"k\": 5\n  }\n}"
                 },
                 "description": "MetricsQL topk aggregate function"
               }
@@ -210,7 +210,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"bottomk(5, cpu_usage)\",\n  \"params\": {\n    \"k\": 5\n  }\n}"
                 },
                 "description": "MetricsQL bottomk aggregate function"
               }
@@ -230,7 +230,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"count(distinct(instance) or http_requests_total)\"\n}"
                 },
                 "description": "MetricsQL distinct aggregate function"
               }
@@ -250,7 +250,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"histogram(http_request_duration_seconds)\",\n  \"params\": {\n    \"buckets\": [\n      0.1,\n      0.5,\n      1.0,\n      2.0,\n      5.0\n    ]\n  }\n}"
                 },
                 "description": "MetricsQL histogram aggregate function"
               }
@@ -270,7 +270,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"outliers_iqr(response_time)\"\n}"
                 },
                 "description": "MetricsQL outliers_iqr aggregate function"
               }
@@ -290,7 +290,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"outliersk(3, response_time)\",\n  \"params\": {\n    \"k\": 3\n  }\n}"
                 },
                 "description": "MetricsQL outliersk aggregate function"
               }
@@ -310,7 +310,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"stddev(response_time)\"\n}"
                 },
                 "description": "MetricsQL stddev aggregate function"
               }
@@ -330,7 +330,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"stdvar(response_time)\"\n}"
                 },
                 "description": "MetricsQL stdvar aggregate function"
               }
@@ -350,7 +350,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"mad(response_time)\"\n}"
                 },
                 "description": "MetricsQL mad aggregate function"
               }
@@ -370,7 +370,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"zscore(response_time)\"\n}"
                 },
                 "description": "MetricsQL zscore aggregate function"
               }
@@ -390,7 +390,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"mode(http_status)\"\n}"
                 },
                 "description": "MetricsQL mode aggregate function"
               }
@@ -410,7 +410,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"skewness(response_time)\"\n}"
                 },
                 "description": "MetricsQL skewness aggregate function"
               }
@@ -430,7 +430,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"kurtosis(response_time)\"\n}"
                 },
                 "description": "MetricsQL kurtosis aggregate function"
               }
@@ -450,7 +450,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"cov(request_size, response_time)\"\n}"
                 },
                 "description": "MetricsQL cov aggregate function"
               }
@@ -470,7 +470,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"range(response_time)\"\n}"
                 },
                 "description": "MetricsQL range aggregate function"
               }
@@ -490,7 +490,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"delta(http_requests_total[5m])\"\n}"
                 },
                 "description": "MetricsQL delta aggregate function"
               }
@@ -510,7 +510,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"idelta(http_requests_total)\"\n}"
                 },
                 "description": "MetricsQL idelta aggregate function"
               }
@@ -530,7 +530,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"increase(http_requests_total[5m])\"\n}"
                 },
                 "description": "MetricsQL increase aggregate function"
               }
@@ -550,7 +550,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"irate(http_requests_total[5m])\"\n}"
                 },
                 "description": "MetricsQL irate aggregate function"
               }
@@ -570,7 +570,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"rate(http_requests_total[5m])\"\n}"
                 },
                 "description": "MetricsQL rate aggregate function"
               }
@@ -590,7 +590,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"geomean(response_time)\"\n}"
                 },
                 "description": "MetricsQL geomean aggregate function"
               }
@@ -610,7 +610,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"harmean(response_time)\"\n}"
                 },
                 "description": "MetricsQL harmean aggregate function"
               }
@@ -630,7 +630,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"trimean(response_time)\"\n}"
                 },
                 "description": "MetricsQL trimean aggregate function"
               }
@@ -650,7 +650,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"iqr(response_time)\"\n}"
                 },
                 "description": "MetricsQL iqr aggregate function"
               }
@@ -670,7 +670,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"percentile(95, response_time)\",\n  \"params\": {\n    \"percentile\": 95\n  }\n}"
                 },
                 "description": "MetricsQL percentile aggregate function"
               }
@@ -690,7 +690,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"entropy(http_status)\"\n}"
                 },
                 "description": "MetricsQL entropy aggregate function"
               }
@@ -710,7 +710,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"mode_multi(http_status)\"\n}"
                 },
                 "description": "MetricsQL mode_multi aggregate function"
               }
@@ -730,7 +730,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"count_values(\\\"status\\\", http_status)\"\n}"
                 },
                 "description": "MetricsQL count_values aggregate function"
               }
@@ -750,7 +750,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"corr(request_size, response_time)\"\n}"
                 },
                 "description": "MetricsQL corr aggregate function"
               }
@@ -775,7 +775,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"rate(http_requests_total[5m])\"\n}"
                 },
                 "description": "Calculates the per-second instant rate of increase of counter values"
               }
@@ -795,7 +795,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"rate(http_requests_total[5m])\"\n}"
                 },
                 "description": "Calculates the per-second instant rate of increase of counter values over a time range"
               }
@@ -815,7 +815,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"increase(http_requests_total[5m])\"\n}"
                 },
                 "description": "Calculates the increase in counter values over the time range"
               }
@@ -835,7 +835,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"increase(http_requests_total[5m])\"\n}"
                 },
                 "description": "Calculates the increase in counter values over the specified time range"
               }
@@ -855,7 +855,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"delta(cpu_usage[5m])\"\n}"
                 },
                 "description": "Calculates the difference between the first and last values in the time range"
               }
@@ -875,7 +875,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"delta(cpu_usage[5m])\"\n}"
                 },
                 "description": "Calculates the difference between the first and last values in the specified time range"
               }
@@ -895,7 +895,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"irate(http_requests_total[5m])\"\n}"
                 },
                 "description": "Calculates the instant rate of increase of counter values"
               }
@@ -915,7 +915,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"irate(http_requests_total[5m])\"\n}"
                 },
                 "description": "Calculates the instant rate of increase of counter values over a time range"
               }
@@ -935,7 +935,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"deriv(cpu_usage)\"\n}"
                 },
                 "description": "Calculates the per-second derivative of gauge values"
               }
@@ -955,7 +955,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"deriv(cpu_usage)\"\n}"
                 },
                 "description": "Calculates the per-second derivative of gauge values over a time range"
               }
@@ -975,7 +975,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"idelta(cpu_usage)\"\n}"
                 },
                 "description": "Calculates the instant difference between the last two values"
               }
@@ -995,7 +995,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"idelta(cpu_usage)\"\n}"
                 },
                 "description": "Calculates the instant difference between the last two values over a time range"
               }
@@ -1015,7 +1015,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"ideriv(cpu_usage)\"\n}"
                 },
                 "description": "Calculates the instant derivative of gauge values"
               }
@@ -1035,7 +1035,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"ideriv(cpu_usage)\"\n}"
                 },
                 "description": "Calculates the instant derivative of gauge values over a time range"
               }
@@ -1055,7 +1055,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"up{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"absent_over_time(up{job=\\\"missing_service\\\"}[5m])\"\n}"
                 },
                 "description": "Returns 1 if no data points exist in the time range, otherwise returns 0"
               }
@@ -1075,7 +1075,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"up{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"absent_over_time(up{job=\\\"missing_service\\\"}[5m])\"\n}"
                 },
                 "description": "Returns 1 if no data points exist in the specified time range, otherwise returns 0"
               }
@@ -1095,7 +1095,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"avg_over_time(cpu_usage[5m])\"\n}"
                 },
                 "description": "Calculates the average value over the time range"
               }
@@ -1115,7 +1115,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"avg_over_time(cpu_usage[5m])\"\n}"
                 },
                 "description": "Calculates the average value over the specified time range"
               }
@@ -1135,7 +1135,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"min_over_time(response_time[5m])\"\n}"
                 },
                 "description": "Calculates the minimum value over the time range"
               }
@@ -1155,7 +1155,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"min_over_time(response_time[5m])\"\n}"
                 },
                 "description": "Calculates the minimum value over the specified time range"
               }
@@ -1175,7 +1175,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"max_over_time(memory_usage[5m])\"\n}"
                 },
                 "description": "Calculates the maximum value over the time range"
               }
@@ -1195,7 +1195,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"max_over_time(memory_usage[5m])\"\n}"
                 },
                 "description": "Calculates the maximum value over the specified time range"
               }
@@ -1215,7 +1215,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"sum_over_time(http_requests_total[5m])\"\n}"
                 },
                 "description": "Calculates the sum of all values over the time range"
               }
@@ -1235,7 +1235,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"sum_over_time(http_requests_total[5m])\"\n}"
                 },
                 "description": "Calculates the sum of all values over the specified time range"
               }
@@ -1255,7 +1255,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"count_over_time(up[5m])\"\n}"
                 },
                 "description": "Counts the number of data points over the time range"
               }
@@ -1275,7 +1275,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"count_over_time(up[5m])\"\n}"
                 },
                 "description": "Counts the number of data points over the specified time range"
               }
@@ -1295,7 +1295,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"quantile\": 0.95\n  }\n}"
+                  "raw": "{\n  \"query\": \"quantile_over_time(0.95, response_time[5m])\"\n}"
                 },
                 "description": "Calculates the quantile value over the time range (requires quantile parameter)"
               }
@@ -1315,7 +1315,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"quantile\": 0.95\n  }\n}"
+                  "raw": "{\n  \"query\": \"quantile_over_time(0.95, response_time[5m])\"\n}"
                 },
                 "description": "Calculates the quantile value over the specified time range (requires quantile parameter)"
               }
@@ -1335,7 +1335,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"stddev_over_time(cpu_usage[5m])\"\n}"
                 },
                 "description": "Calculates the standard deviation over the time range"
               }
@@ -1355,7 +1355,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"stddev_over_time(cpu_usage[5m])\"\n}"
                 },
                 "description": "Calculates the standard deviation over the specified time range"
               }
@@ -1375,7 +1375,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"stdvar_over_time(cpu_usage[5m])\"\n}"
                 },
                 "description": "Calculates the standard variance over the time range"
               }
@@ -1395,7 +1395,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"stdvar_over_time(cpu_usage[5m])\"\n}"
                 },
                 "description": "Calculates the standard variance over the specified time range"
               }
@@ -1415,7 +1415,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"mad_over_time(response_time[5m])\"\n}"
                 },
                 "description": "Calculates the median absolute deviation over the time range"
               }
@@ -1435,7 +1435,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"mad_over_time(response_time[5m])\"\n}"
                 },
                 "description": "Calculates the median absolute deviation over the specified time range"
               }
@@ -1455,7 +1455,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"zscore_over_time(cpu_usage[5m])\"\n}"
                 },
                 "description": "Calculates the z-score over the time range"
               }
@@ -1475,7 +1475,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"zscore_over_time(cpu_usage[5m])\"\n}"
                 },
                 "description": "Calculates the z-score over the specified time range"
               }
@@ -1495,7 +1495,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"status_code{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"count(distinct_over_time(instance[5m]))\"\n}"
                 },
                 "description": "Counts distinct values over the time range"
               }
@@ -1515,7 +1515,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"status_code{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"count(distinct_over_time(instance[5m]))\"\n}"
                 },
                 "description": "Counts distinct values over the specified time range"
               }
@@ -1535,7 +1535,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"up{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"changes(http_requests_total[5m])\"\n}"
                 },
                 "description": "Counts the number of times the value changes"
               }
@@ -1555,7 +1555,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"up{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"changes(http_requests_total[5m])\"\n}"
                 },
                 "description": "Counts the number of times the value changes over a time range"
               }
@@ -1575,7 +1575,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"resets(http_requests_total[5m])\"\n}"
                 },
                 "description": "Counts the number of counter resets"
               }
@@ -1595,7 +1595,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"resets(http_requests_total[5m])\"\n}"
                 },
                 "description": "Counts the number of counter resets over a time range"
               }
@@ -1620,7 +1620,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"abs(temperature_celsius)\"\n}"
                 },
                 "description": "Calculates the absolute value of each data point"
               }
@@ -1640,7 +1640,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"abs(temperature_celsius)\"\n}"
                 },
                 "description": "Calculates the absolute value of each data point over a time range"
               }
@@ -1660,7 +1660,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"ceil(response_time)\"\n}"
                 },
                 "description": "Rounds each data point up to the nearest integer"
               }
@@ -1680,7 +1680,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"ceil(response_time)\"\n}"
                 },
                 "description": "Rounds each data point up to the nearest integer over a time range"
               }
@@ -1700,7 +1700,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"floor(response_time)\"\n}"
                 },
                 "description": "Rounds each data point down to the nearest integer"
               }
@@ -1720,7 +1720,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"floor(response_time)\"\n}"
                 },
                 "description": "Rounds each data point down to the nearest integer over a time range"
               }
@@ -1740,7 +1740,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"round(response_time)\"\n}"
                 },
                 "description": "Rounds each data point to the nearest integer"
               }
@@ -1760,7 +1760,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"round(response_time)\"\n}"
                 },
                 "description": "Rounds each data point to the nearest integer over a time range"
               }
@@ -1780,7 +1780,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"sqrt(cpu_usage)\"\n}"
                 },
                 "description": "Calculates the square root of each data point"
               }
@@ -1800,7 +1800,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"sqrt(cpu_usage)\"\n}"
                 },
                 "description": "Calculates the square root of each data point over a time range"
               }
@@ -1820,7 +1820,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"ln(request_rate)\"\n}"
                 },
                 "description": "Calculates the natural logarithm of each data point"
               }
@@ -1840,7 +1840,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"ln(request_rate)\"\n}"
                 },
                 "description": "Calculates the natural logarithm of each data point over a time range"
               }
@@ -1860,7 +1860,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"log2(memory_usage)\"\n}"
                 },
                 "description": "Calculates the base-2 logarithm of each data point"
               }
@@ -1880,7 +1880,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"log2(memory_usage)\"\n}"
                 },
                 "description": "Calculates the base-2 logarithm of each data point over a time range"
               }
@@ -1900,7 +1900,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"log10(file_size)\"\n}"
                 },
                 "description": "Calculates the base-10 logarithm of each data point"
               }
@@ -1920,7 +1920,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"log10(file_size)\"\n}"
                 },
                 "description": "Calculates the base-10 logarithm of each data point over a time range"
               }
@@ -1940,7 +1940,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"exp(growth_rate)\"\n}"
                 },
                 "description": "Calculates e^x for each data point"
               }
@@ -1960,7 +1960,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"exp(growth_rate)\"\n}"
                 },
                 "description": "Calculates e^x for each data point over a time range"
               }
@@ -1980,7 +1980,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"sin(angle_radians)\"\n}"
                 },
                 "description": "Calculates the sine of each data point (in radians)"
               }
@@ -2000,7 +2000,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"sin(angle_radians)\"\n}"
                 },
                 "description": "Calculates the sine of each data point (in radians) over a time range"
               }
@@ -2020,7 +2020,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"cos(angle_radians)\"\n}"
                 },
                 "description": "Calculates the cosine of each data point (in radians)"
               }
@@ -2040,7 +2040,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"cos(angle_radians)\"\n}"
                 },
                 "description": "Calculates the cosine of each data point (in radians) over a time range"
               }
@@ -2060,7 +2060,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"tan(angle_radians)\"\n}"
                 },
                 "description": "Calculates the tangent of each data point (in radians)"
               }
@@ -2080,7 +2080,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"tan(angle_radians)\"\n}"
                 },
                 "description": "Calculates the tangent of each data point (in radians) over a time range"
               }
@@ -2100,7 +2100,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"asin(sine_value)\"\n}"
                 },
                 "description": "Calculates the arcsine of each data point (in radians)"
               }
@@ -2120,7 +2120,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"asin(sine_value)\"\n}"
                 },
                 "description": "Calculates the arcsine of each data point (in radians) over a time range"
               }
@@ -2140,7 +2140,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"acos(cosine_value)\"\n}"
                 },
                 "description": "Calculates the arccosine of each data point (in radians)"
               }
@@ -2160,7 +2160,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"acos(cosine_value)\"\n}"
                 },
                 "description": "Calculates the arccosine of each data point (in radians) over a time range"
               }
@@ -2180,7 +2180,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"atan(tangent_value)\"\n}"
                 },
                 "description": "Calculates the arctangent of each data point (in radians)"
               }
@@ -2200,7 +2200,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"atan(tangent_value)\"\n}"
                 },
                 "description": "Calculates the arctangent of each data point (in radians) over a time range"
               }
@@ -2220,7 +2220,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"deg(angle_radians)\"\n}"
                 },
                 "description": "Converts radians to degrees"
               }
@@ -2240,7 +2240,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"deg(angle_radians)\"\n}"
                 },
                 "description": "Converts radians to degrees over a time range"
               }
@@ -2260,7 +2260,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"rad(angle_degrees)\"\n}"
                 },
                 "description": "Converts degrees to radians"
               }
@@ -2280,7 +2280,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"rad(angle_degrees)\"\n}"
                 },
                 "description": "Converts degrees to radians over a time range"
               }
@@ -2300,7 +2300,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"min\": 0,\n    \"max\": 100\n  }\n}"
+                  "raw": "{\n  \"query\": \"clamp(cpu_usage, 0, 100)\",\n  \"params\": {\n    \"min\": 0,\n    \"max\": 100\n  }\n}"
                 },
                 "description": "Clamps values to a specified range (requires min and max parameters)"
               }
@@ -2320,7 +2320,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"min\": 0,\n    \"max\": 100\n  }\n}"
+                  "raw": "{\n  \"query\": \"clamp(cpu_usage, 0, 100)\",\n  \"params\": {\n    \"min\": 0,\n    \"max\": 100\n  }\n}"
                 },
                 "description": "Clamps values to a specified range over a time range (requires min and max parameters)"
               }
@@ -2340,7 +2340,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"min\": 0\n  }\n}"
+                  "raw": "{\n  \"query\": \"clamp_min(temperature, 0)\",\n  \"params\": {\n    \"min\": 0\n  }\n}"
                 },
                 "description": "Clamps values to a minimum value (requires min parameter)"
               }
@@ -2360,7 +2360,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"min\": 0\n  }\n}"
+                  "raw": "{\n  \"query\": \"clamp_min(temperature, 0)\",\n  \"params\": {\n    \"min\": 0\n  }\n}"
                 },
                 "description": "Clamps values to a minimum value over a time range (requires min parameter)"
               }
@@ -2380,7 +2380,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"max\": 100\n  }\n}"
+                  "raw": "{\n  \"query\": \"clamp_max(response_time, 5.0)\",\n  \"params\": {\n    \"max\": 5.0\n  }\n}"
                 },
                 "description": "Clamps values to a maximum value (requires max parameter)"
               }
@@ -2400,7 +2400,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"max\": 100\n  }\n}"
+                  "raw": "{\n  \"query\": \"clamp_max(response_time, 5.0)\",\n  \"params\": {\n    \"max\": 5.0\n  }\n}"
                 },
                 "description": "Clamps values to a maximum value over a time range (requires max parameter)"
               }
@@ -2420,7 +2420,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"http_request_duration_seconds_bucket{le=\\\"0.1\\\"}\",\n  \"params\": {\n    \"quantile\": 0.95\n  }\n}"
+                  "raw": "{\n  \"query\": \"histogram_quantile(0.95, rate(http_request_duration_bucket[10m]))\",\n  \"params\": {\n    \"quantile\": 0.95\n  }\n}"
                 },
                 "description": "Calculates quantiles from histogram buckets (requires quantile parameter)"
               }
@@ -2440,7 +2440,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"http_request_duration_seconds_bucket{le=\\\"0.1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"quantile\": 0.95\n  }\n}"
+                  "raw": "{\n  \"query\": \"histogram_quantile(0.95, rate(http_request_duration_bucket[10m]))\",\n  \"params\": {\n    \"quantile\": 0.95\n  }\n}"
                 },
                 "description": "Calculates quantiles from histogram buckets over a time range (requires quantile parameter)"
               }
@@ -2460,7 +2460,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"dst\": \"service\",\n    \"replacement\": \"$1\",\n    \"src\": \"instance\",\n    \"regex\": \"(.*)\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_replace(up, \\\"job\\\", \\\"\\\", \\\"instance\\\", \\\"(.*):.*\\\")\",\n  \"params\": {\n    \"dst\": \"job\",\n    \"replacement\": \"\",\n    \"src\": \"instance\",\n    \"regex\": \"(.*):.*\"\n  }\n}"
                 },
                 "description": "Replaces label values using regex (requires dst, replacement, src, regex parameters)"
               }
@@ -2480,7 +2480,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"dst\": \"service\",\n    \"replacement\": \"$1\",\n    \"src\": \"instance\",\n    \"regex\": \"(.*)\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_replace(up, \\\"job\\\", \\\"\\\", \\\"instance\\\", \\\"(.*):.*\\\")\",\n  \"params\": {\n    \"dst\": \"job\",\n    \"replacement\": \"\",\n    \"src\": \"instance\",\n    \"regex\": \"(.*):.*\"\n  }\n}"
                 },
                 "description": "Replaces label values using regex over a time range (requires dst, replacement, src, regex parameters)"
               }
@@ -2500,7 +2500,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"params\": {\n    \"dst\": \"combined\",\n    \"src\": [\"instance\", \"job\"],\n    \"separator\": \"-\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_join(up, \\\"combined\\\", \\\";\\\", \\\"job\\\", \\\"instance\\\")\",\n  \"params\": {\n    \"dst\": \"combined\",\n    \"separator\": \";\",\n    \"src\": [\n      \"job\",\n      \"instance\"\n    ]\n  }\n}"
                 },
                 "description": "Joins multiple label values into a single label (requires dst, src parameters)"
               }
@@ -2520,7 +2520,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"dst\": \"combined\",\n    \"src\": [\"instance\", \"job\"],\n    \"separator\": \"-\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_join(up, \\\"combined\\\", \\\";\\\", \\\"job\\\", \\\"instance\\\")\",\n  \"params\": {\n    \"dst\": \"combined\",\n    \"separator\": \";\",\n    \"src\": [\n      \"job\",\n      \"instance\"\n    ]\n  }\n}"
                 },
                 "description": "Joins multiple label values into a single label over a time range (requires dst, src parameters)"
               }
@@ -2540,7 +2540,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"environment\",\n    \"value\": \"production\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_set(up, \\\"environment\\\", \\\"production\\\")\",\n  \"params\": {\n    \"label\": \"environment\",\n    \"value\": \"production\"\n  }\n}"
                 },
                 "description": "Sets a label to a fixed value (requires label, value parameters)"
               }
@@ -2560,7 +2560,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"environment\",\n    \"value\": \"production\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_set(up, \\\"environment\\\", \\\"production\\\")\",\n  \"params\": {\n    \"label\": \"environment\",\n    \"value\": \"production\"\n  }\n}"
                 },
                 "description": "Sets a label to a fixed value over a time range (requires label, value parameters)"
               }
@@ -2620,7 +2620,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"params\": {\n    \"label\": [\"job\"]\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_keep(http_requests_total, \\\"job\\\", \\\"instance\\\")\",\n  \"params\": {\n    \"labels\": [\n      \"job\",\n      \"instance\"\n    ]\n  }\n}"
                 },
                 "description": "Keeps only specified labels (requires label parameters)"
               }
@@ -2640,7 +2640,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": [\"job\"]\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_keep(http_requests_total, \\\"job\\\", \\\"instance\\\")\",\n  \"params\": {\n    \"labels\": [\n      \"job\",\n      \"instance\"\n    ]\n  }\n}"
                 },
                 "description": "Keeps only specified labels over a time range (requires label parameters)"
               }
@@ -2740,7 +2740,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_match(up, \\\"job\\\", \\\"api.*\\\")\",\n  \"params\": {\n    \"label\": \"job\",\n    \"regex\": \"api.*\"\n  }\n}"
                 },
                 "description": "Filters series where label matches regex (requires label, regex parameters)"
               }
@@ -2760,7 +2760,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_match(up, \\\"job\\\", \\\"api.*\\\")\",\n  \"params\": {\n    \"label\": \"job\",\n    \"regex\": \"api.*\"\n  }\n}"
                 },
                 "description": "Filters series where label matches regex over a time range (requires label, regex parameters)"
               }
@@ -2780,7 +2780,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_mismatch(up, \\\"status\\\", \\\"error\\\")\",\n  \"params\": {\n    \"label\": \"status\",\n    \"regex\": \"error\"\n  }\n}"
                 },
                 "description": "Filters series where label does not match regex (requires label, regex parameters)"
               }
@@ -2800,7 +2800,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_mismatch(up, \\\"status\\\", \\\"error\\\")\",\n  \"params\": {\n    \"label\": \"status\",\n    \"regex\": \"error\"\n  }\n}"
                 },
                 "description": "Filters series where label does not match regex over a time range (requires label, regex parameters)"
               }
@@ -3220,7 +3220,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"up{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"absent(http_requests_total{job=\\\"missing_service\\\"})\"\n}"
                 },
                 "description": "Returns 1 if series is absent, otherwise returns nothing"
               }
@@ -3240,7 +3240,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"up{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"absent(http_requests_total{job=\\\"missing_service\\\"})\"\n}"
                 },
                 "description": "Returns 1 if series is absent over a time range, otherwise returns nothing"
               }
@@ -3260,7 +3260,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"42\"\n}"
+                  "raw": "{\n  \"query\": \"scalar(cpu_usage)\"\n}"
                 },
                 "description": "Converts a single value to a scalar"
               }
@@ -3280,7 +3280,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"42\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"scalar(cpu_usage)\"\n}"
                 },
                 "description": "Converts a single value to a scalar over a time range"
               }
@@ -3300,7 +3300,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"42\"\n}"
+                  "raw": "{\n  \"query\": \"vector(42)\"\n}"
                 },
                 "description": "Converts a scalar to a vector"
               }
@@ -3320,7 +3320,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"42\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"vector(42)\"\n}"
                 },
                 "description": "Converts a scalar to a vector over a time range"
               }
@@ -3340,7 +3340,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\"\n}"
+                  "raw": "{\n  \"query\": \"time()\"\n}"
                 },
                 "description": "Returns the current time as a scalar"
               }
@@ -3360,7 +3360,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"time()\"\n}"
                 },
                 "description": "Returns the current time as a scalar over a time range"
               }
@@ -3380,7 +3380,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\"\n}"
+                  "raw": "{\n  \"query\": \"hour(timestamp)\"\n}"
                 },
                 "description": "Returns the hour of the timestamp (0-23)"
               }
@@ -3400,7 +3400,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"hour(timestamp)\"\n}"
                 },
                 "description": "Returns the hour of the timestamp (0-23) over a time range"
               }
@@ -3420,7 +3420,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\"\n}"
+                  "raw": "{\n  \"query\": \"minute(timestamp)\"\n}"
                 },
                 "description": "Returns the minute of the timestamp (0-59)"
               }
@@ -3440,7 +3440,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"minute(timestamp)\"\n}"
                 },
                 "description": "Returns the minute of the timestamp (0-59) over a time range"
               }
@@ -3460,7 +3460,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\"\n}"
+                  "raw": "{\n  \"query\": \"month(timestamp)\"\n}"
                 },
                 "description": "Returns the month of the timestamp (1-12)"
               }
@@ -3480,7 +3480,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"month(timestamp)\"\n}"
                 },
                 "description": "Returns the month of the timestamp (1-12) over a time range"
               }
@@ -3500,7 +3500,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\"\n}"
+                  "raw": "{\n  \"query\": \"year(timestamp)\"\n}"
                 },
                 "description": "Returns the year of the timestamp"
               }
@@ -3520,7 +3520,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"year(timestamp)\"\n}"
                 },
                 "description": "Returns the year of the timestamp over a time range"
               }
@@ -3540,7 +3540,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\"\n}"
+                  "raw": "{\n  \"query\": \"day_of_month(timestamp)\"\n}"
                 },
                 "description": "Returns the day of the month (1-31)"
               }
@@ -3560,7 +3560,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"day_of_month(timestamp)\"\n}"
                 },
                 "description": "Returns the day of the month (1-31) over a time range"
               }
@@ -3580,7 +3580,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\"\n}"
+                  "raw": "{\n  \"query\": \"day_of_week(timestamp)\"\n}"
                 },
                 "description": "Returns the day of the week (0-6, Sunday=0)"
               }
@@ -3600,7 +3600,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"day_of_week(timestamp)\"\n}"
                 },
                 "description": "Returns the day of the week (0-6, Sunday=0) over a time range"
               }
@@ -3620,7 +3620,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\"\n}"
+                  "raw": "{\n  \"query\": \"days_in_month(timestamp)\"\n}"
                 },
                 "description": "Returns the number of days in the month"
               }
@@ -3640,7 +3640,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"days_in_month(timestamp)\"\n}"
                 },
                 "description": "Returns the number of days in the month over a time range"
               }
@@ -3660,7 +3660,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\"\n}"
+                  "raw": "{\n  \"query\": \"timestamp(http_requests_total)\"\n}"
                 },
                 "description": "Returns the timestamp of each data point"
               }
@@ -3680,7 +3680,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\"\n}"
+                  "raw": "{\n  \"query\": \"timestamp(http_requests_total)\"\n}"
                 },
                 "description": "Returns the timestamp of each data point over a time range"
               }
@@ -4105,7 +4105,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"dst\": \"service\",\n    \"replacement\": \"$1\",\n    \"src\": \"instance\",\n    \"regex\": \"(.*)\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_replace(up, \\\"instance\\\", \\\"\\\", \\\"instance\\\", \\\"(.*):.*\\\")\",\n  \"params\": {\n    \"dst_label\": \"instance\",\n    \"replacement\": \"\",\n    \"src_label\": \"instance\",\n    \"regex\": \"(.*):.*\"\n  }\n}"
                 },
                 "description": "Replaces label values using regex (requires dst, replacement, src, regex parameters)"
               }
@@ -4125,7 +4125,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"dst\": \"service\",\n    \"replacement\": \"$1\",\n    \"src\": \"instance\",\n    \"regex\": \"(.*)\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_replace(up, \\\"instance\\\", \\\"\\\", \\\"instance\\\", \\\"(.*):.*\\\")\",\n  \"params\": {\n    \"dst_label\": \"instance\",\n    \"replacement\": \"\",\n    \"src_label\": \"instance\",\n    \"regex\": \"(.*):.*\"\n  }\n}"
                 },
                 "description": "Replaces label values using regex over a time range (requires dst, replacement, src, regex parameters)"
               }
@@ -4145,7 +4145,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"params\": {\n    \"dst\": \"combined\",\n    \"src\": [\"instance\", \"job\"],\n    \"separator\": \"-\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_join(up, \\\"hostname\\\", \\\";\\\", \\\"instance\\\", \\\"job\\\")\",\n  \"params\": {\n    \"dst_label\": \"hostname\",\n    \"separator\": \";\",\n    \"src_labels\": [\n      \"instance\",\n      \"job\"\n    ]\n  }\n}"
                 },
                 "description": "Joins multiple label values into a single label (requires dst, src parameters)"
               }
@@ -4165,7 +4165,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"dst\": \"combined\",\n    \"src\": [\"instance\", \"job\"],\n    \"separator\": \"-\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_join(up, \\\"hostname\\\", \\\";\\\", \\\"instance\\\", \\\"job\\\")\",\n  \"params\": {\n    \"dst_label\": \"hostname\",\n    \"separator\": \";\",\n    \"src_labels\": [\n      \"instance\",\n      \"job\"\n    ]\n  }\n}"
                 },
                 "description": "Joins multiple label values into a single label over a time range (requires dst, src parameters)"
               }
@@ -4185,7 +4185,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"environment\",\n    \"value\": \"production\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_set(up, \\\"environment\\\", \\\"production\\\")\",\n  \"params\": {\n    \"label\": \"environment\",\n    \"value\": \"production\"\n  }\n}"
                 },
                 "description": "Sets a label to a fixed value (requires label, value parameters)"
               }
@@ -4205,7 +4205,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"environment\",\n    \"value\": \"production\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_set(up, \\\"environment\\\", \\\"production\\\")\",\n  \"params\": {\n    \"label\": \"environment\",\n    \"value\": \"production\"\n  }\n}"
                 },
                 "description": "Sets a label to a fixed value over a time range (requires label, value parameters)"
               }
@@ -4225,7 +4225,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"params\": {\n    \"label\": [\"instance\"]\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_del(up, \\\"unwanted_label\\\")\",\n  \"params\": {\n    \"labels\": [\n      \"unwanted_label\"\n    ]\n  }\n}"
                 },
                 "description": "Deletes specified labels (requires label parameters)"
               }
@@ -4245,7 +4245,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": [\"instance\"]\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_del(up, \\\"unwanted_label\\\")\",\n  \"params\": {\n    \"labels\": [\n      \"unwanted_label\"\n    ]\n  }\n}"
                 },
                 "description": "Deletes specified labels over a time range (requires label parameters)"
               }
@@ -4265,7 +4265,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"params\": {\n    \"label\": [\"job\"]\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_keep(http_requests_total, \\\"job\\\", \\\"instance\\\", \\\"method\\\")\",\n  \"params\": {\n    \"labels\": [\n      \"job\",\n      \"instance\",\n      \"method\"\n    ]\n  }\n}"
                 },
                 "description": "Keeps only specified labels (requires label parameters)"
               }
@@ -4285,7 +4285,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\", job=\\\"api\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": [\"job\"]\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_keep(http_requests_total, \\\"job\\\", \\\"instance\\\", \\\"method\\\")\",\n  \"params\": {\n    \"labels\": [\n      \"job\",\n      \"instance\",\n      \"method\"\n    ]\n  }\n}"
                 },
                 "description": "Keeps only specified labels over a time range (requires label parameters)"
               }
@@ -4305,7 +4305,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"dst\": \"host\",\n    \"src\": \"instance\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_copy(up, \\\"instance\\\", \\\"host\\\")\",\n  \"params\": {\n    \"dst_label\": \"host\",\n    \"src_label\": \"instance\"\n  }\n}"
                 },
                 "description": "Copies a label to a new name (requires dst, src parameters)"
               }
@@ -4325,7 +4325,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"dst\": \"host\",\n    \"src\": \"instance\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_copy(up, \\\"instance\\\", \\\"host\\\")\",\n  \"params\": {\n    \"dst_label\": \"host\",\n    \"src_label\": \"instance\"\n  }\n}"
                 },
                 "description": "Copies a label to a new name over a time range (requires dst, src parameters)"
               }
@@ -4345,7 +4345,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"instance\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_value(up, \\\"instance\\\")\",\n  \"params\": {\n    \"label\": \"instance\"\n  }\n}"
                 },
                 "description": "Returns the value of a label as a metric value (requires label parameter)"
               }
@@ -4365,7 +4365,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"instance\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_value(up, \\\"instance\\\")\",\n  \"params\": {\n    \"label\": \"instance\"\n  }\n}"
                 },
                 "description": "Returns the value of a label as a metric value over a time range (requires label parameter)"
               }
@@ -4385,7 +4385,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_match(up, \\\"instance\\\", \\\"web.*\\\")\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"web.*\"\n  }\n}"
                 },
                 "description": "Filters series where label matches regex (requires label, regex parameters)"
               }
@@ -4405,7 +4405,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_match(up, \\\"instance\\\", \\\"web.*\\\")\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"web.*\"\n  }\n}"
                 },
                 "description": "Filters series where label matches regex over a time range (requires label, regex parameters)"
               }
@@ -4425,7 +4425,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_mismatch(up, \\\"instance\\\", \\\"test.*\\\")\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"test.*\"\n  }\n}"
                 },
                 "description": "Filters series where label does not match regex (requires label, regex parameters)"
               }
@@ -4445,7 +4445,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"query\": \"cpu_usage{instance=\\\"server1\\\"}\",\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-01-01T01:00:00Z\",\n  \"step\": \"1m\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"server.*\"\n  }\n}"
+                  "raw": "{\n  \"query\": \"label_mismatch(up, \\\"instance\\\", \\\"test.*\\\")\",\n  \"params\": {\n    \"label\": \"instance\",\n    \"regex\": \"test.*\"\n  }\n}"
                 },
                 "description": "Filters series where label does not match regex over a time range (requires label, regex parameters)"
               }
@@ -4501,19 +4501,23 @@
           }
         },
         {
-          "name": "GET /metrics/labels",
+          "name": "POST /metrics/labels",
           "request": {
-            "method": "GET",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metric\": \"up\"\n}"
+            },
             "url": {
               "raw": "{{baseUrl}}/metrics/labels"
             },
-            "description": "Labels listing"
+            "description": "Labels listing for a specific metric"
           }
         },
         {
@@ -4552,7 +4556,7 @@
             "description": "MetricsQL range query (VictoriaMetrics)",
             "body": {
               "mode": "raw",
-              "raw": "{}"
+              "raw": "{\n  \"query\": \"http_requests_total{job=\\\"api\\\"}\",\n  \"start\": \"2025-01-01T00:00:00Z\",\n  \"end\": \"2025-01-01T01:00:00Z\",\n  \"step\": \"5m\"\n}"
             }
           }
         },

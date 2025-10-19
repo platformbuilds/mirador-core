@@ -22,24 +22,24 @@ type PredictEngineClient struct {
 
 // NewPredictEngineClient creates a new PREDICT-ENGINE gRPC client
 func NewPredictEngineClient(endpoint string, log logger.Logger) (*PredictEngineClient, error) {
-    // Non-blocking dial so the process starts even if engine is down.
-    conn, err := grpc.Dial(
-        endpoint,
-        grpc.WithTransportCredentials(insecure.NewCredentials()),
-        grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy":"round_robin"}`),
-        grpc.WithConnectParams(grpc.ConnectParams{
-            Backoff: backoff.Config{
-                BaseDelay:  200 * time.Millisecond,
-                Multiplier: 1.6,
-                Jitter:     0.2,
-                MaxDelay:   3 * time.Second,
-            },
-            MinConnectTimeout: 3 * time.Second,
-        }),
-    )
-    if err != nil {
-        return nil, fmt.Errorf("connect to PREDICT-ENGINE: %w", err)
-    }
+	// Non-blocking dial so the process starts even if engine is down.
+	conn, err := grpc.Dial(
+		endpoint,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy":"round_robin"}`),
+		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff: backoff.Config{
+				BaseDelay:  200 * time.Millisecond,
+				Multiplier: 1.6,
+				Jitter:     0.2,
+				MaxDelay:   3 * time.Second,
+			},
+			MinConnectTimeout: 3 * time.Second,
+		}),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("connect to PREDICT-ENGINE: %w", err)
+	}
 
 	return &PredictEngineClient{
 		client: predict.NewPredictEngineServiceClient(conn),
