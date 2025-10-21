@@ -6151,6 +6151,58 @@
             },
             "description": "Get integrations config"
           }
+        },
+        {
+          "name": "GET /config/features",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/config/features"
+            },
+            "description": "Get current feature flags for the tenant"
+          }
+        },
+        {
+          "name": "PUT /config/features",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/config/features"
+            },
+            "description": "Update feature flags for the tenant",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rca\": true,\n  \"predict\": true,\n  \"user_settings\": true,\n  \"rbac\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /config/features/reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/config/features/reset"
+            },
+            "description": "Reset feature flags to default values for the tenant"
+          }
         }
       ]
     },

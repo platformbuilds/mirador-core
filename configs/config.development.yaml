@@ -96,3 +96,17 @@ search:
 uploads:
   # Configurable bulk CSV upload limit (bytes). Default is 5 MiB if omitted.
   bulk_max_bytes: 5242880
+
+# Schema Store Configuration (Weaviate)
+weaviate:
+  enabled: true
+  scheme: "http"
+  host: "localhost"
+  port: 8080
+  api_key: "" # Set via environment variable
+  consistency: "quorum"
+  use_official: true
+  nested_keys:
+    - "tags"
+    - "examples"
+    - "allowed_values"

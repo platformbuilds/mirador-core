@@ -14,11 +14,12 @@ import (
 )
 
 type RCAHandler struct {
-	rcaClient    clients.RCAClient
-	logsService  *services.VictoriaLogsService
-	serviceGraph services.ServiceGraphFetcher
-	cache        cache.ValkeyCluster
-	logger       logger.Logger
+	rcaClient          clients.RCAClient
+	logsService        *services.VictoriaLogsService
+	serviceGraph       services.ServiceGraphFetcher
+	cache              cache.ValkeyCluster
+	logger             logger.Logger
+	featureFlagService *services.RuntimeFeatureFlagService
 }
 
 func NewRCAHandler(
@@ -29,16 +30,37 @@ func NewRCAHandler(
 	logger logger.Logger,
 ) *RCAHandler {
 	return &RCAHandler{
-		rcaClient:    rcaClient,
-		logsService:  logsService,
-		serviceGraph: serviceGraph,
-		cache:        cache,
-		logger:       logger,
+		rcaClient:          rcaClient,
+		logsService:        logsService,
+		serviceGraph:       serviceGraph,
+		cache:              cache,
+		logger:             logger,
+		featureFlagService: services.NewRuntimeFeatureFlagService(cache, logger),
 	}
+}
+
+// checkFeatureEnabled checks if the RCA feature is enabled for the current tenant
+func (h *RCAHandler) checkFeatureEnabled(c *gin.Context) bool {
+	tenantID := c.GetString("tenant_id")
+	flags, err := h.featureFlagService.GetFeatureFlags(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to check feature flags", "tenantID", tenantID, "error", err)
+		return false
+	}
+	return flags.RCAEnabled
 }
 
 // POST /api/v1/rca/investigate - Start RCA investigation with red anchors pattern
 func (h *RCAHandler) StartInvestigation(c *gin.Context) {
+	// Check if RCA feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RCA feature is disabled",
+		})
+		return
+	}
+
 	var request models.RCAInvestigationRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -80,6 +102,15 @@ func (h *RCAHandler) StartInvestigation(c *gin.Context) {
 
 // POST /api/v1/rca/store - Store correlation back to VictoriaLogs as JSON
 func (h *RCAHandler) StoreCorrelation(c *gin.Context) {
+	// Check if RCA feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RCA feature is disabled",
+		})
+		return
+	}
+
 	var storeRequest models.StoreCorrelationRequest
 	if err := c.ShouldBindJSON(&storeRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -135,6 +166,15 @@ func (h *RCAHandler) StoreCorrelation(c *gin.Context) {
 
 // GET /api/v1/rca/correlations - List active correlations (stubbed; fill with gRPC later)
 func (h *RCAHandler) GetActiveCorrelations(c *gin.Context) {
+	// Check if RCA feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RCA feature is disabled",
+		})
+		return
+	}
+
 	tenantID := c.GetString("tenant_id")
 
 	// Optional filters
@@ -157,6 +197,15 @@ func (h *RCAHandler) GetActiveCorrelations(c *gin.Context) {
 
 // GET /api/v1/rca/patterns - List known failure patterns (stubbed; fill with gRPC later)
 func (h *RCAHandler) GetFailurePatterns(c *gin.Context) {
+	// Check if RCA feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RCA feature is disabled",
+		})
+		return
+	}
+
 	tenantID := c.GetString("tenant_id")
 
 	// Optional filters
@@ -178,6 +227,15 @@ func (h *RCAHandler) GetFailurePatterns(c *gin.Context) {
 
 // POST /api/v1/rca/service-graph - Aggregate service dependency metrics.
 func (h *RCAHandler) GetServiceGraph(c *gin.Context) {
+	// Check if RCA feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RCA feature is disabled",
+		})
+		return
+	}
+
 	if h.serviceGraph == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"status": "error",
