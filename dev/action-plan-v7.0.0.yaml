@@ -1,0 +1,410 @@
+version: "7.0.0"
+title: "Mirador Core v7.0.0 - Unified Observability Platform"
+description: "Implementation of unified query engine with intelligent routing, log-metrics correlation, and enhanced observability across logs, traces, and metrics"
+created: "2025-10-20"
+status: "planning"
+
+phases:
+  - name: "Phase 1: Foundation and Architecture"
+    description: "Establish unified query architecture and core abstractions"
+    status: "pending"
+    tasks:
+      - name: "Audit current engine performance"
+        description: "Benchmark current Bleve vs VictoriaMetrics performance baselines and identify optimization opportunities"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: []
+
+      - name: "Design unified query abstraction layer"
+        description: "Create UnifiedQueryEngine interface that abstracts query routing across Bleve, VictoriaMetrics, and traces engines"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "large"
+        dependencies: ["Audit current engine performance"]
+
+      - name: "Implement intelligent query router"
+        description: "Build QueryRouter that analyzes query patterns and routes to optimal engines (Bleve for search, VictoriaMetrics for metrics)"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "large"
+        dependencies: ["Design unified query abstraction layer"]
+
+      - name: "Create unified query models"
+        description: "Define UnifiedQuery, UnifiedResult, and CorrelationQuery models for cross-engine operations"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Design unified query abstraction layer"]
+
+      - name: "Implement query pattern detection"
+        description: "Add heuristics to detect pure metrics, pure logs, correlation queries, and hybrid patterns"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Implement intelligent query router"]
+
+  - name: "Phase 2: Metrics Metadata Integration"
+    description: "Index metrics metadata in Bleve for enhanced discovery and exploration"
+    status: "pending"
+    tasks:
+      - name: "Design metrics metadata schema"
+        description: "Define MetricMetadataDocument structure for indexing metric names, descriptions, labels, and types"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "small"
+        dependencies: ["Create unified query models"]
+
+      - name: "Implement metrics metadata indexer"
+        description: "Create service to extract and index metrics metadata from VictoriaMetrics into Bleve"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Design metrics metadata schema"]
+
+      - name: "Add metrics discovery API"
+        description: "Create /api/v1/metrics/search endpoint for discovering metrics using Bleve's search capabilities"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Implement metrics metadata indexer"]
+
+      - name: "Implement metadata synchronization"
+        description: "Build mechanism to keep metrics metadata in sync between VictoriaMetrics and Bleve indexes"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Implement metrics metadata indexer"]
+
+  - name: "Phase 3: Log-Metrics Correlation Engine"
+    description: "Implement correlation capabilities across logs, traces, and metrics"
+    status: "pending"
+    tasks:
+      - name: "Design correlation query syntax"
+        description: "Define unified query language supporting correlation patterns like 'logs:error AND metrics:high_latency'"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Implement query pattern detection"]
+
+      - name: "Implement correlation engine"
+        description: "Build CorrelationEngine for parallel execution and result correlation across multiple engines"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "large"
+        dependencies: ["Design correlation query syntax"]
+
+      - name: "Add time-window correlation"
+        description: "Implement correlation within configurable time windows (e.g., logs within 5m of metrics spike)"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Implement correlation engine"]
+
+      - name: "Implement label-based correlation"
+        description: "Add correlation by shared labels (service, instance, pod) across different data types"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Implement correlation engine"]
+
+      - name: "Create correlation result merging"
+        description: "Build result merger that combines and deduplicates correlated results from multiple engines"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Add time-window correlation", "Implement label-based correlation"]
+
+  - name: "Phase 4: Performance and Caching"
+    description: "Implement comprehensive caching and performance optimizations"
+    status: "pending"
+    tasks:
+      - name: "Design unified caching strategy"
+        description: "Create UnifiedCache with separate layers for query results, metadata, and correlations"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Design unified query abstraction layer"]
+
+      - name: "Implement cross-engine cache invalidation"
+        description: "Build intelligent cache invalidation that works across Bleve, VictoriaMetrics, and correlation caches"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Design unified caching strategy"]
+
+      - name: "Add query result caching"
+        description: "Implement caching for unified query results with TTL and size limits"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Implement cross-engine cache invalidation"]
+
+      - name: "Optimize Bleve for logs/traces"
+        description: "Fine-tune Bleve memory usage and query performance for core logs/traces workloads"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Audit current engine performance"]
+
+      - name: "Implement query parallelization"
+        description: "Add parallel execution for independent sub-queries within unified queries"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Implement intelligent query router"]
+
+  - name: "Phase 5: Unified Query Language"
+    description: "Develop comprehensive query language across all data types"
+    status: "pending"
+    tasks:
+      - name: "Design unified query grammar"
+        description: "Define grammar for queries spanning logs, traces, and metrics with correlation operators"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "large"
+        dependencies: ["Design correlation query syntax"]
+
+      - name: "Implement query parser"
+        description: "Build parser for unified query language with syntax validation and error reporting"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "large"
+        dependencies: ["Design unified query grammar"]
+
+      - name: "Add query translation layer"
+        description: "Create translators from unified queries to engine-specific query languages"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Implement query parser"]
+
+      - name: "Implement query optimization"
+        description: "Add query optimization passes to improve execution efficiency across engines"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Add query translation layer"]
+
+      - name: "Create query examples and documentation"
+        description: "Develop comprehensive examples and documentation for unified query language"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Implement query parser"]
+
+  - name: "Phase 6: Monitoring and Observability"
+    description: "Implement comprehensive monitoring for unified platform"
+    status: "pending"
+    tasks:
+      - name: "Add unified query metrics"
+        description: "Implement Prometheus metrics for unified queries (latency, success rate, engine routing)"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Design unified query abstraction layer"]
+
+      - name: "Create correlation performance monitoring"
+        description: "Add metrics for correlation query performance and cross-engine coordination"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Implement correlation engine"]
+
+      - name: "Implement query tracing"
+        description: "Add distributed tracing for queries spanning multiple engines"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Add unified query metrics"]
+
+      - name: "Build performance dashboards"
+        description: "Create Grafana dashboards for unified query performance monitoring"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Add unified query metrics", "Create correlation performance monitoring"]
+
+      - name: "Add alerting rules"
+        description: "Implement alerting for query performance degradation and engine failures"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "small"
+        dependencies: ["Build performance dashboards"]
+
+  - name: "Phase 7: Testing and Quality Assurance"
+    description: "Comprehensive testing for unified platform"
+    status: "pending"
+    tasks:
+      - name: "Create unified query test suite"
+        description: "Build comprehensive test suite for unified queries across all engines"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "large"
+        dependencies: ["Implement query parser"]
+
+      - name: "Implement correlation testing"
+        description: "Create tests for log-metrics correlation scenarios with mock data"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Implement correlation engine"]
+
+      - name: "Add performance regression tests"
+        description: "Implement automated performance regression testing for unified queries"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Add unified query metrics"]
+
+      - name: "Create integration test framework"
+        description: "Build framework for testing cross-engine operations and data consistency"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "large"
+        dependencies: ["Create unified query test suite"]
+
+      - name: "Conduct load testing"
+        description: "Perform load testing with mixed query patterns across all engines"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "large"
+        dependencies: ["Implement query parallelization"]
+
+  - name: "Phase 8: Documentation and Adoption"
+    description: "Complete documentation and enable user adoption"
+    status: "pending"
+    tasks:
+      - name: "Update API documentation"
+        description: "Update OpenAPI spec and API docs for unified query endpoints"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Design unified query abstraction layer"]
+
+      - name: "Create unified query language guide"
+        description: "Write comprehensive guide for unified query language with examples"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "large"
+        dependencies: ["Create query examples and documentation"]
+
+      - name: "Build migration documentation"
+        description: "Create guides for migrating from separate engine queries to unified queries"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Create unified query language guide"]
+
+      - name: "Update Postman collections"
+        description: "Add unified query examples to Postman collections"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "small"
+        dependencies: ["Update API documentation"]
+
+      - name: "Create operator documentation"
+        description: "Document operational aspects of unified platform (monitoring, scaling, troubleshooting)"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Build performance dashboards"]
+
+quality_gates:
+  - name: "Unified query performance"
+    criteria: "Unified queries perform within 200% of individual engine queries for 95th percentile"
+
+  - name: "Correlation accuracy"
+    criteria: "Correlation queries return >95% accurate results across time windows and label matching"
+
+  - name: "Backward compatibility"
+    criteria: "All existing individual engine APIs remain functional with no regressions"
+
+  - name: "Cache effectiveness"
+    criteria: "Cache hit rate >60% for repeated unified queries"
+
+  - name: "Cross-engine consistency"
+    criteria: "Data consistency maintained across Bleve, VictoriaMetrics, and correlation results"
+
+  - name: "Query success rate"
+    criteria: ">95% success rate for valid unified queries"
+
+risks:
+  - description: "Complex routing logic may introduce performance bottlenecks"
+    mitigation: "Implement comprehensive performance monitoring and optimization passes"
+    severity: "high"
+
+  - description: "Correlation queries may have high latency due to cross-engine coordination"
+    mitigation: "Implement parallel execution and result streaming"
+    severity: "medium"
+
+  - description: "Unified query language complexity may confuse users"
+    mitigation: "Provide clear documentation, examples, and gradual migration path"
+    severity: "medium"
+
+  - description: "Cache invalidation complexity across multiple engines"
+    mitigation: "Implement robust cache versioning and TTL strategies"
+    severity: "medium"
+
+  - description: "Resource contention between engines during correlation queries"
+    mitigation: "Implement resource quotas and circuit breakers"
+    severity: "high"
+
+  - description: "Data consistency challenges in correlation results"
+    mitigation: "Implement result validation and conflict resolution strategies"
+    severity: "medium"
+
+success_metrics:
+  - name: "Query latency"
+    target: "<200ms for 95th percentile unified queries"
+    current: "TBD"
+
+  - name: "Correlation accuracy"
+    target: ">95% accurate correlation results"
+    current: "TBD"
+
+  - name: "Cache hit rate"
+    target: ">60% for repeated queries"
+    current: "TBD"
+
+  - name: "User adoption"
+    target: "80% of new queries use unified interface"
+    current: "TBD"
+
+  - name: "Performance regression"
+    target: "<10% degradation in individual engine performance"
+    current: "TBD"
+
+dependencies:
+  - name: "Bleve v6.0.0 implementation"
+    status: "completed"
+    description: "Requires completed Bleve search integration from v6.0.0"
+
+  - name: "VictoriaMetrics integration"
+    status: "completed"
+    description: "Existing VictoriaMetrics integration must be stable"
+
+  - name: "Enhanced caching infrastructure"
+    status: "pending"
+    description: "May require Valkey cluster enhancements for unified caching"
+
+timeline:
+  estimated_duration: "16 weeks"
+  phases_breakdown:
+    - phase: "Foundation and Architecture"
+      duration: "2 weeks"
+    - phase: "Metrics Metadata Integration"
+      duration: "2 weeks"
+    - phase: "Log-Metrics Correlation Engine"
+      duration: "3 weeks"
+    - phase: "Performance and Caching"
+      duration: "2 weeks"
+    - phase: "Unified Query Language"
+      duration: "3 weeks"
+    - phase: "Monitoring and Observability"
+      duration: "2 weeks"
+    - phase: "Testing and Quality Assurance"
+      duration: "2 weeks"
+    - phase: "Documentation and Adoption"
+      duration: "2 weeks"</content>
+<parameter name="filePath">/Users/aarvee/repos/github/public/mirador-core/dev/action-plan-v7.0.0.yaml

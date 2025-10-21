@@ -2366,6 +2366,225 @@ paths:
       summary: Get integrations config
       responses:
         '200': { description: OK }
+  /config/features:
+    get:
+      tags: [config]
+      summary: Get runtime feature flags
+      description: Retrieve the current state of runtime feature flags for the tenant
+      responses:
+        '200':
+          description: Feature flags retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    type: object
+                    properties:
+                      tenantId:
+                        type: string
+                        description: The tenant identifier
+                      features:
+                        type: object
+                        properties:
+                          rca_enabled:
+                            type: boolean
+                            description: Whether RCA (Root Cause Analysis) features are enabled
+                          predict_enabled:
+                            type: boolean
+                            description: Whether prediction engine features are enabled
+                          user_settings_enabled:
+                            type: boolean
+                            description: Whether user settings features are enabled
+                          rbac_enabled:
+                            type: boolean
+                            description: Whether RBAC (Role-Based Access Control) features are enabled
+                        required: [rca_enabled, predict_enabled, user_settings_enabled, rbac_enabled]
+                    required: [tenantId, features]
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: Timestamp of the response
+                required: [status, data, timestamp]
+              example:
+                status: success
+                data:
+                  tenantId: default
+                  features:
+                    rca_enabled: true
+                    predict_enabled: true
+                    user_settings_enabled: true
+                    rbac_enabled: true
+                timestamp: "2025-10-19T13:46:07Z"
+    put:
+      tags: [config]
+      summary: Update runtime feature flags
+      description: Update one or more runtime feature flags without restarting the service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                features:
+                  type: object
+                  properties:
+                    rca_enabled:
+                      type: boolean
+                      description: Enable/disable RCA features
+                    predict_enabled:
+                      type: boolean
+                      description: Enable/disable prediction engine features
+                    user_settings_enabled:
+                      type: boolean
+                      description: Enable/disable user settings features
+                    rbac_enabled:
+                      type: boolean
+                      description: Enable/disable RBAC features
+                  additionalProperties: false
+                  description: Feature flags to update
+              required: [features]
+            example:
+              features:
+                rca_enabled: false
+                predict_enabled: true
+      responses:
+        '200':
+          description: Feature flags updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    type: object
+                    properties:
+                      tenantId:
+                        type: string
+                        description: The tenant identifier
+                      features:
+                        type: object
+                        properties:
+                          rca_enabled:
+                            type: boolean
+                          predict_enabled:
+                            type: boolean
+                          user_settings_enabled:
+                            type: boolean
+                          rbac_enabled:
+                            type: boolean
+                        required: [rca_enabled, predict_enabled, user_settings_enabled, rbac_enabled]
+                      updated:
+                        type: boolean
+                        description: Indicates if the flags were updated
+                    required: [tenantId, features, updated]
+                  timestamp:
+                    type: string
+                    format: date-time
+                required: [status, data, timestamp]
+              example:
+                status: success
+                data:
+                  tenantId: default
+                  features:
+                    rca_enabled: false
+                    predict_enabled: true
+                    user_settings_enabled: true
+                    rbac_enabled: true
+                  updated: true
+                timestamp: "2025-10-19T13:46:55Z"
+        '400':
+          description: Invalid request format or unknown feature flag
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [error]
+                  error:
+                    type: string
+                    description: Error message describing the validation failure
+                required: [status, error]
+              example:
+                status: error
+                error: "Invalid feature flags format"
+  /config/features/reset:
+    post:
+      tags: [config]
+      summary: Reset feature flags to defaults
+      description: Reset all runtime feature flags to their default enabled state
+      responses:
+        '200':
+          description: Feature flags reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    type: object
+                    properties:
+                      tenantId:
+                        type: string
+                        description: The tenant identifier
+                      features:
+                        type: object
+                        properties:
+                          rca_enabled:
+                            type: boolean
+                          predict_enabled:
+                            type: boolean
+                          user_settings_enabled:
+                            type: boolean
+                          rbac_enabled:
+                            type: boolean
+                        required: [rca_enabled, predict_enabled, user_settings_enabled, rbac_enabled]
+                      reset:
+                        type: boolean
+                        description: Indicates if the flags were reset
+                    required: [tenantId, features, reset]
+                  timestamp:
+                    type: string
+                    format: date-time
+                required: [status, data, timestamp]
+              example:
+                status: success
+                data:
+                  tenantId: default
+                  features:
+                    rca_enabled: true
+                    predict_enabled: true
+                    user_settings_enabled: true
+                    rbac_enabled: true
+                  reset: true
+                timestamp: "2025-10-19T13:48:37Z"
+        '500':
+          description: Failed to reset feature flags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [error]
+                  error:
+                    type: string
+                    description: Error message describing the failure
+                required: [status, error]
 
   /sessions/active:
     get:

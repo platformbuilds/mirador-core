@@ -102,9 +102,7 @@ auth:
 # Valkey Cluster Caching
 cache:
   nodes:
-    - "redis-cluster-0.redis-cluster:6379"
-    - "redis-cluster-1.redis-cluster:6379"
-    - "redis-cluster-2.redis-cluster:6379"
+    - "localhost:6379"
   ttl: 300 # 5 minutes default
   password: "" # Set via environment variable
   db: 0
@@ -166,6 +164,20 @@ monitoring:
   metrics_path: "/metrics"
   prometheus_enabled: true
   tracing_enabled: false
+
+# Schema Store Configuration (Weaviate)
+weaviate:
+  enabled: true
+  scheme: "http"
+  host: "localhost"
+  port: 8080
+  api_key: "" # Set via environment variable
+  consistency: "quorum"
+  use_official: true
+  nested_keys:
+    - "tags"
+    - "examples"
+    - "allowed_values"
 
 # Search Engine Configuration
 search:

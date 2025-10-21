@@ -6,22 +6,48 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type RBACHandler struct {
-	cache  cache.ValkeyCluster
-	logger logger.Logger
+	cache              cache.ValkeyCluster
+	logger             logger.Logger
+	featureFlagService *services.RuntimeFeatureFlagService
 }
 
 func NewRBACHandler(c cache.ValkeyCluster, l logger.Logger) *RBACHandler {
-	return &RBACHandler{cache: c, logger: l}
+	return &RBACHandler{
+		cache:              c,
+		logger:             l,
+		featureFlagService: services.NewRuntimeFeatureFlagService(c, l),
+	}
+}
+
+// checkFeatureEnabled checks if the RBAC feature is enabled for the current tenant
+func (h *RBACHandler) checkFeatureEnabled(c *gin.Context) bool {
+	tenantID := c.GetString("tenant_id")
+	flags, err := h.featureFlagService.GetFeatureFlags(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to check feature flags", "tenantID", tenantID, "error", err)
+		return false
+	}
+	return flags.RBACEnabled
 }
 
 // GET /api/v1/rbac/roles
 // Minimal: return a static starter set. Later: hydrate from Valkey keys rbac:roles:<tenant>.
 func (h *RBACHandler) GetRoles(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
 	tenantID := c.GetString("tenant_id")
 	_ = tenantID // reserved for Valkey lookups
 
@@ -36,6 +62,15 @@ func (h *RBACHandler) GetRoles(c *gin.Context) {
 // POST /api/v1/rbac/roles
 // Body: { "name": "...", "permissions": ["..."], "description": "..." }
 func (h *RBACHandler) CreateRole(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
 	var req struct {
 		Name        string   `json:"name"`
 		Permissions []string `json:"permissions"`
@@ -59,6 +94,15 @@ func (h *RBACHandler) CreateRole(c *gin.Context) {
 // PUT /api/v1/rbac/users/:userId/roles
 // Body: { "roles": ["viewer","ops"] }  -> overlay stored in Valkey (later)
 func (h *RBACHandler) AssignUserRoles(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
 	userID := c.Param("userId")
 	var req struct {
 		Roles []string `json:"roles"`

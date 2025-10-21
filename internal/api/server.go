@@ -235,6 +235,11 @@ func (s *Server) setupRoutes() {
 	v1.PUT("/config/user-settings", configHandler.UpdateUserSettings)
 	v1.GET("/config/integrations", configHandler.GetIntegrations)
 
+	// Runtime feature flag endpoints
+	v1.GET("/config/features", configHandler.GetFeatureFlags)
+	v1.PUT("/config/features", configHandler.UpdateFeatureFlags)
+	v1.POST("/config/features/reset", configHandler.ResetFeatureFlags)
+
 	// Session management (Valkey cluster caching)
 	sessionHandler := handlers.NewSessionHandler(s.cache, s.logger)
 	v1.GET("/sessions/active", sessionHandler.GetActiveSessions)

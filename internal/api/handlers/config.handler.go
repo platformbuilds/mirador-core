@@ -7,56 +7,87 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type ConfigHandler struct {
-	cache  cache.ValkeyCluster
-	logger logger.Logger
+	cache              cache.ValkeyCluster
+	logger             logger.Logger
+	featureFlagService *services.RuntimeFeatureFlagService
 }
 
 func NewConfigHandler(cache cache.ValkeyCluster, logger logger.Logger) *ConfigHandler {
 	return &ConfigHandler{
-		cache:  cache,
-		logger: logger,
+		cache:              cache,
+		logger:             logger,
+		featureFlagService: services.NewRuntimeFeatureFlagService(cache, logger),
 	}
+}
+
+// checkUserSettingsEnabled checks if user settings feature is enabled
+func (h *ConfigHandler) checkUserSettingsEnabled(c *gin.Context) bool {
+	tenantID := c.GetString("tenant_id")
+	flags, err := h.featureFlagService.GetFeatureFlags(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to check feature flags", "tenantID", tenantID, "error", err)
+		return false
+	}
+	return flags.UserSettingsEnabled
 }
 
 // GET /api/v1/config/user-settings - Get user-driven settings
 func (h *ConfigHandler) GetUserSettings(c *gin.Context) {
+	// Check if user settings feature is enabled
+	if !h.checkUserSettingsEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "User settings feature is disabled",
+		})
+		return
+	}
+
 	userID := c.GetString("user_id")
 	tenantID := c.GetString("tenant_id")
 
 	// Get user session with settings (use session_id from auth middleware)
 	sessionID := c.GetString("session_id")
-	session, err := h.cache.GetSession(c.Request.Context(), sessionID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "error",
-			"error":  "Failed to retrieve user settings",
-		})
-		return
+
+	// Default settings for testing/development when no session exists
+	defaultSettings := map[string]interface{}{
+		"dashboard_layout": "default",
+		"refresh_interval": 30,
+		"timezone":         "UTC",
+		"theme":            "light",
+		"notifications": map[string]bool{
+			"email": true,
+			"slack": false,
+			"push":  true,
+		},
+		"query_preferences": map[string]interface{}{
+			"default_time_range": "1h",
+			"auto_refresh":       true,
+			"query_timeout":      "30s",
+		},
 	}
 
-	// Default settings if none exist
-	if session.Settings == nil {
-		session.Settings = map[string]interface{}{
-			"dashboard_layout": "default",
-			"refresh_interval": 30,
-			"timezone":         "UTC",
-			"theme":            "light",
-			"notifications": map[string]bool{
-				"email": true,
-				"slack": false,
-				"push":  true,
-			},
-			"query_preferences": map[string]interface{}{
-				"default_time_range": "1h",
-				"auto_refresh":       true,
-				"query_timeout":      "30s",
-			},
+	// Try to get session, but don't fail if it doesn't exist (for testing)
+	var sessionSettings map[string]interface{}
+	var lastActivity string
+
+	if sessionID != "" {
+		session, err := h.cache.GetSession(c.Request.Context(), sessionID)
+		if err == nil && session != nil {
+			sessionSettings = session.Settings
+			lastActivity = session.LastActivity.Format(time.RFC3339)
 		}
+	}
+
+	// Use session settings if available, otherwise use defaults
+	if sessionSettings == nil {
+		sessionSettings = defaultSettings
+		lastActivity = time.Now().Format(time.RFC3339)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -64,14 +95,23 @@ func (h *ConfigHandler) GetUserSettings(c *gin.Context) {
 		"data": gin.H{
 			"userId":      userID,
 			"tenantId":    tenantID,
-			"settings":    session.Settings,
-			"lastUpdated": session.LastActivity,
+			"settings":    sessionSettings,
+			"lastUpdated": lastActivity,
 		},
 	})
 }
 
 // PUT /api/v1/config/user-settings - Update user-driven settings
 func (h *ConfigHandler) UpdateUserSettings(c *gin.Context) {
+	// Check if user settings feature is enabled
+	if !h.checkUserSettingsEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "User settings feature is disabled",
+		})
+		return
+	}
+
 	userID := c.GetString("user_id")
 
 	var updateRequest map[string]interface{}
@@ -208,7 +248,7 @@ func (h *ConfigHandler) AddDataSource(c *gin.Context) {
 }
 
 // GET /api/v1/config/integrations - List available/connected integrations
-// Returns a simple list for UI toggles; replace with real discovery later.
+// Returns a simple list for UI toggles; replace with real status checks later.
 func (h *ConfigHandler) GetIntegrations(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -246,5 +286,135 @@ func (h *ConfigHandler) GetIntegrations(c *gin.Context) {
 			"integrations": integrations,
 			"total":        len(integrations),
 		},
+	})
+}
+
+// GET /api/v1/config/features - Get runtime feature flags
+func (h *ConfigHandler) GetFeatureFlags(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	flags, err := h.featureFlagService.GetFeatureFlags(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to get feature flags", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve feature flags",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"tenantId": tenantID,
+			"features": flags,
+		},
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
+}
+
+// PUT /api/v1/config/features - Update runtime feature flags
+func (h *ConfigHandler) UpdateFeatureFlags(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	var updateRequest struct {
+		Features map[string]bool `json:"features" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&updateRequest); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid feature flags format",
+		})
+		return
+	}
+
+	// Get current flags
+	currentFlags, err := h.featureFlagService.GetFeatureFlags(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to get current feature flags", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve current feature flags",
+		})
+		return
+	}
+
+	// Update flags based on request
+	for flagName, enabled := range updateRequest.Features {
+		switch flagName {
+		case "rca_enabled":
+			currentFlags.RCAEnabled = enabled
+		case "predict_enabled":
+			currentFlags.PredictEnabled = enabled
+		case "user_settings_enabled":
+			currentFlags.UserSettingsEnabled = enabled
+		case "rbac_enabled":
+			currentFlags.RBACEnabled = enabled
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  fmt.Sprintf("Unknown feature flag: %s", flagName),
+			})
+			return
+		}
+	}
+
+	// Save updated flags
+	if err := h.featureFlagService.SetFeatureFlags(c.Request.Context(), tenantID, currentFlags); err != nil {
+		h.logger.Error("Failed to update feature flags", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to save feature flags",
+		})
+		return
+	}
+
+	h.logger.Info("Feature flags updated", "tenantID", tenantID, "flags", currentFlags)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"tenantId": tenantID,
+			"features": currentFlags,
+			"updated":  true,
+		},
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
+}
+
+// POST /api/v1/config/features/reset - Reset feature flags to defaults
+func (h *ConfigHandler) ResetFeatureFlags(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	if err := h.featureFlagService.ResetFeatureFlags(c.Request.Context(), tenantID); err != nil {
+		h.logger.Error("Failed to reset feature flags", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to reset feature flags",
+		})
+		return
+	}
+
+	// Get the reset flags to return them
+	flags, err := h.featureFlagService.GetFeatureFlags(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to get reset feature flags", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve reset feature flags",
+		})
+		return
+	}
+
+	h.logger.Info("Feature flags reset to defaults", "tenantID", tenantID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"tenantId": tenantID,
+			"features": flags,
+			"reset":    true,
+		},
+		"timestamp": time.Now().Format(time.RFC3339),
 	})
 }
