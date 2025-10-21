@@ -201,7 +201,7 @@ func TestTieredStore_MemoryCaching(t *testing.T) {
 }
 
 func TestMemoryStore_BasicOperations(t *testing.T) {
-	store := NewMemoryStore()
+	store := NewAdaptiveMemoryStore(1000)
 
 	// Test Set and Get
 	err := store.Set([]byte("key1"), []byte("value1"), 0)
@@ -220,7 +220,7 @@ func TestMemoryStore_BasicOperations(t *testing.T) {
 }
 
 func TestMemoryStore_TTL(t *testing.T) {
-	store := NewMemoryStore()
+	store := NewAdaptiveMemoryStore(1000)
 
 	// Set with short TTL
 	err := store.Set([]byte("ttl_key"), []byte("ttl_value"), 10*time.Millisecond)
