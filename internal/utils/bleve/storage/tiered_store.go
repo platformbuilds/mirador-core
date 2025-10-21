@@ -2,7 +2,9 @@ package storage
 
 import (
 	"fmt"
+	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	store "github.com/blevesearch/upsidedown_store_api"
@@ -14,7 +16,7 @@ import (
 // - Tier 1: In-memory cache for frequently accessed data
 // - Tier 2: Disk-based persistent storage for all data
 type TieredStore struct {
-	memoryStore *MemoryStore
+	memoryStore *AdaptiveMemoryStore
 	diskStore   store.KVStore
 	logger      logger.Logger
 
@@ -31,99 +33,199 @@ type TieredStore struct {
 	mu sync.RWMutex
 }
 
-// MemoryStore is a simple in-memory key-value store with TTL
-type MemoryStore struct {
+// AdaptiveMemoryStore is an in-memory key-value store with TTL and LRU eviction
+type AdaptiveMemoryStore struct {
 	data   map[string][]byte
 	expiry map[string]time.Time
+	access map[string]time.Time // Track access times for LRU
 	mu     sync.RWMutex
+
+	// Adaptive sizing
+	currentSize    int64
+	maxSize        int64
+	targetHitRate  float64
+	hitRateSamples []float64
+	sampleIndex    int
 }
 
-func NewMemoryStore() *MemoryStore {
-	return &MemoryStore{
-		data:   make(map[string][]byte),
-		expiry: make(map[string]time.Time),
+// NewAdaptiveMemoryStore creates a new adaptive memory store
+func NewAdaptiveMemoryStore(initialMaxSize int64) *AdaptiveMemoryStore {
+	return &AdaptiveMemoryStore{
+		data:           make(map[string][]byte),
+		expiry:         make(map[string]time.Time),
+		access:         make(map[string]time.Time),
+		maxSize:        initialMaxSize,
+		targetHitRate:  0.8, // Target 80% hit rate
+		hitRateSamples: make([]float64, 10), // Keep 10 samples
 	}
 }
 
-func (m *MemoryStore) Get(key []byte) ([]byte, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+func (m *AdaptiveMemoryStore) Get(key []byte) ([]byte, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	k := string(key)
-	if expiry, exists := m.expiry[k]; exists && time.Now().After(expiry) {
-		// Key has expired, remove it
+	now := time.Now()
+
+	// Check expiry
+	if expiry, exists := m.expiry[k]; exists && now.After(expiry) {
 		delete(m.data, k)
 		delete(m.expiry, k)
+		delete(m.access, k)
+		atomic.AddInt64(&m.currentSize, -1)
 		return nil, fmt.Errorf("key not found")
 	}
 
 	if value, exists := m.data[k]; exists {
+		// Update access time for LRU
+		m.access[k] = now
 		return value, nil
 	}
 
 	return nil, fmt.Errorf("key not found")
 }
 
-func (m *MemoryStore) Set(key []byte, value []byte, ttl time.Duration) error {
+func (m *AdaptiveMemoryStore) Set(key []byte, value []byte, ttl time.Duration) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	k := string(key)
+	now := time.Now()
+
+	// Check if we need to evict before adding
+	if _, exists := m.data[k]; !exists {
+		// New item, check if we exceed max size
+		for atomic.LoadInt64(&m.currentSize) >= m.maxSize {
+			if !m.evictLRU() {
+				break // Couldn't evict, allow growth
+			}
+		}
+		atomic.AddInt64(&m.currentSize, 1)
+	}
+
 	m.data[k] = value
+	m.access[k] = now
 	if ttl > 0 {
-		m.expiry[k] = time.Now().Add(ttl)
+		m.expiry[k] = now.Add(ttl)
 	} else {
-		delete(m.expiry, k) // No expiry
+		delete(m.expiry, k)
 	}
 	return nil
 }
 
-func (m *MemoryStore) Delete(key []byte) error {
+func (m *AdaptiveMemoryStore) Delete(key []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	k := string(key)
-	delete(m.data, k)
-	delete(m.expiry, k)
+	if _, exists := m.data[k]; exists {
+		delete(m.data, k)
+		delete(m.expiry, k)
+		delete(m.access, k)
+		atomic.AddInt64(&m.currentSize, -1)
+	}
 	return nil
 }
 
-func (m *MemoryStore) Has(key []byte) bool {
+func (m *AdaptiveMemoryStore) Has(key []byte) bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	k := string(key)
 	if expiry, exists := m.expiry[k]; exists && time.Now().After(expiry) {
-		// Clean up expired key
-		delete(m.data, k)
-		delete(m.expiry, k)
 		return false
 	}
-
 	_, exists := m.data[k]
 	return exists
 }
 
-func (m *MemoryStore) Size() int {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+func (m *AdaptiveMemoryStore) Size() int64 {
+	return atomic.LoadInt64(&m.currentSize)
+}
 
-	// Clean up expired keys
-	now := time.Now()
-	for k, expiry := range m.expiry {
-		if now.After(expiry) {
-			delete(m.data, k)
-			delete(m.expiry, k)
+// evictLRU removes the least recently used item
+func (m *AdaptiveMemoryStore) evictLRU() bool {
+	var oldestKey string
+	var oldestTime time.Time
+	first := true
+
+	for k, accessTime := range m.access {
+		if first || accessTime.Before(oldestTime) {
+			oldestKey = k
+			oldestTime = accessTime
+			first = false
 		}
 	}
 
-	return len(m.data)
+	if oldestKey != "" {
+		delete(m.data, oldestKey)
+		delete(m.expiry, oldestKey)
+		delete(m.access, oldestKey)
+		atomic.AddInt64(&m.currentSize, -1)
+		return true
+	}
+
+	return false
+}
+
+// updateHitRateSample adds a new hit rate sample for adaptive sizing
+func (m *AdaptiveMemoryStore) updateHitRateSample(hitRate float64) {
+	m.hitRateSamples[m.sampleIndex] = hitRate
+	m.sampleIndex = (m.sampleIndex + 1) % len(m.hitRateSamples)
+}
+
+// getAverageHitRate calculates the average hit rate from recent samples
+func (m *AdaptiveMemoryStore) getAverageHitRate() float64 {
+	var sum float64
+	var count int
+	for _, rate := range m.hitRateSamples {
+		if rate > 0 { // Only count non-zero samples
+			sum += rate
+			count++
+		}
+	}
+	if count == 0 {
+		return 0
+	}
+	return sum / float64(count)
+}
+
+// adjustMaxSize dynamically adjusts the maximum cache size based on hit rate
+func (m *AdaptiveMemoryStore) adjustMaxSize(currentHitRate float64) {
+	m.updateHitRateSample(currentHitRate)
+	avgHitRate := m.getAverageHitRate()
+
+	var adjustment float64
+	if avgHitRate < m.targetHitRate-0.1 {
+		// Hit rate too low, increase cache size
+		adjustment = 1.2 // Increase by 20%
+	} else if avgHitRate > m.targetHitRate+0.1 {
+		// Hit rate good, can reduce cache size
+		adjustment = 0.9 // Decrease by 10%
+	} else {
+		// Hit rate in acceptable range, minor adjustment
+		adjustment = 1.05 // Slight increase
+	}
+
+	newMaxSize := int64(float64(m.maxSize) * adjustment)
+
+	// Set bounds
+	minSize := int64(100)
+	maxSize := int64(100000) // Max 100K items
+
+	if newMaxSize < minSize {
+		newMaxSize = minSize
+	} else if newMaxSize > maxSize {
+		newMaxSize = maxSize
+	}
+
+	atomic.StoreInt64(&m.maxSize, newMaxSize)
 }
 
 // NewTieredStore creates a new tiered storage instance
 func NewTieredStore(diskStore store.KVStore, maxMemoryItems int, ttl time.Duration, logger logger.Logger) *TieredStore {
 	ts := &TieredStore{
-		memoryStore:    NewMemoryStore(),
+		memoryStore:    NewAdaptiveMemoryStore(int64(maxMemoryItems)),
 		diskStore:      diskStore,
 		logger:         logger,
 		maxMemoryItems: maxMemoryItems,
@@ -136,9 +238,9 @@ func NewTieredStore(diskStore store.KVStore, maxMemoryItems int, ttl time.Durati
 	return ts
 }
 
-// adaptiveCacheManager periodically adjusts cache sizes based on memory pressure
+// adaptiveCacheManager periodically adjusts cache sizes based on memory pressure and hit rates
 func (t *TieredStore) adaptiveCacheManager() {
-	ticker := time.NewTicker(5 * time.Minute) // Check every 5 minutes
+	ticker := time.NewTicker(2 * time.Minute) // Check every 2 minutes for more responsive adaptation
 	defer ticker.Stop()
 
 	for range ticker.C {
@@ -146,69 +248,99 @@ func (t *TieredStore) adaptiveCacheManager() {
 	}
 }
 
-// optimizeCacheSize dynamically adjusts cache sizes based on available memory
+// optimizeCacheSize dynamically adjusts cache sizes based on hit rates and memory pressure
 func (t *TieredStore) optimizeCacheSize() {
+	// Calculate current hit rate
+	totalMemoryRequests := atomic.LoadInt64(&t.memoryHits) + atomic.LoadInt64(&t.memoryMisses)
+	var currentHitRate float64
+	if totalMemoryRequests > 0 {
+		currentHitRate = float64(atomic.LoadInt64(&t.memoryHits)) / float64(totalMemoryRequests)
+	}
+
+	// Get current memory pressure
 	availableMemory := t.getAvailableMemory()
 	memoryPressure := t.calculateMemoryPressure()
 
-	var newMaxMemoryItems int
+	// Adjust cache size based on hit rate and memory pressure
+	t.memoryStore.adjustMaxSize(currentHitRate)
+
+	// Apply memory pressure constraints
+	currentMaxSize := atomic.LoadInt64(&t.memoryStore.maxSize)
+	var newMaxSize int64
 
 	switch {
-	case memoryPressure > 0.8: // High memory pressure
-		// Reduce memory cache to 30% of available memory
-		newMaxMemoryItems = int(float64(availableMemory) * 0.3 / float64(t.estimateItemSize()))
-		t.logger.Info("High memory pressure detected, reducing cache size",
-			"newMaxMemoryItems", newMaxMemoryItems,
-			"memoryPressure", memoryPressure)
+	case memoryPressure > 0.9: // Critical memory pressure
+		// Reduce cache to 20% of available memory
+		newMaxSize = int64(float64(availableMemory) * 0.2 / float64(t.estimateItemSize()))
+		if newMaxSize < currentMaxSize {
+			atomic.StoreInt64(&t.memoryStore.maxSize, newMaxSize)
+		}
 
-	case memoryPressure > 0.6: // Moderate memory pressure
-		// Maintain 50% of available memory
-		newMaxMemoryItems = int(float64(availableMemory) * 0.5 / float64(t.estimateItemSize()))
-		t.logger.Info("Moderate memory pressure detected, adjusting cache size",
-			"newMaxMemoryItems", newMaxMemoryItems,
-			"memoryPressure", memoryPressure)
+	case memoryPressure > 0.7: // High memory pressure
+		// Reduce cache to 40% of available memory
+		newMaxSize = int64(float64(availableMemory) * 0.4 / float64(t.estimateItemSize()))
+		if newMaxSize < currentMaxSize {
+			atomic.StoreInt64(&t.memoryStore.maxSize, newMaxSize)
+		}
+
+	case memoryPressure > 0.5: // Moderate memory pressure
+		// Maintain current adaptive size but cap at 60% of available memory
+		newMaxSize = int64(float64(availableMemory) * 0.6 / float64(t.estimateItemSize()))
+		if currentMaxSize > newMaxSize {
+			atomic.StoreInt64(&t.memoryStore.maxSize, newMaxSize)
+		}
 
 	default: // Low memory pressure
-		// Use 70% of available memory
-		newMaxMemoryItems = int(float64(availableMemory) * 0.7 / float64(t.estimateItemSize()))
+		// Allow adaptive sizing up to 80% of available memory
+		newMaxSize = int64(float64(availableMemory) * 0.8 / float64(t.estimateItemSize()))
+		if currentMaxSize > newMaxSize {
+			atomic.StoreInt64(&t.memoryStore.maxSize, newMaxSize)
+		}
 	}
 
 	// Ensure minimum cache size
-	if newMaxMemoryItems < 100 {
-		newMaxMemoryItems = 100
+	minSize := int64(100)
+	if atomic.LoadInt64(&t.memoryStore.maxSize) < minSize {
+		atomic.StoreInt64(&t.memoryStore.maxSize, minSize)
 	}
 
-	// Apply new cache size
-	t.mu.Lock()
-	oldSize := t.maxMemoryItems
-	t.maxMemoryItems = newMaxMemoryItems
-	t.mu.Unlock()
-
-	if oldSize != newMaxMemoryItems {
-		t.logger.Info("Cache size adjusted",
-			"oldSize", oldSize,
-			"newSize", newMaxMemoryItems,
-			"memoryPressure", memoryPressure)
-	}
+	t.logger.Info("Adaptive cache optimization completed",
+		"currentHitRate", currentHitRate,
+		"memoryPressure", memoryPressure,
+		"newMaxSize", atomic.LoadInt64(&t.memoryStore.maxSize),
+		"currentSize", t.memoryStore.Size())
 }
 
-// getAvailableMemory estimates available memory (simplified implementation)
-func (t *TieredStore) getAvailableMemory() int {
-	// In a real implementation, this would query system memory
-	// For now, use a conservative estimate
-	return 100 * 1024 * 1024 // Assume 100MB available (adjust based on system)
+// getAvailableMemory estimates available memory using Go runtime stats
+func (t *TieredStore) getAvailableMemory() int64 {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
+	// Use a conservative estimate: available memory = total system memory - current heap usage
+	// In a real implementation, this would query OS-specific memory APIs
+	// For now, assume the process can use up to 512MB for caching
+	const maxCacheMemory = 512 * 1024 * 1024 // 512MB
+
+	// Estimate based on current heap usage - leave some headroom
+	availableForCache := maxCacheMemory - int64(m.HeapAlloc)
+
+	if availableForCache < 50*1024*1024 { // Minimum 50MB
+		availableForCache = 50 * 1024 * 1024
+	}
+
+	return availableForCache
 }
 
 // calculateMemoryPressure returns a value between 0-1 indicating memory pressure
 func (t *TieredStore) calculateMemoryPressure() float64 {
-	currentItems := t.memoryStore.Size()
-	maxItems := t.maxMemoryItems
+	currentItems := float64(t.memoryStore.Size())
+	maxItems := float64(atomic.LoadInt64(&t.memoryStore.maxSize))
 
 	if maxItems == 0 {
 		return 0
 	}
 
-	pressure := float64(currentItems) / float64(maxItems)
+	pressure := currentItems / maxItems
 
 	// Cap at 1.0
 	if pressure > 1.0 {
@@ -228,7 +360,7 @@ func (t *TieredStore) estimateItemSize() int {
 // NewTieredStoreWithDisk creates a new tiered storage instance with disk backend
 func NewTieredStoreWithDisk(diskStore store.KVStore, maxMemoryItems int, ttl time.Duration, logger logger.Logger) *TieredStore {
 	return &TieredStore{
-		memoryStore:    NewMemoryStore(),
+		memoryStore:    NewAdaptiveMemoryStore(int64(maxMemoryItems)),
 		diskStore:      diskStore,
 		logger:         logger,
 		maxMemoryItems: maxMemoryItems,
@@ -247,12 +379,12 @@ func (t *TieredStore) Close() error {
 
 // RecordStorageMetrics records storage usage metrics for monitoring
 func (t *TieredStore) RecordStorageMetrics(tenantID, shardNum string) {
-	memoryUsage := t.memoryStore.Size() * t.estimateItemSize()
+	memoryUsage := t.memoryStore.Size() * int64(t.estimateItemSize())
 	// For disk usage, we'd need to implement disk size tracking
 	// For now, use a placeholder
 	diskUsage := int64(0) // TODO: Implement actual disk usage tracking
 
-	monitoring.RecordBleveStorageUsage(tenantID, shardNum, int64(memoryUsage), diskUsage)
+	monitoring.RecordBleveStorageUsage(tenantID, shardNum, memoryUsage, diskUsage)
 }
 
 // Stats returns statistics about the tiered store performance
@@ -350,7 +482,7 @@ func (t *TieredReader) Close() error {
 
 // MemoryReader implements KVReader for in-memory storage
 type MemoryReader struct {
-	store *MemoryStore
+	store *AdaptiveMemoryStore
 }
 
 func (m *MemoryReader) Get(key []byte) ([]byte, error) {

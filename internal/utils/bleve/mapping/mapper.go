@@ -2,6 +2,8 @@ package mapping
 
 import (
 	"fmt"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/platformbuilds/mirador-core/pkg/logger"
@@ -30,32 +32,36 @@ type BleveDocumentMapper struct {
 	logger logger.Logger
 }
 
-// Object pools for memory optimization (currently disabled to avoid data sharing issues)
-// var (
-// 	logDocumentPool = sync.Pool{
-// 		New: func() interface{} {
-// 			return &LogDocument{}
-// 		},
-// 	}
+// Thread-safe object pools for memory optimization
+var (
+	// Pool for map objects used during field extraction
+	fieldMapPool = sync.Pool{
+		New: func() interface{} {
+			return make(map[string]interface{}, 16) // Pre-allocate capacity
+		},
+	}
 
-// 	traceDocumentPool = sync.Pool{
-// 		New: func() interface{} {
-// 			return &TraceDocument{}
-// 		},
-// 	}
+	// Pool for string builders used for ID generation
+	stringBuilderPool = sync.Pool{
+		New: func() interface{} {
+			return &strings.Builder{}
+		},
+	}
 
-// 	spanDocumentPool = sync.Pool{
-// 		New: func() interface{} {
-// 			return &SpanDocument{}
-// 		},
-// 	}
+	// Pool for document slices
+	documentSlicePool = sync.Pool{
+		New: func() interface{} {
+			return make([]IndexableDocument, 0, 100) // Pre-allocate capacity
+		},
+	}
 
-// 	mapPool = sync.Pool{
-// 		New: func() interface{} {
-// 			return make(map[string]interface{}, 10)
-// 		},
-// 	}
-// )
+	// Pool for interface{} slices used during processing
+	interfaceSlicePool = sync.Pool{
+		New: func() interface{} {
+			return make([]interface{}, 0, 50) // Pre-allocate capacity
+		},
+	}
+)
 
 // NewBleveDocumentMapper creates a new document mapper
 func NewBleveDocumentMapper(logger logger.Logger) DocumentMapper {
@@ -106,7 +112,13 @@ type SpanDocument struct {
 
 // MapLogs converts log entries to indexable documents
 func (m *BleveDocumentMapper) MapLogs(logs []map[string]any, tenantID string) ([]IndexableDocument, error) {
-	documents := make([]IndexableDocument, 0, len(logs))
+	// Get pooled slice for documents
+	documents := documentSlicePool.Get().([]IndexableDocument)
+	defer func() {
+		// Reset and return to pool
+		documents = documents[:0]
+		documentSlicePool.Put(documents)
+	}()
 
 	for i, logEntry := range logs {
 		doc, err := m.mapLogEntry(logEntry, tenantID, i)
@@ -117,7 +129,10 @@ func (m *BleveDocumentMapper) MapLogs(logs []map[string]any, tenantID string) ([
 		documents = append(documents, doc)
 	}
 
-	return documents, nil
+	// Return a copy to avoid pool contamination
+	result := make([]IndexableDocument, len(documents))
+	copy(result, documents)
+	return result, nil
 }
 
 // mapLogEntry converts a single log entry to an indexable document
@@ -129,8 +144,44 @@ func (m *BleveDocumentMapper) mapLogEntry(logEntry map[string]any, tenantID stri
 	service := m.extractStringField(logEntry, "service")
 	host := m.extractStringField(logEntry, "host")
 
-	// Generate unique ID
-	id := fmt.Sprintf("log_%s_%d_%d", tenantID, timestamp.UnixNano(), index)
+	// Generate unique ID using pooled string builder
+	sb := stringBuilderPool.Get().(*strings.Builder)
+	defer func() {
+		sb.Reset()
+		stringBuilderPool.Put(sb)
+	}()
+	sb.WriteString("log_")
+	sb.WriteString(tenantID)
+	sb.WriteByte('_')
+	sb.WriteString(fmt.Sprintf("%d_%d", timestamp.UnixNano(), index))
+	id := sb.String()
+
+	// Get pooled map for fields
+	fields := fieldMapPool.Get().(map[string]interface{})
+	defer func() {
+		// Clear and return to pool
+		for k := range fields {
+			delete(fields, k)
+		}
+		fieldMapPool.Put(fields)
+	}()
+
+	// Extract additional fields
+	for key, value := range logEntry {
+		switch key {
+		case "timestamp", "level", "message", "service", "host":
+			// Already handled
+			continue
+		default:
+			fields[key] = value
+		}
+	}
+
+	// Create a copy of the fields map to avoid pool contamination
+	fieldsCopy := make(map[string]interface{}, len(fields))
+	for k, v := range fields {
+		fieldsCopy[k] = v
+	}
 
 	// Create new document (don't use pool to avoid data sharing)
 	doc := &LogDocument{
@@ -141,19 +192,8 @@ func (m *BleveDocumentMapper) mapLogEntry(logEntry map[string]any, tenantID stri
 		Message:   message,
 		Service:   service,
 		Host:      host,
-		Fields:    make(map[string]interface{}),
+		Fields:    fieldsCopy, // Use copied map
 		Raw:       logEntry,
-	}
-
-	// Extract additional fields
-	for key, value := range logEntry {
-		switch key {
-		case "timestamp", "level", "message", "service", "host":
-			// Already handled
-			continue
-		default:
-			doc.Fields[key] = value
-		}
 	}
 
 	return IndexableDocument{
@@ -162,20 +202,29 @@ func (m *BleveDocumentMapper) mapLogEntry(logEntry map[string]any, tenantID stri
 	}, nil
 }
 
-// MapTraces converts trace data to indexable documents
-func (m *BleveDocumentMapper) MapTraces(traces []map[string]interface{}, tenantID string) ([]IndexableDocument, error) {
-	documents := make([]IndexableDocument, 0, len(traces))
+// MapTraces converts trace entries to indexable documents
+func (m *BleveDocumentMapper) MapTraces(traces []map[string]any, tenantID string) ([]IndexableDocument, error) {
+	// Get pooled slice for documents
+	documents := documentSlicePool.Get().([]IndexableDocument)
+	defer func() {
+		// Reset and return to pool
+		documents = documents[:0]
+		documentSlicePool.Put(documents)
+	}()
 
-	for _, traceData := range traces {
-		doc, err := m.mapTrace(traceData, tenantID)
+	for i, traceEntry := range traces {
+		doc, err := m.mapTrace(traceEntry, tenantID)
 		if err != nil {
-			m.logger.Warn("Failed to map trace", "error", err, "trace_id", traceData["traceID"])
+			m.logger.Warn("Failed to map trace entry", "error", err, "index", i)
 			continue
 		}
 		documents = append(documents, doc)
 	}
 
-	return documents, nil
+	// Return a copy to avoid pool contamination
+	result := make([]IndexableDocument, len(documents))
+	copy(result, documents)
+	return result, nil
 }
 
 // mapTrace converts a single trace to an indexable document
