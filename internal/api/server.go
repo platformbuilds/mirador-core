@@ -228,7 +228,8 @@ func (s *Server) setupRoutes() {
 	v1.POST("/rca/store", rcaHandler.StoreCorrelation) // Store correlation back to VictoriaLogs
 
 	// Configuration endpoints (user-driven settings storage)
-	configHandler := handlers.NewConfigHandler(s.cache, s.logger)
+	dynamicConfigService := services.NewDynamicConfigService(s.cache, s.logger)
+	configHandler := handlers.NewConfigHandler(s.cache, s.logger, dynamicConfigService, s.grpcClients)
 	v1.GET("/config/datasources", configHandler.GetDataSources)
 	v1.POST("/config/datasources", configHandler.AddDataSource)
 	v1.GET("/config/user-settings", configHandler.GetUserSettings)
@@ -239,6 +240,11 @@ func (s *Server) setupRoutes() {
 	v1.GET("/config/features", configHandler.GetFeatureFlags)
 	v1.PUT("/config/features", configHandler.UpdateFeatureFlags)
 	v1.POST("/config/features/reset", configHandler.ResetFeatureFlags)
+
+	// Dynamic gRPC endpoint configuration
+	v1.GET("/config/grpc/endpoints", configHandler.GetGRPCEndpoints)
+	v1.PUT("/config/grpc/endpoints", configHandler.UpdateGRPCEndpoints)
+	v1.POST("/config/grpc/endpoints/reset", configHandler.ResetGRPCEndpoints)
 
 	// Session management (Valkey cluster caching)
 	sessionHandler := handlers.NewSessionHandler(s.cache, s.logger)

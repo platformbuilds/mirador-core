@@ -16,16 +16,16 @@ func TestServer_Start_And_Handler(t *testing.T) {
 	log := logger.New("error")
 	cfg := &config.Config{Environment: "development", Port: 0}
 	cfg.Auth.Enabled = false
+	cch := cache.NewNoopValkeyCache(log)
 	vms := &services.VictoriaMetricsServices{
 		Metrics: services.NewVictoriaMetricsService(config.VictoriaMetricsConfig{}, log),
 		Logs:    services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log),
 		Traces:  services.NewVictoriaTracesService(config.VictoriaTracesConfig{}, log),
 	}
-	grpc, err := clients.NewGRPCClients(cfg, log)
+	grpc, err := clients.NewGRPCClients(cfg, log, services.NewDynamicConfigService(cch, log))
 	if err != nil {
 		t.Fatalf("grpc clients: %v", err)
 	}
-	cch := cache.NewNoopValkeyCache(log)
 
 	s := NewServer(cfg, log, cch, grpc, vms, nil)
 
@@ -54,14 +54,14 @@ func TestServer_Start_Fails(t *testing.T) {
 	log := logger.New("error")
 	cfg := &config.Config{Environment: "test", Port: -1}
 	cfg.Auth.Enabled = false
+	cch := cache.NewNoopValkeyCache(log)
 	vms := &services.VictoriaMetricsServices{
 		Metrics: services.NewVictoriaMetricsService(config.VictoriaMetricsConfig{}, log),
 		Logs:    services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log),
 		Traces:  services.NewVictoriaTracesService(config.VictoriaTracesConfig{}, log),
 	}
 	// Provide grpc clients with non-nil logger to avoid nil deref during Close (not reached here)
-	grpc, _ := clients.NewGRPCClients(&config.Config{Environment: "development"}, log)
-	cch := cache.NewNoopValkeyCache(log)
+	grpc, _ := clients.NewGRPCClients(&config.Config{Environment: "development"}, log, services.NewDynamicConfigService(cch, log))
 
 	s := NewServer(cfg, log, cch, grpc, vms, nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)

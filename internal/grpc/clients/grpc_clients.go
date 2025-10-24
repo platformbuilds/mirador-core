@@ -7,6 +7,7 @@ import (
 
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -58,11 +59,13 @@ type GRPCClients struct {
 	PredictEnabled bool
 	RCAEnabled     bool
 	AlertEnabled   bool
+	// Dynamic config service for live updates
+	dynamicConfig *services.DynamicConfigService
 }
 
 // NewGRPCClients creates and initializes all gRPC clients
-func NewGRPCClients(cfg *config.Config, logger logger.Logger) (*GRPCClients, error) {
-	g := &GRPCClients{logger: logger}
+func NewGRPCClients(cfg *config.Config, logger logger.Logger, dynamicConfig *services.DynamicConfigService) (*GRPCClients, error) {
+	g := &GRPCClients{logger: logger, dynamicConfig: dynamicConfig}
 
 	// Initialize PREDICT-ENGINE client
 	if c, err := NewPredictEngineClient(cfg.GRPC.PredictEngine.Endpoint, logger); err != nil {
@@ -164,6 +167,111 @@ func (g *GRPCClients) HealthCheck() error {
 			return fmt.Errorf("ALERT-ENGINE health check failed: %w", err)
 		}
 	}
+	return nil
+}
+
+// UpdatePredictEndpoint updates the predict engine endpoint dynamically
+func (g *GRPCClients) UpdatePredictEndpoint(ctx context.Context, tenantID, endpoint string) error {
+	if g.dynamicConfig == nil {
+		return fmt.Errorf("dynamic config service not available")
+	}
+
+	// Get current config
+	currentConfig, err := g.dynamicConfig.GetGRPCConfig(ctx, tenantID, &config.GRPCConfig{
+		PredictEngine: config.PredictEngineConfig{Endpoint: endpoint},
+		RCAEngine:     config.RCAEngineConfig{},
+		AlertEngine:   config.AlertEngineConfig{},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get current gRPC config: %w", err)
+	}
+
+	// Update the endpoint
+	currentConfig.PredictEngine.Endpoint = endpoint
+
+	// Save updated config
+	if err := g.dynamicConfig.SetGRPCConfig(ctx, tenantID, currentConfig); err != nil {
+		return fmt.Errorf("failed to save updated gRPC config: %w", err)
+	}
+
+	// Update the actual client connection
+	if a, ok := g.PredictEngine.(*realPredictAdapter); ok && a.c != nil {
+		if err := a.c.UpdateEndpoint(endpoint); err != nil {
+			return fmt.Errorf("failed to update predict engine client endpoint: %w", err)
+		}
+	}
+
+	g.logger.Info("Successfully updated predict engine endpoint", "tenantID", tenantID, "endpoint", endpoint)
+	return nil
+}
+
+// UpdateRCAEndpoint updates the RCA engine endpoint dynamically
+func (g *GRPCClients) UpdateRCAEndpoint(ctx context.Context, tenantID, endpoint string) error {
+	if g.dynamicConfig == nil {
+		return fmt.Errorf("dynamic config service not available")
+	}
+
+	// Get current config
+	currentConfig, err := g.dynamicConfig.GetGRPCConfig(ctx, tenantID, &config.GRPCConfig{
+		PredictEngine: config.PredictEngineConfig{},
+		RCAEngine:     config.RCAEngineConfig{Endpoint: endpoint},
+		AlertEngine:   config.AlertEngineConfig{},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get current gRPC config: %w", err)
+	}
+
+	// Update the endpoint
+	currentConfig.RCAEngine.Endpoint = endpoint
+
+	// Save updated config
+	if err := g.dynamicConfig.SetGRPCConfig(ctx, tenantID, currentConfig); err != nil {
+		return fmt.Errorf("failed to save updated gRPC config: %w", err)
+	}
+
+	// Update the actual client connection
+	if a, ok := g.RCAEngine.(*realRCAAdapter); ok && a.c != nil {
+		if err := a.c.UpdateEndpoint(endpoint); err != nil {
+			return fmt.Errorf("failed to update RCA engine client endpoint: %w", err)
+		}
+	}
+
+	g.logger.Info("Successfully updated RCA engine endpoint", "tenantID", tenantID, "endpoint", endpoint)
+	return nil
+}
+
+// UpdateAlertEndpoint updates the alert engine endpoint dynamically
+func (g *GRPCClients) UpdateAlertEndpoint(ctx context.Context, tenantID, endpoint string) error {
+	if g.dynamicConfig == nil {
+		return fmt.Errorf("dynamic config service not available")
+	}
+
+	// Get current config
+	currentConfig, err := g.dynamicConfig.GetGRPCConfig(ctx, tenantID, &config.GRPCConfig{
+		PredictEngine: config.PredictEngineConfig{},
+		RCAEngine:     config.RCAEngineConfig{},
+		AlertEngine:   config.AlertEngineConfig{Endpoint: endpoint},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get current gRPC config: %w", err)
+	}
+
+	// Update the endpoint
+	currentConfig.AlertEngine.Endpoint = endpoint
+
+	// Save updated config
+	if err := g.dynamicConfig.SetGRPCConfig(ctx, tenantID, currentConfig); err != nil {
+		return fmt.Errorf("failed to save updated gRPC config: %w", err)
+	}
+
+	// Update the actual client connection
+	if g.AlertEngine != nil {
+		if err := g.AlertEngine.UpdateEndpoint(endpoint); err != nil {
+			return fmt.Errorf("failed to update alert engine client endpoint: %w", err)
+		}
+	}
+
+	g.logger.Info("Successfully updated alert engine endpoint", "tenantID", tenantID, "endpoint", endpoint)
 	return nil
 }
 

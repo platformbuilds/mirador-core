@@ -119,3 +119,28 @@ func convertTimelineFromGRPC(timeline []*rca.TimelineEvent) []models.TimelineEve
 func (c *RCAEngineClient) Close() error {
 	return c.conn.Close()
 }
+
+// UpdateEndpoint updates the gRPC endpoint and reconnects the client
+func (c *RCAEngineClient) UpdateEndpoint(endpoint string) error {
+	// Close existing connection
+	if c.conn != nil {
+		if err := c.conn.Close(); err != nil {
+			c.logger.Warn("Failed to close existing connection during endpoint update", "error", err)
+		}
+	}
+
+	// Create new connection with the updated endpoint
+	conn, err := grpc.Dial(endpoint,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reconnect to RCA-ENGINE at %s: %w", endpoint, err)
+	}
+
+	// Update client and connection
+	c.client = rca.NewRCAEngineServiceClient(conn)
+	c.conn = conn
+
+	c.logger.Info("Successfully updated RCA-ENGINE endpoint", "endpoint", endpoint)
+	return nil
+}

@@ -8,7 +8,10 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -19,6 +22,10 @@ func newTestRouterWithContext(cch cache.ValkeyCluster, mw func(*gin.Context)) *g
 	v1 := r.Group("/api/v1")
 	v1.Use(mw)
 	log := logger.New("error")
+
+	// Create dynamic config service and grpc clients for the config handler
+	dynamicConfig := services.NewDynamicConfigService(cch, log)
+	grpcClients, _ := clients.NewGRPCClients(&config.Config{Environment: "development"}, log, dynamicConfig)
 
 	// RBAC
 	rbac := NewRBACHandler(cch, log)
@@ -33,7 +40,7 @@ func newTestRouterWithContext(cch cache.ValkeyCluster, mw func(*gin.Context)) *g
 	v1.GET("/sessions/user/:userId", sess.GetUserSessions)
 
 	// Config
-	cfg := NewConfigHandler(cch, log)
+	cfg := NewConfigHandler(cch, log, dynamicConfig, grpcClients)
 	v1.GET("/config/user-settings", cfg.GetUserSettings)
 	v1.PUT("/config/user-settings", cfg.UpdateUserSettings)
 	v1.GET("/config/datasources", cfg.GetDataSources)

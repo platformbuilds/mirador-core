@@ -194,3 +194,28 @@ func (c *AlertEngineClient) HealthCheck() error {
 func (c *AlertEngineClient) Close() error {
 	return c.conn.Close()
 }
+
+// UpdateEndpoint updates the gRPC endpoint and reconnects the client
+func (c *AlertEngineClient) UpdateEndpoint(endpoint string) error {
+	// Close existing connection
+	if c.conn != nil {
+		if err := c.conn.Close(); err != nil {
+			c.logger.Warn("Failed to close existing connection during endpoint update", "error", err)
+		}
+	}
+
+	// Create new connection with the updated endpoint
+	conn, err := grpc.Dial(endpoint,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reconnect to ALERT-ENGINE at %s: %w", endpoint, err)
+	}
+
+	// Update client and connection
+	c.client = alert.NewAlertEngineServiceClient(conn)
+	c.conn = conn
+
+	c.logger.Info("Successfully updated ALERT-ENGINE endpoint", "endpoint", endpoint)
+	return nil
+}

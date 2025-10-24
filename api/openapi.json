@@ -603,6 +603,53 @@
         "required": [
           "name"
         ]
+      },
+      "GRPCEndpointsConfig": {
+        "type": "object",
+        "properties": {
+          "rca_endpoint": {
+            "type": "string",
+            "description": "Endpoint URL for the RCA (Root Cause Analysis) gRPC service",
+            "example": "rca-service:50051"
+          },
+          "predict_endpoint": {
+            "type": "string",
+            "description": "Endpoint URL for the PREDICT gRPC service",
+            "example": "predict-service:50052"
+          },
+          "alerts_endpoint": {
+            "type": "string",
+            "description": "Endpoint URL for the ALERTS gRPC service",
+            "example": "alerts-service:50053"
+          }
+        },
+        "required": [
+          "rca_endpoint",
+          "predict_endpoint",
+          "alerts_endpoint"
+        ]
+      },
+      "GRPCEndpointsUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "rca_endpoint": {
+            "type": "string",
+            "description": "New endpoint URL for the RCA gRPC service",
+            "example": "rca-service-new:50051"
+          },
+          "predict_endpoint": {
+            "type": "string",
+            "description": "New endpoint URL for the PREDICT gRPC service",
+            "example": "predict-service-new:50052"
+          },
+          "alerts_endpoint": {
+            "type": "string",
+            "description": "New endpoint URL for the ALERTS gRPC service",
+            "example": "alerts-service-new:50053"
+          }
+        },
+        "additionalProperties": false,
+        "description": "At least one endpoint must be provided for update"
       }
     }
   },
@@ -885,7 +932,7 @@
           "schema"
         ],
         "summary": "Bulk upsert trace services via CSV",
-        "description": "Upload a CSV to create/update trace service definitions.\nCSV columns (header required; strict header mode):\n- tenantId (optional; defaults to request tenant)\n- service (required)\n- servicePurpose, owner, tags_json (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).\n",
+        "description": "Upload a CSV to create/update trace service definitions.\nCSV columns (header required; strict header mode):\n- tenantId (optional; defaults to request tenant)\n- service (required)\n- servicePurpose, owner, tags (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -1078,7 +1125,7 @@
           "schema"
         ],
         "summary": "Bulk upsert trace operations via CSV",
-        "description": "Upload a CSV to create/update trace operation definitions. Operations are scoped per service; rows referencing undefined services are rejected.\nCSV columns (header required; strict header mode):\n- tenantId (optional; defaults to request tenant)\n- service (required)\n- operation (required)\n- servicePurpose, owner, tags_json (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).\n",
+        "description": "Upload a CSV to create/update trace operation definitions. Operations are scoped per service; rows referencing undefined services are rejected.\nCSV columns (header required; strict header mode):\n- tenantId (optional; defaults to request tenant)\n- service (required)\n- operation (required)\n- servicePurpose, owner, tags (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -1293,6 +1340,12 @@
                       "type": "string"
                     }
                   },
+                  "category": {
+                    "type": "string"
+                  },
+                  "sentiment": {
+                    "type": "string"
+                  },
                   "author": {
                     "type": "string"
                   }
@@ -1317,7 +1370,7 @@
           "schema"
         ],
         "summary": "Bulk upsert metric and label definitions (CSV)",
-        "description": "Upload a CSV to create/update metric and label definitions.\nSecurity: payload limited to 5MiB, MIME allowlist, UTF‑8 validation, and CSV injection mitigations.\n\nColumns (header required):\n\n- tenant_id (optional; defaults to authenticated tenant)\n- metric (required)\n- description\n- owner\n- tags_json (JSON array)\n- label\n- label_type\n- label_required (true/false/1/0/yes/no)\n- label_allowed_json (JSON object)\n- label_description\n- author\n\nNote: Use the sample endpoint below to generate a pre-filled template.\n",
+        "description": "Upload a CSV to create/update metric and label definitions.\nSecurity: payload limited to 5MiB, MIME allowlist, UTF‑8 validation, and CSV injection mitigations.\n\nColumns (header required):\n\n- tenantId (optional; defaults to authenticated tenant)\n- metric (required)\n- description\n- owner\n- tags (JSON array)\n- category\n- sentiment\n- label\n- labelType\n- labelRequired (true/false/1/0/yes/no)\n- labelAllowed (JSON object)\n- labelDescription\n- author\n\nNote: Use the sample endpoint below to generate a pre-filled template.\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -1525,6 +1578,92 @@
         }
       }
     },
+    "/schema/metrics/{metric}/labels": {
+      "post": {
+        "tags": [
+          "schema"
+        ],
+        "summary": "Upsert metric label definition",
+        "description": "Create or update a label definition for a specific metric and record a new version.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The metric name"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "label"
+                ],
+                "properties": {
+                  "tenantId": {
+                    "type": "string",
+                    "description": "Optional tenant ID (defaults to request tenant)"
+                  },
+                  "label": {
+                    "type": "string",
+                    "description": "Label name"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Data type (string",
+                    "number": null,
+                    "bool": null,
+                    "etc.)": null
+                  },
+                  "required": {
+                    "type": "boolean",
+                    "description": "Whether the label is required"
+                  },
+                  "allowedValues": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Optional allowed set or constraints map"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Label description"
+                  },
+                  "author": {
+                    "type": "string",
+                    "description": "Author of this change"
+                  }
+                }
+              },
+              "example": {
+                "label": "instance",
+                "type": "string",
+                "required": false,
+                "allowedValues": {},
+                "description": "Pod or host instance label",
+                "author": "aarvee"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/schema/labels": {
       "post": {
         "tags": [
@@ -1711,7 +1850,7 @@
           "schema"
         ],
         "summary": "Bulk upsert label definitions (CSV)",
-        "description": "Upload a CSV to create/update label definitions.\nSecurity: 5MiB payload limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota.\n\nColumns (header required):\n- tenant_id (optional)\n- name (required)\n- type\n- required (true/false/1/0/yes/no)\n- allowed_json (JSON object)\n- description\n- author\n",
+        "description": "Upload a CSV to create/update label definitions.\nSecurity: 5MiB payload limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota.\n\nColumns (header required):\n- tenantId (optional)\n- name (required)\n- type\n- required (true/false/1/0/yes/no)\n- allowed (JSON object)\n- description\n- author\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -1794,15 +1933,17 @@
                   "description": {
                     "type": "string"
                   },
+                  "category": {
+                    "type": "string"
+                  },
+                  "sentiment": {
+                    "type": "string"
+                  },
                   "tags": {
                     "type": "array",
                     "items": {
                       "type": "string"
                     }
-                  },
-                  "examples": {
-                    "type": "object",
-                    "additionalProperties": true
                   },
                   "author": {
                     "type": "string"
@@ -1828,7 +1969,7 @@
           "schema"
         ],
         "summary": "Bulk upsert log field definitions (CSV)",
-        "description": "Upload a CSV to create/update log field definitions.\nSecurity: 5MiB payload limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota.\n\nColumns (header required):\n- tenant_id (optional)\n- field (required)\n- type\n- description\n- tags_json (JSON array)\n- examples_json (JSON object)\n- author\n",
+        "description": "Upload a CSV to create/update log field definitions.\nSecurity: 5MiB payload limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota.\n\nColumns (header required):\n- tenantId (optional)\n- category (optional)\n- logFieldName (required)\n- logFieldType (optional)\n- logFieldDefinition (optional)\n- sentiment (optional)\n- tags (optional, JSON array)\n- author (optional)\n",
         "requestBody": {
           "required": true,
           "content": {
@@ -2770,7 +2911,7 @@
           "metrics"
         ],
         "summary": "Execute MetricsQL transform function (range)",
-        "description": "Executes a MetricsQL transform function over a time range specified by the {function} path parameter. Supported functions include abs, absent, ceil, clamp, clamp_max, clamp_min, day_of_month, day_of_week, days_in_month, deg, exp, floor, histogram_quantile, hour, ln, log10, log2, minute, month, pi, rad, rate, round, scalar, sgn, sin, sqrt, tan, time, timestamp, vector, year, and more.",
+        "description": "Executes a MetricsQL transform function over a time range specified by the {function} path parameter. Supported functions include abs, absent, ceil, clamp, clamp_max, clamp_min, day_of_month, day_of_week, days_in_month, deg, exp, floor, histogram_quantile, hour, ln, log10, log2, minute, month, pi, rad, rate, round, scalar, sgn, sin, sqrt, tan, time, timestamp, vector, year, label_replace, label_join, label_set, label_keep, label_drop, label_match, label_mismatch]",
         "parameters": [
           {
             "name": "function",
@@ -2971,7 +3112,7 @@
           "metrics"
         ],
         "summary": "Execute MetricsQL aggregate function (range)",
-        "description": "Executes a MetricsQL aggregate function over a time range specified by the {function} path parameter. Supported functions include sum, avg, count, min, max, stddev, stdvar, quantile, topk, bottomk, count_values, absent, increase, delta, rate, irate, deriv, idelta, ideriv, and more.",
+        "description": "Executes a MetricsQL aggregate function over a time range specified by the {function} path parameter. Supported functions include sum, avg, count, min, max, stddev, stdvar, quantile, topk, bottomk, count_values, absent, increase, delta, rate, irate, deriv, idelta, ideriv, group, histogram, and, or, unless]",
         "parameters": [
           {
             "name": "function",
@@ -4127,6 +4268,697 @@
         }
       }
     },
+    "/config/features": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Get runtime feature flags",
+        "description": "Retrieve the current state of runtime feature flags for the tenant",
+        "responses": {
+          "200": {
+            "description": "Feature flags retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenant identifier"
+                        },
+                        "features": {
+                          "type": "object",
+                          "properties": {
+                            "rca_enabled": {
+                              "type": "boolean",
+                              "description": "Whether RCA (Root Cause Analysis) features are enabled"
+                            },
+                            "predict_enabled": {
+                              "type": "boolean",
+                              "description": "Whether prediction engine features are enabled"
+                            },
+                            "user_settings_enabled": {
+                              "type": "boolean",
+                              "description": "Whether user settings features are enabled"
+                            },
+                            "rbac_enabled": {
+                              "type": "boolean",
+                              "description": "Whether RBAC (Role-Based Access Control) features are enabled"
+                            }
+                          },
+                          "required": [
+                            "rca_enabled",
+                            "predict_enabled",
+                            "user_settings_enabled",
+                            "rbac_enabled"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "tenantId",
+                        "features"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Timestamp of the response"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "tenantId": "default",
+                    "features": {
+                      "rca_enabled": true,
+                      "predict_enabled": true,
+                      "user_settings_enabled": true,
+                      "rbac_enabled": true
+                    }
+                  },
+                  "timestamp": "2025-10-19T13:46:07Z"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Update runtime feature flags",
+        "description": "Update one or more runtime feature flags without restarting the service",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "features": {
+                    "type": "object",
+                    "properties": {
+                      "rca_enabled": {
+                        "type": "boolean",
+                        "description": "Enable/disable RCA features"
+                      },
+                      "predict_enabled": {
+                        "type": "boolean",
+                        "description": "Enable/disable prediction engine features"
+                      },
+                      "user_settings_enabled": {
+                        "type": "boolean",
+                        "description": "Enable/disable user settings features"
+                      },
+                      "rbac_enabled": {
+                        "type": "boolean",
+                        "description": "Enable/disable RBAC features"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Feature flags to update"
+                  }
+                },
+                "required": [
+                  "features"
+                ]
+              },
+              "example": {
+                "features": {
+                  "rca_enabled": false,
+                  "predict_enabled": true
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Feature flags updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenant identifier"
+                        },
+                        "features": {
+                          "type": "object",
+                          "properties": {
+                            "rca_enabled": {
+                              "type": "boolean"
+                            },
+                            "predict_enabled": {
+                              "type": "boolean"
+                            },
+                            "user_settings_enabled": {
+                              "type": "boolean"
+                            },
+                            "rbac_enabled": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "rca_enabled",
+                            "predict_enabled",
+                            "user_settings_enabled",
+                            "rbac_enabled"
+                          ]
+                        },
+                        "updated": {
+                          "type": "boolean",
+                          "description": "Indicates if the flags were updated"
+                        }
+                      },
+                      "required": [
+                        "tenantId",
+                        "features",
+                        "updated"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "tenantId": "default",
+                    "features": {
+                      "rca_enabled": false,
+                      "predict_enabled": true,
+                      "user_settings_enabled": true,
+                      "rbac_enabled": true
+                    },
+                    "updated": true
+                  },
+                  "timestamp": "2025-10-19T13:46:55Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request format or unknown feature flag",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the validation failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                },
+                "example": {
+                  "status": "error",
+                  "error": "Invalid feature flags format"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config/features/reset": {
+      "post": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Reset feature flags to defaults",
+        "description": "Reset all runtime feature flags to their default enabled state",
+        "responses": {
+          "200": {
+            "description": "Feature flags reset successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenant identifier"
+                        },
+                        "features": {
+                          "type": "object",
+                          "properties": {
+                            "rca_enabled": {
+                              "type": "boolean"
+                            },
+                            "predict_enabled": {
+                              "type": "boolean"
+                            },
+                            "user_settings_enabled": {
+                              "type": "boolean"
+                            },
+                            "rbac_enabled": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "rca_enabled",
+                            "predict_enabled",
+                            "user_settings_enabled",
+                            "rbac_enabled"
+                          ]
+                        },
+                        "reset": {
+                          "type": "boolean",
+                          "description": "Indicates if the flags were reset"
+                        }
+                      },
+                      "required": [
+                        "tenantId",
+                        "features",
+                        "reset"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "tenantId": "default",
+                    "features": {
+                      "rca_enabled": true,
+                      "predict_enabled": true,
+                      "user_settings_enabled": true,
+                      "rbac_enabled": true
+                    },
+                    "reset": true
+                  },
+                  "timestamp": "2025-10-19T13:48:37Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to reset feature flags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config/grpc/endpoints": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Get gRPC endpoint configurations",
+        "description": "Retrieve the current gRPC endpoint configurations for RCA, PREDICT, and ALERTS services",
+        "responses": {
+          "200": {
+            "description": "gRPC endpoints retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/GRPCEndpointsConfig"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Timestamp of the response"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "rca_endpoint": "rca-service:50051",
+                    "predict_endpoint": "predict-service:50052",
+                    "alerts_endpoint": "alerts-service:50053"
+                  },
+                  "timestamp": "2025-10-19T14:00:00Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve gRPC endpoints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Update gRPC endpoint configurations",
+        "description": "Update one or more gRPC endpoint configurations without restarting the service. The gRPC clients will dynamically reconnect to the new endpoints.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GRPCEndpointsUpdateRequest"
+              },
+              "example": {
+                "rca_endpoint": "rca-service-new:50051",
+                "predict_endpoint": "predict-service-new:50052"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "gRPC endpoints updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenant identifier"
+                        },
+                        "endpoints": {
+                          "$ref": "#/components/schemas/GRPCEndpointsConfig"
+                        },
+                        "updated": {
+                          "type": "boolean",
+                          "description": "Indicates if the endpoints were updated"
+                        }
+                      },
+                      "required": [
+                        "tenantId",
+                        "endpoints",
+                        "updated"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "tenantId": "default",
+                    "endpoints": {
+                      "rca_endpoint": "rca-service-new:50051",
+                      "predict_endpoint": "predict-service-new:50052",
+                      "alerts_endpoint": "alerts-service:50053"
+                    },
+                    "updated": true
+                  },
+                  "timestamp": "2025-10-19T14:05:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request format or unknown endpoint",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the validation failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                },
+                "example": {
+                  "status": "error",
+                  "error": "Invalid endpoint format"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to update gRPC endpoints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config/grpc/endpoints/reset": {
+      "post": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Reset gRPC endpoint configurations to defaults",
+        "description": "Reset all gRPC endpoint configurations to their default values from the static configuration",
+        "responses": {
+          "200": {
+            "description": "gRPC endpoints reset successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenant identifier"
+                        },
+                        "endpoints": {
+                          "$ref": "#/components/schemas/GRPCEndpointsConfig"
+                        },
+                        "reset": {
+                          "type": "boolean",
+                          "description": "Indicates if the endpoints were reset"
+                        }
+                      },
+                      "required": [
+                        "tenantId",
+                        "endpoints",
+                        "reset"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "tenantId": "default",
+                    "endpoints": {
+                      "rca_endpoint": "rca-service:50051",
+                      "predict_endpoint": "predict-service:50052",
+                      "alerts_endpoint": "alerts-service:50053"
+                    },
+                    "reset": true
+                  },
+                  "timestamp": "2025-10-19T14:10:00Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to reset gRPC endpoints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sessions/active": {
       "get": {
         "tags": [
@@ -4283,215 +5115,6 @@
             "description": "Switching Protocols"
           }
         }
-      }
-    }
-  },
-  "TraceServiceRequest": {
-    "type": "object",
-    "properties": {
-      "tenantId": {
-        "type": "string",
-        "description": "Optional tenant ID (defaults to request tenant)"
-      },
-      "service": {
-        "type": "string",
-        "description": "Service name"
-      },
-      "servicePurpose": {
-        "type": "string",
-        "description": "Service purpose/description"
-      },
-      "owner": {
-        "type": "string",
-        "description": "Service owner"
-      },
-      "tags": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "description": "Flat list of tags (e.g., \"key:value\" or free-form labels)",
-        "example": [
-          "environment:production",
-          "team:platform",
-          "version:1.2.3"
-        ]
-      },
-      "author": {
-        "type": "string",
-        "description": "Author of this change"
-      }
-    },
-    "required": [
-      "service"
-    ]
-  },
-  "TraceOperationRequest": {
-    "type": "object",
-    "properties": {
-      "tenantId": {
-        "type": "string",
-        "description": "Optional tenant ID (defaults to request tenant)"
-      },
-      "service": {
-        "type": "string",
-        "description": "Service name"
-      },
-      "operation": {
-        "type": "string",
-        "description": "Operation name"
-      },
-      "servicePurpose": {
-        "type": "string",
-        "description": "Operation purpose/description"
-      },
-      "owner": {
-        "type": "string",
-        "description": "Operation owner"
-      },
-      "tags": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "description": "Flat list of tags",
-        "example": [
-          "GET",
-          "/api/v1/users",
-          "30s"
-        ]
-      },
-      "author": {
-        "type": "string",
-        "description": "Author of this change"
-      }
-    },
-    "required": [
-      "service",
-      "operation"
-    ]
-  },
-  "MetricRequest": {
-    "type": "object",
-    "properties": {
-      "tenantId": {
-        "type": "string",
-        "description": "Optional tenant ID (defaults to request tenant)"
-      },
-      "metric": {
-        "type": "string",
-        "description": "Metric name"
-      },
-      "description": {
-        "type": "string",
-        "description": "Metric description"
-      },
-      "owner": {
-        "type": "string",
-        "description": "Metric owner"
-      },
-      "tags": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "description": "Flat list of tags",
-        "example": [
-          "category:performance",
-          "unit:seconds",
-          "source:prometheus"
-        ]
-      },
-      "author": {
-        "type": "string",
-        "description": "Author of this change"
-      }
-    },
-    "required": [
-      "metric"
-    ]
-  },
-  "LogFieldRequest": {
-    "type": "object",
-    "properties": {
-      "tenantId": {
-        "type": "string",
-        "description": "Optional tenant ID (defaults to request tenant)"
-      },
-      "logFieldName": {
-        "type": "string",
-        "description": "Log field name"
-      },
-      "logFieldType": {
-        "type": "string",
-        "description": "Field data type"
-      },
-      "logFieldDefinition": {
-        "type": "string",
-        "description": "Field description"
-      },
-      "tags": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "description": "Flat list of tags",
-        "example": [
-          "category:security",
-          "format:json",
-          "indexed:true"
-        ]
-      },
-      "examples": {
-        "type": "object",
-        "additionalProperties": {
-          "type": "string"
-        },
-        "description": "Example values as key-value string pairs",
-        "example": {
-          "normal": "INFO",
-          "error": "ERROR",
-          "debug": "DEBUG"
-        }
-      },
-      "author": {
-        "type": "string",
-        "description": "Author of this change"
-      }
-    },
-    "required": [
-      "logFieldName"
-    ]
-  },
-  "LabelRequest": {
-    "type": "object",
-    "properties": {
-      "tenantId": {
-        "type": "string",
-        "description": "Optional tenant ID (defaults to request tenant)"
-      },
-      "name": {
-        "type": "string",
-        "description": "Label name (e.g., instance)"
-      },
-      "type": {
-        "type": "string",
-        "description": "Data type (string, number, bool, etc.)"
-      },
-      "required": {
-        "type": "boolean"
-      },
-      "allowedValues": {
-        "type": "object",
-        "additionalProperties": true,
-        "description": "Optional allowed set or constraints map"
-      },
-      "description": {
-        "type": "string"
-      },
-      "author": {
-        "type": "string",
-        "description": "Author of this change"
       }
     }
   }

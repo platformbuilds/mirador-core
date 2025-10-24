@@ -179,3 +179,39 @@ func (c *PredictEngineClient) GetActiveModels(ctx context.Context, request *mode
 		LastUpdated: time.Now().Format(time.RFC3339),
 	}, nil
 }
+
+// UpdateEndpoint updates the gRPC endpoint and reconnects the client
+func (c *PredictEngineClient) UpdateEndpoint(endpoint string) error {
+	// Close existing connection
+	if c.conn != nil {
+		if err := c.conn.Close(); err != nil {
+			c.logger.Warn("Failed to close existing connection during endpoint update", "error", err)
+		}
+	}
+
+	// Create new connection with the updated endpoint
+	conn, err := grpc.Dial(
+		endpoint,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy":"round_robin"}`),
+		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff: backoff.Config{
+				BaseDelay:  200 * time.Millisecond,
+				Multiplier: 1.6,
+				Jitter:     0.2,
+				MaxDelay:   3 * time.Second,
+			},
+			MinConnectTimeout: 3 * time.Second,
+		}),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reconnect to PREDICT-ENGINE at %s: %w", endpoint, err)
+	}
+
+	// Update client and connection
+	c.client = predict.NewPredictEngineServiceClient(conn)
+	c.conn = conn
+
+	c.logger.Info("Successfully updated PREDICT-ENGINE endpoint", "endpoint", endpoint)
+	return nil
+}

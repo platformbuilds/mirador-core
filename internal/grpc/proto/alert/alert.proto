@@ -4,6 +4,9 @@ package mirador.alert;
 
 option go_package = "github.com/platformbuilds/mirador-core/internal/grpc/proto/alert";
 
+// -------------------------
+// Service
+// -------------------------
 service AlertEngineService {
   rpc ProcessAlert(ProcessAlertRequest) returns (ProcessAlertResponse);
   rpc GetAlertRules(GetAlertRulesRequest) returns (GetAlertRulesResponse);
@@ -12,6 +15,10 @@ service AlertEngineService {
   rpc AcknowledgeAlert(AcknowledgeAlertRequest) returns (AcknowledgeAlertResponse);
   rpc GetHealth(GetHealthRequest) returns (GetHealthResponse);
 }
+
+// -------------------------
+// Messages
+// -------------------------
 
 message ProcessAlertRequest {
   Alert alert        = 1;

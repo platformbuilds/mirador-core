@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.32.0
-// source: internal/grpc/proto/predict.proto
+// source: internal/grpc/proto/predict/predict.proto
 
 package predict
 
@@ -239,5 +239,5 @@ var PredictEngineService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "internal/grpc/proto/predict.proto",
+	Metadata: "internal/grpc/proto/predict/predict.proto",
 }

@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
@@ -16,12 +18,16 @@ type ConfigHandler struct {
 	cache              cache.ValkeyCluster
 	logger             logger.Logger
 	featureFlagService *services.RuntimeFeatureFlagService
+	dynamicConfig      *services.DynamicConfigService
+	grpcClients        *clients.GRPCClients
 }
 
-func NewConfigHandler(cache cache.ValkeyCluster, logger logger.Logger) *ConfigHandler {
+func NewConfigHandler(cache cache.ValkeyCluster, logger logger.Logger, dynamicConfig *services.DynamicConfigService, grpcClients *clients.GRPCClients) *ConfigHandler {
 	return &ConfigHandler{
 		cache:              cache,
 		logger:             logger,
+		dynamicConfig:      dynamicConfig,
+		grpcClients:        grpcClients,
 		featureFlagService: services.NewRuntimeFeatureFlagService(cache, logger),
 	}
 }
@@ -414,6 +420,197 @@ func (h *ConfigHandler) ResetFeatureFlags(c *gin.Context) {
 			"tenantId": tenantID,
 			"features": flags,
 			"reset":    true,
+		},
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
+}
+
+// GET /api/v1/config/grpc/endpoints - Get current gRPC endpoint configurations
+func (h *ConfigHandler) GetGRPCEndpoints(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	if h.dynamicConfig == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status": "error",
+			"error":  "Dynamic configuration service not available",
+		})
+		return
+	}
+
+	// Get current config from cache, falling back to static config
+	defaultConfig := &config.GRPCConfig{}
+	config, err := h.dynamicConfig.GetGRPCConfig(c.Request.Context(), tenantID, defaultConfig)
+	if err != nil {
+		h.logger.Error("Failed to get gRPC endpoints", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve gRPC endpoint configurations",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"tenantId":  tenantID,
+			"endpoints": config,
+		},
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
+}
+
+// PUT /api/v1/config/grpc/endpoints - Update gRPC endpoint configurations
+func (h *ConfigHandler) UpdateGRPCEndpoints(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	if h.dynamicConfig == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status": "error",
+			"error":  "Dynamic configuration service not available",
+		})
+		return
+	}
+
+	var updateRequest struct {
+		PredictEndpoint string `json:"predict_endpoint,omitempty"`
+		RCAEndpoint     string `json:"rca_endpoint,omitempty"`
+		AlertEndpoint   string `json:"alert_endpoint,omitempty"`
+	}
+	if err := c.ShouldBindJSON(&updateRequest); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid endpoint configuration format",
+		})
+		return
+	}
+
+	// Get current config
+	defaultConfig := &config.GRPCConfig{}
+	currentConfig, err := h.dynamicConfig.GetGRPCConfig(c.Request.Context(), tenantID, defaultConfig)
+	if err != nil {
+		h.logger.Error("Failed to get current gRPC config", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve current configuration",
+		})
+		return
+	}
+
+	// Update endpoints if provided
+	updated := false
+	if updateRequest.PredictEndpoint != "" {
+		currentConfig.PredictEngine.Endpoint = updateRequest.PredictEndpoint
+		if err := h.grpcClients.UpdatePredictEndpoint(c.Request.Context(), tenantID, updateRequest.PredictEndpoint); err != nil {
+			h.logger.Error("Failed to update predict endpoint", "tenantID", tenantID, "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error":  fmt.Sprintf("Failed to update predict endpoint: %v", err),
+			})
+			return
+		}
+		updated = true
+	}
+
+	if updateRequest.RCAEndpoint != "" {
+		currentConfig.RCAEngine.Endpoint = updateRequest.RCAEndpoint
+		if err := h.grpcClients.UpdateRCAEndpoint(c.Request.Context(), tenantID, updateRequest.RCAEndpoint); err != nil {
+			h.logger.Error("Failed to update RCA endpoint", "tenantID", tenantID, "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error":  fmt.Sprintf("Failed to update RCA endpoint: %v", err),
+			})
+			return
+		}
+		updated = true
+	}
+
+	if updateRequest.AlertEndpoint != "" {
+		currentConfig.AlertEngine.Endpoint = updateRequest.AlertEndpoint
+		if err := h.grpcClients.UpdateAlertEndpoint(c.Request.Context(), tenantID, updateRequest.AlertEndpoint); err != nil {
+			h.logger.Error("Failed to update alert endpoint", "tenantID", tenantID, "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status": "error",
+				"error":  fmt.Sprintf("Failed to update alert endpoint: %v", err),
+			})
+			return
+		}
+		updated = true
+	}
+
+	if !updated {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "No endpoints provided for update",
+		})
+		return
+	}
+
+	// Save updated config
+	if err := h.dynamicConfig.SetGRPCConfig(c.Request.Context(), tenantID, currentConfig); err != nil {
+		h.logger.Error("Failed to save updated gRPC config", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to save configuration",
+		})
+		return
+	}
+
+	h.logger.Info("Successfully updated gRPC endpoints", "tenantID", tenantID, "updates", updateRequest)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"tenantId":  tenantID,
+			"endpoints": currentConfig,
+			"updated":   true,
+		},
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
+}
+
+// POST /api/v1/config/grpc/endpoints/reset - Reset gRPC endpoints to defaults
+func (h *ConfigHandler) ResetGRPCEndpoints(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	if h.dynamicConfig == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status": "error",
+			"error":  "Dynamic configuration service not available",
+		})
+		return
+	}
+
+	// Reset to defaults (static config)
+	defaultConfig := &config.GRPCConfig{}
+	if err := h.dynamicConfig.ResetGRPCConfig(c.Request.Context(), tenantID, defaultConfig); err != nil {
+		h.logger.Error("Failed to reset gRPC endpoints", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to reset gRPC endpoint configurations",
+		})
+		return
+	}
+
+	// Get the reset config to return it
+	defaultCfg := &config.GRPCConfig{}
+	resetConfig, err := h.dynamicConfig.GetGRPCConfig(c.Request.Context(), tenantID, defaultCfg)
+	if err != nil {
+		h.logger.Error("Failed to get reset gRPC config", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve reset configuration",
+		})
+		return
+	}
+
+	h.logger.Info("Reset gRPC endpoints to defaults", "tenantID", tenantID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"tenantId":  tenantID,
+			"endpoints": resetConfig,
+			"reset":     true,
 		},
 		"timestamp": time.Now().Format(time.RFC3339),
 	})
