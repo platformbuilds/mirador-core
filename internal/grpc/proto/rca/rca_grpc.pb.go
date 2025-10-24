@@ -2,13 +2,12 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.32.0
-// source: internal/grpc/proto/rca.proto
+// source: internal/grpc/proto/rca/rca.proto
 
 package rca
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -240,5 +239,5 @@ var RCAEngineService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "internal/grpc/proto/rca.proto",
+	Metadata: "internal/grpc/proto/rca/rca.proto",
 }

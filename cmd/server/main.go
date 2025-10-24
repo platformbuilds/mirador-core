@@ -78,7 +78,8 @@ func main() {
 	}
 
 	// Initialize gRPC clients for AI engines
-	grpcClients, err := clients.NewGRPCClients(cfg, logger)
+	dynamicConfigService := services.NewDynamicConfigService(valleyCache, logger)
+	grpcClients, err := clients.NewGRPCClients(cfg, logger, dynamicConfigService)
 	if err != nil {
 		logger.Fatal("Failed to initialize gRPC clients", "error", err)
 	}

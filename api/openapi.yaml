@@ -407,6 +407,41 @@ components:
           description: Author of this change
       required: [name]
 
+    GRPCEndpointsConfig:
+      type: object
+      properties:
+        rca_endpoint:
+          type: string
+          description: Endpoint URL for the RCA (Root Cause Analysis) gRPC service
+          example: "rca-service:50051"
+        predict_endpoint:
+          type: string
+          description: Endpoint URL for the PREDICT gRPC service
+          example: "predict-service:50052"
+        alerts_endpoint:
+          type: string
+          description: Endpoint URL for the ALERTS gRPC service
+          example: "alerts-service:50053"
+      required: [rca_endpoint, predict_endpoint, alerts_endpoint]
+
+    GRPCEndpointsUpdateRequest:
+      type: object
+      properties:
+        rca_endpoint:
+          type: string
+          description: New endpoint URL for the RCA gRPC service
+          example: "rca-service-new:50051"
+        predict_endpoint:
+          type: string
+          description: New endpoint URL for the PREDICT gRPC service
+          example: "predict-service-new:50052"
+        alerts_endpoint:
+          type: string
+          description: New endpoint URL for the ALERTS gRPC service
+          example: "alerts-service-new:50053"
+      additionalProperties: false
+      description: At least one endpoint must be provided for update
+
 security:
   - BearerAuth: []
 
@@ -2573,6 +2608,188 @@ paths:
                 timestamp: "2025-10-19T13:48:37Z"
         '500':
           description: Failed to reset feature flags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [error]
+                  error:
+                    type: string
+                    description: Error message describing the failure
+                required: [status, error]
+
+  /config/grpc/endpoints:
+    get:
+      tags: [config]
+      summary: Get gRPC endpoint configurations
+      description: Retrieve the current gRPC endpoint configurations for RCA, PREDICT, and ALERTS services
+      responses:
+        '200':
+          description: gRPC endpoints retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/GRPCEndpointsConfig'
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: Timestamp of the response
+                required: [status, data, timestamp]
+              example:
+                status: success
+                data:
+                  rca_endpoint: "rca-service:50051"
+                  predict_endpoint: "predict-service:50052"
+                  alerts_endpoint: "alerts-service:50053"
+                timestamp: "2025-10-19T14:00:00Z"
+        '500':
+          description: Failed to retrieve gRPC endpoints
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [error]
+                  error:
+                    type: string
+                    description: Error message describing the failure
+                required: [status, error]
+    put:
+      tags: [config]
+      summary: Update gRPC endpoint configurations
+      description: Update one or more gRPC endpoint configurations without restarting the service. The gRPC clients will dynamically reconnect to the new endpoints.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GRPCEndpointsUpdateRequest'
+            example:
+              rca_endpoint: "rca-service-new:50051"
+              predict_endpoint: "predict-service-new:50052"
+      responses:
+        '200':
+          description: gRPC endpoints updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    type: object
+                    properties:
+                      tenantId:
+                        type: string
+                        description: The tenant identifier
+                      endpoints:
+                        $ref: '#/components/schemas/GRPCEndpointsConfig'
+                      updated:
+                        type: boolean
+                        description: Indicates if the endpoints were updated
+                    required: [tenantId, endpoints, updated]
+                  timestamp:
+                    type: string
+                    format: date-time
+                required: [status, data, timestamp]
+              example:
+                status: success
+                data:
+                  tenantId: default
+                  endpoints:
+                    rca_endpoint: "rca-service-new:50051"
+                    predict_endpoint: "predict-service-new:50052"
+                    alerts_endpoint: "alerts-service:50053"
+                  updated: true
+                timestamp: "2025-10-19T14:05:00Z"
+        '400':
+          description: Invalid request format or unknown endpoint
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [error]
+                  error:
+                    type: string
+                    description: Error message describing the validation failure
+                required: [status, error]
+              example:
+                status: error
+                error: "Invalid endpoint format"
+        '500':
+          description: Failed to update gRPC endpoints
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [error]
+                  error:
+                    type: string
+                    description: Error message describing the failure
+                required: [status, error]
+  /config/grpc/endpoints/reset:
+    post:
+      tags: [config]
+      summary: Reset gRPC endpoint configurations to defaults
+      description: Reset all gRPC endpoint configurations to their default values from the static configuration
+      responses:
+        '200':
+          description: gRPC endpoints reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    type: object
+                    properties:
+                      tenantId:
+                        type: string
+                        description: The tenant identifier
+                      endpoints:
+                        $ref: '#/components/schemas/GRPCEndpointsConfig'
+                      reset:
+                        type: boolean
+                        description: Indicates if the endpoints were reset
+                    required: [tenantId, endpoints, reset]
+                  timestamp:
+                    type: string
+                    format: date-time
+                required: [status, data, timestamp]
+              example:
+                status: success
+                data:
+                  tenantId: default
+                  endpoints:
+                    rca_endpoint: "rca-service:50051"
+                    predict_endpoint: "predict-service:50052"
+                    alerts_endpoint: "alerts-service:50053"
+                  reset: true
+                timestamp: "2025-10-19T14:10:00Z"
+        '500':
+          description: Failed to reset gRPC endpoints
           content:
             application/json:
               schema:

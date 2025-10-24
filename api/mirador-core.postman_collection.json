@@ -6203,6 +6203,58 @@
             },
             "description": "Reset feature flags to default values for the tenant"
           }
+        },
+        {
+          "name": "GET /config/grpc/endpoints",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/config/grpc/endpoints"
+            },
+            "description": "Get current gRPC endpoint configurations for RCA, PREDICT, and ALERTS services"
+          }
+        },
+        {
+          "name": "PUT /config/grpc/endpoints",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/config/grpc/endpoints"
+            },
+            "description": "Update gRPC endpoint configurations without restarting the service",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rca_endpoint\": \"rca-service-new:50051\",\n  \"predict_endpoint\": \"predict-service-new:50052\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /config/grpc/endpoints/reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/config/grpc/endpoints/reset"
+            },
+            "description": "Reset gRPC endpoint configurations to default values"
+          }
         }
       ]
     },

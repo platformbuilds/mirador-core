@@ -1,0 +1,81 @@
+
+syntax = "proto3";
+
+package mirador.predict;
+
+option go_package = "github.com/platformbuilds/mirador-core/internal/grpc/proto/predict";
+
+service PredictEngineService {
+  // Analyze potential system fractures/fatigue
+  rpc AnalyzeFractures(AnalyzeFracturesRequest) returns (AnalyzeFracturesResponse);
+  
+  // Get predicted fractures
+  rpc GetPredictedFractures(GetFracturesRequest) returns (GetFracturesResponse);
+  
+  // Get active ML models
+  rpc GetModels(GetModelsRequest) returns (GetModelsResponse);
+  
+  // Health check
+  rpc GetHealth(GetHealthRequest) returns (GetHealthResponse);
+}
+
+message AnalyzeFracturesRequest {
+  string component = 1;
+  string time_range = 2;
+  repeated string model_types = 3;
+  string tenant_id = 4;
+}
+
+message AnalyzeFracturesResponse {
+  repeated SystemFracture fractures = 1;
+  repeated string models_used = 2;
+  int64 processing_time_ms = 3;
+}
+
+message SystemFracture {
+  string id = 1;
+  string component = 2;
+  string fracture_type = 3; // fatigue, overload, degradation
+  int64 time_to_fracture_seconds = 4;
+  string severity = 5; // high, medium, low
+  double probability = 6;
+  double confidence = 7;
+  repeated string contributing_factors = 8;
+  string recommendation = 9;
+}
+
+message GetFracturesRequest {
+  string time_range = 1;
+  double min_probability = 2;
+  string tenant_id = 3;
+}
+
+message GetFracturesResponse {
+  repeated SystemFracture fractures = 1;
+}
+
+message GetModelsRequest {
+  string tenant_id = 1;
+}
+
+message GetModelsResponse {
+  repeated MLModel models = 1;
+}
+
+message MLModel {
+  string name = 1;
+  string type = 2;
+  string status = 3;
+  double accuracy = 4;
+  string last_trained = 5;
+}
+
+message GetHealthRequest {}
+
+message GetHealthResponse {
+  string status = 1;
+  int32 models_active = 2;
+  int32 predictions_per_hour = 3;
+  double accuracy = 4;
+  string last_update = 5;
+}
