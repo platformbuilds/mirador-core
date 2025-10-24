@@ -15,7 +15,7 @@ import (
 
 // RCAEngineClient wraps the gRPC client for RCA-ENGINE
 type RCAEngineClient struct {
-	client rca.RCAEngineServiceClient
+	client rca.RCAEngineClient
 	conn   *grpc.ClientConn
 	logger logger.Logger
 }
@@ -30,7 +30,7 @@ func NewRCAEngineClient(endpoint string, logger logger.Logger) (*RCAEngineClient
 		return nil, fmt.Errorf("failed to connect to RCA-ENGINE: %w", err)
 	}
 
-	client := rca.NewRCAEngineServiceClient(conn)
+	client := rca.NewRCAEngineClient(conn)
 
 	return &RCAEngineClient{
 		client: client,
@@ -87,7 +87,7 @@ func (c *RCAEngineClient) HealthCheck() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err := c.client.GetHealth(ctx, &rca.GetHealthRequest{})
+	_, err := c.client.HealthCheck(ctx, &rca.HealthRequest{})
 	return err
 }
 
@@ -138,7 +138,7 @@ func (c *RCAEngineClient) UpdateEndpoint(endpoint string) error {
 	}
 
 	// Update client and connection
-	c.client = rca.NewRCAEngineServiceClient(conn)
+	c.client = rca.NewRCAEngineClient(conn)
 	c.conn = conn
 
 	c.logger.Info("Successfully updated RCA-ENGINE endpoint", "endpoint", endpoint)
