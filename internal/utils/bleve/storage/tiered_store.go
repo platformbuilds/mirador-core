@@ -55,7 +55,7 @@ func NewAdaptiveMemoryStore(initialMaxSize int64) *AdaptiveMemoryStore {
 		expiry:         make(map[string]time.Time),
 		access:         make(map[string]time.Time),
 		maxSize:        initialMaxSize,
-		targetHitRate:  0.8, // Target 80% hit rate
+		targetHitRate:  0.8,                 // Target 80% hit rate
 		hitRateSamples: make([]float64, 10), // Keep 10 samples
 	}
 }

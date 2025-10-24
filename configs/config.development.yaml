@@ -6,15 +6,15 @@ log_level: debug
 database:
   victoria_metrics:
     endpoints:
-      - "http://localhost:8428"
+      - "http://127.0.0.1:8428"
     timeout: 10000
   victoria_logs:
     endpoints:
-      - "http://localhost:9428"
+      - "http://127.0.0.1:9428"
     timeout: 10000
   victoria_traces:
     endpoints:
-      - "http://localhost:10428"
+      - "http://127.0.0.1:10428"
     timeout: 10000
 
 grpc:
@@ -23,7 +23,7 @@ grpc:
     models: ["isolation_forest", "lstm_trend"]
     timeout: 10000
   rca_engine:
-    endpoint: "127.0.0.1:9092"
+    endpoint: "127.0.0.1:8020"
     correlation_threshold: 0.8
     timeout: 10000
   alert_engine:
