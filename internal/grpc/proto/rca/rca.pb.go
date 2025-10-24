@@ -761,26 +761,26 @@ func (x *FailurePattern) GetFrequency() float64 {
 }
 
 // Health
-type GetHealthRequest struct {
+type HealthRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetHealthRequest) Reset() {
-	*x = GetHealthRequest{}
+func (x *HealthRequest) Reset() {
+	*x = HealthRequest{}
 	mi := &file_internal_grpc_proto_rca_rca_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetHealthRequest) String() string {
+func (x *HealthRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetHealthRequest) ProtoMessage() {}
+func (*HealthRequest) ProtoMessage() {}
 
-func (x *GetHealthRequest) ProtoReflect() protoreflect.Message {
+func (x *HealthRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_internal_grpc_proto_rca_rca_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -792,35 +792,32 @@ func (x *GetHealthRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetHealthRequest.ProtoReflect.Descriptor instead.
-func (*GetHealthRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use HealthRequest.ProtoReflect.Descriptor instead.
+func (*HealthRequest) Descriptor() ([]byte, []int) {
 	return file_internal_grpc_proto_rca_rca_proto_rawDescGZIP(), []int{11}
 }
 
-type GetHealthResponse struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Status             string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
-	ActiveCorrelations int32                  `protobuf:"varint,2,opt,name=active_correlations,json=activeCorrelations,proto3" json:"active_correlations,omitempty"`
-	AvgResolutionTime  float64                `protobuf:"fixed64,3,opt,name=avg_resolution_time,json=avgResolutionTime,proto3" json:"avg_resolution_time,omitempty"`
-	LastUpdate         string                 `protobuf:"bytes,4,opt,name=last_update,json=lastUpdate,proto3" json:"last_update,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+type HealthResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetHealthResponse) Reset() {
-	*x = GetHealthResponse{}
+func (x *HealthResponse) Reset() {
+	*x = HealthResponse{}
 	mi := &file_internal_grpc_proto_rca_rca_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetHealthResponse) String() string {
+func (x *HealthResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetHealthResponse) ProtoMessage() {}
+func (*HealthResponse) ProtoMessage() {}
 
-func (x *GetHealthResponse) ProtoReflect() protoreflect.Message {
+func (x *HealthResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_internal_grpc_proto_rca_rca_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -832,35 +829,14 @@ func (x *GetHealthResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetHealthResponse.ProtoReflect.Descriptor instead.
-func (*GetHealthResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use HealthResponse.ProtoReflect.Descriptor instead.
+func (*HealthResponse) Descriptor() ([]byte, []int) {
 	return file_internal_grpc_proto_rca_rca_proto_rawDescGZIP(), []int{12}
 }
 
-func (x *GetHealthResponse) GetStatus() string {
+func (x *HealthResponse) GetStatus() string {
 	if x != nil {
 		return x.Status
-	}
-	return ""
-}
-
-func (x *GetHealthResponse) GetActiveCorrelations() int32 {
-	if x != nil {
-		return x.ActiveCorrelations
-	}
-	return 0
-}
-
-func (x *GetHealthResponse) GetAvgResolutionTime() float64 {
-	if x != nil {
-		return x.AvgResolutionTime
-	}
-	return 0
-}
-
-func (x *GetHealthResponse) GetLastUpdate() string {
-	if x != nil {
-		return x.LastUpdate
 	}
 	return ""
 }
@@ -869,15 +845,15 @@ var File_internal_grpc_proto_rca_rca_proto protoreflect.FileDescriptor
 
 const file_internal_grpc_proto_rca_rca_proto_rawDesc = "" +
 	"\n" +
-	"!internal/grpc/proto/rca/rca.proto\x12\vmirador.rca\"\xe2\x01\n" +
+	"!internal/grpc/proto/rca/rca.proto\x12\x06rca.v1\"\xdd\x01\n" +
 	"\x12InvestigateRequest\x12\x1f\n" +
 	"\vincident_id\x18\x01 \x01(\tR\n" +
 	"incidentId\x12\x1a\n" +
-	"\bsymptoms\x18\x02 \x03(\tR\bsymptoms\x125\n" +
+	"\bsymptoms\x18\x02 \x03(\tR\bsymptoms\x120\n" +
 	"\n" +
-	"time_range\x18\x03 \x01(\v2\x16.mirador.rca.TimeRangeR\ttimeRange\x12+\n" +
+	"time_range\x18\x03 \x01(\v2\x11.rca.v1.TimeRangeR\ttimeRange\x12+\n" +
 	"\x11affected_services\x18\x04 \x03(\tR\x10affectedServices\x12+\n" +
-	"\x11anomaly_threshold\x18\x05 \x01(\x01R\x10anomalyThreshold\"\xc3\x02\n" +
+	"\x11anomaly_threshold\x18\x05 \x01(\x01R\x10anomalyThreshold\"\xb9\x02\n" +
 	"\x13InvestigateResponse\x12%\n" +
 	"\x0ecorrelation_id\x18\x01 \x01(\tR\rcorrelationId\x12\x1d\n" +
 	"\n" +
@@ -885,9 +861,9 @@ const file_internal_grpc_proto_rca_rca_proto_rawDesc = "" +
 	"\n" +
 	"confidence\x18\x03 \x01(\x01R\n" +
 	"confidence\x12+\n" +
-	"\x11affected_services\x18\x04 \x03(\tR\x10affectedServices\x126\n" +
-	"\btimeline\x18\x05 \x03(\v2\x1a.mirador.rca.TimelineEventR\btimeline\x127\n" +
-	"\vred_anchors\x18\x06 \x03(\v2\x16.mirador.rca.RedAnchorR\n" +
+	"\x11affected_services\x18\x04 \x03(\tR\x10affectedServices\x121\n" +
+	"\btimeline\x18\x05 \x03(\v2\x15.rca.v1.TimelineEventR\btimeline\x122\n" +
+	"\vred_anchors\x18\x06 \x03(\v2\x11.rca.v1.RedAnchorR\n" +
 	"redAnchors\x12(\n" +
 	"\x0frecommendations\x18\a \x03(\tR\x0frecommendations\"\xc4\x01\n" +
 	"\tRedAnchor\x12\x18\n" +
@@ -909,9 +885,9 @@ const file_internal_grpc_proto_rca_rca_proto_rawDesc = "" +
 	"\ranomaly_score\x18\x05 \x01(\x01R\fanomalyScore\x12\x1b\n" +
 	"\tdata_type\x18\x06 \x01(\tR\bdataType\"5\n" +
 	"\x16GetCorrelationsRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"W\n" +
-	"\x17GetCorrelationsResponse\x12<\n" +
-	"\fcorrelations\x18\x01 \x03(\v2\x18.mirador.rca.CorrelationR\fcorrelations\"\xbb\x02\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"R\n" +
+	"\x17GetCorrelationsResponse\x127\n" +
+	"\fcorrelations\x18\x01 \x03(\v2\x13.rca.v1.CorrelationR\fcorrelations\"\xb1\x02\n" +
 	"\vCorrelation\x12%\n" +
 	"\x0ecorrelation_id\x18\x01 \x01(\tR\rcorrelationId\x12\x1d\n" +
 	"\n" +
@@ -919,15 +895,15 @@ const file_internal_grpc_proto_rca_rca_proto_rawDesc = "" +
 	"\n" +
 	"confidence\x18\x03 \x01(\x01R\n" +
 	"confidence\x12+\n" +
-	"\x11affected_services\x18\x04 \x03(\tR\x10affectedServices\x126\n" +
-	"\btimeline\x18\x05 \x03(\v2\x1a.mirador.rca.TimelineEventR\btimeline\x127\n" +
-	"\vred_anchors\x18\x06 \x03(\v2\x16.mirador.rca.RedAnchorR\n" +
+	"\x11affected_services\x18\x04 \x03(\tR\x10affectedServices\x121\n" +
+	"\btimeline\x18\x05 \x03(\v2\x15.rca.v1.TimelineEventR\btimeline\x122\n" +
+	"\vred_anchors\x18\x06 \x03(\v2\x11.rca.v1.RedAnchorR\n" +
 	"redAnchors\x12(\n" +
 	"\x0frecommendations\x18\a \x03(\tR\x0frecommendations\"1\n" +
 	"\x12GetPatternsRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"N\n" +
-	"\x13GetPatternsResponse\x127\n" +
-	"\bpatterns\x18\x01 \x03(\v2\x1b.mirador.rca.FailurePatternR\bpatterns\"\xa3\x01\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"I\n" +
+	"\x13GetPatternsResponse\x122\n" +
+	"\bpatterns\x18\x01 \x03(\v2\x16.rca.v1.FailurePatternR\bpatterns\"\xa3\x01\n" +
 	"\x0eFailurePattern\x12\x1d\n" +
 	"\n" +
 	"pattern_id\x18\x01 \x01(\tR\tpatternId\x12\x12\n" +
@@ -936,19 +912,15 @@ const file_internal_grpc_proto_rca_rca_proto_rawDesc = "" +
 	"\n" +
 	"indicators\x18\x04 \x03(\tR\n" +
 	"indicators\x12\x1c\n" +
-	"\tfrequency\x18\x05 \x01(\x01R\tfrequency\"\x12\n" +
-	"\x10GetHealthRequest\"\xad\x01\n" +
-	"\x11GetHealthResponse\x12\x16\n" +
-	"\x06status\x18\x01 \x01(\tR\x06status\x12/\n" +
-	"\x13active_correlations\x18\x02 \x01(\x05R\x12activeCorrelations\x12.\n" +
-	"\x13avg_resolution_time\x18\x03 \x01(\x01R\x11avgResolutionTime\x12\x1f\n" +
-	"\vlast_update\x18\x04 \x01(\tR\n" +
-	"lastUpdate2\xf5\x02\n" +
-	"\x10RCAEngineService\x12X\n" +
-	"\x13InvestigateIncident\x12\x1f.mirador.rca.InvestigateRequest\x1a .mirador.rca.InvestigateResponse\x12b\n" +
-	"\x15GetActiveCorrelations\x12#.mirador.rca.GetCorrelationsRequest\x1a$.mirador.rca.GetCorrelationsResponse\x12W\n" +
-	"\x12GetFailurePatterns\x12\x1f.mirador.rca.GetPatternsRequest\x1a .mirador.rca.GetPatternsResponse\x12J\n" +
-	"\tGetHealth\x12\x1d.mirador.rca.GetHealthRequest\x1a\x1e.mirador.rca.GetHealthResponseB@Z>github.com/platformbuilds/mirador-core/internal/grpc/proto/rcab\x06proto3"
+	"\tfrequency\x18\x05 \x01(\x01R\tfrequency\"\x0f\n" +
+	"\rHealthRequest\"(\n" +
+	"\x0eHealthResponse\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status2\xc2\x02\n" +
+	"\tRCAEngine\x12N\n" +
+	"\x13InvestigateIncident\x12\x1a.rca.v1.InvestigateRequest\x1a\x1b.rca.v1.InvestigateResponse\x12X\n" +
+	"\x15GetActiveCorrelations\x12\x1e.rca.v1.GetCorrelationsRequest\x1a\x1f.rca.v1.GetCorrelationsResponse\x12M\n" +
+	"\x12GetFailurePatterns\x12\x1a.rca.v1.GetPatternsRequest\x1a\x1b.rca.v1.GetPatternsResponse\x12<\n" +
+	"\vHealthCheck\x12\x15.rca.v1.HealthRequest\x1a\x16.rca.v1.HealthResponseB@Z>github.com/platformbuilds/mirador-core/internal/grpc/proto/rcab\x06proto3"
 
 var (
 	file_internal_grpc_proto_rca_rca_proto_rawDescOnce sync.Once
@@ -964,36 +936,36 @@ func file_internal_grpc_proto_rca_rca_proto_rawDescGZIP() []byte {
 
 var file_internal_grpc_proto_rca_rca_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_internal_grpc_proto_rca_rca_proto_goTypes = []any{
-	(*InvestigateRequest)(nil),      // 0: mirador.rca.InvestigateRequest
-	(*InvestigateResponse)(nil),     // 1: mirador.rca.InvestigateResponse
-	(*RedAnchor)(nil),               // 2: mirador.rca.RedAnchor
-	(*TimeRange)(nil),               // 3: mirador.rca.TimeRange
-	(*TimelineEvent)(nil),           // 4: mirador.rca.TimelineEvent
-	(*GetCorrelationsRequest)(nil),  // 5: mirador.rca.GetCorrelationsRequest
-	(*GetCorrelationsResponse)(nil), // 6: mirador.rca.GetCorrelationsResponse
-	(*Correlation)(nil),             // 7: mirador.rca.Correlation
-	(*GetPatternsRequest)(nil),      // 8: mirador.rca.GetPatternsRequest
-	(*GetPatternsResponse)(nil),     // 9: mirador.rca.GetPatternsResponse
-	(*FailurePattern)(nil),          // 10: mirador.rca.FailurePattern
-	(*GetHealthRequest)(nil),        // 11: mirador.rca.GetHealthRequest
-	(*GetHealthResponse)(nil),       // 12: mirador.rca.GetHealthResponse
+	(*InvestigateRequest)(nil),      // 0: rca.v1.InvestigateRequest
+	(*InvestigateResponse)(nil),     // 1: rca.v1.InvestigateResponse
+	(*RedAnchor)(nil),               // 2: rca.v1.RedAnchor
+	(*TimeRange)(nil),               // 3: rca.v1.TimeRange
+	(*TimelineEvent)(nil),           // 4: rca.v1.TimelineEvent
+	(*GetCorrelationsRequest)(nil),  // 5: rca.v1.GetCorrelationsRequest
+	(*GetCorrelationsResponse)(nil), // 6: rca.v1.GetCorrelationsResponse
+	(*Correlation)(nil),             // 7: rca.v1.Correlation
+	(*GetPatternsRequest)(nil),      // 8: rca.v1.GetPatternsRequest
+	(*GetPatternsResponse)(nil),     // 9: rca.v1.GetPatternsResponse
+	(*FailurePattern)(nil),          // 10: rca.v1.FailurePattern
+	(*HealthRequest)(nil),           // 11: rca.v1.HealthRequest
+	(*HealthResponse)(nil),          // 12: rca.v1.HealthResponse
 }
 var file_internal_grpc_proto_rca_rca_proto_depIdxs = []int32{
-	3,  // 0: mirador.rca.InvestigateRequest.time_range:type_name -> mirador.rca.TimeRange
-	4,  // 1: mirador.rca.InvestigateResponse.timeline:type_name -> mirador.rca.TimelineEvent
-	2,  // 2: mirador.rca.InvestigateResponse.red_anchors:type_name -> mirador.rca.RedAnchor
-	7,  // 3: mirador.rca.GetCorrelationsResponse.correlations:type_name -> mirador.rca.Correlation
-	4,  // 4: mirador.rca.Correlation.timeline:type_name -> mirador.rca.TimelineEvent
-	2,  // 5: mirador.rca.Correlation.red_anchors:type_name -> mirador.rca.RedAnchor
-	10, // 6: mirador.rca.GetPatternsResponse.patterns:type_name -> mirador.rca.FailurePattern
-	0,  // 7: mirador.rca.RCAEngineService.InvestigateIncident:input_type -> mirador.rca.InvestigateRequest
-	5,  // 8: mirador.rca.RCAEngineService.GetActiveCorrelations:input_type -> mirador.rca.GetCorrelationsRequest
-	8,  // 9: mirador.rca.RCAEngineService.GetFailurePatterns:input_type -> mirador.rca.GetPatternsRequest
-	11, // 10: mirador.rca.RCAEngineService.GetHealth:input_type -> mirador.rca.GetHealthRequest
-	1,  // 11: mirador.rca.RCAEngineService.InvestigateIncident:output_type -> mirador.rca.InvestigateResponse
-	6,  // 12: mirador.rca.RCAEngineService.GetActiveCorrelations:output_type -> mirador.rca.GetCorrelationsResponse
-	9,  // 13: mirador.rca.RCAEngineService.GetFailurePatterns:output_type -> mirador.rca.GetPatternsResponse
-	12, // 14: mirador.rca.RCAEngineService.GetHealth:output_type -> mirador.rca.GetHealthResponse
+	3,  // 0: rca.v1.InvestigateRequest.time_range:type_name -> rca.v1.TimeRange
+	4,  // 1: rca.v1.InvestigateResponse.timeline:type_name -> rca.v1.TimelineEvent
+	2,  // 2: rca.v1.InvestigateResponse.red_anchors:type_name -> rca.v1.RedAnchor
+	7,  // 3: rca.v1.GetCorrelationsResponse.correlations:type_name -> rca.v1.Correlation
+	4,  // 4: rca.v1.Correlation.timeline:type_name -> rca.v1.TimelineEvent
+	2,  // 5: rca.v1.Correlation.red_anchors:type_name -> rca.v1.RedAnchor
+	10, // 6: rca.v1.GetPatternsResponse.patterns:type_name -> rca.v1.FailurePattern
+	0,  // 7: rca.v1.RCAEngine.InvestigateIncident:input_type -> rca.v1.InvestigateRequest
+	5,  // 8: rca.v1.RCAEngine.GetActiveCorrelations:input_type -> rca.v1.GetCorrelationsRequest
+	8,  // 9: rca.v1.RCAEngine.GetFailurePatterns:input_type -> rca.v1.GetPatternsRequest
+	11, // 10: rca.v1.RCAEngine.HealthCheck:input_type -> rca.v1.HealthRequest
+	1,  // 11: rca.v1.RCAEngine.InvestigateIncident:output_type -> rca.v1.InvestigateResponse
+	6,  // 12: rca.v1.RCAEngine.GetActiveCorrelations:output_type -> rca.v1.GetCorrelationsResponse
+	9,  // 13: rca.v1.RCAEngine.GetFailurePatterns:output_type -> rca.v1.GetPatternsResponse
+	12, // 14: rca.v1.RCAEngine.HealthCheck:output_type -> rca.v1.HealthResponse
 	11, // [11:15] is the sub-list for method output_type
 	7,  // [7:11] is the sub-list for method input_type
 	7,  // [7:7] is the sub-list for extension type_name

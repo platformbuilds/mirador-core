@@ -1,17 +1,17 @@
 syntax = "proto3";
 
-package mirador.rca;
+package rca.v1;
 
 option go_package = "github.com/platformbuilds/mirador-core/internal/grpc/proto/rca";
 
 // =========================
 // Service
 // =========================
-service RCAEngineService {
+service RCAEngine {
   rpc InvestigateIncident(InvestigateRequest) returns (InvestigateResponse);
   rpc GetActiveCorrelations(GetCorrelationsRequest) returns (GetCorrelationsResponse);
   rpc GetFailurePatterns(GetPatternsRequest) returns (GetPatternsResponse);
-  rpc GetHealth(GetHealthRequest) returns (GetHealthResponse);
+  rpc HealthCheck(HealthRequest) returns (HealthResponse);
 }
 
 // =========================
@@ -101,11 +101,8 @@ message FailurePattern {
 }
 
 // Health
-message GetHealthRequest {}
+message HealthRequest {}
 
-message GetHealthResponse {
-  string status              = 1;
-  int32  active_correlations = 2;
-  double avg_resolution_time = 3;
-  string last_update         = 4;
+message HealthResponse {
+  string status = 1;
 }

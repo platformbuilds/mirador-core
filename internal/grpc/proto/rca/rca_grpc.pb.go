@@ -19,223 +19,223 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RCAEngineService_InvestigateIncident_FullMethodName   = "/mirador.rca.RCAEngineService/InvestigateIncident"
-	RCAEngineService_GetActiveCorrelations_FullMethodName = "/mirador.rca.RCAEngineService/GetActiveCorrelations"
-	RCAEngineService_GetFailurePatterns_FullMethodName    = "/mirador.rca.RCAEngineService/GetFailurePatterns"
-	RCAEngineService_GetHealth_FullMethodName             = "/mirador.rca.RCAEngineService/GetHealth"
+	RCAEngine_InvestigateIncident_FullMethodName   = "/rca.v1.RCAEngine/InvestigateIncident"
+	RCAEngine_GetActiveCorrelations_FullMethodName = "/rca.v1.RCAEngine/GetActiveCorrelations"
+	RCAEngine_GetFailurePatterns_FullMethodName    = "/rca.v1.RCAEngine/GetFailurePatterns"
+	RCAEngine_HealthCheck_FullMethodName           = "/rca.v1.RCAEngine/HealthCheck"
 )
 
-// RCAEngineServiceClient is the client API for RCAEngineService service.
+// RCAEngineClient is the client API for RCAEngine service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // =========================
 // Service
 // =========================
-type RCAEngineServiceClient interface {
+type RCAEngineClient interface {
 	InvestigateIncident(ctx context.Context, in *InvestigateRequest, opts ...grpc.CallOption) (*InvestigateResponse, error)
 	GetActiveCorrelations(ctx context.Context, in *GetCorrelationsRequest, opts ...grpc.CallOption) (*GetCorrelationsResponse, error)
 	GetFailurePatterns(ctx context.Context, in *GetPatternsRequest, opts ...grpc.CallOption) (*GetPatternsResponse, error)
-	GetHealth(ctx context.Context, in *GetHealthRequest, opts ...grpc.CallOption) (*GetHealthResponse, error)
+	HealthCheck(ctx context.Context, in *HealthRequest, opts ...grpc.CallOption) (*HealthResponse, error)
 }
 
-type rCAEngineServiceClient struct {
+type rCAEngineClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewRCAEngineServiceClient(cc grpc.ClientConnInterface) RCAEngineServiceClient {
-	return &rCAEngineServiceClient{cc}
+func NewRCAEngineClient(cc grpc.ClientConnInterface) RCAEngineClient {
+	return &rCAEngineClient{cc}
 }
 
-func (c *rCAEngineServiceClient) InvestigateIncident(ctx context.Context, in *InvestigateRequest, opts ...grpc.CallOption) (*InvestigateResponse, error) {
+func (c *rCAEngineClient) InvestigateIncident(ctx context.Context, in *InvestigateRequest, opts ...grpc.CallOption) (*InvestigateResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(InvestigateResponse)
-	err := c.cc.Invoke(ctx, RCAEngineService_InvestigateIncident_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, RCAEngine_InvestigateIncident_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *rCAEngineServiceClient) GetActiveCorrelations(ctx context.Context, in *GetCorrelationsRequest, opts ...grpc.CallOption) (*GetCorrelationsResponse, error) {
+func (c *rCAEngineClient) GetActiveCorrelations(ctx context.Context, in *GetCorrelationsRequest, opts ...grpc.CallOption) (*GetCorrelationsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetCorrelationsResponse)
-	err := c.cc.Invoke(ctx, RCAEngineService_GetActiveCorrelations_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, RCAEngine_GetActiveCorrelations_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *rCAEngineServiceClient) GetFailurePatterns(ctx context.Context, in *GetPatternsRequest, opts ...grpc.CallOption) (*GetPatternsResponse, error) {
+func (c *rCAEngineClient) GetFailurePatterns(ctx context.Context, in *GetPatternsRequest, opts ...grpc.CallOption) (*GetPatternsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetPatternsResponse)
-	err := c.cc.Invoke(ctx, RCAEngineService_GetFailurePatterns_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, RCAEngine_GetFailurePatterns_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *rCAEngineServiceClient) GetHealth(ctx context.Context, in *GetHealthRequest, opts ...grpc.CallOption) (*GetHealthResponse, error) {
+func (c *rCAEngineClient) HealthCheck(ctx context.Context, in *HealthRequest, opts ...grpc.CallOption) (*HealthResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetHealthResponse)
-	err := c.cc.Invoke(ctx, RCAEngineService_GetHealth_FullMethodName, in, out, cOpts...)
+	out := new(HealthResponse)
+	err := c.cc.Invoke(ctx, RCAEngine_HealthCheck_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// RCAEngineServiceServer is the server API for RCAEngineService service.
-// All implementations must embed UnimplementedRCAEngineServiceServer
+// RCAEngineServer is the server API for RCAEngine service.
+// All implementations must embed UnimplementedRCAEngineServer
 // for forward compatibility.
 //
 // =========================
 // Service
 // =========================
-type RCAEngineServiceServer interface {
+type RCAEngineServer interface {
 	InvestigateIncident(context.Context, *InvestigateRequest) (*InvestigateResponse, error)
 	GetActiveCorrelations(context.Context, *GetCorrelationsRequest) (*GetCorrelationsResponse, error)
 	GetFailurePatterns(context.Context, *GetPatternsRequest) (*GetPatternsResponse, error)
-	GetHealth(context.Context, *GetHealthRequest) (*GetHealthResponse, error)
-	mustEmbedUnimplementedRCAEngineServiceServer()
+	HealthCheck(context.Context, *HealthRequest) (*HealthResponse, error)
+	mustEmbedUnimplementedRCAEngineServer()
 }
 
-// UnimplementedRCAEngineServiceServer must be embedded to have
+// UnimplementedRCAEngineServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedRCAEngineServiceServer struct{}
+type UnimplementedRCAEngineServer struct{}
 
-func (UnimplementedRCAEngineServiceServer) InvestigateIncident(context.Context, *InvestigateRequest) (*InvestigateResponse, error) {
+func (UnimplementedRCAEngineServer) InvestigateIncident(context.Context, *InvestigateRequest) (*InvestigateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InvestigateIncident not implemented")
 }
-func (UnimplementedRCAEngineServiceServer) GetActiveCorrelations(context.Context, *GetCorrelationsRequest) (*GetCorrelationsResponse, error) {
+func (UnimplementedRCAEngineServer) GetActiveCorrelations(context.Context, *GetCorrelationsRequest) (*GetCorrelationsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetActiveCorrelations not implemented")
 }
-func (UnimplementedRCAEngineServiceServer) GetFailurePatterns(context.Context, *GetPatternsRequest) (*GetPatternsResponse, error) {
+func (UnimplementedRCAEngineServer) GetFailurePatterns(context.Context, *GetPatternsRequest) (*GetPatternsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFailurePatterns not implemented")
 }
-func (UnimplementedRCAEngineServiceServer) GetHealth(context.Context, *GetHealthRequest) (*GetHealthResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetHealth not implemented")
+func (UnimplementedRCAEngineServer) HealthCheck(context.Context, *HealthRequest) (*HealthResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
 }
-func (UnimplementedRCAEngineServiceServer) mustEmbedUnimplementedRCAEngineServiceServer() {}
-func (UnimplementedRCAEngineServiceServer) testEmbeddedByValue()                          {}
+func (UnimplementedRCAEngineServer) mustEmbedUnimplementedRCAEngineServer() {}
+func (UnimplementedRCAEngineServer) testEmbeddedByValue()                   {}
 
-// UnsafeRCAEngineServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to RCAEngineServiceServer will
+// UnsafeRCAEngineServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to RCAEngineServer will
 // result in compilation errors.
-type UnsafeRCAEngineServiceServer interface {
-	mustEmbedUnimplementedRCAEngineServiceServer()
+type UnsafeRCAEngineServer interface {
+	mustEmbedUnimplementedRCAEngineServer()
 }
 
-func RegisterRCAEngineServiceServer(s grpc.ServiceRegistrar, srv RCAEngineServiceServer) {
-	// If the following call pancis, it indicates UnimplementedRCAEngineServiceServer was
+func RegisterRCAEngineServer(s grpc.ServiceRegistrar, srv RCAEngineServer) {
+	// If the following call pancis, it indicates UnimplementedRCAEngineServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&RCAEngineService_ServiceDesc, srv)
+	s.RegisterService(&RCAEngine_ServiceDesc, srv)
 }
 
-func _RCAEngineService_InvestigateIncident_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _RCAEngine_InvestigateIncident_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(InvestigateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RCAEngineServiceServer).InvestigateIncident(ctx, in)
+		return srv.(RCAEngineServer).InvestigateIncident(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RCAEngineService_InvestigateIncident_FullMethodName,
+		FullMethod: RCAEngine_InvestigateIncident_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RCAEngineServiceServer).InvestigateIncident(ctx, req.(*InvestigateRequest))
+		return srv.(RCAEngineServer).InvestigateIncident(ctx, req.(*InvestigateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RCAEngineService_GetActiveCorrelations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _RCAEngine_GetActiveCorrelations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetCorrelationsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RCAEngineServiceServer).GetActiveCorrelations(ctx, in)
+		return srv.(RCAEngineServer).GetActiveCorrelations(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RCAEngineService_GetActiveCorrelations_FullMethodName,
+		FullMethod: RCAEngine_GetActiveCorrelations_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RCAEngineServiceServer).GetActiveCorrelations(ctx, req.(*GetCorrelationsRequest))
+		return srv.(RCAEngineServer).GetActiveCorrelations(ctx, req.(*GetCorrelationsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RCAEngineService_GetFailurePatterns_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _RCAEngine_GetFailurePatterns_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetPatternsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RCAEngineServiceServer).GetFailurePatterns(ctx, in)
+		return srv.(RCAEngineServer).GetFailurePatterns(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RCAEngineService_GetFailurePatterns_FullMethodName,
+		FullMethod: RCAEngine_GetFailurePatterns_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RCAEngineServiceServer).GetFailurePatterns(ctx, req.(*GetPatternsRequest))
+		return srv.(RCAEngineServer).GetFailurePatterns(ctx, req.(*GetPatternsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RCAEngineService_GetHealth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetHealthRequest)
+func _RCAEngine_HealthCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HealthRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RCAEngineServiceServer).GetHealth(ctx, in)
+		return srv.(RCAEngineServer).HealthCheck(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RCAEngineService_GetHealth_FullMethodName,
+		FullMethod: RCAEngine_HealthCheck_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RCAEngineServiceServer).GetHealth(ctx, req.(*GetHealthRequest))
+		return srv.(RCAEngineServer).HealthCheck(ctx, req.(*HealthRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// RCAEngineService_ServiceDesc is the grpc.ServiceDesc for RCAEngineService service.
+// RCAEngine_ServiceDesc is the grpc.ServiceDesc for RCAEngine service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var RCAEngineService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "mirador.rca.RCAEngineService",
-	HandlerType: (*RCAEngineServiceServer)(nil),
+var RCAEngine_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "rca.v1.RCAEngine",
+	HandlerType: (*RCAEngineServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "InvestigateIncident",
-			Handler:    _RCAEngineService_InvestigateIncident_Handler,
+			Handler:    _RCAEngine_InvestigateIncident_Handler,
 		},
 		{
 			MethodName: "GetActiveCorrelations",
-			Handler:    _RCAEngineService_GetActiveCorrelations_Handler,
+			Handler:    _RCAEngine_GetActiveCorrelations_Handler,
 		},
 		{
 			MethodName: "GetFailurePatterns",
-			Handler:    _RCAEngineService_GetFailurePatterns_Handler,
+			Handler:    _RCAEngine_GetFailurePatterns_Handler,
 		},
 		{
-			MethodName: "GetHealth",
-			Handler:    _RCAEngineService_GetHealth_Handler,
+			MethodName: "HealthCheck",
+			Handler:    _RCAEngine_HealthCheck_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
