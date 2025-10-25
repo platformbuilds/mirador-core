@@ -55,7 +55,7 @@ MIRADOR-CORE acts as a unified query layer on top of the VictoriaMetrics ecosyst
 
 ## Support
 
-- **Documentation**: https://mirador-core.readthedocs.io/
+- **Documentation**: https://miradorstack.readthedocs.io/
 - **API Reference**: https://mirador-core.github.io/api/
 - **GitHub Issues**: Bug reports and feature requests
 - **Community Forum**: General questions and community help
