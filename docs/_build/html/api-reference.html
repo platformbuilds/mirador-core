@@ -1,0 +1,475 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Reference &mdash; MIRADOR-CORE 7.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=efe5be6f"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Deployment Guide" href="deployment.html" />
+    <link rel="prev" title="Getting Started" href="getting-started.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            MIRADOR-CORE
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#authentication">Authentication</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ldap-ad-authentication">LDAP/AD Authentication</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#oauth-2-0-token">OAuth 2.0 Token</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#unified-query-api">Unified Query API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#execute-unified-query">Execute Unified Query</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#metrics-apis">Metrics APIs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#instant-query">Instant Query</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#range-query">Range Query</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aggregate-functions">Aggregate Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#logs-apis">Logs APIs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#query-logs">Query Logs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#search-logs">Search Logs</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#traces-apis">Traces APIs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#search-traces">Search Traces</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-trace-by-id">Get Trace by ID</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#ai-analysis-apis">AI Analysis APIs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#root-cause-analysis">Root Cause Analysis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#predictive-analysis">Predictive Analysis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#schema-management-apis">Schema Management APIs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#create-metric-definition">Create Metric Definition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#bulk-upload-metrics">Bulk Upload Metrics</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-apis">Configuration APIs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#update-runtime-features">Update Runtime Features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#health-monitoring">Health &amp; Monitoring</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#health-check">Health Check</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#readiness-check">Readiness Check</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#prometheus-metrics">Prometheus Metrics</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#error-responses">Error Responses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rate-limiting">Rate Limiting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pagination">Pagination</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#websocket-apis">WebSocket APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#complete-openapi-specification">Complete OpenAPI Specification</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">MIRADOR-CORE</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">API Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/api-reference.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading"></a></h1>
+<p>This section provides detailed documentation for the MIRADOR-CORE REST API.</p>
+<section id="authentication">
+<h2>Authentication<a class="headerlink" href="#authentication" title="Link to this heading"></a></h2>
+<p>All API endpoints (except <code class="docutils literal notranslate"><span class="pre">/health</span></code> and <code class="docutils literal notranslate"><span class="pre">/ready</span></code>) require authentication.</p>
+<section id="ldap-ad-authentication">
+<h3>LDAP/AD Authentication<a class="headerlink" href="#ldap-ad-authentication" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>https://mirador-core/api/v1/auth/login<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;username&quot;: &quot;john.doe&quot;, &quot;password&quot;: &quot;password&quot;}&#39;</span>
+</pre></div>
+</div>
+</section>
+<section id="oauth-2-0-token">
+<h3>OAuth 2.0 Token<a class="headerlink" href="#oauth-2-0-token" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>https://mirador-core/api/v1/query<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="unified-query-api">
+<h2>Unified Query API<a class="headerlink" href="#unified-query-api" title="Link to this heading"></a></h2>
+<section id="execute-unified-query">
+<h3>Execute Unified Query<a class="headerlink" href="#execute-unified-query" title="Link to this heading"></a></h3>
+<p>Execute a unified query across multiple observability engines.</p>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/unified/query</span>
+</pre></div>
+</div>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unified-query-1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;metrics&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;http_requests_total{job=\&quot;api\&quot;}&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-01T00:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;end_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-01T01:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;timeout&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;30s&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;cache_options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;ttl&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5m&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Supported Query Types:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">metrics</span></code> - MetricsQL queries</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">logs</span></code> - LogsQL queries</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">traces</span></code> - Trace queries</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">correlation</span></code> - Cross-engine correlation queries</p></li>
+</ul>
+</section>
+</section>
+<section id="metrics-apis">
+<h2>Metrics APIs<a class="headerlink" href="#metrics-apis" title="Link to this heading"></a></h2>
+<section id="instant-query">
+<h3>Instant Query<a class="headerlink" href="#instant-query" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/metrics/query</span>
+</pre></div>
+</div>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;http_requests_total{job=\&quot;api\&quot;}&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-01T00:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_definitions&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="range-query">
+<h3>Range Query<a class="headerlink" href="#range-query" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/metrics/query_range</span>
+</pre></div>
+</div>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rate(http_requests_total[5m])&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;start&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-01T00:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;end&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-01T01:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;step&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1m&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="aggregate-functions">
+<h3>Aggregate Functions<a class="headerlink" href="#aggregate-functions" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/metrics/query/aggregate/{function}</span>
+</pre></div>
+</div>
+<p>Available functions: <code class="docutils literal notranslate"><span class="pre">sum</span></code>, <code class="docutils literal notranslate"><span class="pre">avg</span></code>, <code class="docutils literal notranslate"><span class="pre">count</span></code>, <code class="docutils literal notranslate"><span class="pre">min</span></code>, <code class="docutils literal notranslate"><span class="pre">max</span></code>, <code class="docutils literal notranslate"><span class="pre">quantile</span></code>, <code class="docutils literal notranslate"><span class="pre">topk</span></code>, <code class="docutils literal notranslate"><span class="pre">bottomk</span></code>, etc.</p>
+<p><strong>Example - Sum aggregation:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>https://mirador-core/api/v1/metrics/query/aggregate/sum<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;token&gt;&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;query&quot;: &quot;rate(http_requests_total[5m])&quot;}&#39;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="logs-apis">
+<h2>Logs APIs<a class="headerlink" href="#logs-apis" title="Link to this heading"></a></h2>
+<section id="query-logs">
+<h3>Query Logs<a class="headerlink" href="#query-logs" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/logs/query</span>
+</pre></div>
+</div>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;query_language&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;lucene&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;search_engine&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;lucene&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;_time:[now-15m TO now] AND level:error AND service:api&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;limit&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="search-logs">
+<h3>Search Logs<a class="headerlink" href="#search-logs" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/logs/search</span>
+</pre></div>
+</div>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;query_language&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;lucene&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;_time:1h AND level:error&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;limit&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;page_after&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1640998800000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;offset&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="traces-apis">
+<h2>Traces APIs<a class="headerlink" href="#traces-apis" title="Link to this heading"></a></h2>
+<section id="search-traces">
+<h3>Search Traces<a class="headerlink" href="#search-traces" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/traces/search</span>
+</pre></div>
+</div>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;query_language&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;lucene&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;_time:[now-15m TO now] AND service:checkout&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;limit&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="get-trace-by-id">
+<h3>Get Trace by ID<a class="headerlink" href="#get-trace-by-id" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">GET /api/v1/traces/{traceId}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="ai-analysis-apis">
+<h2>AI Analysis APIs<a class="headerlink" href="#ai-analysis-apis" title="Link to this heading"></a></h2>
+<section id="root-cause-analysis">
+<h3>Root Cause Analysis<a class="headerlink" href="#root-cause-analysis" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/rca/investigate</span>
+</pre></div>
+</div>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;incident_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INC-2025-0831-001&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symptoms&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;high_cpu&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;connection_timeouts&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;time_range&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;start&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-08-31T14:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;end&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-08-31T15:00:00Z&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="predictive-analysis">
+<h3>Predictive Analysis<a class="headerlink" href="#predictive-analysis" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/predict/analyze</span>
+</pre></div>
+</div>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;component&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;payment-service&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;time_range&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;24h&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;model_types&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;isolation_forest&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;lstm_trend&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="schema-management-apis">
+<h2>Schema Management APIs<a class="headerlink" href="#schema-management-apis" title="Link to this heading"></a></h2>
+<section id="create-metric-definition">
+<h3>Create Metric Definition<a class="headerlink" href="#create-metric-definition" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/schema/metrics</span>
+</pre></div>
+</div>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;metric&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;http_requests_total&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Total number of HTTP requests&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;platform-team&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;tags&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;domain:web&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;category:performance&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;author&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;john.doe&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="bulk-upload-metrics">
+<h3>Bulk Upload Metrics<a class="headerlink" href="#bulk-upload-metrics" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/schema/metrics/bulk</span>
+</pre></div>
+</div>
+<p>Upload a CSV file with metric definitions.</p>
+</section>
+</section>
+<section id="configuration-apis">
+<h2>Configuration APIs<a class="headerlink" href="#configuration-apis" title="Link to this heading"></a></h2>
+<section id="update-runtime-features">
+<h3>Update Runtime Features<a class="headerlink" href="#update-runtime-features" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">PUT /api/v1/config/features</span>
+</pre></div>
+</div>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;features&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;rca_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;predict_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;user_settings_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;rbac_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="health-monitoring">
+<h2>Health &amp; Monitoring<a class="headerlink" href="#health-monitoring" title="Link to this heading"></a></h2>
+<section id="health-check">
+<h3>Health Check<a class="headerlink" href="#health-check" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">GET /api/v1/health</span>
+</pre></div>
+</div>
+<p>Returns basic service health status.</p>
+</section>
+<section id="readiness-check">
+<h3>Readiness Check<a class="headerlink" href="#readiness-check" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">GET /api/v1/ready</span>
+</pre></div>
+</div>
+<p>Checks backend connectivity and returns readiness status.</p>
+</section>
+<section id="prometheus-metrics">
+<h3>Prometheus Metrics<a class="headerlink" href="#prometheus-metrics" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">GET /api/v1/metrics</span>
+</pre></div>
+</div>
+<p>Returns Prometheus-formatted metrics for monitoring.</p>
+</section>
+</section>
+<section id="error-responses">
+<h2>Error Responses<a class="headerlink" href="#error-responses" title="Link to this heading"></a></h2>
+<p>All APIs return standardized error responses:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Error message&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Detailed error information&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ERROR_CODE&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="rate-limiting">
+<h2>Rate Limiting<a class="headerlink" href="#rate-limiting" title="Link to this heading"></a></h2>
+<p>APIs are subject to rate limiting based on tenant configuration:</p>
+<ul class="simple">
+<li><p>Default: 1000 requests per minute</p></li>
+<li><p>Burst limit: 2000 requests</p></li>
+<li><p>Tenant isolation: Enabled</p></li>
+</ul>
+</section>
+<section id="pagination">
+<h2>Pagination<a class="headerlink" href="#pagination" title="Link to this heading"></a></h2>
+<p>List endpoints support pagination:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;data&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;pagination&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;page&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;limit&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;total&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;has_more&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="websocket-apis">
+<h2>WebSocket APIs<a class="headerlink" href="#websocket-apis" title="Link to this heading"></a></h2>
+<p>Real-time streaming endpoints:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">/api/v1/ws/metrics</span></code> - Real-time metrics stream</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/api/v1/ws/alerts</span></code> - Real-time alerts stream</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/api/v1/ws/predictions</span></code> - Real-time predictions stream</p></li>
+</ul>
+</section>
+<section id="complete-openapi-specification">
+<h2>Complete OpenAPI Specification<a class="headerlink" href="#complete-openapi-specification" title="Link to this heading"></a></h2>
+<p>For the complete API specification, see the <a class="reference download internal" download="" href="_downloads/2264ffc653079be0bf3bcb6e2533a487/openapi.yaml"><span class="xref download myst">OpenAPI YAML file</span></a> in the repository.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="getting-started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="deployment.html" class="btn btn-neutral float-right" title="Deployment Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, PlatformBuilds.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

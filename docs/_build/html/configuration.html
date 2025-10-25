@@ -1,0 +1,795 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configuration Guide &mdash; MIRADOR-CORE 7.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=efe5be6f"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Deployment Guide" href="deployment.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            MIRADOR-CORE
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api-reference.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-sources">Configuration Sources</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-file">Configuration File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#core-configuration">Core Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#server-configuration">Server Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#database-configuration">Database Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#redis-configuration">Redis Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#authentication-configuration">Authentication Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ldap-ad-configuration">LDAP/AD Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#oauth-2-0-configuration">OAuth 2.0 Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#local-authentication-development">Local Authentication (Development)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#data-source-configuration">Data Source Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#victoriametrics-configuration">VictoriaMetrics Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#additional-data-sources">Additional Data Sources</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#feature-flags">Feature Flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#metrics-and-monitoring">Metrics and Monitoring</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#application-metrics">Application Metrics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#health-checks">Health Checks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#logging-configuration">Logging Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#caching-configuration">Caching Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rate-limiting">Rate Limiting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#schema-management">Schema Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ai-and-analytics">AI and Analytics</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#root-cause-analysis">Root Cause Analysis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#predictive-analysis">Predictive Analysis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#security-configuration">Security Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cors-configuration">CORS Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#security-headers">Security Headers</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#performance-tuning">Performance Tuning</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#query-optimization">Query Optimization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#resource-limits">Resource Limits</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#integration-configuration">Integration Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#webhook-configuration">Webhook Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#notification-configuration">Notification Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#development-configuration">Development Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#debug-configuration">Debug Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#development-overrides">Development Overrides</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#environment-specific-examples">Environment-Specific Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#development-environment">Development Environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#production-environment">Production Environment</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-validation">Configuration Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hot-reloading">Hot Reloading</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#secrets-management">Secrets Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#monitoring-configuration-changes">Monitoring Configuration Changes</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">MIRADOR-CORE</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Configuration Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/configuration.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="configuration-guide">
+<h1>Configuration Guide<a class="headerlink" href="#configuration-guide" title="Link to this heading"></a></h1>
+<p>This guide covers all configuration options available in MIRADOR-CORE.</p>
+<section id="configuration-sources">
+<h2>Configuration Sources<a class="headerlink" href="#configuration-sources" title="Link to this heading"></a></h2>
+<p>MIRADOR-CORE supports multiple configuration sources with the following priority (highest to lowest):</p>
+<ol class="arabic simple">
+<li><p>Environment variables</p></li>
+<li><p>Configuration file (<code class="docutils literal notranslate"><span class="pre">config.yaml</span></code>)</p></li>
+<li><p>Default values</p></li>
+</ol>
+</section>
+<section id="configuration-file">
+<h2>Configuration File<a class="headerlink" href="#configuration-file" title="Link to this heading"></a></h2>
+<p>The main configuration file is <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code>. Sample configurations are provided in the <code class="docutils literal notranslate"><span class="pre">configs/</span></code> directory:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">config.development.yaml</span></code> - Development environment</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">config.production.yaml</span></code> - Production environment</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> - Default configuration</p></li>
+</ul>
+</section>
+<section id="core-configuration">
+<h2>Core Configuration<a class="headerlink" href="#core-configuration" title="Link to this heading"></a></h2>
+<section id="server-configuration">
+<h3>Server Configuration<a class="headerlink" href="#server-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">server</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.0.0.0&quot;</span>
+<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+<span class="w">  </span><span class="nt">readTimeout</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30s&quot;</span>
+<span class="w">  </span><span class="nt">writeTimeout</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30s&quot;</span>
+<span class="w">  </span><span class="nt">idleTimeout</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;120s&quot;</span>
+<span class="w">  </span><span class="nt">maxHeaderBytes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1048576</span>
+<span class="w">  </span><span class="nt">tls</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">certFile</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/path/to/cert.pem&quot;</span>
+<span class="w">    </span><span class="nt">keyFile</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/path/to/key.pem&quot;</span>
+</pre></div>
+</div>
+<p><strong>Environment Variables:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">SERVER_HOST</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SERVER_PORT</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SERVER_READ_TIMEOUT</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SERVER_WRITE_TIMEOUT</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SERVER_IDLE_TIMEOUT</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SERVER_MAX_HEADER_BYTES</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SERVER_TLS_ENABLED</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SERVER_TLS_CERT_FILE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SERVER_TLS_KEY_FILE</span></code></p></li>
+</ul>
+</section>
+<section id="database-configuration">
+<h3>Database Configuration<a class="headerlink" href="#database-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">database</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;localhost&quot;</span>
+<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5432</span>
+<span class="w">  </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;mirador_core&quot;</span>
+<span class="w">  </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;mirador_user&quot;</span>
+<span class="w">  </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;secure_password&quot;</span>
+<span class="w">  </span><span class="nt">sslMode</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;require&quot;</span>
+<span class="w">  </span><span class="nt">maxConnections</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
+<span class="w">  </span><span class="nt">maxIdleConnections</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="w">  </span><span class="nt">connectionMaxLifetime</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1h&quot;</span>
+<span class="w">  </span><span class="nt">connectionMaxIdleTime</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30m&quot;</span>
+</pre></div>
+</div>
+<p><strong>Environment Variables:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">DATABASE_HOST</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DATABASE_PORT</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DATABASE_NAME</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DATABASE_USER</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DATABASE_PASSWORD</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DATABASE_SSL_MODE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DATABASE_MAX_CONNECTIONS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DATABASE_MAX_IDLE_CONNECTIONS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DATABASE_CONNECTION_MAX_LIFETIME</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DATABASE_CONNECTION_MAX_IDLE_TIME</span></code></p></li>
+</ul>
+</section>
+<section id="redis-configuration">
+<h3>Redis Configuration<a class="headerlink" href="#redis-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">redis</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;localhost&quot;</span>
+<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">6379</span>
+<span class="w">  </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<span class="w">  </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">  </span><span class="nt">poolSize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">  </span><span class="nt">minIdleConns</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">  </span><span class="nt">connMaxLifetime</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1h&quot;</span>
+<span class="w">  </span><span class="nt">connMaxIdleTime</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30m&quot;</span>
+<span class="w">  </span><span class="nt">tls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</pre></div>
+</div>
+<p><strong>Environment Variables:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">REDIS_HOST</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">REDIS_PORT</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">REDIS_PASSWORD</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">REDIS_DATABASE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">REDIS_POOL_SIZE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">REDIS_MIN_IDLE_CONNS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">REDIS_CONN_MAX_LIFETIME</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">REDIS_CONN_MAX_IDLE_TIME</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">REDIS_TLS</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="authentication-configuration">
+<h2>Authentication Configuration<a class="headerlink" href="#authentication-configuration" title="Link to this heading"></a></h2>
+<section id="ldap-ad-configuration">
+<h3>LDAP/AD Configuration<a class="headerlink" href="#ldap-ad-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ldap&quot;</span>
+<span class="w">  </span><span class="nt">ldap</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ldaps://ldap.company.com:636&quot;</span>
+<span class="w">    </span><span class="nt">baseDN</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dc=company,dc=com&quot;</span>
+<span class="w">    </span><span class="nt">bindDN</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;cn=serviceaccount,ou=serviceaccounts,dc=company,dc=com&quot;</span>
+<span class="w">    </span><span class="nt">bindPassword</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;service_password&quot;</span>
+<span class="w">    </span><span class="nt">userSearchFilter</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;(sAMAccountName=%s)&quot;</span>
+<span class="w">    </span><span class="nt">userSearchBase</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ou=users,dc=company,dc=com&quot;</span>
+<span class="w">    </span><span class="nt">groupSearchFilter</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;(member=%s)&quot;</span>
+<span class="w">    </span><span class="nt">groupSearchBase</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ou=groups,dc=company,dc=com&quot;</span>
+<span class="w">    </span><span class="nt">attributes</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;sAMAccountName&quot;</span>
+<span class="w">      </span><span class="nt">email</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;mail&quot;</span>
+<span class="w">      </span><span class="nt">displayName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;displayName&quot;</span>
+<span class="w">      </span><span class="nt">memberOf</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;memberOf&quot;</span>
+<span class="w">    </span><span class="nt">tls</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">skipVerify</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">      </span><span class="nt">caCert</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/path/to/ca-cert.pem&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="oauth-2-0-configuration">
+<h3>OAuth 2.0 Configuration<a class="headerlink" href="#oauth-2-0-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;oauth2&quot;</span>
+<span class="w">  </span><span class="nt">oauth2</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;google&quot;</span><span class="w">  </span><span class="c1"># google, github, okta, azuread, custom</span>
+<span class="w">    </span><span class="nt">clientID</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;your-client-id&quot;</span>
+<span class="w">    </span><span class="nt">clientSecret</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;your-client-secret&quot;</span>
+<span class="w">    </span><span class="nt">redirectURL</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://mirador-core.company.com/auth/callback&quot;</span>
+<span class="w">    </span><span class="nt">scopes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;openid&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;profile&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;email&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">endpoints</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">authURL</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://accounts.google.com/o/oauth2/auth&quot;</span>
+<span class="w">      </span><span class="nt">tokenURL</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://oauth2.googleapis.com/token&quot;</span>
+<span class="w">      </span><span class="nt">userInfoURL</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://www.googleapis.com/oauth2/v2/userinfo&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="local-authentication-development">
+<h3>Local Authentication (Development)<a class="headerlink" href="#local-authentication-development" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;local&quot;</span>
+<span class="w">  </span><span class="nt">local</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">users</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;admin&quot;</span>
+<span class="w">        </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;admin123&quot;</span>
+<span class="w">        </span><span class="nt">email</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;admin@company.com&quot;</span>
+<span class="w">        </span><span class="nt">roles</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;admin&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;user&quot;</span>
+<span class="w">        </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;user123&quot;</span>
+<span class="w">        </span><span class="nt">email</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;user@company.com&quot;</span>
+<span class="w">        </span><span class="nt">roles</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;user&quot;</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="data-source-configuration">
+<h2>Data Source Configuration<a class="headerlink" href="#data-source-configuration" title="Link to this heading"></a></h2>
+<section id="victoriametrics-configuration">
+<h3>VictoriaMetrics Configuration<a class="headerlink" href="#victoriametrics-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">victoriametrics</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">metrics</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://victoriametrics:8428&quot;</span>
+<span class="w">    </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30s&quot;</span>
+<span class="w">    </span><span class="nt">retries</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">    </span><span class="nt">rateLimit</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">requestsPerSecond</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+<span class="w">      </span><span class="nt">burst</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">200</span>
+
+<span class="w">  </span><span class="nt">logs</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://victorialogs:9428&quot;</span>
+<span class="w">    </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30s&quot;</span>
+<span class="w">    </span><span class="nt">retries</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">    </span><span class="nt">searchEngine</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;lucene&quot;</span><span class="w">  </span><span class="c1"># lucene or bleve</span>
+
+<span class="w">  </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://victoriatraces:9429&quot;</span>
+<span class="w">    </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30s&quot;</span>
+<span class="w">    </span><span class="nt">retries</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+</pre></div>
+</div>
+</section>
+<section id="additional-data-sources">
+<h3>Additional Data Sources<a class="headerlink" href="#additional-data-sources" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">datasources</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">prometheus</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;prometheus-main&quot;</span>
+<span class="w">      </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://prometheus:9090&quot;</span>
+<span class="w">      </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30s&quot;</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+
+<span class="w">  </span><span class="nt">elasticsearch</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;elasticsearch-logs&quot;</span>
+<span class="w">      </span><span class="nt">urls</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;http://elasticsearch:9200&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;elastic&quot;</span>
+<span class="w">      </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;elastic123&quot;</span>
+<span class="w">      </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30s&quot;</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+
+<span class="w">  </span><span class="nt">jaeger</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;jaeger-traces&quot;</span>
+<span class="w">      </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://jaeger:16686&quot;</span>
+<span class="w">      </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30s&quot;</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="feature-flags">
+<h2>Feature Flags<a class="headerlink" href="#feature-flags" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">features</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">unifiedQuery</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">rca</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">predictiveAnalysis</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">schemaManagement</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">rbac</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">auditLogging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">metricsCaching</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">queryOptimization</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">userSettings</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">notifications</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">dashboards</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+<p><strong>Environment Variables:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">FEATURE_UNIFIED_QUERY</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FEATURE_RCA</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FEATURE_PREDICTIVE_ANALYSIS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FEATURE_SCHEMA_MANAGEMENT</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FEATURE_RBAC</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FEATURE_AUDIT_LOGGING</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FEATURE_METRICS_CACHING</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FEATURE_QUERY_OPTIMIZATION</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FEATURE_USER_SETTINGS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FEATURE_NOTIFICATIONS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FEATURE_DASHBOARDS</span></code></p></li>
+</ul>
+</section>
+<section id="metrics-and-monitoring">
+<h2>Metrics and Monitoring<a class="headerlink" href="#metrics-and-monitoring" title="Link to this heading"></a></h2>
+<section id="application-metrics">
+<h3>Application Metrics<a class="headerlink" href="#application-metrics" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">metrics</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/metrics&quot;</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;mirador_core&quot;</span>
+<span class="w">  </span><span class="nt">subsystem</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;api&quot;</span>
+<span class="w">  </span><span class="nt">buckets</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">10</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+</section>
+<section id="health-checks">
+<h3>Health Checks<a class="headerlink" href="#health-checks" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">health</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/health&quot;</span>
+<span class="w">  </span><span class="nt">deepCheckPath</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/health/deep&quot;</span>
+<span class="w">  </span><span class="nt">readinessPath</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/ready&quot;</span>
+<span class="w">  </span><span class="nt">livenessPath</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/live&quot;</span>
+<span class="w">  </span><span class="nt">checks</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">redis</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">datasources</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">dependencies</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+</section>
+<section id="logging-configuration">
+<h3>Logging Configuration<a class="headerlink" href="#logging-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">logging</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;info&quot;</span><span class="w">  </span><span class="c1"># debug, info, warn, error</span>
+<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;json&quot;</span><span class="w">  </span><span class="c1"># json or text</span>
+<span class="w">  </span><span class="nt">output</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;stdout&quot;</span><span class="w">  </span><span class="c1"># stdout, stderr, or file path</span>
+<span class="w">  </span><span class="nt">file</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/var/log/mirador-core.log&quot;</span>
+<span class="w">    </span><span class="nt">maxSize</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;100MB&quot;</span>
+<span class="w">    </span><span class="nt">maxAge</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30d&quot;</span>
+<span class="w">    </span><span class="nt">maxBackups</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">    </span><span class="nt">compress</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+<p><strong>Environment Variables:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">LOG_LEVEL</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LOG_FORMAT</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LOG_OUTPUT</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LOG_FILE_PATH</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LOG_FILE_MAX_SIZE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LOG_FILE_MAX_AGE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LOG_FILE_MAX_BACKUPS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LOG_FILE_COMPRESS</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="caching-configuration">
+<h2>Caching Configuration<a class="headerlink" href="#caching-configuration" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">cache</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;5m&quot;</span>
+<span class="w">  </span><span class="nt">maxSize</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1GB&quot;</span>
+<span class="w">  </span><span class="nt">redis</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;mirador:cache:&quot;</span>
+<span class="w">  </span><span class="nt">memory</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;512MB&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="rate-limiting">
+<h2>Rate Limiting<a class="headerlink" href="#rate-limiting" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">rateLimit</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">requestsPerMinute</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1000</span>
+<span class="w">  </span><span class="nt">burst</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2000</span>
+<span class="w">  </span><span class="nt">cleanupInterval</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1m&quot;</span>
+<span class="w">  </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;redis&quot;</span><span class="w">  </span><span class="c1"># memory or redis</span>
+</pre></div>
+</div>
+</section>
+<section id="schema-management">
+<h2>Schema Management<a class="headerlink" href="#schema-management" title="Link to this heading"></a></h2>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">schema</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">validation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">autoDiscovery</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">retention</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;90d&quot;</span>
+<span class="w">    </span><span class="nt">logs</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30d&quot;</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;7d&quot;</span>
+<span class="w">  </span><span class="nt">indexing</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">batchSize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1000</span>
+<span class="w">    </span><span class="nt">workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
+<span class="w">    </span><span class="nt">queueSize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10000</span>
+</pre></div>
+</div>
+</section>
+<section id="ai-and-analytics">
+<h2>AI and Analytics<a class="headerlink" href="#ai-and-analytics" title="Link to this heading"></a></h2>
+<section id="root-cause-analysis">
+<h3>Root Cause Analysis<a class="headerlink" href="#root-cause-analysis" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">rca</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">models</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;isolation_forest&quot;</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">contamination</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;correlation_analysis&quot;</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span>
+<span class="w">  </span><span class="nt">cache</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1h&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="predictive-analysis">
+<h3>Predictive Analysis<a class="headerlink" href="#predictive-analysis" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">predictive</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">models</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;lstm_trend&quot;</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">lookback</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;24h&quot;</span>
+<span class="w">      </span><span class="nt">forecast</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1h&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;anomaly_detection&quot;</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">sensitivity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.95</span>
+<span class="w">  </span><span class="nt">cache</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30m&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="security-configuration">
+<h2>Security Configuration<a class="headerlink" href="#security-configuration" title="Link to this heading"></a></h2>
+<section id="cors-configuration">
+<h3>CORS Configuration<a class="headerlink" href="#cors-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">cors</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">allowedOrigins</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;https://mirador-core.company.com&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">allowedMethods</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;GET&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;POST&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;PUT&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;DELETE&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;OPTIONS&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">allowedHeaders</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;*&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">allowCredentials</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">maxAge</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;12h&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="security-headers">
+<h3>Security Headers<a class="headerlink" href="#security-headers" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">security</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">headers</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">hsts</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">maxAge</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;31536000&quot;</span>
+<span class="w">      </span><span class="nt">includeSubdomains</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">preload</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">csp</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">policy</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;default-src</span><span class="nv"> </span><span class="s">&#39;self&#39;;</span><span class="nv"> </span><span class="s">script-src</span><span class="nv"> </span><span class="s">&#39;self&#39;</span><span class="nv"> </span><span class="s">&#39;unsafe-inline&#39;;</span><span class="nv"> </span><span class="s">style-src</span><span class="nv"> </span><span class="s">&#39;self&#39;</span><span class="nv"> </span><span class="s">&#39;unsafe-inline&#39;&quot;</span>
+<span class="w">    </span><span class="nt">xFrameOptions</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;DENY&quot;</span>
+<span class="w">    </span><span class="nt">xContentTypeOptions</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;nosniff&quot;</span>
+<span class="w">    </span><span class="nt">referrerPolicy</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;strict-origin-when-cross-origin&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="performance-tuning">
+<h2>Performance Tuning<a class="headerlink" href="#performance-tuning" title="Link to this heading"></a></h2>
+<section id="query-optimization">
+<h3>Query Optimization<a class="headerlink" href="#query-optimization" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">query</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30s&quot;</span>
+<span class="w">  </span><span class="nt">maxConcurrent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+<span class="w">  </span><span class="nt">maxResults</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10000</span>
+<span class="w">  </span><span class="nt">optimization</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">parallelExecution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">queryRewrite</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">resultCaching</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+</section>
+<section id="resource-limits">
+<h3>Resource Limits<a class="headerlink" href="#resource-limits" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">resources</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">maxMemory</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;4GB&quot;</span>
+<span class="w">  </span><span class="nt">maxCPU</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
+<span class="w">  </span><span class="nt">goroutines</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">max</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10000</span>
+<span class="w">    </span><span class="nt">warningThreshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8000</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="integration-configuration">
+<h2>Integration Configuration<a class="headerlink" href="#integration-configuration" title="Link to this heading"></a></h2>
+<section id="webhook-configuration">
+<h3>Webhook Configuration<a class="headerlink" href="#webhook-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">webhooks</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">endpoints</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://slack-webhook.company.com&quot;</span>
+<span class="w">      </span><span class="nt">events</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;alert&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;incident&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">secret</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;webhook-secret&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://pagerduty.company.com&quot;</span>
+<span class="w">      </span><span class="nt">events</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;critical_alert&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">secret</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;pagerduty-secret&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="notification-configuration">
+<h3>Notification Configuration<a class="headerlink" href="#notification-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">notifications</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">providers</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">email</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">smtp</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;smtp.company.com&quot;</span>
+<span class="w">        </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">587</span>
+<span class="w">        </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;noreply@company.com&quot;</span>
+<span class="w">        </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;smtp-password&quot;</span>
+<span class="w">        </span><span class="nt">tls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">slack</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">webhookURL</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://hooks.slack.com/services/...&quot;</span>
+<span class="w">      </span><span class="nt">channel</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;#alerts&quot;</span>
+<span class="w">      </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;MIRADOR-CORE&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="development-configuration">
+<h2>Development Configuration<a class="headerlink" href="#development-configuration" title="Link to this heading"></a></h2>
+<section id="debug-configuration">
+<h3>Debug Configuration<a class="headerlink" href="#debug-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">debug</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">pprof</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/debug/pprof&quot;</span>
+<span class="w">  </span><span class="nt">trace</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">samplingRate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.01</span>
+<span class="w">  </span><span class="nt">metrics</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">detailed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</pre></div>
+</div>
+</section>
+<section id="development-overrides">
+<h3>Development Overrides<a class="headerlink" href="#development-overrides" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">development</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">hotReload</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">verboseLogging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">mockData</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">skipAuth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">allowInsecureTLS</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="environment-specific-examples">
+<h2>Environment-Specific Examples<a class="headerlink" href="#environment-specific-examples" title="Link to this heading"></a></h2>
+<section id="development-environment">
+<h3>Development Environment<a class="headerlink" href="#development-environment" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># config.development.yaml</span>
+<span class="nt">logging</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;debug&quot;</span>
+<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;text&quot;</span>
+
+<span class="nt">features</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">rca</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">predictiveAnalysis</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+
+<span class="nt">auth</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;local&quot;</span>
+
+<span class="nt">debug</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+</section>
+<section id="production-environment">
+<h3>Production Environment<a class="headerlink" href="#production-environment" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># config.production.yaml</span>
+<span class="nt">logging</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;info&quot;</span>
+<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;json&quot;</span>
+<span class="w">  </span><span class="nt">file</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/var/log/mirador-core.log&quot;</span>
+
+<span class="nt">server</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">tls</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">certFile</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/etc/ssl/certs/mirador-core.crt&quot;</span>
+<span class="w">    </span><span class="nt">keyFile</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/etc/ssl/private/mirador-core.key&quot;</span>
+
+<span class="nt">rateLimit</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">requestsPerMinute</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5000</span>
+<span class="w">  </span><span class="nt">burst</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10000</span>
+
+<span class="nt">cache</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10m&quot;</span>
+<span class="w">  </span><span class="nt">maxSize</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2GB&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="configuration-validation">
+<h2>Configuration Validation<a class="headerlink" href="#configuration-validation" title="Link to this heading"></a></h2>
+<p>MIRADOR-CORE validates configuration on startup. Invalid configurations will prevent the service from starting with detailed error messages.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Validate configuration file</span>
+./mirador-core<span class="w"> </span>validate-config<span class="w"> </span>--config<span class="w"> </span>config.yaml
+
+<span class="c1"># Check configuration with environment variables</span>
+<span class="nv">DATABASE_HOST</span><span class="o">=</span>prod-db<span class="w"> </span>./mirador-core<span class="w"> </span>validate-config
+</pre></div>
+</div>
+</section>
+<section id="hot-reloading">
+<h2>Hot Reloading<a class="headerlink" href="#hot-reloading" title="Link to this heading"></a></h2>
+<p>Some configuration changes support hot reloading without service restart:</p>
+<ul class="simple">
+<li><p>Feature flags</p></li>
+<li><p>Logging levels</p></li>
+<li><p>Cache settings</p></li>
+<li><p>Rate limiting rules</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Reload configuration</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/admin/reload-config<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;admin-token&gt;&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="secrets-management">
+<h2>Secrets Management<a class="headerlink" href="#secrets-management" title="Link to this heading"></a></h2>
+<p>Sensitive configuration should be managed through environment variables or external secret stores:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Using environment variables</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DATABASE_PASSWORD</span><span class="o">=</span><span class="s2">&quot;secure-password&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">REDIS_PASSWORD</span><span class="o">=</span><span class="s2">&quot;redis-password&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LDAP_BIND_PASSWORD</span><span class="o">=</span><span class="s2">&quot;ldap-password&quot;</span>
+
+<span class="c1"># Using Docker secrets</span>
+docker<span class="w"> </span>run<span class="w"> </span>-e<span class="w"> </span><span class="nv">DATABASE_PASSWORD_FILE</span><span class="o">=</span>/run/secrets/db-password<span class="w"> </span>mirador-core
+
+<span class="c1"># Using Kubernetes secrets</span>
+kubectl<span class="w"> </span>create<span class="w"> </span>secret<span class="w"> </span>generic<span class="w"> </span>mirador-secrets<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--from-literal<span class="o">=</span>database-password<span class="o">=</span>secure-password<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--from-literal<span class="o">=</span>redis-password<span class="o">=</span>redis-password
+</pre></div>
+</div>
+</section>
+<section id="monitoring-configuration-changes">
+<h2>Monitoring Configuration Changes<a class="headerlink" href="#monitoring-configuration-changes" title="Link to this heading"></a></h2>
+<p>Configuration changes are logged and can be monitored:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># View configuration change history</span>
+curl<span class="w"> </span>http://localhost:8080/admin/config/history<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;admin-token&gt;&quot;</span>
+
+<span class="c1"># Get current configuration (redacted)</span>
+curl<span class="w"> </span>http://localhost:8080/admin/config/current<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;admin-token&gt;&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="deployment.html" class="btn btn-neutral float-left" title="Deployment Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, PlatformBuilds.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
