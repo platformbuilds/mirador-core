@@ -5,6 +5,7 @@
 :caption: Contents:
 
 getting-started
+unified-query-architecture
 api-reference
 deployment
 configuration
