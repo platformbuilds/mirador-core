@@ -543,7 +543,7 @@ dependencies:
     description: "VictoriaTraces integration required for full correlation capabilities"
 
   - name: "Unified API endpoints"
-    status: "pending"
+    status: "completed"
     description: "Unified query HTTP endpoints must be implemented before comprehensive testing and user adoption"
 
   - name: "Enhanced caching infrastructure"
