@@ -23,7 +23,7 @@ cd mirador-core
 ```bash
 # Install dependencies and set up local stack
 make setup
-make dev-stack
+make localdev-up
 ```
 
 ### 3. Start the Development Server
@@ -43,6 +43,23 @@ curl http://localhost:8010/api/v1/health
 
 # Check readiness
 curl http://localhost:8010/api/v1/ready
+```
+
+### 5. Run Tests (Optional)
+
+```bash
+# Run full E2E test suite
+make localdev-test
+
+# Or run API tests only
+make localdev-test-api-only
+```
+
+### 6. Tear Down Development Environment
+
+```bash
+# Stop all services and clean up
+make localdev-down
 ```
 
 ## Production Deployment

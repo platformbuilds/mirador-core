@@ -931,8 +931,8 @@ Schema Tags format
 
 3. **Start Local Stack**
    ```bash
-   make dev-stack  # VictoriaMetrics, Valkey, Weaviate
-   make dev        # Start mirador-core server
+   make localdev-up  # VictoriaMetrics, Valkey, Weaviate
+   make dev          # Start mirador-core server
    ```
 
 4. **Run Tests**
