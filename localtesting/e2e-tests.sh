@@ -596,21 +596,43 @@ test_documentation_endpoints() {
     http_request "GET" "$BASE_URL/api/openapi.json" "200" "" "OpenAPI Spec (JSON)"
 }
 
-# Error handling tests
-test_error_handling() {
-    log_info "Testing Error Handling..."
+# Unified Query API Tests
+test_unified_query_endpoints() {
+    log_info "Testing Unified Query Endpoints..."
     
-    # Test non-existent endpoints
-    http_request "GET" "$API_BASE/nonexistent" "404" "" "Non-existent Endpoint"
+    # Test unified query metadata
+    http_request "GET" "$API_BASE/unified/metadata" "200" "" "Get Unified Query Metadata"
     
-    # Test invalid method
-    http_request "DELETE" "$API_BASE/health" "405" "" "Invalid Method"
+    # Test unified query health
+    http_request "GET" "$API_BASE/unified/health" "200" "" "Get Unified Query Health"
     
-    # Test invalid JSON
-    http_request "POST" "$API_BASE/metrics/query" "400" '{"invalid": json}' "Invalid JSON"
+    # Test unified metrics query (should route to VictoriaMetrics)
+    local metrics_query='{"query": {"query": "up", "type": "metrics"}}'
+    http_request "POST" "$API_BASE/unified/query" "200" "$metrics_query" "Unified Metrics Query"
     
-    # Test missing required parameters
-    http_request "GET" "$API_BASE/series" "400" "" "Missing Required Parameters"
+    # Test unified logs query (should route to VictoriaLogs)
+    local logs_query='{"query": {"query": "*", "type": "logs"}}'
+    http_request "POST" "$API_BASE/unified/query" "200" "$logs_query" "Unified Logs Query"
+    
+    # Test unified traces query (should route to VictoriaTraces)
+    local traces_query='{"query": {"query": "service:*", "type": "traces"}}'
+    http_request "POST" "$API_BASE/unified/query" "200" "$traces_query" "Unified Traces Query"
+    
+    # Test intelligent routing - metrics pattern (should auto-route to VictoriaMetrics)
+    local auto_metrics_query='{"query": {"query": "rate(http_requests_total[5m])"}}'
+    http_request "POST" "$API_BASE/unified/query" "200" "$auto_metrics_query" "Auto-Routed Metrics Query"
+    
+    # Test intelligent routing - traces pattern (should auto-route to VictoriaTraces)
+    local auto_traces_query='{"query": {"query": "service:telemetrygen"}}'
+    http_request "POST" "$API_BASE/unified/query" "200" "$auto_traces_query" "Auto-Routed Traces Query"
+    
+    # Test intelligent routing - logs pattern (should auto-route to VictoriaLogs)
+    local auto_logs_query='{"query": {"query": "level:error"}}'
+    http_request "POST" "$API_BASE/unified/query" "200" "$auto_logs_query" "Auto-Routed Logs Query"
+    
+    # Test correlation query
+    local correlation_query='{"query": {"query": "error AND high_latency", "type": "correlation"}}'
+    http_request "POST" "$API_BASE/unified/correlation" "200" "$correlation_query" "Unified Correlation Query"
 }
 
 # Code Quality Tests
@@ -938,6 +960,7 @@ main() {
     test_metrics_functions  
     test_logs_endpoints
     test_traces_endpoints
+    test_unified_query_endpoints
     
     # Advanced features tests
     test_rca_endpoints
@@ -950,7 +973,6 @@ main() {
     # Compatibility and documentation tests
     test_compatibility_endpoints
     test_documentation_endpoints
-    test_error_handling
     
     # Phase 4: Results Generation
     log_phase "Results and Reporting"

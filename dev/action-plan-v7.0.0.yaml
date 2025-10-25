@@ -2,47 +2,128 @@ version: "7.0.0"
 title: "Mirador Core v7.0.0 - Unified Observability Platform"
 description: "Implementation of unified query engine with intelligent routing, log-metrics correlation, and enhanced observability across logs, traces, and metrics"
 created: "2025-10-20"
-status: "planning"
+status: "in_progress"
 
 phases:
   - name: "Phase 1: Foundation and Architecture"
     description: "Establish unified query architecture and core abstractions"
-    status: "pending"
+    status: "completed"
     tasks:
       - name: "Audit current engine performance"
         description: "Benchmark current Bleve vs VictoriaMetrics performance baselines and identify optimization opportunities"
-        status: "pending"
+        status: "completed"
         assignee: "platform-team"
         effort: "medium"
         dependencies: []
 
       - name: "Design unified query abstraction layer"
         description: "Create UnifiedQueryEngine interface that abstracts query routing across Bleve, VictoriaMetrics, and traces engines"
-        status: "pending"
+        status: "completed"
         assignee: "platform-team"
         effort: "large"
         dependencies: ["Audit current engine performance"]
 
-      - name: "Implement intelligent query router"
-        description: "Build QueryRouter that analyzes query patterns and routes to optimal engines (Bleve for search, VictoriaMetrics for metrics)"
-        status: "pending"
+      - name: "Implement UnifiedQueryEngine interface"
+        description: "Build the core UnifiedQueryEngine implementation with engine abstraction and result unification"
+        status: "completed"
         assignee: "platform-team"
         effort: "large"
         dependencies: ["Design unified query abstraction layer"]
 
+      - name: "Implement intelligent query router"
+        description: "Build QueryRouter that analyzes query patterns and routes to optimal engines (Bleve for search, VictoriaMetrics for metrics)"
+        status: "completed"
+        assignee: "platform-team"
+        effort: "large"
+        dependencies: ["Implement UnifiedQueryEngine interface"]
+
       - name: "Create unified query models"
         description: "Define UnifiedQuery, UnifiedResult, and CorrelationQuery models for cross-engine operations"
-        status: "pending"
+        status: "completed"
         assignee: "platform-team"
         effort: "medium"
         dependencies: ["Design unified query abstraction layer"]
 
-      - name: "Implement query pattern detection"
-        description: "Add heuristics to detect pure metrics, pure logs, correlation queries, and hybrid patterns"
+      - name: "Implement VictoriaTraces integration"
+        description: "Integrate VictoriaTraces for distributed tracing data alongside logs and metrics"
+        status: "completed"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Design unified query abstraction layer"]
+
+      - name: "Document foundation architecture"
+        description: "Create documentation for unified query engine architecture, intelligent routing, and engine integrations"
         status: "pending"
         assignee: "platform-team"
         effort: "medium"
-        dependencies: ["Implement intelligent query router"]
+        dependencies: ["Implement VictoriaTraces integration"]
+
+  - name: "Phase 1.5: Unified API Implementation"
+    description: "Implement HTTP API endpoints for unified query functionality"
+    status: "completed"
+    tasks:
+      - name: "Create unified query handlers"
+        description: "Implement HTTP handlers for /api/v1/unified/* endpoints (query, metadata, health, correlation)"
+        status: "completed"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Implement UnifiedQueryEngine interface", "Implement intelligent query router"]
+
+      - name: "Add unified query routes"
+        description: "Register unified query routes in the HTTP server routing table"
+        status: "completed"
+        assignee: "platform-team"
+        effort: "small"
+        dependencies: ["Create unified query handlers"]
+
+      - name: "Implement request/response models"
+        description: "Define JSON request/response structures for unified query APIs"
+        status: "completed"
+        assignee: "platform-team"
+        effort: "small"
+        dependencies: ["Create unified query models"]
+
+      - name: "Add API validation and error handling"
+        description: "Implement input validation, error handling, and proper HTTP status codes for unified endpoints"
+        status: "completed"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Create unified query handlers"]
+
+      - name: "Update OpenAPI specification"
+        description: "Add unified query endpoints to OpenAPI spec with proper schemas and examples"
+        status: "completed"
+        assignee: "platform-team"
+        effort: "small"
+        dependencies: ["Implement request/response models"]
+
+      - name: "Update Swagger UI documentation"
+        description: "Ensure Swagger UI automatically reflects updated OpenAPI specification for unified endpoints"
+        status: "completed"
+        assignee: "platform-team"
+        effort: "small"
+        dependencies: ["Update OpenAPI specification"]
+
+      - name: "Update Postman collection"
+        description: "Add unified query examples and test cases to Postman collection for API testing"
+        status: "completed"
+        assignee: "platform-team"
+        effort: "small"
+        dependencies: ["Update OpenAPI specification"]
+
+      - name: "Integrate with existing middleware"
+        description: "Ensure unified endpoints work with authentication, logging, and other middleware"
+        status: "completed"
+        assignee: "platform-team"
+        effort: "small"
+        dependencies: ["Add unified query routes"]
+
+      - name: "Create API documentation"
+        description: "Document unified API endpoints with usage examples, request/response formats, and integration guides"
+        status: "completed"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Update OpenAPI specification", "Update Swagger UI documentation"]
 
   - name: "Phase 2: Metrics Metadata Integration"
     description: "Index metrics metadata in Bleve for enhanced discovery and exploration"
@@ -76,7 +157,14 @@ phases:
         effort: "medium"
         dependencies: ["Implement metrics metadata indexer"]
 
-  - name: "Phase 3: Log-Metrics Correlation Engine"
+      - name: "Document metrics metadata integration"
+        description: "Create documentation for metrics metadata indexing, search capabilities, and synchronization mechanisms"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "small"
+        dependencies: ["Implement metadata synchronization"]
+
+  - name: "Phase 3: Log-Metrics-Traces Correlation Engine"
     description: "Implement correlation capabilities across logs, traces, and metrics"
     status: "pending"
     tasks:
@@ -115,6 +203,13 @@ phases:
         effort: "medium"
         dependencies: ["Add time-window correlation", "Implement label-based correlation"]
 
+      - name: "Document correlation engine"
+        description: "Create comprehensive documentation for correlation query syntax, time-window correlation, label-based correlation, and result merging"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Create correlation result merging"]
+
   - name: "Phase 4: Performance and Caching"
     description: "Implement comprehensive caching and performance optimizations"
     status: "pending"
@@ -147,12 +242,40 @@ phases:
         effort: "medium"
         dependencies: ["Audit current engine performance"]
 
+      - name: "Implement adaptive cache sizing based on index size"
+        description: "Implement dynamic cache sizing that adjusts based on index size and memory availability"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Design unified caching strategy"]
+
+      - name: "Add object pooling for frequently allocated structures"
+        description: "Implement object pooling for frequently allocated structures to reduce GC pressure and memory allocations"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Audit current engine performance"]
+
+      - name: "Consider memory-mapped indexes for large datasets"
+        description: "Evaluate and implement memory-mapped indexes for large datasets to improve memory efficiency and reduce RAM usage"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Audit current engine performance"]
+
       - name: "Implement query parallelization"
         description: "Add parallel execution for independent sub-queries within unified queries"
         status: "pending"
         assignee: "platform-team"
         effort: "medium"
         dependencies: ["Implement intelligent query router"]
+
+      - name: "Document performance and caching"
+        description: "Create documentation for unified caching strategy, cache invalidation, performance optimizations, and query parallelization"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Implement query parallelization"]
 
   - name: "Phase 5: Unified Query Language"
     description: "Develop comprehensive query language across all data types"
@@ -193,6 +316,13 @@ phases:
         effort: "medium"
         dependencies: ["Implement query parser"]
 
+      - name: "Document unified query language"
+        description: "Create comprehensive guide for unified query language grammar, parser, translation layer, and optimization techniques"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "large"
+        dependencies: ["Create query examples and documentation"]
+
   - name: "Phase 6: Monitoring and Observability"
     description: "Implement comprehensive monitoring for unified platform"
     status: "pending"
@@ -232,16 +362,23 @@ phases:
         effort: "small"
         dependencies: ["Build performance dashboards"]
 
+      - name: "Document monitoring and observability"
+        description: "Create documentation for unified query metrics, correlation performance monitoring, query tracing, and operational dashboards"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Add alerting rules"]
+
   - name: "Phase 7: Testing and Quality Assurance"
     description: "Comprehensive testing for unified platform"
     status: "pending"
     tasks:
       - name: "Create unified query test suite"
         description: "Build comprehensive test suite for unified queries across all engines"
-        status: "pending"
+        status: "completed"
         assignee: "platform-team"
         effort: "large"
-        dependencies: ["Implement query parser"]
+        dependencies: ["Create unified query handlers"]
 
       - name: "Implement correlation testing"
         description: "Create tests for log-metrics correlation scenarios with mock data"
@@ -271,16 +408,23 @@ phases:
         effort: "large"
         dependencies: ["Implement query parallelization"]
 
+      - name: "Document testing and quality assurance"
+        description: "Create documentation for unified query test suite, correlation testing, performance regression tests, and load testing procedures"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "medium"
+        dependencies: ["Conduct load testing"]
+
   - name: "Phase 8: Documentation and Adoption"
     description: "Complete documentation and enable user adoption"
     status: "pending"
     tasks:
       - name: "Update API documentation"
-        description: "Update OpenAPI spec and API docs for unified query endpoints"
+        description: "Update comprehensive API documentation including guides, examples, and usage patterns for unified query endpoints"
         status: "pending"
         assignee: "platform-team"
         effort: "medium"
-        dependencies: ["Design unified query abstraction layer"]
+        dependencies: ["Update OpenAPI specification", "Update Swagger UI documentation"]
 
       - name: "Create unified query language guide"
         description: "Write comprehensive guide for unified query language with examples"
@@ -298,10 +442,10 @@ phases:
 
       - name: "Update Postman collections"
         description: "Add unified query examples to Postman collections"
-        status: "pending"
+        status: "completed"
         assignee: "platform-team"
         effort: "small"
-        dependencies: ["Update API documentation"]
+        dependencies: ["Update Postman collection"]
 
       - name: "Create operator documentation"
         description: "Document operational aspects of unified platform (monitoring, scaling, troubleshooting)"
@@ -310,7 +454,17 @@ phases:
         effort: "medium"
         dependencies: ["Build performance dashboards"]
 
+      - name: "Finalize comprehensive documentation"
+        description: "Complete all documentation deliverables including API guides, operational docs, migration guides, and user adoption materials"
+        status: "pending"
+        assignee: "platform-team"
+        effort: "large"
+        dependencies: ["Create operator documentation", "Build migration documentation", "Create unified query language guide"]
+
 quality_gates:
+  - name: "Unified API functionality"
+    criteria: "All unified query endpoints (/api/v1/unified/*) respond correctly and pass E2E tests"
+
   - name: "Unified query performance"
     criteria: "Unified queries perform within 200% of individual engine queries for 95th percentile"
 
@@ -384,21 +538,31 @@ dependencies:
     status: "completed"
     description: "Existing VictoriaMetrics integration must be stable"
 
+  - name: "VictoriaTraces integration"
+    status: "completed"
+    description: "VictoriaTraces integration required for full correlation capabilities"
+
+  - name: "Unified API endpoints"
+    status: "pending"
+    description: "Unified query HTTP endpoints must be implemented before comprehensive testing and user adoption"
+
   - name: "Enhanced caching infrastructure"
     status: "pending"
     description: "May require Valkey cluster enhancements for unified caching"
 
 timeline:
-  estimated_duration: "16 weeks"
+  estimated_duration: "18 weeks"
   phases_breakdown:
     - phase: "Foundation and Architecture"
+      duration: "2 weeks"
+    - phase: "Unified API Implementation"
       duration: "2 weeks"
     - phase: "Metrics Metadata Integration"
       duration: "2 weeks"
     - phase: "Log-Metrics Correlation Engine"
       duration: "3 weeks"
     - phase: "Performance and Caching"
-      duration: "2 weeks"
+      duration: "3 weeks"
     - phase: "Unified Query Language"
       duration: "3 weeks"
     - phase: "Monitoring and Observability"

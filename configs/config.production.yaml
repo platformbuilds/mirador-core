@@ -143,6 +143,14 @@ search:
       disk_cache_ratio: 0.7
       max_concurrent_queries: 50
 
+# Unified Query Engine Configuration (Phase 1.5)
+unified_query:
+  enabled: true
+  cache_ttl: 10m
+  max_cache_ttl: 2h
+  default_limit: 2000
+  enable_correlation: true
+
 uploads:
   # Bulk CSV upload limit (bytes); default 5 MiB.
   bulk_max_bytes: 5242880

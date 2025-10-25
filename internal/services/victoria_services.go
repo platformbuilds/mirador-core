@@ -74,7 +74,181 @@ func (s *VictoriaTracesService) SetChildren(children []*VictoriaTracesService) {
 	}
 }
 
-// GetServices returns all services from VictoriaTraces
+// GetOperations returns all operations for a specific service from VictoriaTraces
+func (s *VictoriaTracesService) GetOperations(ctx context.Context, serviceName, tenantID string) ([]string, error) {
+	// Multi-endpoint aggregation when multiple endpoints configured in this service
+	if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 1 }() {
+		return s.getOperationsMultiEndpoint(ctx, serviceName, tenantID)
+	}
+
+	if len(s.children) > 0 {
+		services := make([]*VictoriaTracesService, 0, len(s.children)+1)
+		if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 0 }() {
+			services = append(services, s)
+		}
+		services = append(services, s.children...)
+		ch := make(chan struct {
+			out []string
+			err error
+		}, len(services))
+		for _, svc := range services {
+			go func(svc *VictoriaTracesService) {
+				o, e := svc.GetOperations(ctx, serviceName, tenantID)
+				ch <- struct {
+					out []string
+					err error
+				}{o, e}
+			}(svc)
+		}
+		set := map[string]struct{}{}
+		okCount := 0
+		for i := 0; i < len(services); i++ {
+			r := <-ch
+			if r.err != nil {
+				continue
+			}
+			for _, v := range r.out {
+				set[v] = struct{}{}
+			}
+			okCount++
+		}
+		if okCount == 0 {
+			return nil, fmt.Errorf("all traces sources failed")
+		}
+		out := make([]string, 0, len(set))
+		for k := range set {
+			out = append(out, k)
+		}
+		return out, nil
+	}
+	endpoint := s.selectEndpoint()
+	fullURL := fmt.Sprintf("%s/select/jaeger/api/services/%s/operations", endpoint, serviceName)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if utils.IsUint32String(tenantID) {
+		req.Header.Set("AccountID", tenantID)
+	}
+	if s.username != "" {
+		req.SetBasicAuth(s.username, s.password)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("VictoriaTraces request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("VictoriaTraces returned status %d", resp.StatusCode)
+	}
+
+	var operations struct {
+		Data []string `json:"data"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&operations); err != nil {
+		return nil, fmt.Errorf("failed to parse VictoriaTraces response: %w", err)
+	}
+
+	return operations.Data, nil
+}
+
+// getOperationsMultiEndpoint aggregates operations from all configured endpoints in this service
+func (s *VictoriaTracesService) getOperationsMultiEndpoint(ctx context.Context, serviceName, tenantID string) ([]string, error) {
+	// Get endpoints safely
+	s.mu.Lock()
+	endpoints := make([]string, len(s.endpoints))
+	copy(endpoints, s.endpoints)
+	s.mu.Unlock()
+
+	if len(endpoints) == 0 {
+		return nil, errors.New("no VictoriaTraces endpoints configured")
+	}
+
+	type out struct {
+		operations []string
+		err        error
+	}
+	ch := make(chan out, len(endpoints))
+	for _, endpoint := range endpoints {
+		go func(ep string) {
+			tempSvc := &VictoriaTracesService{
+				name:      s.name,
+				endpoints: []string{ep}, // Single endpoint
+				timeout:   s.timeout,
+				client:    s.client,
+				logger:    s.logger,
+				username:  s.username,
+				password:  s.password,
+				retries:   s.retries,
+				backoffMS: s.backoffMS,
+			}
+			ops, e := tempSvc.getOperationsSingleEndpoint(ctx, serviceName, tenantID)
+			ch <- out{ops, e}
+		}(endpoint)
+	}
+
+	// Aggregate results - collect all unique operations
+	opSet := make(map[string]struct{})
+	for i := 0; i < len(endpoints); i++ {
+		r := <-ch
+		if r.err != nil {
+			s.logger.Warn("operations from endpoint failed", "error", r.err)
+			continue
+		}
+		for _, op := range r.operations {
+			opSet[op] = struct{}{}
+		}
+	}
+
+	operations := make([]string, 0, len(opSet))
+	for op := range opSet {
+		operations = append(operations, op)
+	}
+	return operations, nil
+}
+
+// getOperationsSingleEndpoint gets operations from a single endpoint (used by multi-endpoint aggregation)
+func (s *VictoriaTracesService) getOperationsSingleEndpoint(ctx context.Context, serviceName, tenantID string) ([]string, error) {
+	endpoint := s.selectEndpoint()
+	fullURL := fmt.Sprintf("%s/select/jaeger/api/services/%s/operations", endpoint, serviceName)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if utils.IsUint32String(tenantID) {
+		req.Header.Set("AccountID", tenantID)
+	}
+	if s.username != "" {
+		req.SetBasicAuth(s.username, s.password)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("VictoriaTraces request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("VictoriaTraces returned status %d", resp.StatusCode)
+	}
+
+	var operations struct {
+		Data []string `json:"data"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&operations); err != nil {
+		return nil, fmt.Errorf("failed to parse VictoriaTraces response: %w", err)
+	}
+
+	return operations.Data, nil
+}
 func (s *VictoriaTracesService) GetServices(ctx context.Context, tenantID string) ([]string, error) {
 	// Multi-endpoint aggregation when multiple endpoints configured in this service
 	if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 1 }() {

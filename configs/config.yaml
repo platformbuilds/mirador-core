@@ -185,6 +185,14 @@ search:
   enable_bleve: true
   enable_lucene: true
 
+# Unified Query Engine Configuration (Phase 1.5)
+unified_query:
+  enabled: true
+  cache_ttl: 5m
+  max_cache_ttl: 1h
+  default_limit: 1000
+  enable_correlation: false
+
 uploads:
   # Bulk CSV upload limit (bytes); default 5 MiB.
   bulk_max_bytes: 5242880

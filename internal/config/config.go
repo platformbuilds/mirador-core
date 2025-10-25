@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 type Config struct {
 	Environment string `mapstructure:"environment" yaml:"environment"`
 	Port        int    `mapstructure:"port" yaml:"port"`
@@ -16,6 +18,7 @@ type Config struct {
 	Weaviate     WeaviateConfig     `mapstructure:"weaviate" yaml:"weaviate"`
 	Uploads      UploadsConfig      `mapstructure:"uploads" yaml:"uploads"`
 	Search       SearchConfig       `mapstructure:"search" yaml:"search"`
+	UnifiedQuery UnifiedQueryConfig `mapstructure:"unified_query" yaml:"unified_query"`
 }
 
 // DatabaseConfig handles VictoriaMetrics ecosystem configuration
@@ -258,4 +261,13 @@ type BleveStorageConfig struct {
 	MemoryCacheRatio     float64 `mapstructure:"memory_cache_ratio" yaml:"memory_cache_ratio"`
 	DiskCacheRatio       float64 `mapstructure:"disk_cache_ratio" yaml:"disk_cache_ratio"`
 	MaxConcurrentQueries int     `mapstructure:"max_concurrent_queries" yaml:"max_concurrent_queries"`
+}
+
+// UnifiedQueryConfig holds unified query engine configuration
+type UnifiedQueryConfig struct {
+	Enabled           bool          `mapstructure:"enabled" yaml:"enabled"`
+	CacheTTL          time.Duration `mapstructure:"cache_ttl" yaml:"cache_ttl"`
+	MaxCacheTTL       time.Duration `mapstructure:"max_cache_ttl" yaml:"max_cache_ttl"`
+	DefaultLimit      int           `mapstructure:"default_limit" yaml:"default_limit"`
+	EnableCorrelation bool          `mapstructure:"enable_correlation" yaml:"enable_correlation"`
 }
