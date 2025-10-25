@@ -59,7 +59,6 @@ curl -X POST https://mirador-core/api/v1/unified/query \
 ### ✅ Completed Phases
 
 - **Phase 1**: Foundation & Architecture ✓
-- **Phase 1.5**: Unified API Implementation ✓
 - **Phase 2**: Metrics Metadata Integration (In Progress)
 - **Phase 3**: Log-Metrics-Traces Correlation Engine (Planned)
 - **Phase 4**: Performance & Caching (Planned)
@@ -207,10 +206,37 @@ curl -X GET https://mirador-core/api/v1/unified/health \
 - **Unified Response Format**: Consistent JSON responses across all query types
 - **Performance Monitoring**: Built-in metrics and execution time tracking
 
-### MetricsQL Aggregate Functions (v5.0.0+)
+### Metrics APIs
 
-MIRADOR-CORE supports comprehensive MetricsQL aggregate functions for advanced time series analysis:
+#### Instant Queries
+```bash
+# Basic MetricsQL query
+curl -X POST https://mirador-core/api/v1/metrics/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "http_requests_total{job=\"api\"}",
+    "time": "2025-01-01T00:00:00Z",
+    "include_definitions": true
+  }'
+```
 
+#### Range Queries
+```bash
+# Time range MetricsQL query
+curl -X POST https://mirador-core/api/v1/metrics/query_range \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "rate(http_requests_total[5m])",
+    "start": "2025-01-01T00:00:00Z",
+    "end": "2025-01-01T01:00:00Z",
+    "step": "1m",
+    "include_definitions": true
+  }'
+```
+
+#### Aggregate Functions
 ```bash
 # Sum aggregation
 curl -X POST https://mirador-core/api/v1/metrics/query/aggregate/sum \
@@ -223,46 +249,199 @@ curl -X POST https://mirador-core/api/v1/metrics/query/aggregate/quantile \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"query": "rate(http_requests_total[5m])", "params": {"quantile": 0.95}}'
-```
 
-**Available Functions**: `sum`, `avg`, `count`, `min`, `max`, `median`, `stddev`, `stdvar`, `mad`, `zscore`, `skewness`, `kurtosis`, `topk`, `bottomk`, `quantile`, `percentile`, `histogram`, `distinct`, `count_values`, `mode`, `mode_multi`, `cov`, `corr`, `entropy`, `range`, `iqr`, `trimean`, `increase`, `rate`, `irate`, `delta`, `idelta`, `geomean`, `harmean`
-
-### Search Engines (v5.1.0+)
-
-#### Lucene Query Syntax
-Full Lucene support for logs and traces with familiar syntax:
-
-```bash
-# Logs with Lucene
-curl -X POST https://mirador-core/api/v1/logs/query \
+# Top K values
+curl -X POST https://mirador-core/api/v1/metrics/query/aggregate/topk \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"query": "level:error AND message:\"connection timeout\"", "time_range": "1h"}'
-
-# Traces with Lucene
-curl -X POST https://mirador-core/api/v1/traces/query \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "service:payment AND operation:charge", "time_range": "1h"}'
+  -d '{"query": "rate(http_requests_total[5m])", "params": {"k": 5}}'
 ```
 
-#### Bleve Search Engine (v6.0.0+)
-Alternative search engine with fuzzy matching capabilities:
+**Available Aggregate Functions**: `sum`, `avg`, `count`, `min`, `max`, `stddev`, `stdvar`, `quantile`, `topk`, `bottomk`, `count_values`, `absent`, `increase`, `delta`, `rate`, `irate`, `deriv`, `idelta`, `ideriv`, `group`, `histogram`, `and`, `or`, `unless`
 
+#### Rollup Functions
 ```bash
-# Specify Bleve engine
+# Rate calculation
+curl -X POST https://mirador-core/api/v1/metrics/query/rollup/rate \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "http_requests_total[5m]"}'
+
+# Increase over time
+curl -X POST https://mirador-core/api/v1/metrics/query/rollup/increase \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "http_requests_total[1h]"}'
+```
+
+#### Transform Functions
+```bash
+# Round values
+curl -X POST https://mirador-core/api/v1/metrics/query/transform/round \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "http_request_duration_seconds"}'
+
+# Clamp values between min/max
+curl -X POST https://mirador-core/api/v1/metrics/query/transform/clamp \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "cpu_usage", "params": {"min": 0, "max": 100}}'
+```
+
+#### Label Functions
+```bash
+# Replace label values
+curl -X POST https://mirador-core/api/v1/metrics/query/label/label_replace \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "up",
+    "params": {
+      "dst": "service",
+      "replacement": "$1",
+      "src": "instance",
+      "regex": "(.*):.*"
+    }
+  }'
+
+# Keep only specific labels
+curl -X POST https://mirador-core/api/v1/metrics/query/label/label_keep \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "http_requests_total", "params": {"labels": ["job", "instance"]}}'
+```
+
+### Logs APIs
+
+#### Query Logs
+```bash
+# Logs query with Lucene syntax
 curl -X POST https://mirador-core/api/v1/logs/query \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
-    "query": "error AND status:500",
-    "search_engine": "bleve",
-    "time_range": "1h"
+    "query_language": "lucene",
+    "search_engine": "lucene",
+    "query": "_time:[now-15m TO now] AND level:error AND service:api",
+    "limit": 1000
   }'
+
+# Logs query with Bleve search engine
+curl -X POST https://mirador-core/api/v1/logs/query \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query_language": "lucene",
+    "search_engine": "bleve",
+    "query": "error AND status:500",
+    "start": 1640995200000,
+    "end": 1640998800000,
+    "limit": 500
+  }'
+```
+
+#### Search Logs
+```bash
+# Advanced search with pagination
+curl -X POST https://mirador-core/api/v1/logs/search \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query_language": "lucene",
+    "query": "_time:1h AND level:error",
+    "search_engine": "lucene",
+    "limit": 100,
+    "page_after": {
+      "ts": 1640998800000,
+      "offset": 0
+    }
+  }'
+```
+
+#### Export Logs
+```bash
+# Export logs as CSV
+curl -X POST https://mirador-core/api/v1/logs/export \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query_language": "lucene",
+    "query": "_time:1h AND level:error",
+    "format": "csv"
+  }' \
+  --output logs.csv
+```
+
+#### Logs Analytics
+```bash
+# Get histogram data for visualization
+curl -X GET "https://mirador-core/api/v1/logs/histogram?query_language=lucene&query=_time:30m&step=60000" \
+  -H "Authorization: Bearer <token>"
+
+# Get facet counts
+curl -X GET "https://mirador-core/api/v1/logs/facets?query_language=lucene&query=_time:30m&fields=level,service" \
+  -H "Authorization: Bearer <token>"
+```
+
+#### Real-time Logs (WebSocket)
+```bash
+# Connect to WebSocket for real-time logs
+wscat -c "ws://mirador-core/api/v1/logs/tail?query=_time:5m&sampling=10"
+```
+
+### Traces APIs
+
+#### Query Traces
+```bash
+# Search traces with Lucene syntax
+curl -X POST https://mirador-core/api/v1/traces/search \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query_language": "lucene",
+    "search_engine": "lucene",
+    "query": "_time:[now-15m TO now] AND service:checkout AND operation:CreateOrder",
+    "limit": 100
+  }'
+
+# Get specific trace by ID
+curl -X GET https://mirador-core/api/v1/traces/abc123def456 \
+  -H "Authorization: Bearer <token>"
+```
+
+#### Trace Analysis
+```bash
+# Get flame graph data for a trace
+curl -X GET https://mirador-core/api/v1/traces/abc123def456/flamegraph?mode=duration \
+  -H "Authorization: Bearer <token>"
+
+# Get aggregated flame graph from trace search
+curl -X POST https://mirador-core/api/v1/traces/flamegraph/search \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "service": "checkout",
+    "operation": "CreateOrder",
+    "start": "2025-01-01T00:00:00Z",
+    "end": "2025-01-01T01:00:00Z"
+  }'
+```
+
+#### Trace Schema
+```bash
+# List all services
+curl -X GET https://mirador-core/api/v1/traces/services \
+  -H "Authorization: Bearer <token>"
+
+# List operations for a service
+curl -X GET https://mirador-core/api/v1/traces/services/checkout/operations \
+  -H "Authorization: Bearer <token>"
 ```
 
 ### AI Analysis APIs
 
+#### Predictive Analysis
 ```bash
 # Analyze system fractures/fatigue
 curl -X POST https://mirador-core/api/v1/predict/analyze \
@@ -274,6 +453,17 @@ curl -X POST https://mirador-core/api/v1/predict/analyze \
     "model_types": ["isolation_forest", "lstm_trend"]
   }'
 
+# List predicted fractures
+curl -X GET "https://mirador-core/api/v1/predict/fractures?time_range=24h&min_prob=0.7" \
+  -H "Authorization: Bearer <token>"
+
+# List active prediction models
+curl -X GET https://mirador-core/api/v1/predict/models \
+  -H "Authorization: Bearer <token>"
+```
+
+#### Root Cause Analysis
+```bash
 # Start RCA investigation
 curl -X POST https://mirador-core/api/v1/rca/investigate \
   -H "Authorization: Bearer <token>" \
@@ -284,17 +474,30 @@ curl -X POST https://mirador-core/api/v1/rca/investigate \
     "time_range": {
       "start": "2025-08-31T14:00:00Z",
       "end": "2025-08-31T15:00:00Z"
-    },
-    "affected_services": ["payment-service", "database"]
+    }
+  }'
+
+# Get active correlations
+curl -X GET https://mirador-core/api/v1/rca/correlations \
+  -H "Authorization: Bearer <token>"
+
+# Get service graph with latency metrics
+curl -X POST https://mirador-core/api/v1/rca/service-graph \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "start": "2025-01-01T00:00:00Z",
+    "end": "2025-01-01T01:00:00Z",
+    "client": "web-service",
+    "server": "api-service"
   }'
 ```
 
-### Schema Definitions APIs (v7.0.0+)
+### Schema Management APIs
 
-Manage metadata for metrics, logs, and traces:
-
+#### Metrics Schema
 ```bash
-# Upsert metric definition
+# Create/update metric definition
 curl -X POST https://mirador-core/api/v1/schema/metrics \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
@@ -302,13 +505,199 @@ curl -X POST https://mirador-core/api/v1/schema/metrics \
     "metric": "http_requests_total",
     "description": "Total number of HTTP requests",
     "owner": "platform-team",
-    "tags": ["domain:web", "owner:platform"]
+    "tags": ["domain:web", "category:performance"],
+    "author": "john.doe"
   }'
 
-# Bulk upload via CSV
+# Get metric definition
+curl -X GET https://mirador-core/api/v1/schema/metrics/http_requests_total \
+  -H "Authorization: Bearer <token>"
+
+# Bulk upload metrics via CSV
 curl -X POST https://mirador-core/api/v1/schema/metrics/bulk \
   -H "Authorization: Bearer <token>" \
-  -F "file=@metrics.csv"
+  -F "file=@metrics_definitions.csv"
+
+# Download sample CSV template
+curl -X GET "https://mirador-core/api/v1/schema/metrics/bulk/sample?metrics=http_requests_total,cpu_usage" \
+  -H "Authorization: Bearer <token>" \
+  --output metrics_template.csv
+```
+
+#### Log Fields Schema
+```bash
+# Create/update log field definition
+curl -X POST https://mirador-core/api/v1/schema/logs/fields \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "field": "level",
+    "type": "string",
+    "description": "Log level severity",
+    "tags": ["category:logging", "indexed:true"],
+    "examples": {
+      "normal": "INFO",
+      "error": "ERROR",
+      "debug": "DEBUG"
+    },
+    "author": "jane.smith"
+  }'
+
+# Bulk upload log fields via CSV
+curl -X POST https://mirador-core/api/v1/schema/logs/fields/bulk \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@log_fields.csv"
+```
+
+#### Trace Schema
+```bash
+# Create/update trace service definition
+curl -X POST https://mirador-core/api/v1/schema/traces/services \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "service": "checkout",
+    "purpose": "Handles e-commerce checkout process",
+    "owner": "commerce-team",
+    "tags": ["domain:ecommerce", "language:go"],
+    "author": "mike.wilson"
+  }'
+
+# Create/update trace operation definition
+curl -X POST https://mirador-core/api/v1/schema/traces/operations \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "service": "checkout",
+    "operation": "ProcessPayment",
+    "purpose": "Processes payment for order",
+    "owner": "commerce-team",
+    "tags": ["method:POST", "endpoint:/api/payment"],
+    "author": "mike.wilson"
+  }'
+
+# Bulk upload services/operations via CSV
+curl -X POST https://mirador-core/api/v1/schema/traces/services/bulk \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@trace_services.csv"
+```
+
+### Configuration APIs
+
+#### Runtime Configuration
+```bash
+# Get current feature flags
+curl -X GET https://mirador-core/api/v1/config/features \
+  -H "Authorization: Bearer <token>"
+
+# Update feature flags
+curl -X PUT https://mirador-core/api/v1/config/features \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "features": {
+      "rca_enabled": false,
+      "predict_enabled": true,
+      "user_settings_enabled": true,
+      "rbac_enabled": true
+    }
+  }'
+
+# Reset feature flags to defaults
+curl -X POST https://mirador-core/api/v1/config/features/reset \
+  -H "Authorization: Bearer <token>"
+```
+
+#### gRPC Endpoints Configuration
+```bash
+# Get current gRPC endpoints
+curl -X GET https://mirador-core/api/v1/config/grpc/endpoints \
+  -H "Authorization: Bearer <token>"
+
+# Update gRPC endpoints
+curl -X PUT https://mirador-core/api/v1/config/grpc/endpoints \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rca_endpoint": "rca-service-new:50051",
+    "predict_endpoint": "predict-service-new:50052"
+  }'
+
+# Reset gRPC endpoints to defaults
+curl -X POST https://mirador-core/api/v1/config/grpc/endpoints/reset \
+  -H "Authorization: Bearer <token>"
+```
+
+### Health & Monitoring APIs
+
+#### Health Checks
+```bash
+# Basic health check
+curl -X GET https://mirador-core/api/v1/health
+
+# Readiness check (includes backend validation)
+curl -X GET https://mirador-core/api/v1/ready
+
+# Microservices status
+curl -X GET https://mirador-core/api/v1/microservices/status \
+  -H "Authorization: Bearer <token>"
+```
+
+#### Prometheus Metrics
+```bash
+# Get Prometheus metrics
+curl -X GET https://mirador-core/api/v1/metrics
+```
+
+### WebSocket APIs
+
+#### Real-time Data Streams
+```bash
+# Metrics stream
+wscat -c "ws://mirador-core/api/v1/ws/metrics"
+
+# Alerts stream
+wscat -c "ws://mirador-core/api/v1/ws/alerts"
+
+# Predictions stream
+wscat -c "ws://mirador-core/api/v1/ws/predictions"
+```
+
+### Session Management APIs
+
+```bash
+# Get active sessions
+curl -X GET https://mirador-core/api/v1/sessions/active \
+  -H "Authorization: Bearer <token>"
+
+# Invalidate session
+curl -X POST https://mirador-core/api/v1/sessions/invalidate \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "session-123"}'
+```
+
+### RBAC APIs
+
+```bash
+# List roles
+curl -X GET https://mirador-core/api/v1/rbac/roles \
+  -H "Authorization: Bearer <token>"
+
+# Create role
+curl -X POST https://mirador-core/api/v1/rbac/roles \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "analyst",
+    "permissions": ["read:metrics", "read:logs"]
+  }'
+
+# Assign user roles
+curl -X PUT https://mirador-core/api/v1/rbac/users/user-123/roles \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"role_ids": ["analyst", "viewer"]}'
 ```
 
 ## Configuration
@@ -562,55 +951,417 @@ Schema Tags format
 
 ## Deployment
 
-### Docker Deployment
+### 🚀 Recommended: Kubernetes (Helm) Deployment
+
+For production deployments, we **strongly recommend** using Kubernetes with Helm charts for scalability, reliability, and operational excellence.
+
+#### Quick Start with Helm
 
 ```bash
-# Build single architecture
-make docker-build
-
-# Build multi-architecture
-make dockerx-build
-
-# Run locally
-docker run -p 8010:8010 platformbuilds/mirador-core:latest
-```
-
-### Kubernetes (Helm)
-
-```bash
-# Add repository
+# Add the MIRADOR Helm repository
 helm repo add mirador https://platformbuilds.github.io/mirador-core
 helm repo update
 
-# Install
+# Install with default VictoriaMetrics ecosystem
 helm install mirador-core mirador/mirador-core \
+  --namespace mirador-system \
+  --create-namespace \
   --set image.tag=v7.0.0 \
-  --set vm.endpoints="vm-select:8481" \
-  --set vl.endpoints="vl-select:9428"
+  --set vm.endpoints="vm-cluster:8481" \
+  --set vl.endpoints="vl-cluster:9428" \
+  --set vt.endpoints="vt-cluster:10428" \
+  --set valkey.endpoints="valkey-cluster:6379" \
+  --set weaviate.host="weaviate-cluster"
 ```
+
+#### Production Helm Deployment
+
+```bash
+# Create dedicated namespace
+kubectl create namespace mirador-production
+
+# Install with production configuration
+helm install mirador-core mirador/mirador-core \
+  --namespace mirador-production \
+  --values production-values.yaml \
+  --set image.tag=v7.0.0 \
+  --set replicaCount=3 \
+  --set resources.limits.cpu="2000m" \
+  --set resources.limits.memory="4Gi" \
+  --set ingress.enabled=true \
+  --set ingress.hosts[0].host="mirador.yourcompany.com" \
+  --set ingress.tls[0].secretName="mirador-tls"
+```
+
+#### Helm Configuration Examples
+
+**Multi-cluster VictoriaMetrics setup:**
+```yaml
+# production-values.yaml
+vm:
+  endpoints: "vm-cluster-1:8481,vm-cluster-2:8481,vm-cluster-3:8481"
+  timeout: 30000
+
+vl:
+  endpoints: "vl-cluster-1:9428,vl-cluster-2:9428"
+  timeout: 30000
+
+vt:
+  endpoints: "vt-cluster-1:10428,vt-cluster-2:10428"
+  timeout: 30000
+
+valkey:
+  endpoints: "valkey-cluster-1:6379,valkey-cluster-2:6379,valkey-cluster-3:6379"
+  sentinel: true
+
+weaviate:
+  enabled: true
+  host: "weaviate-cluster"
+  port: 80
+  scheme: "http"
+```
+
+**Enterprise authentication setup:**
+```yaml
+# enterprise-values.yaml
+auth:
+  ldap:
+    enabled: true
+    url: "ldap://ldap.corp.company.com"
+    baseDN: "dc=company,dc=com"
+    userSearchFilter: "(sAMAccountName={0})"
+
+rbac:
+  enabled: true
+  defaultRoles:
+    - name: "viewer"
+      permissions: ["read:metrics", "read:logs", "read:traces"]
+    - name: "analyst"
+      permissions: ["read:*", "write:queries"]
+    - name: "admin"
+      permissions: ["*"]
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: mirador.company.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: mirador-tls
+      hosts:
+        - mirador.company.com
+```
+
+#### Helm Upgrade
+
+```bash
+# Upgrade to new version
+helm repo update
+helm upgrade mirador-core mirador/mirador-core \
+  --namespace mirador-production \
+  --set image.tag=v7.1.0 \
+  --set replicaCount=5
+
+# Rollback if needed
+helm rollback mirador-core 1 --namespace mirador-production
+```
+
+### 🐳 Development/Testing: Docker Deployment
+
+For development, testing, or simple deployments, Docker provides a quick way to get started.
+
+#### Build and Run with Docker
+
+```bash
+# Build for local architecture
+make docker-build
+
+# Build multi-architecture (linux/amd64, linux/arm64)
+make dockerx-build
+
+# Run locally with basic configuration
+docker run -d \
+  --name mirador-core \
+  -p 8010:8010 \
+  -e VM_ENDPOINTS="http://host.docker.internal:8481" \
+  -e VL_ENDPOINTS="http://host.docker.internal:9428" \
+  -e VALKEY_CACHE_NODES="host.docker.internal:6379" \
+  platformbuilds/mirador-core:latest
+```
+
+#### Docker Compose for Local Development
+
+```yaml
+# docker-compose.yml for development
+version: '3.8'
+services:
+  mirador-core:
+    image: platformbuilds/mirador-core:v7.0.0
+    ports:
+      - "8010:8010"
+    environment:
+      - ENVIRONMENT=development
+      - VM_ENDPOINTS=http://victoriametrics:8481
+      - VL_ENDPOINTS=http://victorialogs:9428
+      - VALKEY_CACHE_NODES=victoriametrics:6379
+      - WEAVIATE_HOST=weaviate
+      - WEAVIATE_PORT=8080
+    depends_on:
+      - victoriametrics
+      - victorialogs
+      - weaviate
+    restart: unless-stopped
+
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:latest
+    ports:
+      - "8481:8428"
+    command:
+      - "--storageDataPath=/storage"
+      - "--httpListenAddr=:8428"
+
+  victorialogs:
+    image: victoriametrics/victoria-logs:latest
+    ports:
+      - "9428:9428"
+    command:
+      - "--storageDataPath=/storage"
+      - "--httpListenAddr=:9428"
+
+  weaviate:
+    image: semitechnologies/weaviate:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - QUERY_DEFAULTS_LIMIT=25
+      - AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true
+      - PERSISTENCE_DATA_PATH='/var/lib/weaviate'
+```
+
+### Infrastructure Requirements
+
+#### Production Infrastructure Checklist
+
+**VictoriaMetrics Ecosystem:**
+- ✅ VictoriaMetrics cluster (3+ nodes for HA)
+- ✅ VictoriaLogs cluster (2+ nodes recommended)
+- ✅ VictoriaTraces cluster (2+ nodes recommended)
+
+**Supporting Services:**
+- ✅ Valkey/Redis cluster (3+ nodes for HA)
+- ✅ Weaviate vector database (3+ nodes for HA)
+- ✅ Load balancer/Ingress controller
+- ✅ Persistent storage for all services
+
+**Network Security:**
+- ✅ Service mesh (Istio/Linkerd) for mTLS
+- ✅ Network policies restricting pod communication
+- ✅ External access through API Gateway
+
+**Monitoring & Observability:**
+- ✅ Prometheus for metrics collection
+- ✅ Grafana for dashboards
+- ✅ ELK/EFK stack for centralized logging
+- ✅ Distributed tracing (Jaeger/Tempo)
 
 ### Configuration
 
-Environment variables and Helm values for production deployment:
+#### Environment Variables
+
+**Core Settings:**
+```bash
+# Application
+PORT=8010
+ENVIRONMENT=production
+LOG_LEVEL=info
+SHUTDOWN_TIMEOUT=30s
+
+# VictoriaMetrics ecosystem
+VM_ENDPOINTS=vm-cluster-1:8481,vm-cluster-2:8481,vm-cluster-3:8481
+VL_ENDPOINTS=vl-cluster-1:9428,vl-cluster-2:9428
+VT_ENDPOINTS=vt-cluster-1:10428,vt-cluster-2:10428
+
+# Caching & Storage
+VALKEY_CACHE_NODES=valkey-1:6379,valkey-2:6379,valkey-3:6379
+CACHE_TTL=300
+WEAVIATE_ENABLED=true
+WEAVIATE_HOST=weaviate-cluster
+WEAVIATE_PORT=80
+
+# AI Engines (gRPC)
+RCA_ENGINE_GRPC=rca-service:50051
+PREDICT_ENGINE_GRPC=predict-service:50052
+ALERT_ENGINE_GRPC=alert-service:50053
+
+# Authentication & Security
+LDAP_URL=ldap://ldap.corp.company.com
+LDAP_BASE_DN=dc=company,dc=com
+RBAC_ENABLED=true
+JWT_SECRET=<secure-random-string>
+TLS_CERT_PATH=/etc/ssl/certs/mirador.crt
+TLS_KEY_PATH=/etc/ssl/private/mirador.key
+
+# Performance Tuning
+MAX_CONCURRENT_QUERIES=100
+QUERY_TIMEOUT=60s
+CACHE_MAX_MEMORY=1GB
+GOMAXPROCS=4
+```
+
+#### Multi-Source Aggregation
+
+Configure fan-out queries across multiple backend clusters for high availability and performance:
 
 ```yaml
-# VictoriaMetrics ecosystem
-VM_ENDPOINTS: "vm-cluster-1:8481,vm-cluster-2:8481"
-VL_ENDPOINTS: "vl-cluster-1:9428,vl-cluster-2:9428"
-VT_ENDPOINTS: "vt-cluster-1:10428,vt-cluster-2:10428"
+# config.production.yaml
+database:
+  # Primary VictoriaMetrics cluster
+  victoria_metrics:
+    endpoints: ["vm-prod-1:8481", "vm-prod-2:8481", "vm-prod-3:8481"]
+    timeout: 30000
+    retries: 3
 
-# Caching
-VALKEY_CACHE_NODES: "redis-1:6379,redis-2:6379"
-CACHE_TTL: "300"
+  # Additional metrics sources
+  metrics_sources:
+    - name: metrics-archive
+      endpoints: ["vm-archive-1:8481", "vm-archive-2:8481"]
+      timeout: 45000
 
-# Authentication
-LDAP_URL: "ldap://ldap.company.com"
-RBAC_ENABLED: "true"
+  # Primary logs cluster
+  victoria_logs:
+    endpoints: ["vl-prod-1:9428", "vl-prod-2:9428"]
+    timeout: 30000
 
-# Schema store
-WEAVIATE_ENABLED: "true"
-WEAVIATE_HOST: "weaviate"
+  # Additional logs sources
+  logs_sources:
+    - name: logs-archive
+      endpoints: ["vl-archive-1:9428"]
+      timeout: 45000
+
+  # Traces cluster
+  victoria_traces:
+    endpoints: ["vt-prod-1:10428", "vt-prod-2:10428"]
+    timeout: 30000
+
+# Unified query configuration
+unified_query:
+  enabled: true
+  default_timeout: "30s"
+  max_timeout: "300s"
+  cache:
+    enabled: true
+    default_ttl: "5m"
+    max_ttl: "1h"
+    max_memory: "2GB"
+  routing:
+    metrics_engine: "victoriametrics"
+    logs_engine: "victorialogs"
+    traces_engine: "victoriatraces"
+    correlation_engine: "rca"
+
+# Rate limiting
+rate_limiting:
+  enabled: true
+  requests_per_minute: 1000
+  burst_limit: 2000
+  tenant_isolation: true
+
+# Circuit breakers
+circuit_breakers:
+  vm_circuit:
+    failure_threshold: 5
+    recovery_timeout: "60s"
+    success_threshold: 3
+  vl_circuit:
+    failure_threshold: 3
+    recovery_timeout: "30s"
+    success_threshold: 2
 ```
+
+### Deployment Strategies
+
+#### Blue-Green Deployment
+```bash
+# Deploy new version alongside existing
+helm install mirador-core-green mirador/mirador-core \
+  --namespace mirador-production \
+  --set image.tag=v7.1.0 \
+  --set ingress.hosts[0].host="mirador-green.company.com"
+
+# Test green environment
+curl -H "Host: mirador-green.company.com" https://mirador.company.com/api/v1/health
+
+# Switch traffic to green
+kubectl patch ingress mirador-ingress \
+  --namespace mirador-production \
+  --type='json' \
+  -p='[{"op": "replace", "path": "/spec/rules/0/host", "value": "mirador-green.company.com"}]'
+
+# Remove blue environment
+helm uninstall mirador-core --namespace mirador-production
+```
+
+#### Canary Deployment
+```bash
+# Deploy canary with 10% traffic
+helm upgrade mirador-core mirador/mirador-core \
+  --namespace mirador-production \
+  --set canary.enabled=true \
+  --set canary.weight=10 \
+  --set image.tag=v7.1.0
+
+# Gradually increase traffic
+helm upgrade mirador-core mirador/mirador-core \
+  --namespace mirador-production \
+  --set canary.weight=25
+
+# Complete rollout
+helm upgrade mirador-core mirador/mirador-core \
+  --namespace mirador-production \
+  --set canary.enabled=false \
+  --set image.tag=v7.1.0
+```
+
+### Migration from Docker to Kubernetes
+
+If you're currently running MIRADOR-CORE with Docker and want to migrate to Kubernetes:
+
+1. **Assess current setup:**
+   ```bash
+   # Check current configuration
+   docker inspect mirador-core
+   docker logs mirador-core --tail 100
+   ```
+
+2. **Backup data:**
+   ```bash
+   # Export configurations and schemas
+   curl -X GET "http://localhost:8010/api/v1/schema/metrics" -o metrics_backup.json
+   curl -X GET "http://localhost:8010/api/v1/schema/logs/fields" -o logs_backup.json
+   ```
+
+3. **Deploy to Kubernetes:**
+   ```bash
+   helm install mirador-core mirador/mirador-core \
+     --namespace mirador-system \
+     --create-namespace \
+     --values migration-values.yaml
+   ```
+
+4. **Migrate configurations:**
+   ```bash
+   # Import schemas to new deployment
+   curl -X POST "https://mirador.company.com/api/v1/schema/metrics/bulk" \
+     -H "Authorization: Bearer <token>" \
+     -F "file=@metrics_backup.json"
+   ```
+
+5. **Update DNS and switch traffic**
+
+This migration provides better scalability, reliability, and operational capabilities while maintaining all existing functionality.
 
 ## Monitoring
 
