@@ -1,0 +1,6 @@
+# Requirements for building documentation with Sphinx
+sphinx>=5.0.0
+sphinx-rtd-theme>=1.2.0
+myst-parser>=0.18.0
+sphinxext-opengraph>=0.8.0
+sphinx-copybutton>=0.5.0
