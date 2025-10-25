@@ -217,6 +217,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("weaviate.host", "weaviate.mirador.svc.cluster.local")
 	v.SetDefault("weaviate.port", 8080)
 	v.SetDefault("weaviate.use_official", false)
+
+	// Unified Query Engine (Phase 1.5)
+	v.SetDefault("unified_query.enabled", true)
+	v.SetDefault("unified_query.cache_ttl", "5m")
+	v.SetDefault("unified_query.max_cache_ttl", "1h")
+	v.SetDefault("unified_query.default_limit", 1000)
+	v.SetDefault("unified_query.enable_correlation", false)
 }
 
 /* ---------------------------- legacy overrides --------------------------- */

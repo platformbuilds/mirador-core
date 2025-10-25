@@ -650,6 +650,474 @@
         },
         "additionalProperties": false,
         "description": "At least one endpoint must be provided for update"
+      },
+      "UnifiedQueryRequest": {
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "$ref": "#/components/schemas/UnifiedQuery"
+          }
+        },
+        "description": "Request wrapper for unified queries"
+      },
+      "UnifiedQueryResponse": {
+        "type": "object",
+        "required": [
+          "result"
+        ],
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/UnifiedResult"
+          }
+        },
+        "description": "Response wrapper for unified query results"
+      },
+      "UnifiedQuery": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "query"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the query",
+            "example": "query-123"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "metrics",
+              "logs",
+              "traces",
+              "correlation"
+            ],
+            "description": "Type of query to execute",
+            "example": "metrics"
+          },
+          "query": {
+            "type": "string",
+            "description": "Query string in appropriate syntax for the query type",
+            "example": "http_requests_total{job=\"api\"}"
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "Optional tenant identifier",
+            "example": "tenant-abc"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start time for time-bounded queries"
+          },
+          "end_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End time for time-bounded queries"
+          },
+          "timeout": {
+            "type": "string",
+            "description": "Query timeout duration",
+            "example": "30s"
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Engine-specific query parameters"
+          },
+          "correlation_options": {
+            "$ref": "#/components/schemas/CorrelationOptions"
+          },
+          "cache_options": {
+            "$ref": "#/components/schemas/CacheOptions"
+          }
+        }
+      },
+      "CorrelationOptions": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether correlation is enabled",
+            "default": false
+          },
+          "correlation_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Keys to correlate across engines",
+            "example": [
+              "service",
+              "instance"
+            ]
+          },
+          "time_window": {
+            "type": "string",
+            "description": "Time window for correlation",
+            "example": "5m"
+          },
+          "engines": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "metrics",
+                "logs",
+                "traces"
+              ]
+            },
+            "description": "Engines to include in correlation"
+          },
+          "filters": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Additional correlation filters"
+          }
+        }
+      },
+      "CacheOptions": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether caching is enabled",
+            "default": true
+          },
+          "ttl": {
+            "type": "string",
+            "description": "Cache TTL duration",
+            "example": "5m"
+          },
+          "key": {
+            "type": "string",
+            "description": "Custom cache key"
+          },
+          "bypass_cache": {
+            "type": "boolean",
+            "description": "Force fresh query execution",
+            "default": false
+          }
+        }
+      },
+      "UnifiedResult": {
+        "type": "object",
+        "required": [
+          "query_id",
+          "type",
+          "status"
+        ],
+        "properties": {
+          "query_id": {
+            "type": "string",
+            "description": "ID of the executed query"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "metrics",
+              "logs",
+              "traces",
+              "correlation"
+            ],
+            "description": "Type of result"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "error",
+              "partial"
+            ],
+            "description": "Execution status"
+          },
+          "data": {
+            "description": "Query result data (structure varies by query type)"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/ResultMetadata"
+          },
+          "correlations": {
+            "$ref": "#/components/schemas/UnifiedCorrelationResult"
+          },
+          "execution_time_ms": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Query execution time in milliseconds"
+          },
+          "cached": {
+            "type": "boolean",
+            "description": "Whether result came from cache"
+          }
+        }
+      },
+      "ResultMetadata": {
+        "type": "object",
+        "properties": {
+          "engine_results": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EngineResult"
+            },
+            "description": "Results from individual engines"
+          },
+          "total_records": {
+            "type": "integer",
+            "description": "Total number of records returned"
+          },
+          "data_sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Data sources that contributed to the result"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Non-fatal warnings during execution"
+          }
+        }
+      },
+      "EngineResult": {
+        "type": "object",
+        "required": [
+          "engine",
+          "status"
+        ],
+        "properties": {
+          "engine": {
+            "type": "string",
+            "enum": [
+              "metrics",
+              "logs",
+              "traces",
+              "correlation"
+            ],
+            "description": "Engine that produced this result"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "error",
+              "partial"
+            ],
+            "description": "Status of this engine's execution"
+          },
+          "record_count": {
+            "type": "integer",
+            "description": "Number of records from this engine"
+          },
+          "execution_time_ms": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Execution time for this engine"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if status is error"
+          },
+          "data_source": {
+            "type": "string",
+            "description": "Specific data source used by this engine"
+          }
+        }
+      },
+      "UnifiedCorrelationResult": {
+        "type": "object",
+        "required": [
+          "correlations",
+          "summary"
+        ],
+        "properties": {
+          "correlations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Correlation"
+            },
+            "description": "Individual correlations found"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/CorrelationSummary"
+          }
+        }
+      },
+      "Correlation": {
+        "type": "object",
+        "required": [
+          "id",
+          "correlation_key",
+          "timestamp"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique correlation identifier"
+          },
+          "correlation_key": {
+            "type": "string",
+            "description": "Key used for correlation"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the correlation"
+          },
+          "engines": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Data from each correlated engine"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence score of the correlation"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Additional correlation metadata"
+          }
+        }
+      },
+      "CorrelationSummary": {
+        "type": "object",
+        "required": [
+          "total_correlations",
+          "average_confidence",
+          "time_range",
+          "engines_involved"
+        ],
+        "properties": {
+          "total_correlations": {
+            "type": "integer",
+            "description": "Total number of correlations found"
+          },
+          "average_confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Average confidence across all correlations"
+          },
+          "time_range": {
+            "type": "string",
+            "description": "Time range covered by correlations"
+          },
+          "engines_involved": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "metrics",
+                "logs",
+                "traces"
+              ]
+            },
+            "description": "Engines that participated in correlations"
+          }
+        }
+      },
+      "QueryMetadata": {
+        "type": "object",
+        "required": [
+          "supported_engines",
+          "query_capabilities",
+          "cache_capabilities"
+        ],
+        "properties": {
+          "supported_engines": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "metrics",
+                "logs",
+                "traces",
+                "correlation"
+              ]
+            },
+            "description": "Engines supported by the unified query system"
+          },
+          "query_capabilities": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "Query capabilities per engine type"
+          },
+          "cache_capabilities": {
+            "$ref": "#/components/schemas/CacheCapabilities"
+          }
+        }
+      },
+      "CacheCapabilities": {
+        "type": "object",
+        "required": [
+          "supported"
+        ],
+        "properties": {
+          "supported": {
+            "type": "boolean",
+            "description": "Whether caching is supported"
+          },
+          "default_ttl": {
+            "type": "string",
+            "description": "Default cache TTL",
+            "example": "5m"
+          },
+          "max_ttl": {
+            "type": "string",
+            "description": "Maximum allowed cache TTL",
+            "example": "1h"
+          }
+        }
+      },
+      "EngineHealthStatus": {
+        "type": "object",
+        "required": [
+          "overall_health",
+          "engine_health",
+          "last_checked"
+        ],
+        "properties": {
+          "overall_health": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "unhealthy",
+              "partial"
+            ],
+            "description": "Overall health status of all engines"
+          },
+          "engine_health": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Health status per engine",
+            "example": {
+              "metrics": "healthy",
+              "logs": "healthy",
+              "traces": "unhealthy"
+            }
+          },
+          "last_checked": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of last health check"
+          }
+        }
       }
     }
   },
@@ -5113,6 +5581,433 @@
         "responses": {
           "101": {
             "description": "Switching Protocols"
+          }
+        }
+      }
+    },
+    "/unified/query": {
+      "post": {
+        "tags": [
+          "unified"
+        ],
+        "summary": "Execute unified query",
+        "description": "Execute a unified query across multiple observability engines (metrics, logs, traces).\nThe query router intelligently routes the query to the appropriate engine(s) based on the query type and content.\nSupports caching, correlation, and cross-engine operations.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnifiedQueryRequest"
+              },
+              "examples": {
+                "metrics_query": {
+                  "summary": "Query metrics using MetricsQL",
+                  "value": {
+                    "query": {
+                      "id": "metrics-query-1",
+                      "type": "metrics",
+                      "query": "http_requests_total{job=\"api\"}",
+                      "start_time": "2025-01-01T00:00:00Z",
+                      "end_time": "2025-01-01T01:00:00Z",
+                      "timeout": "30s",
+                      "cache_options": {
+                        "enabled": true,
+                        "ttl": "5m"
+                      }
+                    }
+                  }
+                },
+                "logs_query": {
+                  "summary": "Query logs using Lucene syntax",
+                  "value": {
+                    "query": {
+                      "id": "logs-query-1",
+                      "type": "logs",
+                      "query": "service.name:api AND level:error",
+                      "start_time": "2025-01-01T00:00:00Z",
+                      "end_time": "2025-01-01T01:00:00Z",
+                      "timeout": "30s",
+                      "parameters": {
+                        "limit": 1000
+                      }
+                    }
+                  }
+                },
+                "traces_query": {
+                  "summary": "Query traces",
+                  "value": {
+                    "query": {
+                      "id": "traces-query-1",
+                      "type": "traces",
+                      "query": "service.name:api",
+                      "start_time": "2025-01-01T00:00:00Z",
+                      "end_time": "2025-01-01T01:00:00Z",
+                      "timeout": "30s"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Query executed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnifiedQueryResponse"
+                },
+                "example": {
+                  "result": {
+                    "query_id": "metrics-query-1",
+                    "type": "metrics",
+                    "status": "success",
+                    "data": {
+                      "resultType": "vector",
+                      "result": [
+                        {
+                          "metric": {
+                            "__name__": "http_requests_total",
+                            "job": "api"
+                          },
+                          "value": [
+                            1690000000,
+                            "1234"
+                          ]
+                        }
+                      ]
+                    },
+                    "metadata": {
+                      "engine_results": {
+                        "metrics": {
+                          "engine": "metrics",
+                          "status": "success",
+                          "record_count": 1,
+                          "execution_time_ms": 45,
+                          "data_source": "victoriametrics"
+                        }
+                      },
+                      "total_records": 1,
+                      "data_sources": [
+                        "victoriametrics"
+                      ]
+                    },
+                    "execution_time_ms": 50,
+                    "cached": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query format or parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    },
+                    "details": {
+                      "type": "string",
+                      "description": "Detailed error information"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Query execution failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    },
+                    "details": {
+                      "type": "string",
+                      "description": "Detailed error information"
+                    },
+                    "query_id": {
+                      "type": "string",
+                      "description": "ID of the failed query"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/unified/correlation": {
+      "post": {
+        "tags": [
+          "unified"
+        ],
+        "summary": "Execute correlation query",
+        "description": "Execute a correlation query that spans multiple engines to find relationships between metrics, logs, and traces.\nCurrently returns \"not_implemented\" status as correlation engine is under development.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnifiedQueryRequest"
+              },
+              "example": {
+                "query": {
+                  "id": "correlation-query-1",
+                  "type": "correlation",
+                  "query": "logs:error AND metrics:high_latency",
+                  "start_time": "2025-01-01T00:00:00Z",
+                  "end_time": "2025-01-01T01:00:00Z",
+                  "timeout": "60s",
+                  "correlation_options": {
+                    "enabled": true,
+                    "correlation_keys": [
+                      "service",
+                      "instance"
+                    ],
+                    "time_window": "5m",
+                    "engines": [
+                      "logs",
+                      "metrics"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Correlation query executed (currently returns not_implemented)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnifiedQueryResponse"
+                },
+                "example": {
+                  "result": {
+                    "query_id": "correlation-query-1",
+                    "type": "correlation",
+                    "status": "success",
+                    "data": "not_implemented",
+                    "execution_time_ms": 5,
+                    "cached": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid correlation query format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    },
+                    "details": {
+                      "type": "string",
+                      "description": "Detailed error information"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Correlation query execution failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    },
+                    "details": {
+                      "type": "string",
+                      "description": "Detailed error information"
+                    },
+                    "query_id": {
+                      "type": "string",
+                      "description": "ID of the failed query"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/unified/metadata": {
+      "get": {
+        "tags": [
+          "unified"
+        ],
+        "summary": "Get unified query metadata",
+        "description": "Retrieve metadata about supported query capabilities, engines, and system configuration.\nIncludes information about supported engines, query capabilities per engine, and caching configuration.\n",
+        "responses": {
+          "200": {
+            "description": "Query metadata retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryMetadata"
+                },
+                "example": {
+                  "supported_engines": [
+                    "metrics",
+                    "logs",
+                    "traces",
+                    "correlation"
+                  ],
+                  "query_capabilities": {
+                    "metrics": [
+                      "instant",
+                      "range",
+                      "aggregate",
+                      "transform",
+                      "rollup"
+                    ],
+                    "logs": [
+                      "lucene",
+                      "logsql",
+                      "export"
+                    ],
+                    "traces": [
+                      "service",
+                      "operation",
+                      "flamegraph"
+                    ],
+                    "correlation": [
+                      "cross-engine",
+                      "time-window"
+                    ]
+                  },
+                  "cache_capabilities": {
+                    "supported": true,
+                    "default_ttl": "5m",
+                    "max_ttl": "1h"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve query metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/unified/health": {
+      "get": {
+        "tags": [
+          "unified"
+        ],
+        "summary": "Get unified engine health status",
+        "description": "Retrieve the health status of all unified query engines (metrics, logs, traces, correlation).\nReturns overall health status and per-engine health information.\n",
+        "responses": {
+          "200": {
+            "description": "Health status retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineHealthStatus"
+                },
+                "example": {
+                  "overall_health": "healthy",
+                  "engine_health": {
+                    "metrics": "healthy",
+                    "logs": "healthy",
+                    "traces": "healthy",
+                    "correlation": "partial"
+                  },
+                  "last_checked": "2025-01-01T12:00:00Z"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Partial health - some engines unhealthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineHealthStatus"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unhealthy - critical engines down",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineHealthStatus"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve health status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
           }
         }
       }

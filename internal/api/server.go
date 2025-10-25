@@ -305,6 +305,11 @@ func (s *Server) setupRoutes() {
 		v1.GET("/schema/traces/services/:service/operations/:operation/versions/:version", schemaHandler.GetTraceOperationVersion)
 		v1.DELETE("/schema/traces/services/:service/operations/:operation", schemaHandler.DeleteTraceOperation)
 	}
+
+	// Unified Query Engine (Phase 1.5: Unified API Implementation)
+	if s.config.UnifiedQuery.Enabled {
+		s.setupUnifiedQueryEngine()
+	}
 }
 
 func (s *Server) Start(ctx context.Context) error {
