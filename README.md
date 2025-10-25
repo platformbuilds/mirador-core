@@ -1469,6 +1469,6 @@ Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for detai
 
 ### Resources
 
-- **Documentation**: https://mirador-core.readthedocs.io/
+- **Documentation**: https://miradorstack.readthedocs.io/
 - **API Reference**: https://mirador-core.github.io/api/
 - **Community Forum**: https://github.com/platformbuilds/mirador-core/discussions
