@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -26,7 +28,45 @@ var (
 	buildTime  = ""
 )
 
+// healthcheck performs an HTTP health check against the running service
+func healthcheck() {
+	// Get port from environment or use default
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8010"
+	}
+
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	// Make health check request
+	url := fmt.Sprintf("http://localhost:%s/health", port)
+	resp, err := client.Get(url)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Health check failed: %v\n", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	// Check status code
+	if resp.StatusCode != http.StatusOK {
+		fmt.Fprintf(os.Stderr, "Health check returned non-OK status: %d\n", resp.StatusCode)
+		os.Exit(1)
+	}
+
+	// Health check passed
+	os.Exit(0)
+}
+
 func main() {
+	// Handle healthcheck subcommand
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		healthcheck()
+		return
+	}
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
