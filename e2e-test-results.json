@@ -5,8 +5,8 @@
     "url": "http://localhost:8010/health",
     "status": 200,
     "success": true,
-    "response_time_ms": 136,
-    "timestamp": "2025-10-25T05:39:39Z",
+    "response_time_ms": 135,
+    "timestamp": "2025-10-25T12:50:10Z",
     "error": ""
   },
   {
@@ -15,8 +15,8 @@
     "url": "http://localhost:8010/api/v1/health",
     "status": 200,
     "success": true,
-    "response_time_ms": 116,
-    "timestamp": "2025-10-25T05:39:39Z",
+    "response_time_ms": 155,
+    "timestamp": "2025-10-25T12:50:10Z",
     "error": ""
   },
   {
@@ -25,8 +25,8 @@
     "url": "http://localhost:8010/api/v1/ready",
     "status": 200,
     "success": true,
-    "response_time_ms": 124,
-    "timestamp": "2025-10-25T05:39:39Z",
+    "response_time_ms": 267,
+    "timestamp": "2025-10-25T12:50:11Z",
     "error": ""
   },
   {
@@ -35,8 +35,8 @@
     "url": "http://localhost:8010/api/v1/microservices/status",
     "status": 200,
     "success": true,
-    "response_time_ms": 135,
-    "timestamp": "2025-10-25T05:39:40Z",
+    "response_time_ms": 246,
+    "timestamp": "2025-10-25T12:50:11Z",
     "error": ""
   },
   {
@@ -45,8 +45,8 @@
     "url": "http://localhost:8010/api/v1/metrics/names",
     "status": 200,
     "success": true,
-    "response_time_ms": 131,
-    "timestamp": "2025-10-25T05:39:40Z",
+    "response_time_ms": 160,
+    "timestamp": "2025-10-25T12:50:11Z",
     "error": ""
   },
   {
@@ -55,8 +55,8 @@
     "url": "http://localhost:8010/api/v1/metrics/names?limit=10",
     "status": 200,
     "success": true,
-    "response_time_ms": 118,
-    "timestamp": "2025-10-25T05:39:40Z",
+    "response_time_ms": 136,
+    "timestamp": "2025-10-25T12:50:12Z",
     "error": ""
   },
   {
@@ -65,8 +65,8 @@
     "url": "http://localhost:8010/api/v1/label/__name__/values",
     "status": 200,
     "success": true,
-    "response_time_ms": 120,
-    "timestamp": "2025-10-25T05:39:40Z",
+    "response_time_ms": 137,
+    "timestamp": "2025-10-25T12:50:12Z",
     "error": ""
   },
   {
@@ -75,8 +75,8 @@
     "url": "http://localhost:8010/api/v1/series?match[]=up",
     "status": 200,
     "success": true,
-    "response_time_ms": 120,
-    "timestamp": "2025-10-25T05:39:41Z",
+    "response_time_ms": 126,
+    "timestamp": "2025-10-25T12:50:12Z",
     "error": ""
   },
   {
@@ -85,8 +85,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query",
     "status": 200,
     "success": true,
-    "response_time_ms": 124,
-    "timestamp": "2025-10-25T05:39:41Z",
+    "response_time_ms": 144,
+    "timestamp": "2025-10-25T12:50:13Z",
     "error": ""
   },
   {
@@ -95,8 +95,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query_range",
     "status": 200,
     "success": true,
-    "response_time_ms": 119,
-    "timestamp": "2025-10-25T05:39:41Z",
+    "response_time_ms": 137,
+    "timestamp": "2025-10-25T12:50:13Z",
     "error": ""
   },
   {
@@ -105,8 +105,8 @@
     "url": "http://localhost:8010/api/v1/metrics/labels",
     "status": 200,
     "success": true,
-    "response_time_ms": 118,
-    "timestamp": "2025-10-25T05:39:42Z",
+    "response_time_ms": 131,
+    "timestamp": "2025-10-25T12:50:13Z",
     "error": ""
   },
   {
@@ -115,8 +115,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/aggregate/sum",
     "status": 200,
     "success": true,
-    "response_time_ms": 122,
-    "timestamp": "2025-10-25T05:39:42Z",
+    "response_time_ms": 143,
+    "timestamp": "2025-10-25T12:50:14Z",
     "error": ""
   },
   {
@@ -125,8 +125,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/aggregate/avg",
     "status": 200,
     "success": true,
-    "response_time_ms": 123,
-    "timestamp": "2025-10-25T05:39:42Z",
+    "response_time_ms": 130,
+    "timestamp": "2025-10-25T12:50:14Z",
     "error": ""
   },
   {
@@ -135,8 +135,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/aggregate/count",
     "status": 200,
     "success": true,
-    "response_time_ms": 135,
-    "timestamp": "2025-10-25T05:39:42Z",
+    "response_time_ms": 150,
+    "timestamp": "2025-10-25T12:50:14Z",
     "error": ""
   },
   {
@@ -145,8 +145,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/aggregate/min",
     "status": 200,
     "success": true,
-    "response_time_ms": 135,
-    "timestamp": "2025-10-25T05:39:43Z",
+    "response_time_ms": 128,
+    "timestamp": "2025-10-25T12:50:15Z",
     "error": ""
   },
   {
@@ -155,8 +155,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/aggregate/max",
     "status": 200,
     "success": true,
-    "response_time_ms": 118,
-    "timestamp": "2025-10-25T05:39:43Z",
+    "response_time_ms": 133,
+    "timestamp": "2025-10-25T12:50:15Z",
     "error": ""
   },
   {
@@ -165,8 +165,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/aggregate/median",
     "status": 200,
     "success": true,
-    "response_time_ms": 122,
-    "timestamp": "2025-10-25T05:39:43Z",
+    "response_time_ms": 140,
+    "timestamp": "2025-10-25T12:50:15Z",
     "error": ""
   },
   {
@@ -175,8 +175,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/aggregate/quantile",
     "status": 200,
     "success": true,
-    "response_time_ms": 118,
-    "timestamp": "2025-10-25T05:39:43Z",
+    "response_time_ms": 132,
+    "timestamp": "2025-10-25T12:50:15Z",
     "error": ""
   },
   {
@@ -185,8 +185,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/transform/abs",
     "status": 200,
     "success": true,
-    "response_time_ms": 135,
-    "timestamp": "2025-10-25T05:39:44Z",
+    "response_time_ms": 134,
+    "timestamp": "2025-10-25T12:50:16Z",
     "error": ""
   },
   {
@@ -195,8 +195,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/transform/ceil",
     "status": 200,
     "success": true,
-    "response_time_ms": 139,
-    "timestamp": "2025-10-25T05:39:44Z",
+    "response_time_ms": 126,
+    "timestamp": "2025-10-25T12:50:16Z",
     "error": ""
   },
   {
@@ -205,8 +205,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/transform/floor",
     "status": 200,
     "success": true,
-    "response_time_ms": 133,
-    "timestamp": "2025-10-25T05:39:44Z",
+    "response_time_ms": 125,
+    "timestamp": "2025-10-25T12:50:16Z",
     "error": ""
   },
   {
@@ -216,7 +216,7 @@
     "status": 200,
     "success": true,
     "response_time_ms": 130,
-    "timestamp": "2025-10-25T05:39:45Z",
+    "timestamp": "2025-10-25T12:50:16Z",
     "error": ""
   },
   {
@@ -225,8 +225,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/transform/sqrt",
     "status": 200,
     "success": true,
-    "response_time_ms": 124,
-    "timestamp": "2025-10-25T05:39:45Z",
+    "response_time_ms": 130,
+    "timestamp": "2025-10-25T12:50:17Z",
     "error": ""
   },
   {
@@ -235,8 +235,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/rollup/rate",
     "status": 200,
     "success": true,
-    "response_time_ms": 130,
-    "timestamp": "2025-10-25T05:39:45Z",
+    "response_time_ms": 128,
+    "timestamp": "2025-10-25T12:50:17Z",
     "error": ""
   },
   {
@@ -245,8 +245,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/rollup/increase",
     "status": 200,
     "success": true,
-    "response_time_ms": 122,
-    "timestamp": "2025-10-25T05:39:45Z",
+    "response_time_ms": 128,
+    "timestamp": "2025-10-25T12:50:17Z",
     "error": ""
   },
   {
@@ -256,7 +256,7 @@
     "status": 200,
     "success": true,
     "response_time_ms": 131,
-    "timestamp": "2025-10-25T05:39:45Z",
+    "timestamp": "2025-10-25T12:50:18Z",
     "error": ""
   },
   {
@@ -265,8 +265,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/rollup/avg_over_time",
     "status": 200,
     "success": true,
-    "response_time_ms": 118,
-    "timestamp": "2025-10-25T05:39:46Z",
+    "response_time_ms": 126,
+    "timestamp": "2025-10-25T12:50:18Z",
     "error": ""
   },
   {
@@ -275,8 +275,8 @@
     "url": "http://localhost:8010/api/v1/metrics/query/rollup/max_over_time",
     "status": 200,
     "success": true,
-    "response_time_ms": 133,
-    "timestamp": "2025-10-25T05:39:46Z",
+    "response_time_ms": 125,
+    "timestamp": "2025-10-25T12:50:18Z",
     "error": ""
   },
   {
@@ -285,8 +285,8 @@
     "url": "http://localhost:8010/api/v1/logs/fields",
     "status": 200,
     "success": true,
-    "response_time_ms": 135,
-    "timestamp": "2025-10-25T05:39:46Z",
+    "response_time_ms": 129,
+    "timestamp": "2025-10-25T12:50:18Z",
     "error": ""
   },
   {
@@ -295,8 +295,8 @@
     "url": "http://localhost:8010/api/v1/logs/streams",
     "status": 200,
     "success": true,
-    "response_time_ms": 132,
-    "timestamp": "2025-10-25T05:39:46Z",
+    "response_time_ms": 133,
+    "timestamp": "2025-10-25T12:50:19Z",
     "error": ""
   },
   {
@@ -305,8 +305,8 @@
     "url": "http://localhost:8010/api/v1/logs/query",
     "status": 200,
     "success": true,
-    "response_time_ms": 131,
-    "timestamp": "2025-10-25T05:39:47Z",
+    "response_time_ms": 148,
+    "timestamp": "2025-10-25T12:50:19Z",
     "error": ""
   },
   {
@@ -315,8 +315,8 @@
     "url": "http://localhost:8010/api/v1/logs/search",
     "status": 200,
     "success": true,
-    "response_time_ms": 125,
-    "timestamp": "2025-10-25T05:39:47Z",
+    "response_time_ms": 132,
+    "timestamp": "2025-10-25T12:50:19Z",
     "error": ""
   },
   {
@@ -325,8 +325,8 @@
     "url": "http://localhost:8010/api/v1/logs/export",
     "status": 200,
     "success": true,
-    "response_time_ms": 123,
-    "timestamp": "2025-10-25T05:39:48Z",
+    "response_time_ms": 141,
+    "timestamp": "2025-10-25T12:50:20Z",
     "error": ""
   },
   {
@@ -335,8 +335,8 @@
     "url": "http://localhost:8010/api/v1/traces/services",
     "status": 200,
     "success": true,
-    "response_time_ms": 136,
-    "timestamp": "2025-10-25T05:39:48Z",
+    "response_time_ms": 134,
+    "timestamp": "2025-10-25T12:50:20Z",
     "error": ""
   },
   {
@@ -345,8 +345,8 @@
     "url": "http://localhost:8010/api/v1/traces/search",
     "status": 200,
     "success": true,
-    "response_time_ms": 117,
-    "timestamp": "2025-10-25T05:39:48Z",
+    "response_time_ms": 130,
+    "timestamp": "2025-10-25T12:50:21Z",
     "error": ""
   },
   {
@@ -355,99 +355,109 @@
     "url": "http://localhost:8010/api/v1/traces/flamegraph/search",
     "status": 200,
     "success": true,
-    "response_time_ms": 132,
-    "timestamp": "2025-10-25T05:39:48Z",
+    "response_time_ms": 133,
+    "timestamp": "2025-10-25T12:50:21Z",
     "error": ""
   },
   {
-    "name": "Get Unified Query Metadata",
-    "method": "GET",
-    "url": "http://localhost:8010/api/v1/unified/metadata",
-    "status": 200,
-    "success": true,
-    "response_time_ms": 118,
-    "timestamp": "2025-10-25T05:39:49Z",
-    "error": ""
+    "name": "Unified Search",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/unified/search",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 126,
+    "timestamp": "2025-10-25T12:50:21Z",
+    "error": "Expected status 200, got 404"
   },
   {
-    "name": "Get Unified Query Health",
-    "method": "GET",
-    "url": "http://localhost:8010/api/v1/unified/health",
-    "status": 200,
-    "success": true,
-    "response_time_ms": 121,
-    "timestamp": "2025-10-25T05:39:49Z",
-    "error": ""
-  },
-  {
-    "name": "Unified Metrics Query",
+    "name": "Unified Query with Filters",
     "method": "POST",
     "url": "http://localhost:8010/api/v1/unified/query",
-    "status": 200,
-    "success": true,
-    "response_time_ms": 119,
-    "timestamp": "2025-10-25T05:39:49Z",
-    "error": ""
+    "status": 400,
+    "success": false,
+    "response_time_ms": 123,
+    "timestamp": "2025-10-25T12:50:22Z",
+    "error": "Expected status 200, got 400"
   },
   {
-    "name": "Unified Logs Query",
+    "name": "Unified Statistics",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/unified/stats",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 128,
+    "timestamp": "2025-10-25T12:50:22Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Search Metrics Metadata",
     "method": "POST",
-    "url": "http://localhost:8010/api/v1/unified/query",
-    "status": 200,
-    "success": true,
+    "url": "http://localhost:8010/api/v1/metrics/search",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 126,
+    "timestamp": "2025-10-25T12:50:22Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Sync Metrics Metadata",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/sync",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 131,
+    "timestamp": "2025-10-25T12:50:22Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Metrics Metadata Health",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/metrics/health",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 123,
+    "timestamp": "2025-10-25T12:50:23Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Trigger Sync for Default Tenant",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/metrics/sync/default",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 131,
+    "timestamp": "2025-10-25T12:50:23Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Get Sync State for Default Tenant",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/metrics/sync/default/state",
+    "status": 404,
+    "success": false,
     "response_time_ms": 125,
-    "timestamp": "2025-10-25T05:39:49Z",
-    "error": ""
+    "timestamp": "2025-10-25T12:50:23Z",
+    "error": "Expected status 200, got 404"
   },
   {
-    "name": "Unified Traces Query",
-    "method": "POST",
-    "url": "http://localhost:8010/api/v1/unified/query",
-    "status": 200,
-    "success": true,
-    "response_time_ms": 124,
-    "timestamp": "2025-10-25T05:39:50Z",
-    "error": ""
+    "name": "Get Sync Status for Default Tenant",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/metrics/sync/default/status",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 125,
+    "timestamp": "2025-10-25T12:50:23Z",
+    "error": "Expected status 200, got 404"
   },
   {
-    "name": "Auto-Routed Metrics Query",
-    "method": "POST",
-    "url": "http://localhost:8010/api/v1/unified/query",
-    "status": 200,
-    "success": true,
-    "response_time_ms": 121,
-    "timestamp": "2025-10-25T05:39:50Z",
-    "error": ""
-  },
-  {
-    "name": "Auto-Routed Traces Query",
-    "method": "POST",
-    "url": "http://localhost:8010/api/v1/unified/query",
-    "status": 200,
-    "success": true,
-    "response_time_ms": 116,
-    "timestamp": "2025-10-25T05:39:50Z",
-    "error": ""
-  },
-  {
-    "name": "Auto-Routed Logs Query",
-    "method": "POST",
-    "url": "http://localhost:8010/api/v1/unified/query",
-    "status": 200,
-    "success": true,
-    "response_time_ms": 129,
-    "timestamp": "2025-10-25T05:39:50Z",
-    "error": ""
-  },
-  {
-    "name": "Unified Correlation Query",
-    "method": "POST",
-    "url": "http://localhost:8010/api/v1/unified/correlation",
-    "status": 200,
-    "success": true,
-    "response_time_ms": 117,
-    "timestamp": "2025-10-25T05:39:51Z",
-    "error": ""
+    "name": "Update Sync Configuration",
+    "method": "PUT",
+    "url": "http://localhost:8010/api/v1/metrics/sync/config",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 123,
+    "timestamp": "2025-10-25T12:50:24Z",
+    "error": "Expected status 200, got 404"
   },
   {
     "name": "Get RCA Correlations",
@@ -455,8 +465,8 @@
     "url": "http://localhost:8010/api/v1/rca/correlations",
     "status": 200,
     "success": true,
-    "response_time_ms": 121,
-    "timestamp": "2025-10-25T05:39:51Z",
+    "response_time_ms": 129,
+    "timestamp": "2025-10-25T12:50:24Z",
     "error": ""
   },
   {
@@ -465,8 +475,8 @@
     "url": "http://localhost:8010/api/v1/rca/patterns",
     "status": 200,
     "success": true,
-    "response_time_ms": 117,
-    "timestamp": "2025-10-25T05:39:51Z",
+    "response_time_ms": 156,
+    "timestamp": "2025-10-25T12:50:24Z",
     "error": ""
   },
   {
@@ -475,8 +485,8 @@
     "url": "http://localhost:8010/api/v1/rca/service-graph",
     "status": 200,
     "success": true,
-    "response_time_ms": 132,
-    "timestamp": "2025-10-25T05:39:52Z",
+    "response_time_ms": 143,
+    "timestamp": "2025-10-25T12:50:25Z",
     "error": ""
   },
   {
@@ -485,8 +495,8 @@
     "url": "http://localhost:8010/api/v1/predict/health",
     "status": 503,
     "success": false,
-    "response_time_ms": 120,
-    "timestamp": "2025-10-25T05:39:52Z",
+    "response_time_ms": 125,
+    "timestamp": "2025-10-25T12:50:25Z",
     "error": "Expected status 200, got 503"
   },
   {
@@ -495,8 +505,8 @@
     "url": "http://localhost:8010/api/v1/predict/models",
     "status": 500,
     "success": false,
-    "response_time_ms": 116,
-    "timestamp": "2025-10-25T05:39:52Z",
+    "response_time_ms": 132,
+    "timestamp": "2025-10-25T12:50:25Z",
     "error": "Expected status 200, got 500"
   },
   {
@@ -505,8 +515,8 @@
     "url": "http://localhost:8010/api/v1/predict/fractures",
     "status": 500,
     "success": false,
-    "response_time_ms": 122,
-    "timestamp": "2025-10-25T05:39:52Z",
+    "response_time_ms": 134,
+    "timestamp": "2025-10-25T12:50:26Z",
     "error": "Expected status 200, got 500"
   },
   {
@@ -515,8 +525,8 @@
     "url": "http://localhost:8010/api/v1/config/datasources",
     "status": 200,
     "success": true,
-    "response_time_ms": 123,
-    "timestamp": "2025-10-25T05:39:53Z",
+    "response_time_ms": 125,
+    "timestamp": "2025-10-25T12:50:26Z",
     "error": ""
   },
   {
@@ -525,8 +535,8 @@
     "url": "http://localhost:8010/api/v1/config/integrations",
     "status": 200,
     "success": true,
-    "response_time_ms": 130,
-    "timestamp": "2025-10-25T05:39:53Z",
+    "response_time_ms": 123,
+    "timestamp": "2025-10-25T12:50:26Z",
     "error": ""
   },
   {
@@ -535,8 +545,8 @@
     "url": "http://localhost:8010/api/v1/config/user-settings",
     "status": 200,
     "success": true,
-    "response_time_ms": 121,
-    "timestamp": "2025-10-25T05:39:53Z",
+    "response_time_ms": 124,
+    "timestamp": "2025-10-25T12:50:26Z",
     "error": ""
   },
   {
@@ -545,8 +555,8 @@
     "url": "http://localhost:8010/api/v1/schema/metrics/bulk/sample",
     "status": 200,
     "success": true,
-    "response_time_ms": 121,
-    "timestamp": "2025-10-25T05:39:53Z",
+    "response_time_ms": 132,
+    "timestamp": "2025-10-25T12:50:27Z",
     "error": ""
   },
   {
@@ -555,8 +565,8 @@
     "url": "http://localhost:8010/api/v1/schema/logs/fields/bulk/sample",
     "status": 200,
     "success": true,
-    "response_time_ms": 121,
-    "timestamp": "2025-10-25T05:39:54Z",
+    "response_time_ms": 129,
+    "timestamp": "2025-10-25T12:50:27Z",
     "error": ""
   },
   {
@@ -565,8 +575,8 @@
     "url": "http://localhost:8010/api/v1/schema/traces/services/bulk/sample",
     "status": 200,
     "success": true,
-    "response_time_ms": 119,
-    "timestamp": "2025-10-25T05:39:54Z",
+    "response_time_ms": 122,
+    "timestamp": "2025-10-25T12:50:27Z",
     "error": ""
   },
   {
@@ -575,8 +585,8 @@
     "url": "http://localhost:8010/api/v1/schema/labels/bulk/sample",
     "status": 200,
     "success": true,
-    "response_time_ms": 114,
-    "timestamp": "2025-10-25T05:39:54Z",
+    "response_time_ms": 125,
+    "timestamp": "2025-10-25T12:50:27Z",
     "error": ""
   },
   {
@@ -585,8 +595,8 @@
     "url": "http://localhost:8010/api/v1/schema/metrics",
     "status": 404,
     "success": false,
-    "response_time_ms": 117,
-    "timestamp": "2025-10-25T05:39:54Z",
+    "response_time_ms": 123,
+    "timestamp": "2025-10-25T12:50:28Z",
     "error": "Expected status 200, got 404"
   },
   {
@@ -595,8 +605,8 @@
     "url": "http://localhost:8010/api/v1/schema/logs/fields",
     "status": 400,
     "success": false,
-    "response_time_ms": 116,
-    "timestamp": "2025-10-25T05:39:55Z",
+    "response_time_ms": 131,
+    "timestamp": "2025-10-25T12:50:28Z",
     "error": "Expected status 200, got 400"
   },
   {
@@ -605,8 +615,8 @@
     "url": "http://localhost:8010/api/v1/schema/traces/services",
     "status": 400,
     "success": false,
-    "response_time_ms": 116,
-    "timestamp": "2025-10-25T05:39:55Z",
+    "response_time_ms": 137,
+    "timestamp": "2025-10-25T12:50:28Z",
     "error": "Expected status 200, got 400"
   },
   {
@@ -615,38 +625,38 @@
     "url": "http://localhost:8010/api/v1/schema/traces/operations",
     "status": 400,
     "success": false,
-    "response_time_ms": 118,
-    "timestamp": "2025-10-25T05:39:55Z",
+    "response_time_ms": 128,
+    "timestamp": "2025-10-25T12:50:29Z",
     "error": "Expected status 200, got 400"
   },
   {
     "name": "Get Metric Schema",
     "method": "GET",
-    "url": "http://localhost:8010/api/v1/schema/metrics/e2e_metric_1761370794",
+    "url": "http://localhost:8010/api/v1/schema/metrics/e2e_metric_1761396628",
     "status": 404,
     "success": false,
-    "response_time_ms": 129,
-    "timestamp": "2025-10-25T05:39:55Z",
+    "response_time_ms": 138,
+    "timestamp": "2025-10-25T12:50:29Z",
     "error": "Expected status 200, got 404"
   },
   {
     "name": "Get Log Field Schema",
     "method": "GET",
-    "url": "http://localhost:8010/api/v1/schema/logs/fields/e2e_field_1761370794",
+    "url": "http://localhost:8010/api/v1/schema/logs/fields/e2e_field_1761396628",
     "status": 404,
     "success": false,
-    "response_time_ms": 123,
-    "timestamp": "2025-10-25T05:39:56Z",
+    "response_time_ms": 129,
+    "timestamp": "2025-10-25T12:50:29Z",
     "error": "Expected status 200, got 404"
   },
   {
     "name": "Get Trace Service Schema",
     "method": "GET",
-    "url": "http://localhost:8010/api/v1/schema/traces/services/e2e_service_1761370794",
+    "url": "http://localhost:8010/api/v1/schema/traces/services/e2e_service_1761396628",
     "status": 404,
     "success": false,
-    "response_time_ms": 131,
-    "timestamp": "2025-10-25T05:39:56Z",
+    "response_time_ms": 168,
+    "timestamp": "2025-10-25T12:50:29Z",
     "error": "Expected status 200, got 404"
   },
   {
@@ -655,8 +665,8 @@
     "url": "http://localhost:8010/api/v1/sessions/active",
     "status": 200,
     "success": true,
-    "response_time_ms": 119,
-    "timestamp": "2025-10-25T05:39:56Z",
+    "response_time_ms": 145,
+    "timestamp": "2025-10-25T12:50:30Z",
     "error": ""
   },
   {
@@ -665,8 +675,8 @@
     "url": "http://localhost:8010/api/v1/rbac/roles",
     "status": 200,
     "success": true,
-    "response_time_ms": 117,
-    "timestamp": "2025-10-25T05:39:56Z",
+    "response_time_ms": 126,
+    "timestamp": "2025-10-25T12:50:30Z",
     "error": ""
   },
   {
@@ -675,8 +685,8 @@
     "url": "http://localhost:8010/metrics/names",
     "status": 200,
     "success": true,
-    "response_time_ms": 116,
-    "timestamp": "2025-10-25T05:39:56Z",
+    "response_time_ms": 157,
+    "timestamp": "2025-10-25T12:50:30Z",
     "error": ""
   },
   {
@@ -685,8 +695,8 @@
     "url": "http://localhost:8010/series?match[]=up",
     "status": 200,
     "success": true,
-    "response_time_ms": 115,
-    "timestamp": "2025-10-25T05:39:57Z",
+    "response_time_ms": 134,
+    "timestamp": "2025-10-25T12:50:31Z",
     "error": ""
   },
   {
@@ -695,8 +705,8 @@
     "url": "http://localhost:8010/labels",
     "status": 400,
     "success": false,
-    "response_time_ms": 116,
-    "timestamp": "2025-10-25T05:39:57Z",
+    "response_time_ms": 136,
+    "timestamp": "2025-10-25T12:50:31Z",
     "error": "Expected status 200, got 400"
   },
   {
@@ -705,8 +715,8 @@
     "url": "http://localhost:8010/query",
     "status": 200,
     "success": true,
-    "response_time_ms": 121,
-    "timestamp": "2025-10-25T05:39:57Z",
+    "response_time_ms": 134,
+    "timestamp": "2025-10-25T12:50:31Z",
     "error": ""
   },
   {
@@ -715,8 +725,8 @@
     "url": "http://localhost:8010/swagger/index.html",
     "status": 200,
     "success": true,
-    "response_time_ms": 119,
-    "timestamp": "2025-10-25T05:39:57Z",
+    "response_time_ms": 132,
+    "timestamp": "2025-10-25T12:50:32Z",
     "error": ""
   },
   {
@@ -725,8 +735,8 @@
     "url": "http://localhost:8010/api/openapi.yaml",
     "status": 200,
     "success": true,
-    "response_time_ms": 126,
-    "timestamp": "2025-10-25T05:39:58Z",
+    "response_time_ms": 227,
+    "timestamp": "2025-10-25T12:50:32Z",
     "error": ""
   },
   {
@@ -735,15 +745,15 @@
     "url": "http://localhost:8010/api/openapi.json",
     "status": 200,
     "success": true,
-    "response_time_ms": 134,
-    "timestamp": "2025-10-25T05:39:58Z",
+    "response_time_ms": 163,
+    "timestamp": "2025-10-25T12:50:32Z",
     "error": ""
   },
   {
     "comprehensive_summary": {
       "platform": "macOS",
       "os_type": "Darwin",
-      "timestamp": "2025-10-25T05:39:58.745768Z",
+      "timestamp": "2025-10-25T12:50:33.150033Z",
       "code_quality": {
         "tests_run": false,
         "passed": 0,
@@ -751,10 +761,10 @@
         "success_rate": 0
       },
       "api_tests": {
-        "total_tests": 74,
-        "passed_tests": 63,
-        "failed_tests": 11,
-        "success_rate": 85.13
+        "total_tests": 75,
+        "passed_tests": 54,
+        "failed_tests": 21,
+        "success_rate": 72.00
       },
       "files": {
         "json_results": "e2e-test-results.json",

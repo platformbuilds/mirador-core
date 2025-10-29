@@ -108,8 +108,8 @@ help:
 	"  helm-dep-update           Run 'helm dependency update' in chart/." \
 	"" \
 	"Dev Stack (root compose):" \
-	"  dev-stack                 Start root docker-compose services for dependencies." \
-	"  dev-stack-down            Stop root docker-compose services." \
+	"  dev-stack                 Start root docker compose services for dependencies." \
+	"  dev-stack-down            Stop root docker compose services." \
 	"" \
 	"Environment Variables:" \
 	"  BASE_URL                  Base URL for the running app (default: http://localhost:8010)." \
@@ -149,7 +149,7 @@ openapi-validate:
 localdev-up:
 	mkdir -p localdev
 	# Pull images only if missing (prevents re-pulling on every run)
-	docker compose -f deployments/localdev/docker-compose.yaml up -d --build --pull=missing
+	DOCKER_BUILDKIT=1 docker compose -f deployments/localdev/docker-compose.yaml up -d --build
 
 localdev-wait:
 	@deployments/localdev/scripts/wait-for-url.sh $(BASE_URL)/ready 120 2
@@ -267,7 +267,7 @@ dev-build: proto
 dev: proto
 	@echo "🚀 Starting MIRADOR-CORE in development mode..."
 	@echo "Make sure you have the VictoriaMetrics ecosystem running!"
-	@echo "Run 'docker-compose up -d' to start dependencies."
+	@echo "Run 'docker compose up -d' to start dependencies."
 	go run cmd/server/main.go
 
 # Alias to dev
@@ -510,7 +510,7 @@ helm-dep-update: helm-sync-deps
 # Start local development stack (root docker-compose.yml)
 dev-stack:
 	@echo "🐳 Starting development stack..."
-	docker-compose up -d
+	docker compose up -d
 	@echo "⏳ Waiting for services to be ready..."
 	@sleep 10
 	@echo "✅ Development stack is ready!"
@@ -522,7 +522,7 @@ dev-stack:
 # Stop local development stack
 dev-stack-down:
 	@echo "🛑 Stopping development stack..."
-	docker-compose down
+	docker compose down
 
 # Version information
 version:

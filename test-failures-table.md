@@ -6,6 +6,16 @@ The following table provides detailed information about failed API tests, includ
 
 | Test Name | API Endpoint | Expected Status | Actual Status | Error Reason | Suggested Fix |
 |-----------|--------------|-----------------|---------------|--------------|---------------|
+| Unified Search | `http://localhost:8010/api/v1/unified/search` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
+| Unified Query with Filters | `http://localhost:8010/api/v1/unified/query` | 200 | 400 | Expected status 200, got 400 | Check request format and required parameters |
+| Unified Statistics | `http://localhost:8010/api/v1/unified/stats` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
+| Search Metrics Metadata | `http://localhost:8010/api/v1/metrics/search` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
+| Sync Metrics Metadata | `http://localhost:8010/api/v1/metrics/sync` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
+| Metrics Metadata Health | `http://localhost:8010/api/v1/metrics/health` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
+| Trigger Sync for Default Tenant | `http://localhost:8010/api/v1/metrics/sync/default` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
+| Get Sync State for Default Tenant | `http://localhost:8010/api/v1/metrics/sync/default/state` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
+| Get Sync Status for Default Tenant | `http://localhost:8010/api/v1/metrics/sync/default/status` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
+| Update Sync Configuration | `http://localhost:8010/api/v1/metrics/sync/config` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
 | Predict Engine Health | `http://localhost:8010/api/v1/predict/health` | 200 | 503 | Expected status 200, got 503 | Predict engine unhealthy. Check predict microservice status and dependencies |
 | Get Active Models | `http://localhost:8010/api/v1/predict/models` | 200 | 500 | Expected status 200, got 500 | Predict engine not running. Start predict microservice or disable predict tests |
 | Get Predicted Fractures | `http://localhost:8010/api/v1/predict/fractures` | 200 | 500 | Expected status 200, got 500 | Predict engine not running. Start predict microservice or disable predict tests |
@@ -13,9 +23,9 @@ The following table provides detailed information about failed API tests, includ
 | Create Log Field Schema | `http://localhost:8010/api/v1/schema/logs/fields` | 200 | 400 | Expected status 200, got 400 | Check request format and required parameters |
 | Create Trace Service Schema | `http://localhost:8010/api/v1/schema/traces/services` | 200 | 400 | Expected status 200, got 400 | Check request format and required parameters |
 | Create Trace Operation Schema | `http://localhost:8010/api/v1/schema/traces/operations` | 200 | 400 | Expected status 200, got 400 | Check request format and required parameters |
-| Get Metric Schema | `http://localhost:8010/api/v1/schema/metrics/e2e_metric_1761370794` | 200 | 404 | Expected status 200, got 404 | Schema endpoints may be disabled. Check feature flags or enable schema store |
-| Get Log Field Schema | `http://localhost:8010/api/v1/schema/logs/fields/e2e_field_1761370794` | 200 | 404 | Expected status 200, got 404 | Schema endpoints may be disabled. Check feature flags or enable schema store |
-| Get Trace Service Schema | `http://localhost:8010/api/v1/schema/traces/services/e2e_service_1761370794` | 200 | 404 | Expected status 200, got 404 | Schema endpoints may be disabled. Check feature flags or enable schema store |
+| Get Metric Schema | `http://localhost:8010/api/v1/schema/metrics/e2e_metric_1761396628` | 200 | 404 | Expected status 200, got 404 | Schema endpoints may be disabled. Check feature flags or enable schema store |
+| Get Log Field Schema | `http://localhost:8010/api/v1/schema/logs/fields/e2e_field_1761396628` | 200 | 404 | Expected status 200, got 404 | Schema endpoints may be disabled. Check feature flags or enable schema store |
+| Get Trace Service Schema | `http://localhost:8010/api/v1/schema/traces/services/e2e_service_1761396628` | 200 | 404 | Expected status 200, got 404 | Schema endpoints may be disabled. Check feature flags or enable schema store |
 | Legacy: Get Labels | `http://localhost:8010/labels` | 200 | 400 | Expected status 200, got 400 | Check request format and required parameters |
 
 ## Common Issues and Solutions
