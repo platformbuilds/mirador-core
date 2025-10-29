@@ -1,0 +1,322 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started &mdash; MIRADOR-CORE 7.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=efe5be6f"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Unified Query Engine Architecture" href="unified-query-architecture.html" />
+    <link rel="prev" title="MIRADOR-CORE Documentation" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            MIRADOR-CORE
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#local-development-setup">Local Development Setup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#clone-the-repository">1. Clone the Repository</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#start-containerized-development-environment">2. Start Containerized Development Environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#verify-the-environment">3. Verify the Environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#run-tests-optional">4. Run Tests (Optional)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tear-down-development-environment">5. Tear Down Development Environment</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#alternative-local-development-not-recommended">Alternative: Local Development (Not Recommended)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#production-deployment">Production Deployment</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#using-helm-recommended">Using Helm (Recommended)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#using-docker">Using Docker</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#basic-configuration">Basic Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#environment-variables">Environment Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#first-api-call">First API Call</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="unified-query-architecture.html">Unified Query Engine Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api-reference.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">MIRADOR-CORE</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Getting Started</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/getting-started.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="getting-started">
+<h1>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h1>
+<p>This guide will help you get MIRADOR-CORE up and running quickly.</p>
+<section id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Go 1.21+ (for development)</p></li>
+<li><p>Docker &amp; Docker Compose (for local development)</p></li>
+<li><p>Kubernetes cluster (for production deployment)</p></li>
+<li><p>Helm 3.x (for Kubernetes deployment)</p></li>
+</ul>
+</section>
+<section id="local-development-setup">
+<h2>Local Development Setup<a class="headerlink" href="#local-development-setup" title="Link to this heading"></a></h2>
+<section id="clone-the-repository">
+<h3>1. Clone the Repository<a class="headerlink" href="#clone-the-repository" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/platformbuilds/mirador-core.git
+<span class="nb">cd</span><span class="w"> </span>mirador-core
+</pre></div>
+</div>
+</section>
+<section id="start-containerized-development-environment">
+<h3>2. Start Containerized Development Environment<a class="headerlink" href="#start-containerized-development-environment" title="Link to this heading"></a></h3>
+<p>MIRADOR-CORE uses containerized development to ensure consistency across all environments:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Start the complete development stack (containers only)</span>
+make<span class="w"> </span>localdev-up
+</pre></div>
+</div>
+<p>This command starts all required services in containers:</p>
+<ul class="simple">
+<li><p><strong>VictoriaMetrics</strong> (metrics storage)</p></li>
+<li><p><strong>VictoriaLogs</strong> (logs storage)</p></li>
+<li><p><strong>VictoriaTraces</strong> (traces storage)</p></li>
+<li><p><strong>Valkey</strong> (caching)</p></li>
+<li><p><strong>Weaviate</strong> (vector database)</p></li>
+<li><p><strong>MIRADOR-CORE</strong> (main application)</p></li>
+</ul>
+</section>
+<section id="verify-the-environment">
+<h3>3. Verify the Environment<a class="headerlink" href="#verify-the-environment" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Wait for services to be ready</span>
+make<span class="w"> </span>localdev-wait
+
+<span class="c1"># Check health endpoint</span>
+curl<span class="w"> </span>http://localhost:8010/api/v1/health
+
+<span class="c1"># Check readiness</span>
+curl<span class="w"> </span>http://localhost:8010/api/v1/ready
+</pre></div>
+</div>
+</section>
+<section id="run-tests-optional">
+<h3>4. Run Tests (Optional)<a class="headerlink" href="#run-tests-optional" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run full E2E test suite</span>
+make<span class="w"> </span>localdev-test
+
+<span class="c1"># Or run API tests only</span>
+make<span class="w"> </span>localdev-test-api-only
+</pre></div>
+</div>
+</section>
+<section id="tear-down-development-environment">
+<h3>5. Tear Down Development Environment<a class="headerlink" href="#tear-down-development-environment" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Stop all services and clean up</span>
+make<span class="w"> </span>localdev-down
+</pre></div>
+</div>
+</section>
+</section>
+<section id="alternative-local-development-not-recommended">
+<h2>Alternative: Local Development (Not Recommended)<a class="headerlink" href="#alternative-local-development-not-recommended" title="Link to this heading"></a></h2>
+<blockquote>
+<div><p>⚠️ <strong>Container-only development is strongly recommended</strong> for consistency and to avoid environment-specific issues.</p>
+</div></blockquote>
+<p>If you must develop locally (not recommended):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install Go dependencies (local only)</span>
+go<span class="w"> </span>mod<span class="w"> </span>download
+
+<span class="c1"># Generate protobuf files (local only)</span>
+make<span class="w"> </span>proto
+
+<span class="c1"># Run server locally (requires local dependencies)</span>
+make<span class="w"> </span>dev
+</pre></div>
+</div>
+<p>However, this approach requires manual setup of all dependencies and may lead to environment inconsistencies.</p>
+</section>
+<section id="production-deployment">
+<h2>Production Deployment<a class="headerlink" href="#production-deployment" title="Link to this heading"></a></h2>
+<section id="using-helm-recommended">
+<h3>Using Helm (Recommended)<a class="headerlink" href="#using-helm-recommended" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add the MIRADOR Helm repository</span>
+helm<span class="w"> </span>repo<span class="w"> </span>add<span class="w"> </span>mirador<span class="w"> </span>https://platformbuilds.github.io/mirador-core
+helm<span class="w"> </span>repo<span class="w"> </span>update
+
+<span class="c1"># Install with default configuration</span>
+helm<span class="w"> </span>install<span class="w"> </span>mirador-core<span class="w"> </span>mirador/mirador-core<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>mirador-system<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>vm.endpoints<span class="o">=</span><span class="s2">&quot;vm-cluster:8481&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>vl.endpoints<span class="o">=</span><span class="s2">&quot;vl-cluster:9428&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="using-docker">
+<h3>Using Docker<a class="headerlink" href="#using-docker" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Build and run</span>
+make<span class="w"> </span>docker-build
+docker<span class="w"> </span>run<span class="w"> </span>-p<span class="w"> </span><span class="m">8010</span>:8010<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">VM_ENDPOINTS</span><span class="o">=</span><span class="s2">&quot;vm-cluster:8481&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">VL_ENDPOINTS</span><span class="o">=</span><span class="s2">&quot;vl-cluster:9428&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>platformbuilds/mirador-core:latest
+</pre></div>
+</div>
+</section>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<section id="basic-configuration">
+<h3>Basic Configuration<a class="headerlink" href="#basic-configuration" title="Link to this heading"></a></h3>
+<p>Create a <code class="docutils literal notranslate"><span class="pre">config.yaml</span></code> file:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">server</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8010</span>
+<span class="w">  </span><span class="nt">environment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
+
+<span class="nt">database</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">victoria_metrics</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">endpoints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;vm-cluster:8481&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">victoria_logs</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">endpoints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;vl-cluster:9428&quot;</span><span class="p p-Indicator">]</span>
+
+<span class="nt">auth</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">ldap</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ldap://ldap.corp.company.com&quot;</span>
+<span class="w">    </span><span class="nt">base_dn</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dc=company,dc=com&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="environment-variables">
+<h3>Environment Variables<a class="headerlink" href="#environment-variables" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Core settings</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PORT</span><span class="o">=</span><span class="m">8010</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ENVIRONMENT</span><span class="o">=</span>production
+
+<span class="c1"># VictoriaMetrics ecosystem</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">VM_ENDPOINTS</span><span class="o">=</span><span class="s2">&quot;vm-cluster:8481&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">VL_ENDPOINTS</span><span class="o">=</span><span class="s2">&quot;vl-cluster:9428&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">VT_ENDPOINTS</span><span class="o">=</span><span class="s2">&quot;vt-cluster:10428&quot;</span>
+
+<span class="c1"># Authentication</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LDAP_URL</span><span class="o">=</span><span class="s2">&quot;ldap://ldap.corp.company.com&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">RBAC_ENABLED</span><span class="o">=</span><span class="nb">true</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="first-api-call">
+<h2>First API Call<a class="headerlink" href="#first-api-call" title="Link to this heading"></a></h2>
+<p>Once MIRADOR-CORE is running, try your first API call:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Health check</span>
+curl<span class="w"> </span>-X<span class="w"> </span>GET<span class="w"> </span>http://localhost:8010/api/v1/health
+
+<span class="c1"># Unified query (if you have data sources configured)</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8010/api/v1/unified/query<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;query&quot;: {</span>
+<span class="s1">      &quot;id&quot;: &quot;test-query&quot;,</span>
+<span class="s1">      &quot;type&quot;: &quot;metrics&quot;,</span>
+<span class="s1">      &quot;query&quot;: &quot;up&quot;,</span>
+<span class="s1">      &quot;start_time&quot;: &quot;2025-01-01T00:00:00Z&quot;,</span>
+<span class="s1">      &quot;end_time&quot;: &quot;2025-01-01T01:00:00Z&quot;</span>
+<span class="s1">    }</span>
+<span class="s1">  }&#39;</span>
+</pre></div>
+</div>
+</section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="api-reference.html"><span class="std std-doc">API Reference</span></a> - Learn about all available endpoints</p></li>
+<li><p><a class="reference internal" href="configuration.html"><span class="std std-doc">Configuration</span></a> - Detailed configuration options</p></li>
+<li><p><a class="reference internal" href="deployment.html"><span class="std std-doc">Deployment</span></a> - Production deployment guides</p></li>
+<li><p><a class="reference internal" href="#development.md"><span class="xref myst">Development</span></a> - Contributing to MIRADOR-CORE</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="MIRADOR-CORE Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="unified-query-architecture.html" class="btn btn-neutral float-right" title="Unified Query Engine Architecture" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, PlatformBuilds.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

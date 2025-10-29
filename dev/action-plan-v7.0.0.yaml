@@ -127,39 +127,39 @@ phases:
 
   - name: "Phase 2: Metrics Metadata Integration"
     description: "Index metrics metadata in Bleve for enhanced discovery and exploration"
-    status: "pending"
+    status: "in_progress"
     tasks:
       - name: "Design metrics metadata schema"
         description: "Define MetricMetadataDocument structure for indexing metric names, descriptions, labels, and types"
-        status: "pending"
+        status: "completed"
         assignee: "platform-team"
         effort: "small"
         dependencies: ["Create unified query models"]
 
       - name: "Implement metrics metadata indexer"
         description: "Create service to extract and index metrics metadata from VictoriaMetrics into Bleve"
-        status: "pending"
+        status: "completed"
         assignee: "platform-team"
         effort: "medium"
         dependencies: ["Design metrics metadata schema"]
 
       - name: "Add metrics discovery API"
         description: "Create /api/v1/metrics/search endpoint for discovering metrics using Bleve's search capabilities"
-        status: "pending"
+        status: "completed"
         assignee: "platform-team"
         effort: "medium"
         dependencies: ["Implement metrics metadata indexer"]
 
       - name: "Implement metadata synchronization"
         description: "Build mechanism to keep metrics metadata in sync between VictoriaMetrics and Bleve indexes"
-        status: "pending"
+        status: "completed"
         assignee: "platform-team"
         effort: "medium"
         dependencies: ["Implement metrics metadata indexer"]
 
       - name: "Document metrics metadata integration"
         description: "Create documentation for metrics metadata indexing, search capabilities, and synchronization mechanisms"
-        status: "pending"
+        status: "completed"
         assignee: "platform-team"
         effort: "small"
         dependencies: ["Implement metadata synchronization"]

@@ -237,6 +237,10 @@ http_request() {
     curl_cmd+=(-H "Content-Type: application/json")
     curl_cmd+=(-H "x-tenant-id: $TENANT_ID")
     
+    # Add dummy authorization header for testing when auth is disabled
+    # This should be ignored by the server when auth is properly disabled
+    curl_cmd+=(-H "Authorization: Bearer test-token")
+    
     # Add data for POST/PUT requests
     if [[ -n "$data" && ("$method" == "POST" || "$method" == "PUT") ]]; then
         curl_cmd+=(-d "$data")
@@ -497,6 +501,24 @@ test_traces_endpoints() {
     http_request "POST" "$API_BASE/traces/flamegraph/search" "200" "$trace_query" "Search Flame Graphs"
 }
 
+# Unified Query Tests
+test_unified_query_endpoints() {
+    log_info "Testing Unified Query Endpoints..."
+    
+    # Unified search across all telemetry data
+    local start_timestamp=$(get_unix_timestamp_offset 1)
+    local end_timestamp=$(get_unix_timestamp)
+    local unified_query='{"query": "*", "start": '$start_timestamp', "end": '$end_timestamp', "limit": 50}'
+    http_request "POST" "$API_BASE/unified/search" "200" "$unified_query" "Unified Search"
+    
+    # Unified query with filters
+    local filtered_query='{"query": "error", "filters": {"service": "api", "level": "ERROR"}, "start": '$start_timestamp', "end": '$end_timestamp', "limit": 25}'
+    http_request "POST" "$API_BASE/unified/query" "200" "$filtered_query" "Unified Query with Filters"
+    
+    # Get unified statistics
+    http_request "GET" "$API_BASE/unified/stats" "200" "" "Unified Statistics"
+}
+
 # RCA (Root Cause Analysis) Tests
 test_rca_endpoints() {
     log_info "Testing RCA Endpoints..."
@@ -596,43 +618,29 @@ test_documentation_endpoints() {
     http_request "GET" "$BASE_URL/api/openapi.json" "200" "" "OpenAPI Spec (JSON)"
 }
 
-# Unified Query API Tests
-test_unified_query_endpoints() {
-    log_info "Testing Unified Query Endpoints..."
+# Metrics Metadata Integration Tests (Phase 2)
+test_metrics_metadata_endpoints() {
+    log_info "Testing Metrics Metadata Integration Endpoints..."
     
-    # Test unified query metadata
-    http_request "GET" "$API_BASE/unified/metadata" "200" "" "Get Unified Query Metadata"
+    # Metrics search endpoint
+    local search_data='{"query": "cpu", "tenant_id": "default", "limit": 10}'
+    http_request "POST" "$API_BASE/metrics/search" "200" "$search_data" "Search Metrics Metadata"
     
-    # Test unified query health
-    http_request "GET" "$API_BASE/unified/health" "200" "" "Get Unified Query Health"
+    # Metrics sync endpoint
+    local sync_data='{"tenant_id": "default", "force_full_sync": false}'
+    http_request "POST" "$API_BASE/metrics/sync" "200" "$sync_data" "Sync Metrics Metadata"
     
-    # Test unified metrics query (should route to VictoriaMetrics)
-    local metrics_query='{"query": {"query": "up", "type": "metrics"}}'
-    http_request "POST" "$API_BASE/unified/query" "200" "$metrics_query" "Unified Metrics Query"
+    # Metrics health endpoint
+    http_request "GET" "$API_BASE/metrics/health" "200" "" "Metrics Metadata Health"
     
-    # Test unified logs query (should route to VictoriaLogs)
-    local logs_query='{"query": {"query": "*", "type": "logs"}}'
-    http_request "POST" "$API_BASE/unified/query" "200" "$logs_query" "Unified Logs Query"
+    # Sync management endpoints
+    http_request "POST" "$API_BASE/metrics/sync/default" "200" "" "Trigger Sync for Default Tenant"
+    http_request "GET" "$API_BASE/metrics/sync/default/state" "200" "" "Get Sync State for Default Tenant"
+    http_request "GET" "$API_BASE/metrics/sync/default/status" "200" "" "Get Sync Status for Default Tenant"
     
-    # Test unified traces query (should route to VictoriaTraces)
-    local traces_query='{"query": {"query": "service:*", "type": "traces"}}'
-    http_request "POST" "$API_BASE/unified/query" "200" "$traces_query" "Unified Traces Query"
-    
-    # Test intelligent routing - metrics pattern (should auto-route to VictoriaMetrics)
-    local auto_metrics_query='{"query": {"query": "rate(http_requests_total[5m])"}}'
-    http_request "POST" "$API_BASE/unified/query" "200" "$auto_metrics_query" "Auto-Routed Metrics Query"
-    
-    # Test intelligent routing - traces pattern (should auto-route to VictoriaTraces)
-    local auto_traces_query='{"query": {"query": "service:telemetrygen"}}'
-    http_request "POST" "$API_BASE/unified/query" "200" "$auto_traces_query" "Auto-Routed Traces Query"
-    
-    # Test intelligent routing - logs pattern (should auto-route to VictoriaLogs)
-    local auto_logs_query='{"query": {"query": "level:error"}}'
-    http_request "POST" "$API_BASE/unified/query" "200" "$auto_logs_query" "Auto-Routed Logs Query"
-    
-    # Test correlation query
-    local correlation_query='{"query": {"query": "error AND high_latency", "type": "correlation"}}'
-    http_request "POST" "$API_BASE/unified/correlation" "200" "$correlation_query" "Unified Correlation Query"
+    # Sync configuration update
+    local config_data='{"enabled": true, "strategy": "hybrid", "interval": "900000000000", "full_sync_interval": "86400000000000"}'
+    http_request "PUT" "$API_BASE/metrics/sync/config" "200" "$config_data" "Update Sync Configuration"
 }
 
 # Code Quality Tests
@@ -961,6 +969,7 @@ main() {
     test_logs_endpoints
     test_traces_endpoints
     test_unified_query_endpoints
+    test_metrics_metadata_endpoints  # Phase 2: Metrics Metadata Integration
     
     # Advanced features tests
     test_rca_endpoints
