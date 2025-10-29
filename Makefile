@@ -149,7 +149,7 @@ openapi-validate:
 localdev-up:
 	mkdir -p localdev
 	# Pull images only if missing (prevents re-pulling on every run)
-	DOCKER_BUILDKIT=1 docker-compose -f deployments/localdev/docker-compose.yaml up -d --build
+	docker-compose -f deployments/localdev/docker-compose.yaml up -d --build
 
 localdev-wait:
 	@deployments/localdev/scripts/wait-for-url.sh $(BASE_URL)/ready 120 2
