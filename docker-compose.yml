@@ -85,7 +85,7 @@ services:
       - PREDICT_ENGINE_GRPC=mock-predict-engine:9091
       - RCA_ENGINE_GRPC=mock-rca-engine:9092
       - ALERT_ENGINE_GRPC=mock-alert-engine:9093
-      - VALKEY_CACHE_NODES=redis-cluster:6379
+      - VALKEY_CACHE_NODES=valkey:6379
     depends_on:
       - redis-cluster
       - victoriametrics
