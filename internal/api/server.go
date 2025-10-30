@@ -11,9 +11,13 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/api/middleware"
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
+	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
+	"github.com/platformbuilds/mirador-core/internal/utils/bleve"
+	"github.com/platformbuilds/mirador-core/internal/utils/bleve/mapping"
+	"github.com/platformbuilds/mirador-core/internal/utils/bleve/storage"
 	"github.com/platformbuilds/mirador-core/internal/utils/search"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
@@ -30,7 +34,7 @@ type Server struct {
 	schemaRepo                  repo.SchemaStore
 	searchRouter                *search.SearchRouter
 	searchThrottling            *middleware.SearchQueryThrottlingMiddleware
-	metricsMetadataIndexer      *services.MetricsMetadataIndexer
+	metricsMetadataIndexer      services.MetricsMetadataIndexer
 	metricsMetadataSynchronizer services.MetricsMetadataSynchronizer
 	router                      *gin.Engine
 	httpServer                  *http.Server
@@ -81,6 +85,14 @@ func NewServer(
 	// Initialize metrics metadata synchronizer
 	// TODO: Initialize when indexer is available
 	server.metricsMetadataSynchronizer = nil // Set to nil to disable synchronizer
+
+	// Initialize metrics metadata components if enabled
+	if cfg.Search.Bleve.MetricsEnabled {
+		if err := server.initializeMetricsMetadataComponents(); err != nil {
+			log.Error("Failed to initialize metrics metadata components", "error", err)
+			return nil
+		}
+	}
 
 	server.setupMiddleware()
 	server.setupRoutes()
@@ -325,7 +337,7 @@ func (s *Server) setupRoutes() {
 
 	// Metrics Metadata Discovery API (Phase 2: Metrics Metadata Integration)
 	if s.metricsMetadataIndexer != nil {
-		metricsSearchHandler := handlers.NewMetricsSearchHandler(*s.metricsMetadataIndexer, s.logger)
+		metricsSearchHandler := handlers.NewMetricsSearchHandler(s.metricsMetadataIndexer, s.logger)
 		v1.POST("/metrics/search", metricsSearchHandler.HandleMetricsSearch)
 		v1.POST("/metrics/sync", metricsSearchHandler.HandleMetricsSync)
 		v1.GET("/metrics/health", metricsSearchHandler.HandleMetricsHealth)
@@ -391,6 +403,72 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	return s.httpServer.Shutdown(shutdownCtx)
+}
+
+// initializeMetricsMetadataComponents initializes the metrics metadata indexer and synchronizer
+func (s *Server) initializeMetricsMetadataComponents() error {
+	// Create Valkey metadata store
+	metadataStore := bleve.NewValkeyMetadataStore(s.cache, s.logger)
+
+	// Create document mapper
+	documentMapper := mapping.NewBleveDocumentMapper(s.logger)
+
+	// Create tiered storage (for now, use nil disk store - in-memory only)
+	// TODO: Implement proper disk storage for production
+	storage := storage.NewTieredStore(nil, 1000, 5*time.Minute, s.logger)
+
+	// Create shard manager
+	shardManager := bleve.NewShardManager(
+		s.config.Search.Bleve.MetricsSync.ShardCount, // configurable shard count
+		storage,
+		metadataStore,
+		documentMapper,
+		s.logger,
+		s.config.Search.Bleve.IndexPath,
+	)
+
+	// Create metrics metadata indexer
+	s.metricsMetadataIndexer = services.NewMetricsMetadataIndexer(
+		s.vmServices.Metrics,
+		shardManager,
+		documentMapper,
+		s.logger,
+	)
+
+	// Create metrics metadata synchronizer with configurable settings
+	syncConfig := &models.MetricMetadataSyncConfig{
+		Enabled:           s.config.Search.Bleve.MetricsSync.Enabled,
+		Strategy:          s.parseSyncStrategy(s.config.Search.Bleve.MetricsSync.Strategy),
+		Interval:          s.config.Search.Bleve.MetricsSync.Interval,
+		FullSyncInterval:  s.config.Search.Bleve.MetricsSync.FullSyncInterval,
+		BatchSize:         s.config.Search.Bleve.MetricsSync.BatchSize,
+		MaxRetries:        s.config.Search.Bleve.MetricsSync.MaxRetries,
+		RetryDelay:        s.config.Search.Bleve.MetricsSync.RetryDelay,
+		TimeRangeLookback: s.config.Search.Bleve.MetricsSync.TimeRangeLookback,
+	}
+
+	s.metricsMetadataSynchronizer = services.NewMetricsMetadataSynchronizer(
+		s.metricsMetadataIndexer,
+		s.cache,
+		syncConfig,
+		s.logger,
+	)
+
+	return nil
+}
+
+// parseSyncStrategy converts string strategy to enum
+func (s *Server) parseSyncStrategy(strategy string) models.SyncStrategy {
+	switch strategy {
+	case "full":
+		return models.SyncStrategyFull
+	case "hybrid":
+		return models.SyncStrategyHybrid
+	case "incremental":
+		fallthrough
+	default:
+		return models.SyncStrategyIncremental
+	}
 }
 
 // Handler returns the underlying Gin engine so tests (or embedders) can mount it.
