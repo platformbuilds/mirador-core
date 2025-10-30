@@ -142,6 +142,16 @@ search:
       memory_cache_ratio: 0.3
       disk_cache_ratio: 0.7
       max_concurrent_queries: 50
+    metrics_sync:
+      enabled: true
+      strategy: "hybrid"  # Use hybrid strategy in production
+      interval: 15m
+      full_sync_interval: 24h
+      batch_size: 2000  # Larger batches for production
+      max_retries: 5    # More retries in production
+      retry_delay: 30s
+      time_range_lookback: 2h  # Longer lookback for production
+      shard_count: 6  # More shards for production
 
 # Unified Query Engine Configuration (Phase 1.5)
 unified_query:

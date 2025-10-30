@@ -109,6 +109,38 @@ func GetDefaultConfig() *Config {
 			DefaultEngine: "lucene",
 			EnableBleve:   false,
 			EnableLucene:  true,
+			QueryCache: QueryCacheConfig{
+				Enabled: true,
+				TTL:     300,
+			},
+			Bleve: BleveConfig{
+				LogsEnabled:    false,
+				TracesEnabled:  false,
+				MetricsEnabled: false,
+				IndexPath:      "/tmp/mirador-bleve",
+				BatchSize:      1000,
+				MaxMemoryMB:    512,
+				MemoryOptimization: MemoryOptimizationConfig{
+					ObjectPooling: true,
+					AdaptiveCache: true,
+				},
+				Storage: BleveStorageConfig{
+					MemoryCacheRatio:     0.8,
+					DiskCacheRatio:       0.2,
+					MaxConcurrentQueries: 10,
+				},
+				MetricsSync: MetricsSyncConfig{
+					Enabled:           true,
+					Strategy:          "incremental",
+					Interval:          15 * time.Minute,
+					FullSyncInterval:  24 * time.Hour,
+					BatchSize:         1000,
+					MaxRetries:        3,
+					RetryDelay:        30 * time.Second,
+					TimeRangeLookback: 1 * time.Hour,
+					ShardCount:        3,
+				},
+			},
 		},
 
 		UnifiedQuery: UnifiedQueryConfig{

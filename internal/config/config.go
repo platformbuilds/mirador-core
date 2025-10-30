@@ -248,6 +248,20 @@ type BleveConfig struct {
 	MaxMemoryMB        int                      `mapstructure:"max_memory_mb" yaml:"max_memory_mb"`
 	MemoryOptimization MemoryOptimizationConfig `mapstructure:"memory_optimization" yaml:"memory_optimization"`
 	Storage            BleveStorageConfig       `mapstructure:"storage" yaml:"storage"`
+	MetricsSync        MetricsSyncConfig        `mapstructure:"metrics_sync" yaml:"metrics_sync"`
+}
+
+// MetricsSyncConfig holds metrics metadata synchronization configuration
+type MetricsSyncConfig struct {
+	Enabled           bool          `mapstructure:"enabled" yaml:"enabled"`
+	Strategy          string        `mapstructure:"strategy" yaml:"strategy"` // "incremental", "full", "hybrid"
+	Interval          time.Duration `mapstructure:"interval" yaml:"interval"`
+	FullSyncInterval  time.Duration `mapstructure:"full_sync_interval" yaml:"full_sync_interval"`
+	BatchSize         int           `mapstructure:"batch_size" yaml:"batch_size"`
+	MaxRetries        int           `mapstructure:"max_retries" yaml:"max_retries"`
+	RetryDelay        time.Duration `mapstructure:"retry_delay" yaml:"retry_delay"`
+	TimeRangeLookback time.Duration `mapstructure:"time_range_lookback" yaml:"time_range_lookback"`
+	ShardCount        int           `mapstructure:"shard_count" yaml:"shard_count"`
 }
 
 // MemoryOptimizationConfig holds memory optimization settings
