@@ -5,6 +5,10 @@
 :caption: Contents:
 
 getting-started
+unified-query-architecture
+correlation-engine
+correlation-queries-guide
+readthedocs-integration
 api-reference
 deployment
 configuration
