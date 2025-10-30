@@ -127,7 +127,7 @@ phases:
 
   - name: "Phase 2: Metrics Metadata Integration"
     description: "Index metrics metadata in Bleve for enhanced discovery and exploration"
-    status: "in_progress"
+    status: "completed"
     tasks:
       - name: "Design metrics metadata schema"
         description: "Define MetricMetadataDocument structure for indexing metric names, descriptions, labels, and types"

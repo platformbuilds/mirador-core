@@ -332,7 +332,7 @@ func (s *Server) setupRoutes() {
 
 	// Unified Query Engine (Phase 1.5: Unified API Implementation)
 	if s.config.UnifiedQuery.Enabled {
-		s.setupUnifiedQueryEngine()
+		s.setupUnifiedQueryEngine(v1)
 	}
 
 	// Metrics Metadata Discovery API (Phase 2: Metrics Metadata Integration)
@@ -351,6 +351,26 @@ func (s *Server) setupRoutes() {
 		v1.GET("/metrics/sync/:tenantId/status", syncHandler.HandleGetSyncStatus)
 		v1.PUT("/metrics/sync/config", syncHandler.HandleUpdateConfig)
 	}
+}
+
+// setupUnifiedQueryEngine sets up the unified query engine and registers its routes
+func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup) {
+	// Create unified query engine
+	unifiedEngine := services.NewUnifiedQueryEngine(
+		s.vmServices.Metrics,
+		s.vmServices.Logs,
+		s.vmServices.Traces,
+		s.cache,
+		s.logger,
+	)
+
+	// Create unified query handler
+	unifiedHandler := handlers.NewUnifiedQueryHandler(unifiedEngine, s.logger)
+
+	// Register unified query routes
+	unifiedHandler.RegisterRoutes(router)
+
+	s.logger.Info("Unified query engine initialized and routes registered")
 }
 
 func (s *Server) Start(ctx context.Context) error {
