@@ -5,19 +5,25 @@
 # Required
 version: 2
 
-# Set the version of Python and other tools you might need
+# Build configuration
 build:
   os: ubuntu-22.04
   tools:
     python: "3.11"
-    # You can also specify other tool versions:
-    # nodejs: "19"
-    # rust: "1.64"
-    # golang: "1.19"
+  jobs:
+    post_create_environment:
+      - echo "Post-create environment setup"
+    post_install:
+      - echo "Post-install setup"
+    pre_build:
+      - echo "Pre-build setup"
+    post_build:
+      - echo "Post-build setup"
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
   configuration: docs/conf.py
+  fail_on_warning: false  # Allow warnings during build
 
 # If using MkDocs instead of Sphinx, uncomment this and comment out sphinx above
 # mkdocs:
@@ -27,3 +33,13 @@ sphinx:
 python:
   install:
     - requirements: docs/requirements.txt
+
+# Search configuration
+search:
+  ranking:
+    - title
+    - headers
+    - content
+  ignore:
+    - "search.html"
+    - "genindex.html"
