@@ -178,12 +178,13 @@ func (r *QueryRouter) isSearchQuery(query string) bool {
 
 // UnifiedQueryEngineImpl implements the UnifiedQueryEngine interface
 type UnifiedQueryEngineImpl struct {
-	metricsService *VictoriaMetricsService
-	logsService    *VictoriaLogsService
-	tracesService  *VictoriaTracesService
-	cache          cache.ValkeyCluster
-	logger         logger.Logger
-	queryRouter    *QueryRouter
+	metricsService    *VictoriaMetricsService
+	logsService       *VictoriaLogsService
+	tracesService     *VictoriaTracesService
+	correlationEngine CorrelationEngine
+	cache             cache.ValkeyCluster
+	logger            logger.Logger
+	queryRouter       *QueryRouter
 }
 
 // NewUnifiedQueryEngine creates a new UnifiedQueryEngine instance
@@ -191,16 +192,18 @@ func NewUnifiedQueryEngine(
 	metricsSvc *VictoriaMetricsService,
 	logsSvc *VictoriaLogsService,
 	tracesSvc *VictoriaTracesService,
+	correlationEngine CorrelationEngine,
 	cache cache.ValkeyCluster,
 	logger logger.Logger,
 ) UnifiedQueryEngine {
 	return &UnifiedQueryEngineImpl{
-		metricsService: metricsSvc,
-		logsService:    logsSvc,
-		tracesService:  tracesSvc,
-		cache:          cache,
-		logger:         logger,
-		queryRouter:    NewQueryRouter(logger),
+		metricsService:    metricsSvc,
+		logsService:       logsSvc,
+		tracesService:     tracesSvc,
+		correlationEngine: correlationEngine,
+		cache:             cache,
+		logger:            logger,
+		queryRouter:       NewQueryRouter(logger),
 	}
 }
 
@@ -208,29 +211,42 @@ func NewUnifiedQueryEngine(
 func (u *UnifiedQueryEngineImpl) ExecuteCorrelationQuery(ctx context.Context, query *models.UnifiedQuery) (*models.UnifiedResult, error) {
 	start := time.Now()
 
-	// Correlation functionality is not yet implemented
-	// TODO: Implement advanced correlation logic across metrics, logs, and traces
-	u.logger.Info("Correlation query received but functionality not yet implemented",
-		"query_id", query.ID,
-		"query", query.Query)
+	if u.correlationEngine == nil {
+		return nil, fmt.Errorf("correlation engine not configured")
+	}
 
+	// Parse the correlation query from the unified query
+	corrQuery, err := u.parseCorrelationQuery(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse correlation query: %w", err)
+	}
+
+	// Execute the correlation
+	corrResult, err := u.correlationEngine.ExecuteCorrelation(ctx, corrQuery)
+	if err != nil {
+		return nil, fmt.Errorf("correlation execution failed: %w", err)
+	}
+
+	// Convert to unified result
 	return &models.UnifiedResult{
 		QueryID:       query.ID,
 		Type:          models.QueryTypeCorrelation,
-		Status:        "not_implemented",
-		Data:          nil,
+		Status:        "success",
+		Data:          corrResult,
+		Correlations:  corrResult,
 		ExecutionTime: time.Since(start).Milliseconds(),
 		Metadata: &models.ResultMetadata{
 			EngineResults: map[models.QueryType]*models.EngineResult{
 				models.QueryTypeCorrelation: {
-					Engine:      models.QueryTypeCorrelation,
-					Status:      "not_implemented",
-					RecordCount: 0,
-					DataSource:  "unified-engine",
+					Engine:        models.QueryTypeCorrelation,
+					Status:        "success",
+					RecordCount:   corrResult.Summary.TotalCorrelations,
+					ExecutionTime: int64(time.Since(start).Milliseconds()),
+					DataSource:    "correlation-engine",
 				},
 			},
-			TotalRecords: 0,
-			DataSources:  []string{"unified-engine"},
+			TotalRecords: corrResult.Summary.TotalCorrelations,
+			DataSources:  []string{"correlation-engine"},
 		},
 	}, nil
 }
@@ -540,6 +556,20 @@ func (u *UnifiedQueryEngineImpl) executeTracesQuery(ctx context.Context, query *
 			DataSources:  []string{"victoria-traces"},
 		},
 	}, nil
+}
+
+// parseCorrelationQuery parses a correlation query from a unified query
+func (u *UnifiedQueryEngineImpl) parseCorrelationQuery(query *models.UnifiedQuery) (*models.CorrelationQuery, error) {
+	parser := models.NewCorrelationQueryParser()
+	corrQuery, err := parser.Parse(query.Query)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the ID from the unified query
+	corrQuery.ID = query.ID
+
+	return corrQuery, nil
 }
 
 // generateCacheKey generates a cache key for the query

@@ -355,11 +355,21 @@ func (s *Server) setupRoutes() {
 
 // setupUnifiedQueryEngine sets up the unified query engine and registers its routes
 func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup) {
+	// Create correlation engine
+	correlationEngine := services.NewCorrelationEngine(
+		s.vmServices.Metrics,
+		s.vmServices.Logs,
+		s.vmServices.Traces,
+		s.cache,
+		s.logger,
+	)
+
 	// Create unified query engine
 	unifiedEngine := services.NewUnifiedQueryEngine(
 		s.vmServices.Metrics,
 		s.vmServices.Logs,
 		s.vmServices.Traces,
+		correlationEngine,
 		s.cache,
 		s.logger,
 	)
