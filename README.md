@@ -121,7 +121,7 @@ git clone https://github.com/platformbuilds/mirador-core
 cd mirador-core
 
 # Setup development environment
-make setup-dev
+make localdev-up
 
 # Generate Protocol Buffers
 make proto
