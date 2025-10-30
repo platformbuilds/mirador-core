@@ -6,6 +6,8 @@
 
 getting-started
 unified-query-architecture
+correlation-engine
+correlation-queries-guide
 api-reference
 deployment
 configuration
