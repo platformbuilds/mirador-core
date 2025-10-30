@@ -111,6 +111,9 @@ jobs:
       security-events: write
     steps:
       - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: go
