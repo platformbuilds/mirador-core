@@ -52,6 +52,12 @@ bin/
 bin/*
 bin/mirador-core-*
 
+# Documentation build artifacts
+docs/_build/
+
+# Test artifacts
+*.bolt
+
 # Local TestReports
 ./deployments/localdev/e2e-report.json 
 ./deployments/localdev/e2e-report.txt 

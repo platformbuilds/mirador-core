@@ -121,7 +121,7 @@ git clone https://github.com/platformbuilds/mirador-core
 cd mirador-core
 
 # Setup development environment
-make setup-dev
+make localdev-up
 
 # Generate Protocol Buffers
 make proto
@@ -918,36 +918,56 @@ Schema Tags format
 ### Local Development Setup
 
 1. **Prerequisites**
-   - Go 1.21+
-   - Docker & Docker Compose
+   - Docker & Docker Compose (required for containerized development)
    - Make
 
-2. **Clone and Setup**
+2. **Clone and Start Containerized Development**
    ```bash
    git clone https://github.com/platformbuilds/mirador-core
    cd mirador-core
-   make setup
+   make localdev-up  # Start complete containerized development environment
    ```
 
-3. **Start Local Stack**
+3. **Verify Environment**
    ```bash
-   make dev-stack  # VictoriaMetrics, Valkey, Weaviate
-   make dev        # Start mirador-core server
+   make localdev-wait  # Wait for services to be ready
+   curl http://localhost:8010/api/v1/health  # Check health
    ```
 
 4. **Run Tests**
    ```bash
-   make test       # Unit tests
-   make localdev   # Full E2E test suite
+   make localdev-test  # Full E2E test suite (containers)
    ```
+
+### 🐳 Container-Only Development
+
+MIRADOR-CORE **strongly recommends containerized development** to ensure consistency across all environments and avoid "works on my machine" issues.
+
+**✅ Recommended (Container-based):**
+```bash
+make localdev-up     # Start all services in containers
+make localdev-test   # Run tests against containerized environment
+make localdev-down   # Clean up containers
+```
+
+**❌ Not Recommended (Local development):**
+```bash
+make setup           # Install local Go dependencies
+make dev             # Run server locally (requires local setup)
+```
 
 ### Development Commands
 
-- `make dev-build` - Build debug binary
-- `make dev` - Run server with hot reload
-- `make proto` - Regenerate protobuf files
-- `make vuln` - Run vulnerability scan
-- `make test` - Run unit tests with coverage
+**Container-based development:**
+- `make localdev-up` - Start complete containerized environment
+- `make localdev-wait` - Wait for services readiness
+- `make localdev-test` - Run E2E tests in containers
+- `make localdev-down` - Stop and clean up containers
+
+**Local development (not recommended):**
+- `make setup` - Install local dependencies
+- `make dev` - Run server locally
+- `make proto` - Generate protobuf files locally
 
 ## Deployment
 

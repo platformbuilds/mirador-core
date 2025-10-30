@@ -18,32 +18,71 @@ git clone https://github.com/platformbuilds/mirador-core.git
 cd mirador-core
 ```
 
-### 2. Set Up Development Environment
+### 2. Start Containerized Development Environment
+
+MIRADOR-CORE uses containerized development to ensure consistency across all environments:
 
 ```bash
-# Install dependencies and set up local stack
-make setup
-make dev-stack
+# Start the complete development stack (containers only)
+make localdev-up
 ```
 
-### 3. Start the Development Server
+This command starts all required services in containers:
+- **VictoriaMetrics** (metrics storage)
+- **VictoriaLogs** (logs storage)
+- **VictoriaTraces** (traces storage)
+- **Valkey** (caching)
+- **Weaviate** (vector database)
+- **MIRADOR-CORE** (main application)
+
+### 3. Verify the Environment
 
 ```bash
-# Run with hot reload
-make dev
-```
+# Wait for services to be ready
+make localdev-wait
 
-The server will be available at `http://localhost:8010`.
-
-### 4. Verify Installation
-
-```bash
 # Check health endpoint
 curl http://localhost:8010/api/v1/health
 
 # Check readiness
 curl http://localhost:8010/api/v1/ready
 ```
+
+### 4. Run Tests (Optional)
+
+```bash
+# Run full E2E test suite
+make localdev-test
+
+# Or run API tests only
+make localdev-test-api-only
+```
+
+### 5. Tear Down Development Environment
+
+```bash
+# Stop all services and clean up
+make localdev-down
+```
+
+## Alternative: Local Development (Not Recommended)
+
+> ⚠️ **Container-only development is strongly recommended** for consistency and to avoid environment-specific issues.
+
+If you must develop locally (not recommended):
+
+```bash
+# Install Go dependencies (local only)
+go mod download
+
+# Generate protobuf files (local only)
+make proto
+
+# Run server locally (requires local dependencies)
+make dev
+```
+
+However, this approach requires manual setup of all dependencies and may lead to environment inconsistencies.
 
 ## Production Deployment
 

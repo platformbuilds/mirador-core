@@ -117,7 +117,7 @@ help:
 	"" \
 	"Notes:" \
 	"  - Auth is disabled by default in the localdev compose." \
-	"  - localdev-down runs 'docker compose ... down -v' and removes volumes created by that compose file."
+	"  - localdev-down runs 'docker-compose ... down -v' and removes volumes created by that compose file."
 
 
 
@@ -129,27 +129,12 @@ openapi-json:
 	@python3 scripts/gen_openapi_json.py
 
 openapi-validate:
-	@python3 - <<'PY'
-	import sys, json
-	try:
-	  import yaml
-	except Exception as e:
-	  print('PyYAML not installed. Install via pip install pyyaml', file=sys.stderr)
-	  sys.exit(1)
-	from pathlib import Path
-	y = Path('api/openapi.yaml').read_text(encoding='utf-8')
-	data = yaml.safe_load(y)
-	assert isinstance(data, dict) and 'openapi' in data, 'Invalid OpenAPI YAML: missing openapi key'
-	print('YAML parse OK; version:', data.get('openapi'))
-	print('Paths count:', len((data.get('paths') or {})))
-	print('Components:', 'schemas' in (data.get('components') or {}))
-	print('Validation (structural) OK')
-	PY
+	@python3 tools/validate_openapi.py
 
 localdev-up:
 	mkdir -p localdev
 	# Pull images only if missing (prevents re-pulling on every run)
-	docker compose -f deployments/localdev/docker-compose.yaml up -d --build --pull=missing
+	docker-compose -f deployments/localdev/docker-compose.yaml up -d --build
 
 localdev-wait:
 	@deployments/localdev/scripts/wait-for-url.sh $(BASE_URL)/ready 120 2
@@ -211,7 +196,7 @@ localdev-seed-otel:
 	telemetrygen traces --otlp-endpoint localhost:4317 --otlp-insecure --duration 10s --rate 10 || true
 
 localdev-down:
-	@docker compose -f deployments/localdev/docker-compose.yaml down -v
+	@docker-compose -f deployments/localdev/docker-compose.yaml down -v
 
 # -----------------------------
 # Legacy/General Build, Test, Docker, Release, Helm targets

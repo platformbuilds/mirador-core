@@ -81,7 +81,7 @@ search:
   bleve:
     logs_enabled: true
     traces_enabled: true
-    metrics_enabled: false
+    metrics_enabled: true
     index_path: "/var/lib/mirador/bleve"
     batch_size: 1000
     max_memory_mb: 256  # Lower for development
@@ -92,6 +92,16 @@ search:
       memory_cache_ratio: 0.5
       disk_cache_ratio: 0.5
       max_concurrent_queries: 10  # Lower for development
+    metrics_sync:
+      enabled: true
+      strategy: "incremental"
+      interval: 5m  # More frequent for development
+      full_sync_interval: 1h
+      batch_size: 500  # Smaller batches for development
+      max_retries: 3
+      retry_delay: 10s
+      time_range_lookback: 30m  # Shorter lookback for development
+      shard_count: 2  # Fewer shards for development
 
 # Unified Query Engine Configuration (Phase 1.5)
 unified_query:

@@ -1,71 +1,92 @@
+version: "3.9"
+
 services:
+  # ──────────────────────────────────────────────
   # VictoriaMetrics Suite
+  # ──────────────────────────────────────────────
   victoriametrics:
     image: victoriametrics/victoria-metrics:latest
     pull_policy: if_not_present
     container_name: victoriametrics
-    network_mode: host
+    ports:
+      - "8428:8428"   # Expose for external access
     volumes:
       - vmdata:/victoria-metrics-data
     command:
       - --storageDataPath=/victoria-metrics-data
+    networks:
+      - mirador-net
 
   victorialogs:
     image: victoriametrics/victoria-logs:latest
     pull_policy: if_not_present
     container_name: victorialogs
-    network_mode: host
+    ports:
+      - "9428:9428"
     volumes:
       - vldata:/victoria-logs-data
     command:
       - --storageDataPath=/victoria-logs-data
+    networks:
+      - mirador-net
 
   victoriatraces:
     image: victoriametrics/victoria-traces:latest
     pull_policy: if_not_present
     container_name: victoriatraces
-    network_mode: host
+    ports:
+      - "10428:10428"
     volumes:
       - vtdata:/victoria-traces-data
     command:
       - --storageDataPath=/victoria-traces-data
+    networks:
+      - mirador-net
 
+  # ──────────────────────────────────────────────
   # OpenTelemetry Collector
+  # ──────────────────────────────────────────────
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     pull_policy: if_not_present
     container_name: otel-collector
-    network_mode: host
     command: ["--config", "/etc/otelcol/config.yaml"]
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
-    # On Linux, uncomment to allow host.docker.internal resolution
-    # extra_hosts:
-    #   - "host.docker.internal:host-gateway"
+    networks:
+      - mirador-net
     healthcheck:
       test: ["CMD", "/otelcol-contrib", "--version"]
       interval: 10s
       timeout: 5s
       retries: 10
 
-  # Valkey (single-node)
+  # ──────────────────────────────────────────────
+  # Valkey (single-node Redis alternative)
+  # ──────────────────────────────────────────────
   valkey:
     image: valkey/valkey:latest
     pull_policy: if_not_present
     container_name: mirador-valkey
-    network_mode: host
+    ports:
+      - "6379:6379"
+    networks:
+      - mirador-net
     healthcheck:
       test: ["CMD-SHELL", "valkey-cli -h 127.0.0.1 ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 10
 
-  # Weaviate (DEV): local vector DB for schema store
+  # ──────────────────────────────────────────────
+  # Weaviate (local vector DB)
+  # ──────────────────────────────────────────────
   weaviate:
     image: cr.weaviate.io/semitechnologies/weaviate:1.32.8
     pull_policy: if_not_present
     container_name: weaviate
-    network_mode: host
+    ports:
+      - "8080:8080"
     restart: unless-stopped
     environment:
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
@@ -83,26 +104,33 @@ services:
       retries: 30
     volumes:
       - weavdata:/var/lib/weaviate
+    networks:
+      - mirador-net
 
-  # MIRADOR-CORE (builds natively for host arch)
+  # ──────────────────────────────────────────────
+  # MIRADOR CORE (Main Application)
+  # ──────────────────────────────────────────────
   mirador-core:
     build:
       context: ../..
       dockerfile: Dockerfile
-    # If you prefer to pull a published image instead of building, comment out the build: block above
-    # and set the image tag:
+    # If you prefer to pull a published image, comment the above build block and use:
     # image: platformbuilds/mirador-core:v2.1.3
     container_name: mirador-core
-    network_mode: host
     restart: unless-stopped
     depends_on:
       valkey:
         condition: service_healthy
       weaviate:
         condition: service_healthy
-    # On Linux, uncomment to allow host.docker.internal resolution
-    # extra_hosts:
-    #   - "host.docker.internal:host-gateway"
+      victoriametrics:
+        condition: service_started
+      victorialogs:
+        condition: service_started
+      victoriatraces:
+        condition: service_started
+    ports:
+      - "8010:8010"
     environment:
       # App basics
       - PORT=8010
@@ -110,29 +138,29 @@ services:
       - ENVIRONMENT=development
       - CONFIG_PATH=/configs/config.development.yaml
       - AUTH_ENABLED=false
-      # Bulk CSV upload max size (bytes). Alternatively set BULK_UPLOAD_MAX_MIB
+
+      # Upload limits
       - BULK_UPLOAD_MAX_BYTES=5242880
 
       # Weaviate (DEV)
-      - WEAVIATE_HOST=127.0.0.1
+      - WEAVIATE_HOST=weaviate
       - WEAVIATE_PORT=8080
       - WEAVIATE_SCHEME=http
       - WEAVIATE_ENABLED=true
       - WEAVIATE_USE_OFFICIAL=false
 
-      # Point to local Victoria services (same compose network)
-      - VM_ENDPOINTS=http://127.0.0.1:8428
-      - VL_ENDPOINTS=http://127.0.0.1:9428
-      - VT_ENDPOINTS=http://127.0.0.1:10428
+      # VictoriaMetrics endpoints
+      - VM_ENDPOINTS=http://victoriametrics:8428
+      - VL_ENDPOINTS=http://victorialogs:9428
+      - VT_ENDPOINTS=http://victoriatraces:10428
 
-      # Valkey (single-node)
-      - VALKEY_CACHE_NODES=127.0.0.1:6379
+      # Valkey (Redis-compatible)
+      - VALKEY_CACHE_NODES=valkey:6379
       - CACHE_TTL=300
 
       # Auth + RBAC (dev)
       - JWT_SECRET=development-secret-key-not-for-production
       - RBAC_ENABLED=true
-
     healthcheck:
       test: ["CMD", "/mirador-core", "healthcheck"]
       interval: 10s
@@ -141,10 +169,22 @@ services:
     volumes:
       - ../../configs:/configs:ro
       - bleve-data:/var/lib/mirador/bleve
+    networks:
+      - mirador-net
 
+# ──────────────────────────────────────────────
+# VOLUMES
+# ──────────────────────────────────────────────
 volumes:
   vmdata: {}
   vldata: {}
   vtdata: {}
   weavdata: {}
   bleve-data: {}
+
+# ──────────────────────────────────────────────
+# NETWORKS
+# ──────────────────────────────────────────────
+networks:
+  mirador-net:
+    driver: bridge

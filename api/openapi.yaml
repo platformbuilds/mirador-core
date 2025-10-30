@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: MIRADOR-CORE API
   description: Advanced Observability Platform REST API
-  version: 6.0.0
+  version: 7.0.0
   contact:
     name: Platformbuilds Team
     email: rv@platformbuilds.org
@@ -3305,7 +3305,8 @@ paths:
       summary: Execute correlation query
       description: |
         Execute a correlation query that spans multiple engines to find relationships between metrics, logs, and traces.
-        Currently returns "not_implemented" status as correlation engine is under development.
+        Supports time-window correlation, label-based correlation, and cross-engine analysis with confidence scoring.
+        Use correlation query syntax like "logs:error WITHIN 5m OF metrics:cpu_usage > 80" to find patterns across observability data.
       requestBody:
         required: true
         content:
@@ -3316,7 +3317,7 @@ paths:
               query:
                 id: "correlation-query-1"
                 type: "correlation"
-                query: "logs:error AND metrics:high_latency"
+                query: "logs:error WITHIN 5m OF metrics:cpu_usage > 80"
                 start_time: "2025-01-01T00:00:00Z"
                 end_time: "2025-01-01T01:00:00Z"
                 timeout: "60s"
@@ -3327,7 +3328,7 @@ paths:
                   engines: ["logs", "metrics"]
       responses:
         '200':
-          description: Correlation query executed (currently returns not_implemented)
+          description: Correlation query executed successfully
           content:
             application/json:
               schema:
@@ -3337,8 +3338,31 @@ paths:
                   query_id: "correlation-query-1"
                   type: "correlation"
                   status: "success"
-                  data: "not_implemented"
-                  execution_time_ms: 5
+                  data: null
+                  correlations:
+                    correlations:
+                      - id: "correlation-123_time_window_1"
+                        correlation_key: "service:api,instance:pod-1"
+                        timestamp: "2025-01-01T00:15:30Z"
+                        engines:
+                          logs:
+                            count: 25
+                            sample: "ERROR Failed to connect to database"
+                            timestamp: "2025-01-01T00:15:30Z"
+                          metrics:
+                            cpu_usage: 85.5
+                            memory_usage: 92.1
+                            timestamp: "2025-01-01T00:15:30Z"
+                        confidence: 0.85
+                        metadata:
+                          time_window: "5m0s"
+                          correlation_type: "time_window"
+                    summary:
+                      total_correlations: 1
+                      average_confidence: 0.85
+                      time_range: "2.5s"
+                      engines_involved: ["logs", "metrics"]
+                  execution_time_ms: 1250
                   cached: false
         '400':
           description: Invalid correlation query format
