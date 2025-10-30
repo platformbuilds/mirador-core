@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 // GetDefaultConfig returns a configuration with all default values
 func GetDefaultConfig() *Config {
 	return &Config{
@@ -107,6 +109,14 @@ func GetDefaultConfig() *Config {
 			DefaultEngine: "lucene",
 			EnableBleve:   false,
 			EnableLucene:  true,
+		},
+
+		UnifiedQuery: UnifiedQueryConfig{
+			Enabled:           true,
+			CacheTTL:          5 * time.Minute,
+			MaxCacheTTL:       1 * time.Hour,
+			DefaultLimit:      1000,
+			EnableCorrelation: false,
 		},
 	}
 }

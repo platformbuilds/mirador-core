@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -198,11 +199,16 @@ func (h *HealthHandler) MicroservicesStatus(c *gin.Context) {
 		checks["victoria_traces"] = map[string]interface{}{"status": "healthy"}
 	}
 
-	// AI engines
+	// AI engines (optional in development, only fail overall health in production)
+	isDevelopment := os.Getenv("ENVIRONMENT") == "development"
+
 	if h.grpcClients.PredictEngine != nil {
 		if err := h.grpcClients.PredictEngine.HealthCheck(); err != nil {
 			checks["predict_engine"] = map[string]interface{}{"status": "unhealthy", "error": err.Error()}
-			overallHealthy = false
+			// Only fail overall health in production
+			if !isDevelopment {
+				overallHealthy = false
+			}
 		} else {
 			status := "healthy"
 			if !h.grpcClients.PredictEnabled {
@@ -217,7 +223,10 @@ func (h *HealthHandler) MicroservicesStatus(c *gin.Context) {
 	if h.grpcClients.RCAEngine != nil {
 		if err := h.grpcClients.RCAEngine.HealthCheck(); err != nil {
 			checks["rca_engine"] = map[string]interface{}{"status": "unhealthy", "error": err.Error()}
-			overallHealthy = false
+			// Only fail overall health in production
+			if !isDevelopment {
+				overallHealthy = false
+			}
 		} else {
 			status := "healthy"
 			if !h.grpcClients.RCAEnabled {
@@ -232,7 +241,10 @@ func (h *HealthHandler) MicroservicesStatus(c *gin.Context) {
 	if h.grpcClients.AlertEngine != nil {
 		if err := h.grpcClients.AlertEngine.HealthCheck(); err != nil {
 			checks["alert_engine"] = map[string]interface{}{"status": "unhealthy", "error": err.Error()}
-			overallHealthy = false
+			// Only fail overall health in production
+			if !isDevelopment {
+				overallHealthy = false
+			}
 		} else {
 			status := "healthy"
 			if !h.grpcClients.AlertEnabled {
