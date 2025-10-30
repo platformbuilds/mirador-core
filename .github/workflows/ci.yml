@@ -63,10 +63,41 @@ jobs:
             test.out
           if-no-files-found: ignore
 
-      - name: Job summary
-        if: always()
+  docs-validation:
+    name: Documentation Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install documentation dependencies
         run: |
-          echo "### Go Coverage: ${COVERAGE:-n/a}" >> $GITHUB_STEP_SUMMARY
+          python -m pip install --upgrade pip
+          python -m pip install -r docs/requirements.txt
+
+      - name: Validate documentation build
+        run: |
+          cd docs
+          python -m sphinx -b html . _build/html -W --keep-going
+
+      - name: Check for broken links (optional)
+        run: |
+          cd docs
+          python -m sphinx -b linkcheck . _build/linkcheck || true
+        continue-on-error: true
+
+      - name: Upload docs artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-validation
+          path: docs/_build/
+          retention-days: 7
 
   govulncheck:
     name: govulncheck
