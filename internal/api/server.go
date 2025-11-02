@@ -255,13 +255,6 @@ func (s *Server) setupRoutes() {
 	v1.POST("/traces/search", s.searchThrottling.ThrottleTracesQuery(), tracesHandler.SearchTraces)
 	v1.POST("/traces/flamegraph/search", tracesHandler.SearchFlameGraph)
 
-	// AI PREDICT-ENGINE endpoints (gRPC + protobuf communication)
-	predictHandler := handlers.NewPredictHandler(s.grpcClients.PredictEngine, s.vmServices.Logs, s.cache, s.logger)
-	v1.GET("/predict/health", predictHandler.GetHealth)
-	v1.POST("/predict/analyze", predictHandler.AnalyzeFractures) // Predicts fracture/fatigue
-	v1.GET("/predict/fractures", predictHandler.GetPredictedFractures)
-	v1.GET("/predict/models", predictHandler.GetActiveModels)
-
 	// AI RCA-ENGINE endpoints (correlation with red anchors pattern)
 	rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
 	rcaHandler := handlers.NewRCAHandler(s.grpcClients.RCAEngine, s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger)
@@ -302,11 +295,10 @@ func (s *Server) setupRoutes() {
 	v1.POST("/rbac/roles", rbacHandler.CreateRole)
 	v1.PUT("/rbac/users/:userId/roles", rbacHandler.AssignUserRoles)
 
-	// WebSocket streams (metrics, alerts, predictions)
+	// WebSocket streams (metrics, alerts)
 	ws := handlers.NewWebSocketHandler(s.logger)
 	v1.GET("/ws/metrics", ws.HandleMetricsStream)
 	v1.GET("/ws/alerts", ws.HandleAlertsStream)
-	v1.GET("/ws/predictions", ws.HandlePredictionsStream)
 
 	// Schema definitions (Weaviate-backed once enabled)
 	if s.schemaRepo != nil {

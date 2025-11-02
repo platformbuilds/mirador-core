@@ -85,11 +85,7 @@ request "traces:services" GET "/api/v1/traces/services"
 request "traces:search" POST "/api/v1/traces/search" '{"limit":1}'
 request "traces:flamegraph" POST "/api/v1/traces/flamegraph/search" '{"limit":1}'
 
-# Predict/RCA endpoints: accept 200 or 500 in dev
-request "predict:health" GET "/api/v1/predict/health" '' "200,500"
-request "predict:analyze" POST "/api/v1/predict/analyze" '{"component":"demo","timeRange":"5m"}' "200,500"
-request "predict:fractures" GET "/api/v1/predict/fractures" '' "200,500"
-request "predict:models" GET "/api/v1/predict/models" '' "200,500"
+# RCA endpoints: accept 200 or 500 in dev
 request "rca:correlations" GET "/api/v1/rca/correlations"
 request "rca:investigate" POST "/api/v1/rca/investigate" '{"incidentId":"i1","symptoms":["s"]}' "200,500"
 request "rca:patterns" GET "/api/v1/rca/patterns"

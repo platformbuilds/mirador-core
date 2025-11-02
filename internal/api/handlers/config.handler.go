@@ -261,14 +261,6 @@ func (h *ConfigHandler) GetIntegrations(c *gin.Context) {
 	// Mocked integrations snapshot; extend with real status checks later
 	integrations := []map[string]interface{}{
 		{
-			"id":        "predict-engine",
-			"name":      "Predict Engine",
-			"type":      "ai",
-			"status":    "connected",
-			"tenantId":  tenantID,
-			"endpoints": []string{"/api/v1/predict/health", "/api/v1/predict/models"},
-		},
-		{
 			"id":        "rca-engine",
 			"name":      "RCA Engine",
 			"type":      "ai",
@@ -350,8 +342,6 @@ func (h *ConfigHandler) UpdateFeatureFlags(c *gin.Context) {
 		switch flagName {
 		case "rca_enabled":
 			currentFlags.RCAEnabled = enabled
-		case "predict_enabled":
-			currentFlags.PredictEnabled = enabled
 		case "user_settings_enabled":
 			currentFlags.UserSettingsEnabled = enabled
 		case "rbac_enabled":
@@ -472,9 +462,8 @@ func (h *ConfigHandler) UpdateGRPCEndpoints(c *gin.Context) {
 	}
 
 	var updateRequest struct {
-		PredictEndpoint string `json:"predict_endpoint,omitempty"`
-		RCAEndpoint     string `json:"rca_endpoint,omitempty"`
-		AlertEndpoint   string `json:"alert_endpoint,omitempty"`
+		RCAEndpoint   string `json:"rca_endpoint,omitempty"`
+		AlertEndpoint string `json:"alert_endpoint,omitempty"`
 	}
 	if err := c.ShouldBindJSON(&updateRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -498,19 +487,6 @@ func (h *ConfigHandler) UpdateGRPCEndpoints(c *gin.Context) {
 
 	// Update endpoints if provided
 	updated := false
-	if updateRequest.PredictEndpoint != "" {
-		currentConfig.PredictEngine.Endpoint = updateRequest.PredictEndpoint
-		if err := h.grpcClients.UpdatePredictEndpoint(c.Request.Context(), tenantID, updateRequest.PredictEndpoint); err != nil {
-			h.logger.Error("Failed to update predict endpoint", "tenantID", tenantID, "error", err)
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"status": "error",
-				"error":  fmt.Sprintf("Failed to update predict endpoint: %v", err),
-			})
-			return
-		}
-		updated = true
-	}
-
 	if updateRequest.RCAEndpoint != "" {
 		currentConfig.RCAEngine.Endpoint = updateRequest.RCAEndpoint
 		if err := h.grpcClients.UpdateRCAEndpoint(c.Request.Context(), tenantID, updateRequest.RCAEndpoint); err != nil {

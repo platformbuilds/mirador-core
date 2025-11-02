@@ -51,7 +51,7 @@ func NewIntegrationsService(cfg config.IntegrationsConfig, logger logger.Logger)
 	}
 }
 
-// SendSlackNotification sends alerts and predictions to Slack
+// SendSlackNotification sends alerts and notifications to Slack
 func (s *IntegrationsService) SendSlackNotification(ctx context.Context, notification *models.Notification) error {
 	if !s.config.Slack.Enabled {
 		return nil

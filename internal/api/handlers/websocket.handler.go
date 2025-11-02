@@ -21,9 +21,12 @@ type WebSocketHandler struct {
 
 type WebSocketClient struct {
 	conn     *websocket.Conn
+	send     chan []byte
+	logger   logger.Logger
 	tenantID string
 	userID   string
-	streams  []string // metrics, alerts, predictions
+	// streams: metrics, alerts
+	streams []string
 }
 
 func NewWebSocketHandler(logger logger.Logger) *WebSocketHandler {
@@ -118,28 +121,6 @@ func (h *WebSocketHandler) HandleAlertsStream(c *gin.Context) {
 	h.streamAlerts(c.Request.Context(), client)
 }
 
-// HandlePredictionsStream - WebSocket endpoint for real-time AI predictions
-func (h *WebSocketHandler) HandlePredictionsStream(c *gin.Context) {
-	conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		h.logger.Error("WebSocket upgrade failed (predictions)", "error", err)
-		return
-	}
-	defer conn.Close()
-
-	clientID := generateClientID()
-	client := &WebSocketClient{
-		conn:     conn,
-		tenantID: c.GetString("tenant_id"),
-		userID:   c.GetString("user_id"),
-		streams:  []string{"predictions"},
-	}
-	h.clients[clientID] = client
-	defer delete(h.clients, clientID)
-
-	h.streamPredictions(c.Request.Context(), client)
-}
-
 // BroadcastAlert sends an alert to all connected WebSocket clients
 func (h *WebSocketHandler) BroadcastAlert(alert *models.Alert) {
 	message := map[string]interface{}{
@@ -189,25 +170,6 @@ func (h *WebSocketHandler) streamAlerts(ctx context.Context, client *WebSocketCl
 			_ = client.conn.WriteJSON(map[string]any{
 				"type": "heartbeat",
 				"data": map[string]any{"ts": time.Now().UnixMilli(), "stream": "alerts"},
-			})
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-// streamPredictions keeps the connection alive with heartbeats until ctx is done.
-// Replace with a real feed from PREDICT-ENGINE when available.
-func (h *WebSocketHandler) streamPredictions(ctx context.Context, client *WebSocketClient) {
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			client.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-			_ = client.conn.WriteJSON(map[string]any{
-				"type": "heartbeat",
-				"data": map[string]any{"ts": time.Now().UnixMilli(), "stream": "predictions"},
 			})
 		case <-ctx.Done():
 			return

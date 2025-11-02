@@ -80,15 +80,8 @@ type K8sDiscoveryConfig struct {
 
 // GRPCConfig handles AI engines gRPC configuration
 type GRPCConfig struct {
-	PredictEngine PredictEngineConfig `mapstructure:"predict_engine" yaml:"predict_engine"`
-	RCAEngine     RCAEngineConfig     `mapstructure:"rca_engine" yaml:"rca_engine"`
-	AlertEngine   AlertEngineConfig   `mapstructure:"alert_engine" yaml:"alert_engine"`
-}
-
-type PredictEngineConfig struct {
-	Endpoint string   `mapstructure:"endpoint" yaml:"endpoint"`
-	Models   []string `mapstructure:"models" yaml:"models"`
-	Timeout  int      `mapstructure:"timeout" yaml:"timeout"`
+	RCAEngine   RCAEngineConfig   `mapstructure:"rca_engine" yaml:"rca_engine"`
+	AlertEngine AlertEngineConfig `mapstructure:"alert_engine" yaml:"alert_engine"`
 }
 
 type RCAEngineConfig struct {

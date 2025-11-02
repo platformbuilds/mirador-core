@@ -111,16 +111,6 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 	} else {
 		checks["victoria_traces"] = map[string]interface{}{"status": "healthy"}
 	}
-	if h.grpcClients.PredictEngine != nil {
-		if err := h.grpcClients.PredictEngine.HealthCheck(); err != nil {
-			checks["predict_engine"] = map[string]interface{}{"status": "unhealthy", "error": err.Error()}
-			overallHealthy = false
-		} else {
-			checks["predict_engine"] = map[string]interface{}{"status": "healthy"}
-		}
-	} else {
-		checks["predict_engine"] = map[string]interface{}{"status": "disabled"}
-	}
 	if h.grpcClients.RCAEngine != nil {
 		if err := h.grpcClients.RCAEngine.HealthCheck(); err != nil {
 			checks["rca_engine"] = map[string]interface{}{"status": "unhealthy", "error": err.Error()}
@@ -199,21 +189,6 @@ func (h *HealthHandler) MicroservicesStatus(c *gin.Context) {
 	}
 
 	// AI engines
-	if h.grpcClients.PredictEngine != nil {
-		if err := h.grpcClients.PredictEngine.HealthCheck(); err != nil {
-			checks["predict_engine"] = map[string]interface{}{"status": "unhealthy", "error": err.Error()}
-			overallHealthy = false
-		} else {
-			status := "healthy"
-			if !h.grpcClients.PredictEnabled {
-				status = "disabled"
-			}
-			checks["predict_engine"] = map[string]interface{}{"status": status}
-		}
-	} else {
-		checks["predict_engine"] = map[string]interface{}{"status": "disabled"}
-	}
-
 	if h.grpcClients.RCAEngine != nil {
 		if err := h.grpcClients.RCAEngine.HealthCheck(); err != nil {
 			checks["rca_engine"] = map[string]interface{}{"status": "unhealthy", "error": err.Error()}

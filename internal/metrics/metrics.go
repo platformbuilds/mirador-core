@@ -92,14 +92,6 @@ var (
 	)
 
 	// AI Engine integration metrics
-	PredictionsGenerated = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "mirador_core_predictions_generated_total",
-			Help: "Total number of predictions generated",
-		},
-		[]string{"prediction_type", "severity", "tenant_id"},
-	)
-
 	CorrelationsFound = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "mirador_core_correlations_found_total",
@@ -114,6 +106,6 @@ var (
 			Name: "mirador_core_notifications_sent_total",
 			Help: "Total number of notifications sent",
 		},
-		[]string{"integration", "type", "success"}, // slack/teams/email, alert/prediction, true/false
+		[]string{"integration", "type", "success"}, // slack/teams/email, alert/correlation, true/false
 	)
 )

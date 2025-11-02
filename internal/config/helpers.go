@@ -64,15 +64,6 @@ func (c *Config) GetDatabaseTimeout() time.Duration {
 	return time.Duration(timeout) * time.Millisecond
 }
 
-// GetGRPCTimeout returns the appropriate gRPC timeout
-func (c *Config) GetGRPCTimeout() time.Duration {
-	timeout := c.GRPC.PredictEngine.Timeout
-	if timeout == 0 {
-		timeout = DefaultGRPCTimeout
-	}
-	return time.Duration(timeout) * time.Millisecond
-}
-
 // GetCacheTTL returns the cache TTL as a duration
 func (c *Config) GetCacheTTL() time.Duration {
 	ttl := c.Cache.TTL
@@ -106,10 +97,6 @@ func (c *Config) ValidateEndpoints() error {
 	}
 
 	// Validate gRPC endpoints
-	if err := ValidateGRPCEndpoint(c.GRPC.PredictEngine.Endpoint); err != nil {
-		return fmt.Errorf("invalid PREDICT-ENGINE endpoint: %w", err)
-	}
-
 	if err := ValidateGRPCEndpoint(c.GRPC.RCAEngine.Endpoint); err != nil {
 		return fmt.Errorf("invalid RCA-ENGINE endpoint: %w", err)
 	}

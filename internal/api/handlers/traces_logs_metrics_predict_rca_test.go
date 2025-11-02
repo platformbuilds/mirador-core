@@ -18,20 +18,6 @@ import (
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
-// fakePredict implements clients.PredictClient
-type fakePredict struct{ fail bool }
-
-func (f *fakePredict) AnalyzeFractures(ctx context.Context, req *models.FractureAnalysisRequest) (*models.FractureAnalysisResponse, error) {
-	if f.fail {
-		return nil, fmt.Errorf("failed")
-	}
-	return &models.FractureAnalysisResponse{ModelsUsed: []string{"m1"}, ProcessingTimeMs: 1, Fractures: []*models.SystemFracture{{ID: "f1", Component: "c1", PredictedAt: time.Now(), Probability: 0.8}}}, nil
-}
-func (f *fakePredict) GetActiveModels(ctx context.Context, req *models.ActiveModelsRequest) (*models.ActiveModelsResponse, error) {
-	return &models.ActiveModelsResponse{Models: []models.PredictionModel{}}, nil
-}
-func (f *fakePredict) HealthCheck() error { return nil }
-
 // fakeRCA implements clients.RCAClient
 type fakeRCA struct{}
 
@@ -47,6 +33,15 @@ func (f *fakeRCA) InvestigateIncident(ctx context.Context, req *models.RCAInvest
 		Recommendations:  []string{"restart service-A"},
 		CreatedAt:        time.Now(),
 	}, nil
+}
+func (f *fakeRCA) ListCorrelations(ctx context.Context, req *models.ListCorrelationsRequest) (*models.ListCorrelationsResponse, error) {
+	return &models.ListCorrelationsResponse{Correlations: []models.CorrelationResult{}}, nil
+}
+func (f *fakeRCA) GetPatterns(ctx context.Context, req *models.GetPatternsRequest) (*models.GetPatternsResponse, error) {
+	return &models.GetPatternsResponse{Patterns: []models.Pattern{}}, nil
+}
+func (f *fakeRCA) SubmitFeedback(ctx context.Context, req *models.FeedbackRequest) (*models.FeedbackResponse, error) {
+	return &models.FeedbackResponse{CorrelationID: req.CorrelationID, Accepted: true}, nil
 }
 func (f *fakeRCA) HealthCheck() error { return nil }
 
@@ -69,36 +64,21 @@ func (s *stubServiceGraph) FetchServiceGraph(ctx context.Context, tenantID strin
 	return s.data, nil
 }
 
-func TestPredict_RCA_and_OpenRoutes(t *testing.T) {
+func TestRCA_and_OpenRoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	log := logger.New("error")
 	cch := cache.NewNoopValkeyCache(log)
 	logs := services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log)
 
-	// Predict
-	ph := NewPredictHandler(&fakePredict{}, logs, cch, log)
-	r := gin.New()
-	r.Use(func(c *gin.Context) { c.Set("tenant_id", "t1"); c.Next() })
-	r.POST("/predict/analyze", ph.AnalyzeFractures)
-
-	reqBody, _ := json.Marshal(models.FractureAnalysisRequest{Component: "comp", TimeRange: "1h"})
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/predict/analyze", bytes.NewReader(reqBody))
-	req.Header.Set("Content-Type", "application/json")
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Fatalf("predict analyze=%d body=%s", w.Code, w.Body.String())
-	}
-
 	// RCA
 	rh := NewRCAHandler(&fakeRCA{}, logs, nil, cch, log)
-	r = gin.New()
+	r := gin.New()
 	r.Use(func(c *gin.Context) { c.Set("tenant_id", "t1"); c.Next() })
 	r.POST("/rca/investigate", rh.StartInvestigation)
 	tr := models.TimeRange{Start: time.Now().Add(-time.Hour), End: time.Now()}
 	body, _ := json.Marshal(models.RCAInvestigationRequest{IncidentID: "i1", Symptoms: []string{"s"}, TimeRange: tr})
-	w = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPost, "/rca/investigate", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/rca/investigate", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {

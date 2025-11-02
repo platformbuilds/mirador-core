@@ -16,9 +16,6 @@ The following table provides detailed information about failed API tests, includ
 | Get Sync State for Default Tenant | `http://localhost:8010/api/v1/metrics/sync/default/state` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
 | Get Sync Status for Default Tenant | `http://localhost:8010/api/v1/metrics/sync/default/status` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
 | Update Sync Configuration | `http://localhost:8010/api/v1/metrics/sync/config` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
-| Predict Engine Health | `http://localhost:8010/api/v1/predict/health` | 200 | 503 | Expected status 200, got 503 | Predict engine unhealthy. Check predict microservice status and dependencies |
-| Get Active Models | `http://localhost:8010/api/v1/predict/models` | 200 | 500 | Expected status 200, got 500 | Predict engine not running. Start predict microservice or disable predict tests |
-| Get Predicted Fractures | `http://localhost:8010/api/v1/predict/fractures` | 200 | 500 | Expected status 200, got 500 | Predict engine not running. Start predict microservice or disable predict tests |
 | Create Metric Schema | `http://localhost:8010/api/v1/schema/metrics` | 200 | 404 | Expected status 200, got 404 | Schema endpoints may be disabled. Check feature flags or enable schema store |
 | Create Log Field Schema | `http://localhost:8010/api/v1/schema/logs/fields` | 200 | 400 | Expected status 200, got 400 | Check request format and required parameters |
 | Create Trace Service Schema | `http://localhost:8010/api/v1/schema/traces/services` | 200 | 400 | Expected status 200, got 400 | Check request format and required parameters |
@@ -31,7 +28,6 @@ The following table provides detailed information about failed API tests, includ
 ## Common Issues and Solutions
 
 ### Microservice Dependencies
-- **Predict Engine (503/500)**: Predict microservice not running. This is optional for basic functionality.
 - **RCA Engine**: Root Cause Analysis features require additional microservices.
 
 ### Configuration Issues

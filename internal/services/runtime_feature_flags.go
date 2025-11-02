@@ -12,7 +12,6 @@ import (
 // RuntimeFeatureFlags represents the runtime-togglable feature flags
 type RuntimeFeatureFlags struct {
 	RCAEnabled          bool `json:"rca_enabled" yaml:"rca_enabled"`
-	PredictEnabled      bool `json:"predict_enabled" yaml:"predict_enabled"`
 	UserSettingsEnabled bool `json:"user_settings_enabled" yaml:"user_settings_enabled"`
 	RBACEnabled         bool `json:"rbac_enabled" yaml:"rbac_enabled"`
 }
@@ -79,8 +78,6 @@ func (s *RuntimeFeatureFlagService) UpdateFeatureFlag(ctx context.Context, tenan
 	switch flagName {
 	case "rca_enabled":
 		flags.RCAEnabled = enabled
-	case "predict_enabled":
-		flags.PredictEnabled = enabled
 	case "user_settings_enabled":
 		flags.UserSettingsEnabled = enabled
 	case "rbac_enabled":
@@ -103,7 +100,6 @@ func (s *RuntimeFeatureFlagService) getDefaultFeatureFlags() *RuntimeFeatureFlag
 	// All features enabled by default in development
 	return &RuntimeFeatureFlags{
 		RCAEnabled:          true,
-		PredictEnabled:      true,
 		UserSettingsEnabled: true,
 		RBACEnabled:         true,
 	}

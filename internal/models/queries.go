@@ -199,19 +199,6 @@ type Trace struct {
 }
 
 // AI Engine Models
-type FractureAnalysisRequest struct {
-	Component  string   `json:"component" binding:"required"`
-	TimeRange  string   `json:"time_range" binding:"required"`
-	ModelTypes []string `json:"model_types,omitempty"`
-	TenantID   string   `json:"-"`
-}
-
-type FractureAnalysisResponse struct {
-	Fractures        []*SystemFracture `json:"fractures"`
-	ModelsUsed       []string          `json:"models_used"`
-	ProcessingTimeMs int64             `json:"processing_time_ms"`
-}
-
 type RCAInvestigationRequest struct {
 	IncidentID       string    `json:"incident_id" binding:"required"`
 	Symptoms         []string  `json:"symptoms" binding:"required"`
@@ -229,17 +216,4 @@ type DataSource struct {
 	URL      string `json:"url"`
 	Status   string `json:"status"` // connected, degraded, disconnected
 	TenantID string `json:"tenant_id"`
-}
-
-type FractureListResponse struct {
-	Fractures []*SystemFracture `json:"fractures"`
-	Summary   FractureSummary   `json:"summary"`
-}
-
-type FractureSummary struct {
-	Total         int           `json:"total"`
-	HighRisk      int           `json:"high_risk"`
-	MediumRisk    int           `json:"medium_risk"`
-	LowRisk       int           `json:"low_risk"`
-	AvgTimeToFail time.Duration `json:"avg_time_to_fail"`
 }
