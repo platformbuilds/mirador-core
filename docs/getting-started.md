@@ -180,4 +180,3 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
 - [API Reference](api-reference.md) - Learn about all available endpoints
 - [Configuration](configuration.md) - Detailed configuration options
 - [Deployment](deployment.md) - Production deployment guides
-- [Development](development.md) - Contributing to MIRADOR-CORE

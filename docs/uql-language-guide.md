@@ -708,5 +708,5 @@ WHERE error_count > (
 
 UQL provides a powerful, unified interface for observability data analysis. By understanding the query types, optimization features, and best practices outlined in this guide, you can construct efficient queries that provide deep insights across your entire observability stack.
 
-For more advanced use cases or specific domain requirements, consult the [API Reference](../api-reference.md) and [Correlation Engine Documentation](../correlation-engine.md).</content>
+For more advanced use cases or specific domain requirements, consult the [API Reference](api-reference.md) and [Correlation Engine Documentation](correlation-engine.md).</content>
 <parameter name="filePath">/Users/aarvee/repos/github/public/mirador-core/docs/uql-language-guide.md
