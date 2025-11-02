@@ -168,6 +168,63 @@ func (a *autoSwapCache) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
+// GetMemoryInfo delegates to the current underlying cache.
+func (a *autoSwapCache) GetMemoryInfo(ctx context.Context) (*CacheMemoryInfo, error) {
+	var retErr error
+	var retInfo *CacheMemoryInfo
+	_ = a.withCurrent(func(c ValkeyCluster) error {
+		retInfo, retErr = c.GetMemoryInfo(ctx)
+		return nil
+	})
+	return retInfo, retErr
+}
+
+// AdjustCacheTTL delegates to the current underlying cache.
+func (a *autoSwapCache) AdjustCacheTTL(ctx context.Context, keyPattern string, newTTL time.Duration) error {
+	var retErr error
+	_ = a.withCurrent(func(c ValkeyCluster) error {
+		retErr = c.AdjustCacheTTL(ctx, keyPattern, newTTL)
+		return nil
+	})
+	return retErr
+}
+
+// CleanupExpiredEntries delegates to the current underlying cache.
+func (a *autoSwapCache) CleanupExpiredEntries(ctx context.Context, keyPattern string) (int64, error) {
+	var retErr error
+	var retCount int64
+	_ = a.withCurrent(func(c ValkeyCluster) error {
+		retCount, retErr = c.CleanupExpiredEntries(ctx, keyPattern)
+		return nil
+	})
+	return retCount, retErr
+}
+
+/* --------------------------- pattern-based cache invalidation --------------------------- */
+
+func (a *autoSwapCache) AddToPatternIndex(ctx context.Context, patternKey string, cacheKey string) error {
+	return a.withCurrent(func(c ValkeyCluster) error { return c.AddToPatternIndex(ctx, patternKey, cacheKey) })
+}
+
+func (a *autoSwapCache) GetPatternIndexKeys(ctx context.Context, patternKey string) ([]string, error) {
+	var out []string
+	var retErr error
+	_ = a.withCurrent(func(c ValkeyCluster) error {
+		keys, e := c.GetPatternIndexKeys(ctx, patternKey)
+		out, retErr = keys, e
+		return nil
+	})
+	return out, retErr
+}
+
+func (a *autoSwapCache) DeletePatternIndex(ctx context.Context, patternKey string) error {
+	return a.withCurrent(func(c ValkeyCluster) error { return c.DeletePatternIndex(ctx, patternKey) })
+}
+
+func (a *autoSwapCache) DeleteMultiple(ctx context.Context, keys []string) error {
+	return a.withCurrent(func(c ValkeyCluster) error { return c.DeleteMultiple(ctx, keys) })
+}
+
 // NewAutoSwapForSingle creates an auto-swapping cache that upgrades from
 // in-memory to a single-node Valkey client when reachable.
 func NewAutoSwapForSingle(addr string, db int, password string, ttl time.Duration, log logger.Logger, fallback ValkeyCluster) ValkeyCluster {
