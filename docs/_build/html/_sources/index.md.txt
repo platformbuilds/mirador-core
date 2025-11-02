@@ -10,6 +10,7 @@ uql-language-guide
 correlation-engine
 correlation-queries-guide
 monitoring-observability
+testing
 readthedocs-integration
 api-reference
 deployment
