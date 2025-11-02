@@ -1,5 +1,5 @@
-project = 'MIRADOR-CORE'
-copyright_str = '2025, PlatformBuilds'
+project = 'MIRADORSTACK'
+copyright_str = '2025, PlatformBuilds Global Private Limited'
 author = 'PlatformBuilds Team'
 release = '7.0.0'
 
@@ -27,6 +27,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
+html_logo = '_static/logo.svg'
 
 # -- Options for intersphinx extension ---------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-intersphinx
