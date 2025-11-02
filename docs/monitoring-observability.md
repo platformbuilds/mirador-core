@@ -331,8 +331,8 @@ Key log patterns to monitor:
 
 ### Runbooks
 
-- [Query Performance Runbook](query-performance-runbook.md)
-- [Correlation Reliability Runbook](correlation-reliability-runbook.md)
-- [Cache Performance Runbook](cache-performance-runbook.md)
-- [Tracing Troubleshooting Guide](tracing-troubleshooting.md)
-- [Service Recovery Procedures](service-recovery-procedures.md)
+- <a href="query-performance-runbook.md">Query Performance Runbook</a>
+- <a href="correlation-reliability-runbook.md">Correlation Reliability Runbook</a>
+- <a href="cache-performance-runbook.md">Cache Performance Runbook</a>
+- <a href="tracing-troubleshooting.md">Tracing Troubleshooting Guide</a>
+- <a href="service-recovery-procedures.md">Service Recovery Procedures</a>

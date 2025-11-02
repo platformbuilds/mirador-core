@@ -34,7 +34,7 @@ html_static_path = ['_static']
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     # Note: Go documentation doesn't provide intersphinx support
-    # 'golang': ('https://pkg.go.dev', None),
+    # Removed golang intersphinx mapping to avoid 404 errors
 }
 
 # -- Options for MyST (Markdown) parser -------------------------------------
