@@ -51,6 +51,13 @@ services:
     pull_policy: if_not_present
     container_name: otel-collector
     command: ["--config", "/etc/otelcol/config.yaml"]
+    depends_on:
+      - victoriametrics
+      - victorialogs
+      - victoriatraces
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
     networks:
