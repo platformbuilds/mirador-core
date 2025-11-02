@@ -6,8 +6,11 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
+	"github.com/platformbuilds/mirador-core/internal/tracing"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -48,6 +51,7 @@ type CorrelationEngineImpl struct {
 	logger         logger.Logger
 	parser         *models.CorrelationQueryParser
 	resultMerger   *CorrelationResultMerger
+	tracer         *tracing.QueryTracer
 }
 
 // NewCorrelationEngine creates a new correlation engine
@@ -66,6 +70,7 @@ func NewCorrelationEngine(
 		logger:         logger,
 		parser:         models.NewCorrelationQueryParser(),
 		resultMerger:   NewCorrelationResultMerger(logger),
+		tracer:         tracing.GetGlobalTracer(),
 	}
 }
 
@@ -73,8 +78,13 @@ func NewCorrelationEngine(
 func (ce *CorrelationEngineImpl) ExecuteCorrelation(ctx context.Context, query *models.CorrelationQuery) (*models.UnifiedCorrelationResult, error) {
 	start := time.Now()
 
+	// Start distributed tracing span for correlation
+	corrCtx, corrSpan := ce.startCorrelationSpan(ctx, query)
+	defer corrSpan.End()
+
 	// Validate the query
 	if err := ce.ValidateCorrelationQuery(query); err != nil {
+		ce.tracer.RecordError(corrSpan, err)
 		return nil, fmt.Errorf("invalid correlation query: %w", err)
 	}
 
@@ -84,10 +94,11 @@ func (ce *CorrelationEngineImpl) ExecuteCorrelation(ctx context.Context, query *
 		"expressions", len(query.Expressions))
 
 	// Execute expressions in parallel
-	results, err := ce.executeExpressionsParallel(ctx, query)
+	results, err := ce.executeExpressionsParallel(corrCtx, query)
 	if err != nil {
 		// Record failed correlation metrics
 		monitoring.RecordUnifiedQueryCorrelationOperation("correlation", len(query.Expressions), time.Since(start), false)
+		ce.tracer.RecordError(corrSpan, err)
 		return nil, fmt.Errorf("failed to execute expressions: %w", err)
 	}
 
@@ -117,11 +128,15 @@ func (ce *CorrelationEngineImpl) ExecuteCorrelation(ctx context.Context, query *
 	}
 	monitoring.RecordUnifiedQueryCorrelationOperation(correlationType, len(query.Expressions), time.Since(start), true)
 
+	// Record correlation metrics on span
+	ce.tracer.RecordQueryMetrics(corrSpan, time.Since(start), int64(len(correlations)), true)
+
 	return result, nil
 }
 
 // executeExpressionsParallel executes all expressions in the correlation query in parallel
 func (ce *CorrelationEngineImpl) executeExpressionsParallel(ctx context.Context, query *models.CorrelationQuery) (map[models.QueryType]*models.UnifiedResult, error) {
+	parallelStart := time.Now()
 	results := make(map[models.QueryType]*models.UnifiedResult)
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -140,7 +155,13 @@ func (ce *CorrelationEngineImpl) executeExpressionsParallel(ctx context.Context,
 		go func(engine models.QueryType, expressions []models.CorrelationExpression) {
 			defer wg.Done()
 
+			engineStart := time.Now()
 			result, err := ce.executeEngineQuery(ctx, engine, expressions, query)
+			engineDuration := time.Since(engineStart)
+
+			// Record individual engine query duration
+			monitoring.RecordCorrelationEngineQueryDuration(string(engine), query.ID, engineDuration)
+
 			if err != nil {
 				errorOnce.Do(func() {
 					firstError = err
@@ -158,6 +179,10 @@ func (ce *CorrelationEngineImpl) executeExpressionsParallel(ctx context.Context,
 	}
 
 	wg.Wait()
+
+	// Record parallel execution coordination duration
+	parallelDuration := time.Since(parallelStart)
+	monitoring.RecordCorrelationParallelExecutionDuration(len(engineExpressions), parallelDuration)
 
 	if firstError != nil {
 		return nil, firstError
@@ -978,6 +1003,8 @@ func NewCorrelationResultMerger(logger logger.Logger) *CorrelationResultMerger {
 
 // MergeResults merges and deduplicates correlation results
 func (crm *CorrelationResultMerger) MergeResults(correlations []models.Correlation) []models.Correlation {
+	mergeStart := time.Now()
+
 	if len(correlations) == 0 {
 		return correlations
 	}
@@ -990,6 +1017,10 @@ func (crm *CorrelationResultMerger) MergeResults(correlations []models.Correlati
 	for _, group := range groups {
 		merged = append(merged, crm.mergeCorrelationGroup(group))
 	}
+
+	mergeDuration := time.Since(mergeStart)
+	// Record result merging duration (using "general" as correlation type since we don't have specific type here)
+	monitoring.RecordCorrelationResultMergingDuration("general", len(correlations), mergeDuration)
 
 	crm.logger.Info("Merged correlation results",
 		"original_count", len(correlations),
@@ -1108,4 +1139,19 @@ func (crm *CorrelationResultMerger) mergeCorrelationGroup(group []models.Correla
 	merged.Metadata["merge_timestamp"] = time.Now()
 
 	return merged
+}
+
+// startCorrelationSpan starts a tracing span for correlation operations
+func (ce *CorrelationEngineImpl) startCorrelationSpan(ctx context.Context, query *models.CorrelationQuery) (context.Context, trace.Span) {
+	if ce.tracer == nil {
+		// Return no-op span if tracer is not configured
+		return ctx, trace.SpanFromContext(ctx)
+	}
+
+	correlationType := "time_window"
+	if query.TimeWindow == nil {
+		correlationType = "label_based"
+	}
+
+	return ce.tracer.StartCorrelationSpan(ctx, query.ID, correlationType, len(query.Expressions))
 }

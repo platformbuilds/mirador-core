@@ -369,6 +369,42 @@ var (
 		},
 		[]string{"correlation_type", "engines_count"},
 	)
+
+	// Correlation Performance metrics
+	correlationEngineQueryDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "mirador_core_correlation_engine_query_duration_seconds",
+			Help:    "Duration of individual engine queries within correlations",
+			Buckets: []float64{.01, .05, .1, .25, .5, 1, 2.5, 5, 10},
+		},
+		[]string{"engine_type", "correlation_id"},
+	)
+
+	correlationResultMergingDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "mirador_core_correlation_result_merging_duration_seconds",
+			Help:    "Duration of correlation result merging operations",
+			Buckets: []float64{.001, .005, .01, .025, .05, .1, .25, .5},
+		},
+		[]string{"correlation_type", "correlations_count"},
+	)
+
+	correlationParallelExecutionDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "mirador_core_correlation_parallel_execution_duration_seconds",
+			Help:    "Duration of parallel execution coordination in correlations",
+			Buckets: []float64{.01, .05, .1, .25, .5, 1, 2.5, 5},
+		},
+		[]string{"engines_count"},
+	)
+
+	correlationCacheOperations = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "mirador_core_correlation_cache_operations_total",
+			Help: "Total number of correlation cache operations",
+		},
+		[]string{"operation", "result"},
+	)
 )
 
 // SetupPrometheusMetrics configures Prometheus metrics endpoint for MIRADOR-CORE
@@ -425,6 +461,12 @@ func SetupPrometheusMetrics(router gin.IRoutes) {
 	_ = prometheus.Register(unifiedQueryCacheOperations)
 	_ = prometheus.Register(unifiedQueryCorrelationOperations)
 	_ = prometheus.Register(unifiedQueryCorrelationDuration)
+
+	// Register additional correlation performance metrics
+	_ = prometheus.Register(correlationEngineQueryDuration)
+	_ = prometheus.Register(correlationResultMergingDuration)
+	_ = prometheus.Register(correlationParallelExecutionDuration)
+	_ = prometheus.Register(correlationCacheOperations)
 
 	// Expose metrics endpoint using default registry
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
@@ -632,6 +674,28 @@ func RecordUnifiedQueryCorrelationOperation(correlationType string, enginesCount
 
 	unifiedQueryCorrelationOperations.WithLabelValues(correlationType, enginesCountStr, status).Inc()
 	unifiedQueryCorrelationDuration.WithLabelValues(correlationType, enginesCountStr).Observe(duration.Seconds())
+}
+
+// RecordCorrelationEngineQueryDuration records the duration of individual engine queries within correlations
+func RecordCorrelationEngineQueryDuration(engineType, correlationID string, duration time.Duration) {
+	correlationEngineQueryDuration.WithLabelValues(engineType, correlationID).Observe(duration.Seconds())
+}
+
+// RecordCorrelationResultMergingDuration records the duration of correlation result merging operations
+func RecordCorrelationResultMergingDuration(correlationType string, correlationsCount int, duration time.Duration) {
+	correlationsCountStr := fmt.Sprintf("%d", correlationsCount)
+	correlationResultMergingDuration.WithLabelValues(correlationType, correlationsCountStr).Observe(duration.Seconds())
+}
+
+// RecordCorrelationParallelExecutionDuration records the duration of parallel execution coordination
+func RecordCorrelationParallelExecutionDuration(enginesCount int, duration time.Duration) {
+	enginesCountStr := fmt.Sprintf("%d", enginesCount)
+	correlationParallelExecutionDuration.WithLabelValues(enginesCountStr).Observe(duration.Seconds())
+}
+
+// RecordCorrelationCacheOperation records correlation cache operation metrics
+func RecordCorrelationCacheOperation(operation, result string) {
+	correlationCacheOperations.WithLabelValues(operation, result).Inc()
 }
 
 // normalizeEndpoint normalizes API endpoints for consistent metrics

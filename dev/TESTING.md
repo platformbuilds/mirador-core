@@ -17,7 +17,97 @@ How to run
 - Database tests (Valkey cluster): set env and run
   - `VALKEY_NODES=127.0.0.1:7000,127.0.0.1:7001 go test -tags=db ./pkg/cache`
 
-## Search Engine Testing (v6.0.0)
+## Unified Query Language (UQL) Testing (v7.0.0)
+
+### Performance Regression Tests
+Automated performance regression tests ensure that unified query engine components maintain acceptable performance baselines:
+
+```bash
+# Run all performance regression tests
+go test ./internal/services -run TestUQLPerformanceRegression -v
+
+# Run UQL parsing performance tests
+go test ./internal/services -run TestUQLPerformanceRegression/UQL_Parsing_Performance -v
+
+# Run UQL optimization performance tests
+go test ./internal/services -run TestUQLPerformanceRegression/UQL_Optimization_Performance -v
+
+# Run query routing performance tests
+go test ./internal/services -run TestUQLPerformanceRegression/Query_Routing_Performance -v
+
+# Run correlation query performance tests
+go test ./internal/services -run TestCorrelationQueryPerformanceRegression -v
+```
+
+**Performance Thresholds**:
+- UQL Parsing: P95 latency ≤ 50ms, throughput ≥ 100 parses/sec
+- UQL Optimization: P95 latency ≤ 100ms
+- Query Routing: P95 latency ≤ 10ms
+- Correlation Queries: P95 latency ≤ 50ms (same as UQL parsing)
+
+**Test Coverage**:
+- Representative query patterns from typical workloads
+- Statistical analysis with 95th percentile latency calculations
+- Throughput measurements for parsing operations
+- Component-level testing (parser, optimizer, router) without full service mocking
+
+### Unit Tests
+Comprehensive unit tests for UQL components:
+
+```bash
+# Run UQL parser tests
+go test ./internal/models -run TestUQLParser -v
+
+# Run UQL optimizer tests
+go test ./internal/services -run TestUQLOptimizer -v
+
+# Run query router tests
+go test ./internal/services -run TestQueryRouter -v
+
+# Run correlation query parser tests
+go test ./internal/models -run TestCorrelationQueryParser -v
+
+# Run unified query engine tests
+go test ./internal/services -run TestUnifiedQueryEngine -v
+```
+
+**Coverage**: Complete test coverage for:
+- UQL syntax parsing and AST construction
+- Query optimization rules and transformations
+- Query routing logic for different data sources
+- Correlation query parsing and validation
+- Error handling for malformed queries
+
+### Integration Tests
+End-to-end testing for unified query functionality:
+
+```bash
+# Run unified query integration tests
+go test -tags=integration ./internal/services -run TestUnifiedQueryEngine_Integration -v
+
+# Run cross-component integration tests
+go test -tags=integration ./internal/services -run TestUnifiedQueryPipeline -v
+```
+
+**Features Tested**:
+- Full query pipeline from parsing to execution
+- Multi-source query routing (logs, metrics, traces)
+- Correlation query execution across data sources
+- Error propagation and handling
+- Performance validation in integrated scenarios
+
+### Test Architecture
+- **Component Isolation**: Tests focus on individual components (parser, optimizer, router) for reliable performance measurement
+- **Statistical Validation**: Performance tests use statistical analysis to detect regressions
+- **Query Diversity**: Tests cover various query patterns and complexity levels
+- **CI/CD Integration**: Performance tests run in CI pipeline to catch regressions early
+
+### Query Examples Tested
+- Simple selections: `SELECT service, level FROM logs:error WHERE level='error'`
+- Complex filters: `SELECT * FROM logs:error WHERE level='error' AND service='api'`
+- Aggregations: `COUNT(*) FROM logs:error`, `SUM(bytes) FROM logs:error WHERE status_code >= 500`
+- Correlation queries: `logs:error WITHIN 5m OF metrics:cpu_usage > 80`
+- Multi-source queries: `logs:error AND metrics:cpu_usage > 80`
 
 ### Unit Tests
 Comprehensive unit tests for search engine integration:

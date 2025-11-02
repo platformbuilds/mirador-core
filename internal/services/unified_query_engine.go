@@ -10,9 +10,12 @@ import (
 
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
+	"github.com/platformbuilds/mirador-core/internal/tracing"
 	"github.com/platformbuilds/mirador-core/internal/utils"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // UnifiedQueryEngine provides a unified interface for querying across multiple observability engines
@@ -217,6 +220,7 @@ type UnifiedQueryEngineImpl struct {
 	uqlParser         *models.UQLParser
 	uqlTranslator     *UQLTranslatorRegistry
 	uqlOptimizer      UQLOptimizer
+	tracer            *tracing.QueryTracer
 }
 
 // NewUnifiedQueryEngine creates a new UnifiedQueryEngine instance
@@ -240,6 +244,7 @@ func NewUnifiedQueryEngine(
 		uqlParser:         models.NewUQLParser(),
 		uqlTranslator:     NewUQLTranslatorRegistry(logger),
 		uqlOptimizer:      NewUQLOptimizer(logger),
+		tracer:            tracing.GetGlobalTracer(),
 	}
 }
 
@@ -549,15 +554,20 @@ func (u *UnifiedQueryEngineImpl) invalidateCachePattern(ctx context.Context, pat
 func (u *UnifiedQueryEngineImpl) ExecuteQuery(ctx context.Context, query *models.UnifiedQuery) (*models.UnifiedResult, error) {
 	start := time.Now()
 
+	// Start distributed tracing span for the unified query
+	queryCtx, querySpan := u.startQuerySpan(ctx, query)
+	defer querySpan.End()
+
 	// Check if query can be parallelized across multiple engines
 	if u.canParallelizeQuery(query) {
 		u.logger.Info("Executing query in parallel across multiple engines", "query_id", query.ID)
-		return u.executeParallelQuery(ctx, query, start)
+		return u.executeParallelQuery(queryCtx, query, start)
 	}
 
 	// Use intelligent query router to determine optimal engine
 	routedType, routingReason, err := u.queryRouter.RouteQuery(query)
 	if err != nil {
+		u.tracer.RecordError(querySpan, err)
 		return nil, fmt.Errorf("query routing failed: %w", err)
 	}
 
@@ -571,31 +581,44 @@ func (u *UnifiedQueryEngineImpl) ExecuteQuery(ctx context.Context, query *models
 		"routed_type", routedType,
 		"reason", routingReason)
 
+	// Add routing information to span
+	u.tracer.AddQueryAttributes(querySpan,
+		attribute.String("query.routing.original_type", string(originalType)),
+		attribute.String("query.routing.final_type", string(routedType)),
+		attribute.String("query.routing.reason", routingReason),
+	)
+
 	// Generate cache key
 	cacheKey := u.generateCacheKey(query)
 
 	// Check cache first if enabled
 	var cacheHit bool
 	if query.CacheOptions != nil && query.CacheOptions.Enabled && !query.CacheOptions.BypassCache {
-		if cachedResult, err := u.getCachedResult(ctx, cacheKey); err == nil && cachedResult != nil {
+		cacheStart := time.Now()
+		if cachedResult, err := u.getCachedResult(queryCtx, cacheKey); err == nil && cachedResult != nil {
+			cacheDuration := time.Since(cacheStart)
 			u.logger.Info("Returning cached result", "query_id", query.ID, "cache_key", cacheKey)
 			cachedResult.Cached = true
 			cacheHit = true
 
-			// Record cache hit metrics
+			// Record cache hit metrics and tracing
 			monitoring.RecordUnifiedQueryCacheOperation("get", "hit")
+			u.tracer.RecordCacheMetrics(querySpan, true, cacheDuration)
+			u.tracer.RecordQueryMetrics(querySpan, time.Since(start), int64(cachedResult.Metadata.TotalRecords), true)
 			monitoring.RecordUnifiedQueryOperation(string(query.Type), string(routedType), true, time.Since(start), true)
 
 			return cachedResult, nil
 		}
 		// Record cache miss
+		cacheDuration := time.Since(cacheStart)
 		monitoring.RecordUnifiedQueryCacheOperation("get", "miss")
+		u.tracer.RecordCacheMetrics(querySpan, false, cacheDuration)
 	}
 
 	// Check if this is a UQL query that needs special processing
 	if u.queryRouter.isUQLQuery(query.Query) {
 		u.logger.Info("Detected UQL query, using ExecuteUQLQuery", "query_id", query.ID)
-		return u.ExecuteUQLQuery(ctx, query)
+		return u.ExecuteUQLQuery(queryCtx, query)
 	}
 
 	// Route to appropriate engine based on routed query type
@@ -604,19 +627,23 @@ func (u *UnifiedQueryEngineImpl) ExecuteQuery(ctx context.Context, query *models
 
 	switch query.Type {
 	case models.QueryTypeMetrics:
-		result, routingErr = u.executeMetricsQuery(ctx, query)
+		result, routingErr = u.executeMetricsQuery(queryCtx, query)
 	case models.QueryTypeLogs:
-		result, routingErr = u.executeLogsQuery(ctx, query)
+		result, routingErr = u.executeLogsQuery(queryCtx, query)
 	case models.QueryTypeTraces:
-		result, routingErr = u.executeTracesQuery(ctx, query)
+		result, routingErr = u.executeTracesQuery(queryCtx, query)
 	case models.QueryTypeCorrelation:
-		result, routingErr = u.ExecuteCorrelationQuery(ctx, query)
+		result, routingErr = u.ExecuteCorrelationQuery(queryCtx, query)
 	default:
-		return nil, fmt.Errorf("unsupported query type: %s", query.Type)
+		err := fmt.Errorf("unsupported query type: %s", query.Type)
+		u.tracer.RecordError(querySpan, err)
+		return nil, err
 	}
 
 	if routingErr != nil {
-		// Record failed operation metrics
+		// Record failed operation metrics and tracing
+		u.tracer.RecordError(querySpan, routingErr)
+		u.tracer.RecordQueryMetrics(querySpan, time.Since(start), 0, false)
 		monitoring.RecordUnifiedQueryOperation(string(query.Type), string(routedType), cacheHit, time.Since(start), false)
 		return nil, routingErr
 	}
@@ -630,22 +657,37 @@ func (u *UnifiedQueryEngineImpl) ExecuteQuery(ctx context.Context, query *models
 
 	// Cache the result if caching is enabled
 	if query.CacheOptions != nil && query.CacheOptions.Enabled {
+		cacheStart := time.Now()
 		ttl := query.CacheOptions.TTL
 		if ttl == 0 {
 			ttl = 5 * time.Minute // default TTL
 		}
-		if err := u.cacheResult(ctx, cacheKey, result, ttl); err != nil {
+		if err := u.cacheResult(queryCtx, cacheKey, result, ttl); err != nil {
+			cacheDuration := time.Since(cacheStart)
 			u.logger.Warn("Failed to cache query result", "error", err, "query_id", query.ID)
 			monitoring.RecordUnifiedQueryCacheOperation("set", "error")
+			u.tracer.RecordCacheMetrics(querySpan, false, cacheDuration)
 		} else {
+			cacheDuration := time.Since(cacheStart)
 			monitoring.RecordUnifiedQueryCacheOperation("set", "success")
+			u.tracer.RecordCacheMetrics(querySpan, true, cacheDuration)
 		}
 	}
 
-	// Record successful operation metrics
+	// Record successful operation metrics and tracing
+	u.tracer.RecordQueryMetrics(querySpan, time.Since(start), int64(result.Metadata.TotalRecords), true)
 	monitoring.RecordUnifiedQueryOperation(string(query.Type), string(routedType), cacheHit, time.Since(start), true)
 
 	return result, nil
+}
+
+// startQuerySpan starts a tracing span for a unified query
+func (u *UnifiedQueryEngineImpl) startQuerySpan(ctx context.Context, query *models.UnifiedQuery) (context.Context, trace.Span) {
+	if u.tracer == nil {
+		// Return no-op span if tracer is not configured
+		return ctx, trace.SpanFromContext(ctx)
+	}
+	return u.tracer.StartQuerySpan(ctx, query.ID, string(query.Type), query.Query)
 }
 
 // executeMetricsQuery executes a metrics query using VictoriaMetricsService
