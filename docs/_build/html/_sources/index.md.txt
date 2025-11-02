@@ -6,8 +6,10 @@
 
 getting-started
 unified-query-architecture
+uql-language-guide
 correlation-engine
 correlation-queries-guide
+monitoring-observability
 readthedocs-integration
 api-reference
 deployment

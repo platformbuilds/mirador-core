@@ -440,5 +440,5 @@ kubectl rollout undo deployment/mirador-core
 For deployment issues or questions:
 
 1. Check the [troubleshooting guide](#troubleshooting)
-2. Review [GitHub Issues](https://github.com/mirador-core/mirador-core/issues)
+2. Review [GitHub Issues](https://github.com/platformbuilds/mirador-core/issues)
 3. Contact the platform team at platform@company.com
