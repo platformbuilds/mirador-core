@@ -1,4 +1,4 @@
-# MIRADOR-CORE Documentation
+# MIRADORSTACK Documentation
 
 ```{toctree}
 :maxdepth: 2
@@ -19,7 +19,7 @@ configuration
 
 ## Overview
 
-MIRADOR-CORE is an advanced observability platform that provides unified access to metrics, logs, traces, and correlation analysis across the entire VictoriaMetrics ecosystem.
+MIRADORSTACK is an advanced observability platform that provides unified access to metrics, logs, traces, and correlation analysis across the entire VictoriaMetrics ecosystem.
 
 ### Key Features
 
@@ -32,11 +32,11 @@ MIRADOR-CORE is an advanced observability platform that provides unified access 
 
 ### Architecture
 
-MIRADOR-CORE acts as a unified query layer on top of the VictoriaMetrics ecosystem:
+MIRADORSTACK acts as a unified query layer on top of the VictoriaMetrics ecosystem:
 
 ```
 ┌─────────────────┐    ┌─────────────────┐
-│   MIRADOR-CORE  │────│  VictoriaLogs   │
+│  MIRADORSTACK  │────│  VictoriaLogs   │
 │                 │    │  (Logs)         │
 │  Query Router   │────│                 │
 │  API Gateway    │    └─────────────────┘
@@ -55,7 +55,7 @@ MIRADOR-CORE acts as a unified query layer on top of the VictoriaMetrics ecosyst
 
 ## Quick Start
 
-1. **Deploy MIRADOR-CORE** using Helm or Docker
+1. **Deploy MIRADORSTACK** using Helm or Docker
 2. **Configure data sources** (VictoriaMetrics ecosystem endpoints)
 3. **Set up authentication** (LDAP/AD or OAuth)
 4. **Start querying** using the Unified Query API
@@ -75,3 +75,14 @@ MIRADOR-CORE acts as a unified query layer on top of the VictoriaMetrics ecosyst
 * {ref}`genindex`
 * {ref}`modindex`
 * {ref}`search`
+
+```{toctree}
+:hidden:
+:caption: Runbooks
+
+cache-performance-runbook
+correlation-reliability-runbook
+query-performance-runbook
+service-recovery-procedures
+tracing-troubleshooting
+```
