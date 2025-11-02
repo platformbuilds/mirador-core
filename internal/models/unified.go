@@ -1,6 +1,8 @@
 package models
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -44,12 +46,80 @@ type CorrelationOptions struct {
 	Filters         map[string]interface{} `json:"filters,omitempty"`
 }
 
+// UnmarshalJSON implements custom JSON unmarshaling for CorrelationOptions
+func (c *CorrelationOptions) UnmarshalJSON(data []byte) error {
+	type Alias CorrelationOptions
+	aux := &struct {
+		TimeWindow interface{} `json:"time_window"`
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+
+	// Handle TimeWindow parsing
+	switch v := aux.TimeWindow.(type) {
+	case string:
+		duration, err := time.ParseDuration(v)
+		if err != nil {
+			return fmt.Errorf("invalid time_window duration string: %w", err)
+		}
+		c.TimeWindow = duration
+	case float64:
+		// Assume it's in seconds
+		c.TimeWindow = time.Duration(v) * time.Second
+	case nil:
+		// TimeWindow not provided, keep zero value
+	default:
+		return fmt.Errorf("invalid time_window type: %T", v)
+	}
+
+	return nil
+}
+
 // CacheOptions defines caching behavior for queries
 type CacheOptions struct {
 	Enabled     bool          `json:"enabled"`
 	TTL         time.Duration `json:"ttl"`
 	Key         string        `json:"key,omitempty"` // Custom cache key
 	BypassCache bool          `json:"bypass_cache"`  // Force fresh query
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for CacheOptions
+func (c *CacheOptions) UnmarshalJSON(data []byte) error {
+	type Alias CacheOptions
+	aux := &struct {
+		TTL interface{} `json:"ttl"`
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+
+	// Handle TTL parsing
+	switch v := aux.TTL.(type) {
+	case string:
+		duration, err := time.ParseDuration(v)
+		if err != nil {
+			return fmt.Errorf("invalid TTL duration string: %w", err)
+		}
+		c.TTL = duration
+	case float64:
+		// Assume it's in seconds
+		c.TTL = time.Duration(v) * time.Second
+	case nil:
+		// TTL not provided, keep zero value
+	default:
+		return fmt.Errorf("invalid TTL type: %T", v)
+	}
+
+	return nil
 }
 
 // UnifiedResult represents the result of a unified query
@@ -128,6 +198,54 @@ type CacheCapabilities struct {
 	Supported  bool          `json:"supported"`
 	DefaultTTL time.Duration `json:"default_ttl"`
 	MaxTTL     time.Duration `json:"max_ttl"`
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for CacheCapabilities
+func (c *CacheCapabilities) UnmarshalJSON(data []byte) error {
+	type Alias CacheCapabilities
+	aux := &struct {
+		DefaultTTL interface{} `json:"default_ttl"`
+		MaxTTL     interface{} `json:"max_ttl"`
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+
+	// Handle DefaultTTL parsing
+	switch v := aux.DefaultTTL.(type) {
+	case string:
+		duration, err := time.ParseDuration(v)
+		if err != nil {
+			return fmt.Errorf("invalid default_ttl duration string: %w", err)
+		}
+		c.DefaultTTL = duration
+	case float64:
+		c.DefaultTTL = time.Duration(v) * time.Second
+	case nil:
+	default:
+		return fmt.Errorf("invalid default_ttl type: %T", v)
+	}
+
+	// Handle MaxTTL parsing
+	switch v := aux.MaxTTL.(type) {
+	case string:
+		duration, err := time.ParseDuration(v)
+		if err != nil {
+			return fmt.Errorf("invalid max_ttl duration string: %w", err)
+		}
+		c.MaxTTL = duration
+	case float64:
+		c.MaxTTL = time.Duration(v) * time.Second
+	case nil:
+	default:
+		return fmt.Errorf("invalid max_ttl type: %T", v)
+	}
+
+	return nil
 }
 
 // EngineHealthStatus represents the health status of all engines
