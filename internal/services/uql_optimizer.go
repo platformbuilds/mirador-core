@@ -39,14 +39,14 @@ type OptimizationStats struct {
 
 // QueryPlan represents an execution plan for a UQL query
 type QueryPlan struct {
-	QueryID       string                 `json:"query_id"`
-	QueryType     models.UQLQueryType    `json:"query_type"`
-	Steps         []QueryPlanStep        `json:"steps"`
-	EstimatedCost float64                `json:"estimated_cost"`
-	EstimatedRows int64                  `json:"estimated_rows"`
-	DataSources   []QueryPlanDataSource  `json:"data_sources"`
-	Optimizations []string               `json:"optimizations_applied"`
-	GeneratedAt   time.Time              `json:"generated_at"`
+	QueryID       string                `json:"query_id"`
+	QueryType     models.UQLQueryType   `json:"query_type"`
+	Steps         []QueryPlanStep       `json:"steps"`
+	EstimatedCost float64               `json:"estimated_cost"`
+	EstimatedRows int64                 `json:"estimated_rows"`
+	DataSources   []QueryPlanDataSource `json:"data_sources"`
+	Optimizations []string              `json:"optimizations_applied"`
+	GeneratedAt   time.Time             `json:"generated_at"`
 }
 
 // QueryPlanStep represents a single step in the query execution plan
@@ -63,12 +63,12 @@ type QueryPlanStep struct {
 
 // QueryPlanDataSource represents a data source in the query plan
 type QueryPlanDataSource struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"` // logs, metrics, traces, correlations
-	Engine   string `json:"engine"`
-	Filters  []string `json:"filters,omitempty"`
-	Indexes  []string `json:"indexes,omitempty"`
-	EstimatedCardinality int64 `json:"estimated_cardinality"`
+	Name                 string   `json:"name"`
+	Type                 string   `json:"type"` // logs, metrics, traces, correlations
+	Engine               string   `json:"engine"`
+	Filters              []string `json:"filters,omitempty"`
+	Indexes              []string `json:"indexes,omitempty"`
+	EstimatedCardinality int64    `json:"estimated_cardinality"`
 }
 
 // UQLOptimizerImpl implements the UQLOptimizer interface
@@ -129,12 +129,12 @@ func (o *UQLOptimizerImpl) GetOptimizationStats() OptimizationStats {
 // GenerateQueryPlan generates an execution plan for a UQL query
 func (o *UQLOptimizerImpl) GenerateQueryPlan(uqlQuery *models.UQLQuery) (*QueryPlan, error) {
 	plan := &QueryPlan{
-		QueryID:     fmt.Sprintf("query_%d", time.Now().UnixNano()),
-		QueryType:   uqlQuery.Type,
-		Steps:       []QueryPlanStep{},
-		DataSources: []QueryPlanDataSource{},
+		QueryID:       fmt.Sprintf("query_%d", time.Now().UnixNano()),
+		QueryType:     uqlQuery.Type,
+		Steps:         []QueryPlanStep{},
+		DataSources:   []QueryPlanDataSource{},
 		Optimizations: []string{},
-		GeneratedAt: time.Now(),
+		GeneratedAt:   time.Now(),
 	}
 
 	// Analyze the query structure and build execution steps
@@ -878,9 +878,9 @@ func (o *UQLOptimizerImpl) buildSelectPlan(query *models.UQLQuery, plan *QueryPl
 
 	// Add data source
 	dataSource := QueryPlanDataSource{
-		Name:     string(query.Select.DataSource.Engine) + ":" + query.Select.DataSource.Query,
-		Type:     string(query.Select.DataSource.Engine),
-		Engine:   string(query.Select.DataSource.Engine),
+		Name:                 string(query.Select.DataSource.Engine) + ":" + query.Select.DataSource.Query,
+		Type:                 string(query.Select.DataSource.Engine),
+		Engine:               string(query.Select.DataSource.Engine),
 		EstimatedCardinality: 1000, // Default estimate
 	}
 
@@ -997,9 +997,9 @@ func (o *UQLOptimizerImpl) buildAggregationPlan(query *models.UQLQuery, plan *Qu
 
 	// Add data source
 	dataSource := QueryPlanDataSource{
-		Name:     string(query.Aggregation.DataSource.Engine) + ":" + query.Aggregation.DataSource.Query,
-		Type:     string(query.Aggregation.DataSource.Engine),
-		Engine:   string(query.Aggregation.DataSource.Engine),
+		Name:                 string(query.Aggregation.DataSource.Engine) + ":" + query.Aggregation.DataSource.Query,
+		Type:                 string(query.Aggregation.DataSource.Engine),
+		Engine:               string(query.Aggregation.DataSource.Engine),
 		EstimatedCardinality: 10000, // Larger estimate for aggregations
 	}
 
@@ -1070,18 +1070,18 @@ func (o *UQLOptimizerImpl) buildCorrelationPlan(query *models.UQLQuery, plan *Qu
 
 	// Add left data source
 	leftDS := QueryPlanDataSource{
-		Name:     o.formatExpression(&query.Correlation.LeftExpression),
-		Type:     string(query.Correlation.LeftExpression.DataSource.Engine),
-		Engine:   string(query.Correlation.LeftExpression.DataSource.Engine),
+		Name:                 o.formatExpression(&query.Correlation.LeftExpression),
+		Type:                 string(query.Correlation.LeftExpression.DataSource.Engine),
+		Engine:               string(query.Correlation.LeftExpression.DataSource.Engine),
 		EstimatedCardinality: 1000,
 	}
 	plan.DataSources = append(plan.DataSources, leftDS)
 
 	// Add right data source
 	rightDS := QueryPlanDataSource{
-		Name:     o.formatExpression(&query.Correlation.RightExpression),
-		Type:     string(query.Correlation.RightExpression.DataSource.Engine),
-		Engine:   string(query.Correlation.RightExpression.DataSource.Engine),
+		Name:                 o.formatExpression(&query.Correlation.RightExpression),
+		Type:                 string(query.Correlation.RightExpression.DataSource.Engine),
+		Engine:               string(query.Correlation.RightExpression.DataSource.Engine),
 		EstimatedCardinality: 1000,
 	}
 	plan.DataSources = append(plan.DataSources, rightDS)
@@ -1143,18 +1143,18 @@ func (o *UQLOptimizerImpl) buildJoinPlan(query *models.UQLQuery, plan *QueryPlan
 
 	// Add left data source
 	leftDS := QueryPlanDataSource{
-		Name:     o.formatExpression(&query.Join.Left),
-		Type:     "join_source",
-		Engine:   "join",
+		Name:                 o.formatExpression(&query.Join.Left),
+		Type:                 "join_source",
+		Engine:               "join",
 		EstimatedCardinality: 1000,
 	}
 	plan.DataSources = append(plan.DataSources, leftDS)
 
 	// Add right data source
 	rightDS := QueryPlanDataSource{
-		Name:     o.formatExpression(&query.Join.Right),
-		Type:     "join_source",
-		Engine:   "join",
+		Name:                 o.formatExpression(&query.Join.Right),
+		Type:                 "join_source",
+		Engine:               "join",
 		EstimatedCardinality: 1000,
 	}
 	plan.DataSources = append(plan.DataSources, rightDS)

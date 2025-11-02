@@ -1,0 +1,261 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Mirador Core v7.0.0 - Unified Query Performance",
+    "tags": ["mirador-core", "unified-query", "performance"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Query Operations Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(mirador_core_unified_query_operations_total[5m]))",
+            "legendFormat": "Total Operations/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Query Success Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(mirador_core_unified_query_operations_total{status=\"success\"}[5m])) / sum(rate(mirador_core_unified_query_operations_total[5m])) * 100",
+            "legendFormat": "Success Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Query Latency by Type",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(mirador_core_unified_query_operation_duration_seconds_bucket[5m])) by (le, query_type))",
+            "legendFormat": "{{query_type}} - 95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(mirador_core_unified_query_operation_duration_seconds_bucket[5m])) by (le, query_type))",
+            "legendFormat": "{{query_type}} - 50th percentile"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {
+          "h": 12,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "Engine Routing Distribution",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum(rate(mirador_core_unified_query_operations_total[5m])) by (engine_routed)",
+            "legendFormat": "{{engine_routed}}"
+          }
+        ],
+        "gridPos": {
+          "h": 12,
+          "w": 12,
+          "x": 0,
+          "y": 20
+        }
+      },
+      {
+        "id": 5,
+        "title": "Cache Hit Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(mirador_core_unified_query_cache_operations_total{result=\"hit\"}[5m])) / sum(rate(mirador_core_unified_query_cache_operations_total[5m])) * 100",
+            "legendFormat": "Cache Hit Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 20
+        }
+      },
+      {
+        "id": 6,
+        "title": "Correlation Operations",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(mirador_core_unified_query_correlation_operations_total[5m])) by (correlation_type)",
+            "legendFormat": "{{correlation_type}} correlations/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        },
+        "gridPos": {
+          "h": 12,
+          "w": 12,
+          "x": 0,
+          "y": 32
+        }
+      },
+      {
+        "id": 7,
+        "title": "Correlation Latency",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(mirador_core_unified_query_correlation_duration_seconds_bucket[5m])) by (le, correlation_type))",
+            "legendFormat": "{{correlation_type}} - 95th percentile"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {
+          "h": 12,
+          "w": 12,
+          "x": 12,
+          "y": 32
+        }
+      },
+      {
+        "id": 8,
+        "title": "Engine Query Performance",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "sum(rate(mirador_core_correlation_engine_query_duration_seconds_sum[5m])) by (engine_type) / sum(rate(mirador_core_correlation_engine_query_duration_seconds_count[5m])) by (engine_type)",
+            "legendFormat": "{{engine_type}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {
+          "h": 12,
+          "w": 12,
+          "x": 0,
+          "y": 44
+        }
+      },
+      {
+        "id": 9,
+        "title": "Parallel Execution Coordination",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(mirador_core_correlation_parallel_execution_duration_seconds_bucket[5m])) by (le, engines_count))",
+            "legendFormat": "{{engines_count}} engines - 95th percentile"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {
+          "h": 12,
+          "w": 12,
+          "x": 12,
+          "y": 44
+        }
+      },
+      {
+        "id": 10,
+        "title": "Result Merging Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(mirador_core_correlation_result_merging_duration_seconds_bucket[5m])) by (le, correlations_count))",
+            "legendFormat": "{{correlations_count}} correlations - 95th percentile"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {
+          "h": 12,
+          "w": 12,
+          "x": 0,
+          "y": 56
+        }
+      },
+      {
+        "id": 11,
+        "title": "Error Rate by Component",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(mirador_core_errors_total[5m])) by (component)",
+            "legendFormat": "{{component}} errors/sec"
+          }
+        ],
+        "gridPos": {
+          "h": 12,
+          "w": 12,
+          "x": 12,
+          "y": 56
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 0,
+    "links": []
+  }
+}

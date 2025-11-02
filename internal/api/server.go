@@ -15,6 +15,7 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
+	"github.com/platformbuilds/mirador-core/internal/tracing"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve/mapping"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve/storage"
@@ -38,6 +39,7 @@ type Server struct {
 	metricsMetadataSynchronizer services.MetricsMetadataSynchronizer
 	router                      *gin.Engine
 	httpServer                  *http.Server
+	tracerProvider              *tracing.TracerProvider
 }
 
 func NewServer(
@@ -54,14 +56,33 @@ func NewServer(
 
 	router := gin.New()
 
+	// Initialize distributed tracing if enabled
+	var tracerProvider *tracing.TracerProvider
+	if cfg.Monitoring.TracingEnabled {
+		var err error
+		tracerProvider, err = tracing.NewTracerProvider(
+			"mirador-core",
+			"v7.0.0", // TODO: Pass version from build info
+			cfg.Monitoring.JaegerEndpoint,
+		)
+		if err != nil {
+			log.Error("Failed to initialize tracer provider", "error", err)
+		} else {
+			log.Info("Distributed tracing initialized", "endpoint", cfg.Monitoring.JaegerEndpoint)
+			// Initialize global tracer
+			tracing.InitGlobalTracer("mirador-core")
+		}
+	}
+
 	server := &Server{
-		config:      cfg,
-		logger:      log,
-		cache:       valleyCache,
-		grpcClients: grpcClients,
-		vmServices:  vmServices,
-		schemaRepo:  schemaRepo,
-		router:      router,
+		config:         cfg,
+		logger:         log,
+		cache:          valleyCache,
+		grpcClients:    grpcClients,
+		vmServices:     vmServices,
+		schemaRepo:     schemaRepo,
+		router:         router,
+		tracerProvider: tracerProvider,
 	}
 
 	// Create search router
@@ -425,6 +446,14 @@ func (s *Server) Start(ctx context.Context) error {
 	if s.metricsMetadataSynchronizer != nil {
 		s.logger.Info("Stopping metrics metadata synchronizer")
 		s.metricsMetadataSynchronizer.Stop()
+	}
+
+	// Shutdown tracer provider
+	if s.tracerProvider != nil {
+		s.logger.Info("Shutting down tracer provider")
+		if err := s.tracerProvider.Shutdown(shutdownCtx); err != nil {
+			s.logger.Error("Failed to shutdown tracer provider", "error", err)
+		}
 	}
 
 	// Close gRPC connections

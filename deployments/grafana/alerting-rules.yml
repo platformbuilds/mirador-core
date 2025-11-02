@@ -1,0 +1,175 @@
+groups:
+  - name: mirador_core_alerts
+    rules:
+      # Query Performance Alerts
+      - alert: HighQueryLatency
+        expr: histogram_quantile(0.95, sum(rate(mirador_core_unified_query_operation_duration_seconds_bucket[5m])) by (le, query_type)) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: mirador-core
+          component: unified-query-engine
+        annotations:
+          summary: "High query latency detected"
+          description: "95th percentile query latency for {{ $labels.query_type }} is {{ $value }}s, exceeding 5s threshold"
+          runbook_url: "https://mirador-core.docs/query-performance-runbook"
+
+      - alert: QuerySuccessRateLow
+        expr: sum(rate(mirador_core_unified_query_operations_total{status="success"}[5m])) / sum(rate(mirador_core_unified_query_operations_total[5m])) * 100 < 95
+        for: 5m
+        labels:
+          severity: critical
+          service: mirador-core
+          component: unified-query-engine
+        annotations:
+          summary: "Low query success rate"
+          description: "Query success rate is {{ $value }}%, below 95% threshold"
+          runbook_url: "https://mirador-core.docs/query-reliability-runbook"
+
+      - alert: CacheHitRateLow
+        expr: sum(rate(mirador_core_unified_query_cache_operations_total{result="hit"}[5m])) / sum(rate(mirador_core_unified_query_cache_operations_total[5m])) * 100 < 70
+        for: 10m
+        labels:
+          severity: warning
+          service: mirador-core
+          component: cache
+        annotations:
+          summary: "Low cache hit rate"
+          description: "Cache hit rate is {{ $value }}%, below 70% threshold"
+          runbook_url: "https://mirador-core.docs/cache-performance-runbook"
+
+      # Correlation Engine Alerts
+      - alert: HighCorrelationLatency
+        expr: histogram_quantile(0.95, sum(rate(mirador_core_correlation_duration_seconds_bucket[5m])) by (le, correlation_type)) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: mirador-core
+          component: correlation-engine
+        annotations:
+          summary: "High correlation latency detected"
+          description: "95th percentile correlation latency for {{ $labels.correlation_type }} is {{ $value }}s, exceeding 10s threshold"
+          runbook_url: "https://mirador-core.docs/correlation-performance-runbook"
+
+      - alert: CorrelationSuccessRateLow
+        expr: sum(rate(mirador_core_correlation_operations_total{status="success"}[5m])) / sum(rate(mirador_core_correlation_operations_total[5m])) * 100 < 90
+        for: 5m
+        labels:
+          severity: critical
+          service: mirador-core
+          component: correlation-engine
+        annotations:
+          summary: "Low correlation success rate"
+          description: "Correlation success rate is {{ $value }}%, below 90% threshold"
+          runbook_url: "https://mirador-core.docs/correlation-reliability-runbook"
+
+      - alert: EngineQueryTimeout
+        expr: sum(rate(mirador_core_correlation_engine_query_duration_seconds_count[5m])) by (engine_type) and sum(rate(mirador_core_correlation_engine_query_duration_seconds_sum[5m])) by (engine_type) / sum(rate(mirador_core_correlation_engine_query_duration_seconds_count[5m])) by (engine_type) > 30
+        for: 3m
+        labels:
+          severity: critical
+          service: mirador-core
+          component: correlation-engine
+        annotations:
+          summary: "Engine query timeout"
+          description: "Average query duration for {{ $labels.engine_type }} engine is {{ $value }}s, exceeding 30s timeout"
+          runbook_url: "https://mirador-core.docs/engine-timeout-runbook"
+
+      # Tracing Alerts
+      - alert: TraceExportFailure
+        expr: sum(rate(mirador_core_trace_exports_total{status="failure"}[5m])) / sum(rate(mirador_core_trace_exports_total[5m])) * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: mirador-core
+          component: tracing
+        annotations:
+          summary: "Trace export failures detected"
+          description: "Trace export failure rate is {{ $value }}%, exceeding 5% threshold"
+          runbook_url: "https://mirador-core.docs/tracing-runbook"
+
+      - alert: HighTraceErrorRate
+        expr: sum(rate(mirador_core_trace_errors_total[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: mirador-core
+          component: tracing
+        annotations:
+          summary: "High trace error rate"
+          description: "Trace error rate is {{ $value }} errors/second, exceeding 10 errors/sec threshold"
+          runbook_url: "https://mirador-core.docs/tracing-runbook"
+
+      # System Health Alerts
+      - alert: HighErrorRate
+        expr: sum(rate(mirador_core_errors_total[5m])) by (component) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: mirador-core
+          component: "{{ $labels.component }}"
+        annotations:
+          summary: "High error rate in {{ $labels.component }}"
+          description: "Error rate in {{ $labels.component }} is {{ $value }} errors/second, exceeding 5 errors/sec threshold"
+          runbook_url: "https://mirador-core.docs/error-handling-runbook"
+
+      - alert: ServiceDown
+        expr: up{job="mirador-core"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: mirador-core
+        annotations:
+          summary: "Mirador Core service is down"
+          description: "Mirador Core service has been down for more than 1 minute"
+          runbook_url: "https://mirador-core.docs/service-recovery-runbook"
+
+      # Resource Usage Alerts
+      - alert: HighMemoryUsage
+        expr: mirador_core_correlation_memory_usage_bytes / mirador_core_correlation_memory_limit_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: mirador-core
+          component: correlation-engine
+        annotations:
+          summary: "High memory usage in correlation engine"
+          description: "Memory usage is {{ $value }}% of limit, exceeding 85% threshold"
+          runbook_url: "https://mirador-core.docs/memory-management-runbook"
+
+      - alert: HighCPUUsage
+        expr: rate(mirador_core_correlation_cpu_usage_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: mirador-core
+          component: correlation-engine
+        annotations:
+          summary: "High CPU usage in correlation engine"
+          description: "CPU usage is {{ $value }}%, exceeding 80% threshold"
+          runbook_url: "https://mirador-core.docs/cpu-optimization-runbook"
+
+      # Performance Degradation Alerts
+      - alert: QueryThroughputDrop
+        expr: sum(rate(mirador_core_unified_query_operations_total[5m])) < 10
+        for: 10m
+        labels:
+          severity: warning
+          service: mirador-core
+          component: unified-query-engine
+        annotations:
+          summary: "Query throughput drop detected"
+          description: "Query throughput is {{ $value }} operations/second, below 10 ops/sec threshold"
+          runbook_url: "https://mirador-core.docs/throughput-runbook"
+
+      - alert: CorrelationThroughputDrop
+        expr: sum(rate(mirador_core_correlation_operations_total[5m])) < 5
+        for: 10m
+        labels:
+          severity: warning
+          service: mirador-core
+          component: correlation-engine
+        annotations:
+          summary: "Correlation throughput drop detected"
+          description: "Correlation throughput is {{ $value }} operations/second, below 5 ops/sec threshold"
+          runbook_url: "https://mirador-core.docs/correlation-throughput-runbook"
