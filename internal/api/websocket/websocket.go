@@ -31,7 +31,7 @@ type Client struct {
 	send     chan []byte
 	tenantID string
 	userID   string
-	streams  map[string]bool // metrics, alerts, predictions, correlations
+	streams  map[string]bool // metrics, alerts, correlations
 }
 
 type Message struct {
@@ -122,7 +122,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request, upgrader websocket
 	streams := parseStreams(r.URL.Query().Get("streams"))
 	if len(streams) == 0 {
 		// default to all known streams if none requested explicitly
-		streams = map[string]bool{"metrics": true, "alerts": true, "predictions": true, "correlations": true}
+		streams = map[string]bool{"metrics": true, "alerts": true, "correlations": true}
 	}
 
 	client := &Client{
@@ -158,33 +158,6 @@ func (h *Hub) BroadcastAlert(alert *models.Alert) {
 	h.mu.RLock()
 	for client := range h.clients {
 		if client.tenantID == alert.TenantID && client.streams["alerts"] {
-			select {
-			case client.send <- messageBytes:
-			default:
-				delete(h.clients, client)
-				close(client.send)
-			}
-		}
-	}
-	h.mu.RUnlock()
-}
-
-// BroadcastPrediction sends AI predictions to subscribed clients
-func (h *Hub) BroadcastPrediction(prediction *models.SystemFracture) {
-	message := Message{
-		Type:      "prediction",
-		Data:      prediction,
-		Timestamp: time.Now(),
-	}
-	messageBytes, err := json.Marshal(message)
-	if err != nil {
-		h.logger.Error("Failed to marshal prediction message", "predictionId", prediction.ID, "error", err)
-		return
-	}
-
-	h.mu.RLock()
-	for client := range h.clients {
-		if client.streams["predictions"] {
 			select {
 			case client.send <- messageBytes:
 			default:

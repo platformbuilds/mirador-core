@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -179,20 +180,55 @@ func (h *RCAHandler) GetActiveCorrelations(c *gin.Context) {
 
 	// Optional filters
 	service := c.Query("service")
-	limitStr := c.DefaultQuery("limit", "50")
+	pageSizeStr := c.DefaultQuery("limit", "50")
+	startTimeStr := c.Query("start_time")
+	endTimeStr := c.Query("end_time")
 
-	// TODO: Replace with h.rcaClient.ListActiveCorrelations(...)
-	// Minimal response to unblock compilation and UI wiring
-	resp := gin.H{
-		"status":   "success",
-		"tenantId": tenantID,
-		"filters":  gin.H{"service": service, "limit": limitStr},
+	// Parse page size
+	pageSize := int32(50)
+	if ps, err := strconv.Atoi(pageSizeStr); err == nil && ps > 0 && ps <= 1000 {
+		pageSize = int32(ps)
+	}
+
+	// Parse time filters
+	var startTime, endTime *time.Time
+	if startTimeStr != "" {
+		if t, err := time.Parse(time.RFC3339, startTimeStr); err == nil {
+			startTime = &t
+		}
+	}
+	if endTimeStr != "" {
+		if t, err := time.Parse(time.RFC3339, endTimeStr); err == nil {
+			endTime = &t
+		}
+	}
+
+	request := &models.ListCorrelationsRequest{
+		TenantID:  tenantID,
+		Service:   service,
+		StartTime: startTime,
+		EndTime:   endTime,
+		PageSize:  pageSize,
+	}
+
+	response, err := h.rcaClient.ListCorrelations(c.Request.Context(), request)
+	if err != nil {
+		h.logger.Error("Failed to list correlations", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve correlations",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
 		"data": gin.H{
-			"correlations": []interface{}{}, // fill with real items later
+			"correlations":    response.Correlations,
+			"next_page_token": response.NextPageToken,
 		},
 		"timestamp": time.Now().Format(time.RFC3339),
-	}
-	c.JSON(http.StatusOK, resp)
+	})
 }
 
 // GET /api/v1/rca/patterns - List known failure patterns (stubbed; fill with gRPC later)
@@ -210,19 +246,29 @@ func (h *RCAHandler) GetFailurePatterns(c *gin.Context) {
 
 	// Optional filters
 	service := c.Query("service")
-	since := c.Query("since") // e.g., RFC3339 or unix seconds
 
-	// TODO: Replace with h.rcaClient.GetPatterns(...) once proto/engine is ready
-	resp := gin.H{
-		"status":   "success",
-		"tenantId": tenantID,
-		"filters":  gin.H{"service": service, "since": since},
+	request := &models.GetPatternsRequest{
+		TenantID: tenantID,
+		Service:  service,
+	}
+
+	response, err := h.rcaClient.GetPatterns(c.Request.Context(), request)
+	if err != nil {
+		h.logger.Error("Failed to get patterns", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve patterns",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
 		"data": gin.H{
-			"patterns": []interface{}{}, // fill with real patterns later
+			"patterns": response.Patterns,
 		},
 		"timestamp": time.Now().Format(time.RFC3339),
-	}
-	c.JSON(http.StatusOK, resp)
+	})
 }
 
 // POST /api/v1/rca/service-graph - Aggregate service dependency metrics.

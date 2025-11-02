@@ -43,7 +43,6 @@ const (
 	DefaultHealthCheckTimeout  = 5  // seconds
 
 	// AI Engine settings
-	DefaultPredictionInterval   = 300  // 5 minutes
 	DefaultCorrelationThreshold = 0.85 // 85% confidence
 	DefaultAnomalyThreshold     = 0.8  // 80% anomaly score
 	DefaultFractureConfidence   = 0.7  // 70% minimum confidence

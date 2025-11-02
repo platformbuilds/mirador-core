@@ -28,11 +28,6 @@ func GetDefaultConfig() *Config {
 		},
 
 		GRPC: GRPCConfig{
-			PredictEngine: PredictEngineConfig{
-				Endpoint: "localhost:9091",
-				Models:   []string{"isolation_forest", "lstm_trend", "anomaly_detector"},
-				Timeout:  30000,
-			},
 			RCAEngine: RCAEngineConfig{
 				Endpoint:             "localhost:9092",
 				CorrelationThreshold: 0.85,

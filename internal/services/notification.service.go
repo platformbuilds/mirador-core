@@ -61,25 +61,6 @@ func (s *NotificationService) SendNotification(ctx context.Context, notification
 	return nil
 }
 
-// ProcessPredictionNotification handles AI prediction notifications
-func (s *NotificationService) ProcessPredictionNotification(ctx context.Context, prediction *models.SystemFracture) error {
-	notification := &models.Notification{
-		ID:    fmt.Sprintf("pred-%s", prediction.ID),
-		Type:  "prediction",
-		Title: fmt.Sprintf("System Fracture Predicted: %s", prediction.Component),
-		Message: fmt.Sprintf("Component %s has %0.1f%% probability of fracture in %s. Severity: %s",
-			prediction.Component,
-			prediction.Probability*100,
-			prediction.TimeToFracture.String(),
-			prediction.Severity),
-		Component: prediction.Component,
-		Severity:  prediction.Severity,
-		Timestamp: time.Now(),
-	}
-
-	return s.SendNotification(ctx, notification)
-}
-
 // ProcessCorrelationNotification handles RCA correlation notifications
 func (s *NotificationService) ProcessCorrelationNotification(ctx context.Context, correlation *models.CorrelationResult) error {
 	notification := &models.Notification{

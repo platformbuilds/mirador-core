@@ -64,7 +64,6 @@ generate_proto() {
 
 # Generate all protobufs
 generate_proto "internal/grpc/proto/alert/alert.proto" "ALERT-ENGINE"
-generate_proto "internal/grpc/proto/predict/predict.proto" "PREDICT-ENGINE"
 generate_proto "internal/grpc/proto/rca/rca.proto" "RCA-ENGINE"
 
 echo "✅ Protocol Buffer code generation completed!"

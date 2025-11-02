@@ -157,9 +157,6 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("database.traces_sources", []map[string]any{})
 
 	// gRPC
-	v.SetDefault("grpc.predict_engine.endpoint", "localhost:9091")
-	v.SetDefault("grpc.predict_engine.models", []string{"isolation_forest", "lstm_trend", "anomaly_detector"})
-	v.SetDefault("grpc.predict_engine.timeout", 30000)
 	v.SetDefault("grpc.rca_engine.endpoint", "localhost:9092")
 	v.SetDefault("grpc.rca_engine.correlation_threshold", 0.85)
 	v.SetDefault("grpc.rca_engine.timeout", 30000)
@@ -253,9 +250,6 @@ func overrideWithEnvVars(v *viper.Viper) {
 		v.Set("database.victoria_traces.endpoints", splitCSV(vt))
 	}
 
-	if p := os.Getenv("PREDICT_ENGINE_GRPC"); p != "" {
-		v.Set("grpc.predict_engine.endpoint", p)
-	}
 	if r := os.Getenv("RCA_ENGINE_GRPC"); r != "" {
 		v.Set("grpc.rca_engine.endpoint", r)
 	}
@@ -388,9 +382,6 @@ func validateConfig(cfg *Config) error {
 		return fmt.Errorf("at least one Valkey cluster cache node is required")
 	}
 
-	if cfg.GRPC.PredictEngine.Endpoint == "" {
-		return fmt.Errorf("PREDICT-ENGINE gRPC endpoint is required")
-	}
 	if cfg.GRPC.RCAEngine.Endpoint == "" {
 		return fmt.Errorf("RCA-ENGINE gRPC endpoint is required")
 	}

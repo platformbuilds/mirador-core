@@ -41,7 +41,6 @@ components:
           enum: [fatigue, overload, degradation]
         time_to_fracture:
           type: integer
-          description: Seconds until predicted fracture
         severity:
           type: string
           enum: [high, medium, low]
@@ -414,15 +413,12 @@ components:
           type: string
           description: Endpoint URL for the RCA (Root Cause Analysis) gRPC service
           example: "rca-service:50051"
-        predict_endpoint:
           type: string
           description: Endpoint URL for the PREDICT gRPC service
-          example: "predict-service:50052"
         alerts_endpoint:
           type: string
           description: Endpoint URL for the ALERTS gRPC service
           example: "alerts-service:50053"
-      required: [rca_endpoint, predict_endpoint, alerts_endpoint]
 
     GRPCEndpointsUpdateRequest:
       type: object
@@ -431,10 +427,8 @@ components:
           type: string
           description: New endpoint URL for the RCA gRPC service
           example: "rca-service-new:50051"
-        predict_endpoint:
           type: string
           description: New endpoint URL for the PREDICT gRPC service
-          example: "predict-service-new:50052"
         alerts_endpoint:
           type: string
           description: New endpoint URL for the ALERTS gRPC service
@@ -781,9 +775,7 @@ paths:
       responses:
         '200':
           description: Prometheus metrics data
-  /predict/analyze:
     post:
-      tags: [predict]
       summary: Analyze system fractures
       description: Predict possible fracture/fatigue in running services
       requestBody:
@@ -853,16 +845,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CorrelationResult'
-  /predict/health:
     get:
-      tags: [predict]
       summary: Predict Engine health
       responses:
         '200': { description: Healthy }
-  /predict/fractures:
     get:
-      tags: [predict]
-      summary: List predicted fractures
       parameters:
         - in: query
           name: time_range
@@ -872,10 +859,7 @@ paths:
           schema: { type: number }
       responses:
         '200': { description: OK }
-  /predict/models:
     get:
-      tags: [predict]
-      summary: List active prediction models
       responses:
         '200': { description: OK }
 
@@ -2732,16 +2716,13 @@ paths:
                           rca_enabled:
                             type: boolean
                             description: Whether RCA (Root Cause Analysis) features are enabled
-                          predict_enabled:
                             type: boolean
-                            description: Whether prediction engine features are enabled
                           user_settings_enabled:
                             type: boolean
                             description: Whether user settings features are enabled
                           rbac_enabled:
                             type: boolean
                             description: Whether RBAC (Role-Based Access Control) features are enabled
-                        required: [rca_enabled, predict_enabled, user_settings_enabled, rbac_enabled]
                     required: [tenantId, features]
                   timestamp:
                     type: string
@@ -2754,7 +2735,6 @@ paths:
                   tenantId: default
                   features:
                     rca_enabled: true
-                    predict_enabled: true
                     user_settings_enabled: true
                     rbac_enabled: true
                 timestamp: "2025-10-19T13:46:07Z"
@@ -2775,9 +2755,7 @@ paths:
                     rca_enabled:
                       type: boolean
                       description: Enable/disable RCA features
-                    predict_enabled:
                       type: boolean
-                      description: Enable/disable prediction engine features
                     user_settings_enabled:
                       type: boolean
                       description: Enable/disable user settings features
@@ -2790,7 +2768,6 @@ paths:
             example:
               features:
                 rca_enabled: false
-                predict_enabled: true
       responses:
         '200':
           description: Feature flags updated successfully
@@ -2813,13 +2790,11 @@ paths:
                         properties:
                           rca_enabled:
                             type: boolean
-                          predict_enabled:
                             type: boolean
                           user_settings_enabled:
                             type: boolean
                           rbac_enabled:
                             type: boolean
-                        required: [rca_enabled, predict_enabled, user_settings_enabled, rbac_enabled]
                       updated:
                         type: boolean
                         description: Indicates if the flags were updated
@@ -2834,7 +2809,6 @@ paths:
                   tenantId: default
                   features:
                     rca_enabled: false
-                    predict_enabled: true
                     user_settings_enabled: true
                     rbac_enabled: true
                   updated: true
@@ -2883,13 +2857,11 @@ paths:
                         properties:
                           rca_enabled:
                             type: boolean
-                          predict_enabled:
                             type: boolean
                           user_settings_enabled:
                             type: boolean
                           rbac_enabled:
                             type: boolean
-                        required: [rca_enabled, predict_enabled, user_settings_enabled, rbac_enabled]
                       reset:
                         type: boolean
                         description: Indicates if the flags were reset
@@ -2904,7 +2876,6 @@ paths:
                   tenantId: default
                   features:
                     rca_enabled: true
-                    predict_enabled: true
                     user_settings_enabled: true
                     rbac_enabled: true
                   reset: true
@@ -2951,7 +2922,6 @@ paths:
                 status: success
                 data:
                   rca_endpoint: "rca-service:50051"
-                  predict_endpoint: "predict-service:50052"
                   alerts_endpoint: "alerts-service:50053"
                 timestamp: "2025-10-19T14:00:00Z"
         '500':
@@ -2980,7 +2950,6 @@ paths:
               $ref: '#/components/schemas/GRPCEndpointsUpdateRequest'
             example:
               rca_endpoint: "rca-service-new:50051"
-              predict_endpoint: "predict-service-new:50052"
       responses:
         '200':
           description: gRPC endpoints updated successfully
@@ -3014,7 +2983,6 @@ paths:
                   tenantId: default
                   endpoints:
                     rca_endpoint: "rca-service-new:50051"
-                    predict_endpoint: "predict-service-new:50052"
                     alerts_endpoint: "alerts-service:50053"
                   updated: true
                 timestamp: "2025-10-19T14:05:00Z"
@@ -3087,7 +3055,6 @@ paths:
                   tenantId: default
                   endpoints:
                     rca_endpoint: "rca-service:50051"
-                    predict_endpoint: "predict-service:50052"
                     alerts_endpoint: "alerts-service:50053"
                   reset: true
                 timestamp: "2025-10-19T14:10:00Z"
@@ -3177,7 +3144,6 @@ paths:
       summary: Alerts stream (WebSocket)
       responses:
         '101': { description: Switching Protocols }
-  /ws/predictions:
     get:
       tags: [ws]
       summary: Predictions stream (WebSocket)

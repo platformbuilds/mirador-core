@@ -13,16 +13,8 @@ import (
 
 // DynamicGRPCConfig represents the configurable gRPC endpoint settings
 type DynamicGRPCConfig struct {
-	PredictEngine PredictEngineConfig `json:"predict_engine"`
-	RCAEngine     RCAEngineConfig     `json:"rca_engine"`
-	AlertEngine   AlertEngineConfig   `json:"alert_engine"`
-}
-
-// PredictEngineConfig represents the predict engine configuration
-type PredictEngineConfig struct {
-	Endpoint string   `json:"endpoint"`
-	Models   []string `json:"models"`
-	Timeout  int      `json:"timeout"`
+	RCAEngine   RCAEngineConfig   `json:"rca_engine"`
+	AlertEngine AlertEngineConfig `json:"alert_engine"`
 }
 
 // RCAEngineConfig represents the RCA engine configuration
@@ -107,11 +99,6 @@ func (s *DynamicConfigService) ResetGRPCConfig(ctx context.Context, tenantID str
 // convertToDynamicConfig converts static config to dynamic config format
 func (s *DynamicConfigService) convertToDynamicConfig(staticConfig *config.GRPCConfig) *DynamicGRPCConfig {
 	return &DynamicGRPCConfig{
-		PredictEngine: PredictEngineConfig{
-			Endpoint: staticConfig.PredictEngine.Endpoint,
-			Models:   staticConfig.PredictEngine.Models,
-			Timeout:  staticConfig.PredictEngine.Timeout,
-		},
 		RCAEngine: RCAEngineConfig{
 			Endpoint:             staticConfig.RCAEngine.Endpoint,
 			CorrelationThreshold: staticConfig.RCAEngine.CorrelationThreshold,

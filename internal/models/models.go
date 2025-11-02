@@ -2,20 +2,6 @@ package models
 
 import "time"
 
-// SystemFracture represents a predicted system failure
-type SystemFracture struct {
-	ID                  string        `json:"id"`
-	Component           string        `json:"component"`
-	FractureType        string        `json:"fracture_type"` // fatigue, overload, degradation
-	TimeToFracture      time.Duration `json:"time_to_fracture"`
-	Severity            string        `json:"severity"` // high, medium, low
-	Probability         float64       `json:"probability"`
-	Confidence          float64       `json:"confidence"`
-	ContributingFactors []string      `json:"contributing_factors"`
-	Recommendation      string        `json:"recommendation"`
-	PredictedAt         time.Time     `json:"predicted_at"`
-}
-
 // RedAnchor represents anomaly score pattern for RCA
 type RedAnchor struct {
 	Service   string    `json:"service"`
@@ -37,20 +23,6 @@ type CorrelationResult struct {
 	RedAnchors       []*RedAnchor    `json:"red_anchors"`
 	Recommendations  []string        `json:"recommendations"`
 	CreatedAt        time.Time       `json:"created_at"`
-}
-
-// PredictionEvent for VictoriaLogs storage
-type PredictionEvent struct {
-	ID           string                 `json:"id"`
-	Type         string                 `json:"type"`
-	Component    string                 `json:"component"`
-	PredictedAt  time.Time              `json:"predicted_at"`
-	IncidentTime time.Time              `json:"incident_time"`
-	Probability  float64                `json:"probability"`
-	Severity     string                 `json:"severity"`
-	Confidence   float64                `json:"confidence"`
-	TenantID     string                 `json:"tenant_id,omitempty"`
-	Metadata     map[string]interface{} `json:"metadata"`
 }
 
 // CorrelationEvent for VictoriaLogs storage
@@ -89,34 +61,64 @@ type TimelineEvent struct {
 	DataSource   string    `json:"data_source"` // metrics, logs, traces
 }
 
-// Predict model definitions
-type ActiveModelsRequest struct {
-	TenantID string `json:"-"`
+// RCA List Correlations models
+type ListCorrelationsRequest struct {
+	TenantID  string     `json:"tenant_id"`
+	Service   string     `json:"service,omitempty"`
+	StartTime *time.Time `json:"start_time,omitempty"`
+	EndTime   *time.Time `json:"end_time,omitempty"`
+	PageSize  int32      `json:"page_size,omitempty"`
+	PageToken string     `json:"page_token,omitempty"`
 }
 
-type ActiveModelsResponse struct {
-	Models      []PredictionModel `json:"models"`
-	LastUpdated string            `json:"last_updated"`
+type ListCorrelationsResponse struct {
+	Correlations  []CorrelationResult `json:"correlations"`
+	NextPageToken string              `json:"next_page_token,omitempty"`
 }
 
-type PredictionModel struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Version     string                 `json:"version"`
-	Type        string                 `json:"type"`   // fracture, fatigue, anomaly
-	Status      string                 `json:"status"` // active, training, deprecated
-	Accuracy    float64                `json:"accuracy"`
-	CreatedAt   string                 `json:"created_at"`
-	UpdatedAt   string                 `json:"updated_at"`
-	Description string                 `json:"description"`
-	Parameters  map[string]interface{} `json:"parameters"`
-	Metrics     ModelMetrics           `json:"metrics"`
+// RCA Patterns models
+type GetPatternsRequest struct {
+	TenantID string `json:"tenant_id"`
+	Service  string `json:"service,omitempty"`
 }
 
-type ModelMetrics struct {
+type Pattern struct {
+	ID              string           `json:"id"`
+	Name            string           `json:"name"`
+	Description     string           `json:"description"`
+	Services        []string         `json:"services"`
+	AnchorTemplates []AnchorTemplate `json:"anchor_templates"`
+	Prevalence      float64          `json:"prevalence"`
+	LastSeen        time.Time        `json:"last_seen"`
+	Quality         Quality          `json:"quality"`
+}
+
+type AnchorTemplate struct {
+	Service        string  `json:"service"`
+	SignalType     string  `json:"signal_type"`
+	Selector       string  `json:"selector"`
+	TypicalLeadLag float64 `json:"typical_lead_lag"`
+	Threshold      float64 `json:"threshold"`
+}
+
+type Quality struct {
 	Precision float64 `json:"precision"`
 	Recall    float64 `json:"recall"`
-	F1Score   float64 `json:"f1_score"`
-	MAE       float64 `json:"mae"`  // Mean Absolute Error
-	RMSE      float64 `json:"rmse"` // Root Mean Square Error
+}
+
+type GetPatternsResponse struct {
+	Patterns []Pattern `json:"patterns"`
+}
+
+// RCA Feedback models
+type FeedbackRequest struct {
+	TenantID      string `json:"tenant_id"`
+	CorrelationID string `json:"correlation_id"`
+	Correct       bool   `json:"correct"`
+	Notes         string `json:"notes,omitempty"`
+}
+
+type FeedbackResponse struct {
+	CorrelationID string `json:"correlation_id"`
+	Accepted      bool   `json:"accepted"`
 }
