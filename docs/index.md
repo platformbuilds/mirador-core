@@ -75,3 +75,14 @@ MIRADOR-CORE acts as a unified query layer on top of the VictoriaMetrics ecosyst
 * {ref}`genindex`
 * {ref}`modindex`
 * {ref}`search`
+
+```{toctree}
+:hidden:
+:caption: Runbooks
+
+cache-performance-runbook
+correlation-reliability-runbook
+query-performance-runbook
+service-recovery-procedures
+tracing-troubleshooting
+```
