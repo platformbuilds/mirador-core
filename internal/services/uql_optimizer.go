@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/models"
@@ -16,6 +17,12 @@ type UQLOptimizer interface {
 
 	// GetOptimizationStats returns statistics about applied optimizations
 	GetOptimizationStats() OptimizationStats
+
+	// GenerateQueryPlan generates an execution plan for a UQL query
+	GenerateQueryPlan(uqlQuery *models.UQLQuery) (*QueryPlan, error)
+
+	// ExplainQuery returns a human-readable explanation of the query execution plan
+	ExplainQuery(uqlQuery *models.UQLQuery) (string, error)
 }
 
 // OptimizationStats contains statistics about query optimizations
@@ -28,6 +35,40 @@ type OptimizationStats struct {
 	CostBasedOptimizations int           `json:"cost_based_optimizations"`
 	QueryPlanCaching       int           `json:"query_plan_caching"`
 	ExecutionTime          time.Duration `json:"optimization_time"`
+}
+
+// QueryPlan represents an execution plan for a UQL query
+type QueryPlan struct {
+	QueryID       string                 `json:"query_id"`
+	QueryType     models.UQLQueryType    `json:"query_type"`
+	Steps         []QueryPlanStep        `json:"steps"`
+	EstimatedCost float64                `json:"estimated_cost"`
+	EstimatedRows int64                  `json:"estimated_rows"`
+	DataSources   []QueryPlanDataSource  `json:"data_sources"`
+	Optimizations []string               `json:"optimizations_applied"`
+	GeneratedAt   time.Time              `json:"generated_at"`
+}
+
+// QueryPlanStep represents a single step in the query execution plan
+type QueryPlanStep struct {
+	ID          int                    `json:"id"`
+	Operation   string                 `json:"operation"`
+	Description string                 `json:"description"`
+	Cost        float64                `json:"cost"`
+	Rows        int64                  `json:"rows"`
+	DataSource  *QueryPlanDataSource   `json:"data_source,omitempty"`
+	Children    []int                  `json:"children,omitempty"` // IDs of child steps
+	Properties  map[string]interface{} `json:"properties,omitempty"`
+}
+
+// QueryPlanDataSource represents a data source in the query plan
+type QueryPlanDataSource struct {
+	Name     string `json:"name"`
+	Type     string `json:"type"` // logs, metrics, traces, correlations
+	Engine   string `json:"engine"`
+	Filters  []string `json:"filters,omitempty"`
+	Indexes  []string `json:"indexes,omitempty"`
+	EstimatedCardinality int64 `json:"estimated_cardinality"`
 }
 
 // UQLOptimizerImpl implements the UQLOptimizer interface
@@ -83,6 +124,55 @@ func (o *UQLOptimizerImpl) Optimize(uqlQuery *models.UQLQuery) (*models.UQLQuery
 // GetOptimizationStats returns statistics about applied optimizations
 func (o *UQLOptimizerImpl) GetOptimizationStats() OptimizationStats {
 	return o.stats
+}
+
+// GenerateQueryPlan generates an execution plan for a UQL query
+func (o *UQLOptimizerImpl) GenerateQueryPlan(uqlQuery *models.UQLQuery) (*QueryPlan, error) {
+	plan := &QueryPlan{
+		QueryID:     fmt.Sprintf("query_%d", time.Now().UnixNano()),
+		QueryType:   uqlQuery.Type,
+		Steps:       []QueryPlanStep{},
+		DataSources: []QueryPlanDataSource{},
+		Optimizations: []string{},
+		GeneratedAt: time.Now(),
+	}
+
+	// Analyze the query structure and build execution steps
+	switch uqlQuery.Type {
+	case models.UQLQueryTypeSelect:
+		if err := o.buildSelectPlan(uqlQuery, plan); err != nil {
+			return nil, err
+		}
+	case models.UQLQueryTypeAggregation:
+		if err := o.buildAggregationPlan(uqlQuery, plan); err != nil {
+			return nil, err
+		}
+	case models.UQLQueryTypeCorrelation:
+		if err := o.buildCorrelationPlan(uqlQuery, plan); err != nil {
+			return nil, err
+		}
+	case models.UQLQueryTypeJoin:
+		if err := o.buildJoinPlan(uqlQuery, plan); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unsupported query type: %s", uqlQuery.Type)
+	}
+
+	// Estimate costs and cardinalities
+	o.estimatePlanCosts(plan)
+
+	return plan, nil
+}
+
+// ExplainQuery returns a human-readable explanation of the query execution plan
+func (o *UQLOptimizerImpl) ExplainQuery(uqlQuery *models.UQLQuery) (string, error) {
+	plan, err := o.GenerateQueryPlan(uqlQuery)
+	if err != nil {
+		return "", err
+	}
+
+	return o.formatQueryPlan(plan), nil
 }
 
 // applyOptimizationPasses applies all enabled optimization passes
@@ -776,6 +866,510 @@ type MaterializedView struct {
 	Name        string
 	Query       string
 	LastRefresh time.Time
+}
+
+// buildSelectPlan builds execution plan for SELECT queries
+func (o *UQLOptimizerImpl) buildSelectPlan(query *models.UQLQuery, plan *QueryPlan) error {
+	if query.Select == nil {
+		return fmt.Errorf("missing select clause")
+	}
+
+	stepID := 0
+
+	// Add data source
+	dataSource := QueryPlanDataSource{
+		Name:     string(query.Select.DataSource.Engine) + ":" + query.Select.DataSource.Query,
+		Type:     string(query.Select.DataSource.Engine),
+		Engine:   string(query.Select.DataSource.Engine),
+		EstimatedCardinality: 1000, // Default estimate
+	}
+
+	// Add filters if present
+	if query.Select.Where != nil {
+		filters := o.extractFilters(query.Select.Where)
+		dataSource.Filters = filters
+	}
+
+	plan.DataSources = append(plan.DataSources, dataSource)
+
+	// Data source scan step
+	plan.Steps = append(plan.Steps, QueryPlanStep{
+		ID:          stepID,
+		Operation:   "DataSource Scan",
+		Description: fmt.Sprintf("Scan %s data source", dataSource.Type),
+		Cost:        10.0,
+		Rows:        dataSource.EstimatedCardinality,
+		DataSource:  &dataSource,
+		Properties: map[string]interface{}{
+			"engine": dataSource.Engine,
+			"query":  query.Select.DataSource.Query,
+		},
+	})
+	stepID++
+
+	// Filter step if WHERE clause exists
+	if query.Select.Where != nil {
+		plan.Steps = append(plan.Steps, QueryPlanStep{
+			ID:          stepID,
+			Operation:   "Filter",
+			Description: "Apply WHERE conditions",
+			Cost:        5.0,
+			Rows:        int64(float64(dataSource.EstimatedCardinality) * 0.1), // Assume 10% selectivity
+			Properties: map[string]interface{}{
+				"conditions": o.formatCondition(query.Select.Where),
+			},
+		})
+		plan.Steps[stepID-1].Children = []int{stepID}
+		stepID++
+	}
+
+	// Group by step if present
+	if len(query.Select.GroupBy) > 0 {
+		plan.Steps = append(plan.Steps, QueryPlanStep{
+			ID:          stepID,
+			Operation:   "Group By",
+			Description: fmt.Sprintf("Group by %v", query.Select.GroupBy),
+			Cost:        15.0,
+			Rows:        int64(len(query.Select.GroupBy) * 10), // Estimate groups
+			Properties: map[string]interface{}{
+				"group_fields": query.Select.GroupBy,
+			},
+		})
+		plan.Steps[stepID-1].Children = []int{stepID}
+		stepID++
+	}
+
+	// Projection step
+	plan.Steps = append(plan.Steps, QueryPlanStep{
+		ID:          stepID,
+		Operation:   "Projection",
+		Description: "Select and compute final fields",
+		Cost:        2.0,
+		Rows:        plan.Steps[stepID-1].Rows,
+		Properties: map[string]interface{}{
+			"fields": o.formatFields(query.Select.Fields),
+		},
+	})
+	plan.Steps[stepID-1].Children = []int{stepID}
+	stepID++
+
+	// Order by step if present
+	if len(query.OrderBy) > 0 {
+		plan.Steps = append(plan.Steps, QueryPlanStep{
+			ID:          stepID,
+			Operation:   "Sort",
+			Description: "Order results",
+			Cost:        20.0,
+			Rows:        plan.Steps[stepID-1].Rows,
+			Properties: map[string]interface{}{
+				"order_fields": o.formatOrderBy(query.OrderBy),
+			},
+		})
+		plan.Steps[stepID-1].Children = []int{stepID}
+		stepID++
+	}
+
+	// Limit step if present
+	if query.Limit != nil {
+		plan.Steps = append(plan.Steps, QueryPlanStep{
+			ID:          stepID,
+			Operation:   "Limit",
+			Description: fmt.Sprintf("Limit to %d rows", *query.Limit),
+			Cost:        1.0,
+			Rows:        int64(*query.Limit),
+			Properties: map[string]interface{}{
+				"limit": *query.Limit,
+			},
+		})
+		plan.Steps[stepID-1].Children = []int{stepID}
+	}
+
+	return nil
+}
+
+// buildAggregationPlan builds execution plan for aggregation queries
+func (o *UQLOptimizerImpl) buildAggregationPlan(query *models.UQLQuery, plan *QueryPlan) error {
+	if query.Aggregation == nil {
+		return fmt.Errorf("missing aggregation clause")
+	}
+
+	stepID := 0
+
+	// Add data source
+	dataSource := QueryPlanDataSource{
+		Name:     string(query.Aggregation.DataSource.Engine) + ":" + query.Aggregation.DataSource.Query,
+		Type:     string(query.Aggregation.DataSource.Engine),
+		Engine:   string(query.Aggregation.DataSource.Engine),
+		EstimatedCardinality: 10000, // Larger estimate for aggregations
+	}
+
+	// Add filters if present
+	if query.Aggregation.Where != nil {
+		filters := o.extractFilters(query.Aggregation.Where)
+		dataSource.Filters = filters
+	}
+
+	plan.DataSources = append(plan.DataSources, dataSource)
+
+	// Data source scan step
+	plan.Steps = append(plan.Steps, QueryPlanStep{
+		ID:          stepID,
+		Operation:   "DataSource Scan",
+		Description: fmt.Sprintf("Scan %s data source for aggregation", dataSource.Type),
+		Cost:        15.0,
+		Rows:        dataSource.EstimatedCardinality,
+		DataSource:  &dataSource,
+		Properties: map[string]interface{}{
+			"engine": dataSource.Engine,
+			"query":  query.Aggregation.DataSource.Query,
+		},
+	})
+	stepID++
+
+	// Filter step if WHERE clause exists
+	if query.Aggregation.Where != nil {
+		plan.Steps = append(plan.Steps, QueryPlanStep{
+			ID:          stepID,
+			Operation:   "Filter",
+			Description: "Apply WHERE conditions before aggregation",
+			Cost:        5.0,
+			Rows:        int64(float64(dataSource.EstimatedCardinality) * 0.1),
+			Properties: map[string]interface{}{
+				"conditions": o.formatCondition(query.Aggregation.Where),
+			},
+		})
+		plan.Steps[stepID-1].Children = []int{stepID}
+		stepID++
+	}
+
+	// Aggregation step
+	plan.Steps = append(plan.Steps, QueryPlanStep{
+		ID:          stepID,
+		Operation:   "Aggregation",
+		Description: fmt.Sprintf("Compute %s(%s)", query.Aggregation.Function, query.Aggregation.Field),
+		Cost:        25.0,
+		Rows:        1, // Aggregation typically returns single row
+		Properties: map[string]interface{}{
+			"function": string(query.Aggregation.Function),
+			"field":    query.Aggregation.Field,
+			"group_by": query.Aggregation.GroupBy,
+		},
+	})
+	plan.Steps[stepID-1].Children = []int{stepID}
+
+	return nil
+}
+
+// buildCorrelationPlan builds execution plan for correlation queries
+func (o *UQLOptimizerImpl) buildCorrelationPlan(query *models.UQLQuery, plan *QueryPlan) error {
+	if query.Correlation == nil {
+		return fmt.Errorf("missing correlation clause")
+	}
+
+	stepID := 0
+
+	// Add left data source
+	leftDS := QueryPlanDataSource{
+		Name:     o.formatExpression(&query.Correlation.LeftExpression),
+		Type:     string(query.Correlation.LeftExpression.DataSource.Engine),
+		Engine:   string(query.Correlation.LeftExpression.DataSource.Engine),
+		EstimatedCardinality: 1000,
+	}
+	plan.DataSources = append(plan.DataSources, leftDS)
+
+	// Add right data source
+	rightDS := QueryPlanDataSource{
+		Name:     o.formatExpression(&query.Correlation.RightExpression),
+		Type:     string(query.Correlation.RightExpression.DataSource.Engine),
+		Engine:   string(query.Correlation.RightExpression.DataSource.Engine),
+		EstimatedCardinality: 1000,
+	}
+	plan.DataSources = append(plan.DataSources, rightDS)
+
+	// Left data source scan
+	plan.Steps = append(plan.Steps, QueryPlanStep{
+		ID:          stepID,
+		Operation:   "DataSource Scan",
+		Description: fmt.Sprintf("Scan left data source: %s", leftDS.Name),
+		Cost:        10.0,
+		Rows:        leftDS.EstimatedCardinality,
+		DataSource:  &leftDS,
+	})
+	stepID++
+
+	// Right data source scan
+	plan.Steps = append(plan.Steps, QueryPlanStep{
+		ID:          stepID,
+		Operation:   "DataSource Scan",
+		Description: fmt.Sprintf("Scan right data source: %s", rightDS.Name),
+		Cost:        10.0,
+		Rows:        rightDS.EstimatedCardinality,
+		DataSource:  &rightDS,
+	})
+	stepID++
+
+	// Correlation step
+	corrDesc := fmt.Sprintf("Correlate using %s", query.Correlation.Operator)
+	if query.Correlation.TimeWindow != nil {
+		corrDesc += fmt.Sprintf(" within %v", *query.Correlation.TimeWindow)
+	}
+
+	plan.Steps = append(plan.Steps, QueryPlanStep{
+		ID:          stepID,
+		Operation:   "Correlation",
+		Description: corrDesc,
+		Cost:        30.0,
+		Rows:        int64(float64(leftDS.EstimatedCardinality) * 0.05), // Assume 5% correlation rate
+		Properties: map[string]interface{}{
+			"operator":     string(query.Correlation.Operator),
+			"time_window":  query.Correlation.TimeWindow,
+			"left_source":  leftDS.Name,
+			"right_source": rightDS.Name,
+		},
+	})
+	plan.Steps[stepID-2].Children = []int{stepID}
+	plan.Steps[stepID-1].Children = []int{stepID}
+
+	return nil
+}
+
+// buildJoinPlan builds execution plan for join queries
+func (o *UQLOptimizerImpl) buildJoinPlan(query *models.UQLQuery, plan *QueryPlan) error {
+	if query.Join == nil {
+		return fmt.Errorf("missing join clause")
+	}
+
+	stepID := 0
+
+	// Add left data source
+	leftDS := QueryPlanDataSource{
+		Name:     o.formatExpression(&query.Join.Left),
+		Type:     "join_source",
+		Engine:   "join",
+		EstimatedCardinality: 1000,
+	}
+	plan.DataSources = append(plan.DataSources, leftDS)
+
+	// Add right data source
+	rightDS := QueryPlanDataSource{
+		Name:     o.formatExpression(&query.Join.Right),
+		Type:     "join_source",
+		Engine:   "join",
+		EstimatedCardinality: 1000,
+	}
+	plan.DataSources = append(plan.DataSources, rightDS)
+
+	// Left scan
+	plan.Steps = append(plan.Steps, QueryPlanStep{
+		ID:          stepID,
+		Operation:   "DataSource Scan",
+		Description: "Scan left join source",
+		Cost:        10.0,
+		Rows:        leftDS.EstimatedCardinality,
+		DataSource:  &leftDS,
+	})
+	stepID++
+
+	// Right scan
+	plan.Steps = append(plan.Steps, QueryPlanStep{
+		ID:          stepID,
+		Operation:   "DataSource Scan",
+		Description: "Scan right join source",
+		Cost:        10.0,
+		Rows:        rightDS.EstimatedCardinality,
+		DataSource:  &rightDS,
+	})
+	stepID++
+
+	// Join step
+	joinDesc := fmt.Sprintf("%s Join", query.Join.JoinType)
+	plan.Steps = append(plan.Steps, QueryPlanStep{
+		ID:          stepID,
+		Operation:   "Join",
+		Description: joinDesc,
+		Cost:        50.0,
+		Rows:        int64(float64(leftDS.EstimatedCardinality) * float64(rightDS.EstimatedCardinality) * 0.01), // Join cardinality estimate
+		Properties: map[string]interface{}{
+			"join_type": string(query.Join.JoinType),
+			"condition": o.formatCondition(&query.Join.Condition),
+		},
+	})
+	plan.Steps[stepID-2].Children = []int{stepID}
+	plan.Steps[stepID-1].Children = []int{stepID}
+
+	return nil
+}
+
+// estimatePlanCosts estimates costs and cardinalities for the plan
+func (o *UQLOptimizerImpl) estimatePlanCosts(plan *QueryPlan) {
+	totalCost := 0.0
+	totalRows := int64(0)
+
+	for i := range plan.Steps {
+		step := &plan.Steps[i]
+		totalCost += step.Cost
+
+		// Apply optimizations that affect cost
+		if o.enabledOpts["index_selection"] && len(plan.DataSources) > 0 {
+			step.Cost *= 0.7 // Index reduces cost by 30%
+			plan.Optimizations = append(plan.Optimizations, "index_selection")
+		}
+
+		if o.enabledOpts["query_plan_caching"] {
+			step.Cost *= 0.9 // Caching reduces cost by 10%
+			plan.Optimizations = append(plan.Optimizations, "query_plan_caching")
+		}
+
+		totalRows = step.Rows
+	}
+
+	plan.EstimatedCost = totalCost
+	plan.EstimatedRows = totalRows
+}
+
+// formatQueryPlan formats the query plan as a human-readable string
+func (o *UQLOptimizerImpl) formatQueryPlan(plan *QueryPlan) string {
+	var result strings.Builder
+
+	result.WriteString(fmt.Sprintf("Query Plan for %s\n", plan.QueryID))
+	result.WriteString(fmt.Sprintf("Query Type: %s\n", plan.QueryType))
+	result.WriteString(fmt.Sprintf("Estimated Cost: %.2f\n", plan.EstimatedCost))
+	result.WriteString(fmt.Sprintf("Estimated Rows: %d\n", plan.EstimatedRows))
+	result.WriteString(fmt.Sprintf("Generated At: %s\n", plan.GeneratedAt.Format(time.RFC3339)))
+
+	if len(plan.Optimizations) > 0 {
+		result.WriteString(fmt.Sprintf("Optimizations Applied: %v\n", plan.Optimizations))
+	}
+
+	result.WriteString("\nExecution Steps:\n")
+
+	// Sort steps by ID for proper ordering
+	sortedSteps := make([]QueryPlanStep, len(plan.Steps))
+	copy(sortedSteps, plan.Steps)
+	sort.Slice(sortedSteps, func(i, j int) bool {
+		return sortedSteps[i].ID < sortedSteps[j].ID
+	})
+
+	for _, step := range sortedSteps {
+		result.WriteString(o.formatStep(step, 0))
+	}
+
+	if len(plan.DataSources) > 0 {
+		result.WriteString("\nData Sources:\n")
+		for _, ds := range plan.DataSources {
+			result.WriteString(fmt.Sprintf("  - %s (%s)\n", ds.Name, ds.Type))
+			if len(ds.Filters) > 0 {
+				result.WriteString(fmt.Sprintf("    Filters: %v\n", ds.Filters))
+			}
+			if len(ds.Indexes) > 0 {
+				result.WriteString(fmt.Sprintf("    Indexes: %v\n", ds.Indexes))
+			}
+		}
+	}
+
+	return result.String()
+}
+
+// formatStep formats a single execution step with indentation
+func (o *UQLOptimizerImpl) formatStep(step QueryPlanStep, indent int) string {
+	var result strings.Builder
+
+	indentStr := strings.Repeat("  ", indent)
+	result.WriteString(fmt.Sprintf("%s%d. %s\n", indentStr, step.ID, step.Operation))
+	result.WriteString(fmt.Sprintf("%s   Description: %s\n", indentStr, step.Description))
+	result.WriteString(fmt.Sprintf("%s   Cost: %.2f, Rows: %d\n", indentStr, step.Cost, step.Rows))
+
+	if step.DataSource != nil {
+		result.WriteString(fmt.Sprintf("%s   Data Source: %s\n", indentStr, step.DataSource.Name))
+	}
+
+	if len(step.Properties) > 0 {
+		result.WriteString(fmt.Sprintf("%s   Properties: %v\n", indentStr, step.Properties))
+	}
+
+	return result.String()
+}
+
+// Helper methods for formatting
+
+// extractFilters extracts filter conditions from a condition tree
+func (o *UQLOptimizerImpl) extractFilters(condition *models.UQLCondition) []string {
+	var filters []string
+	o.extractFiltersRecursive(condition, &filters)
+	return filters
+}
+
+// extractFiltersRecursive recursively extracts filter conditions
+func (o *UQLOptimizerImpl) extractFiltersRecursive(condition *models.UQLCondition, filters *[]string) {
+	if condition == nil {
+		return
+	}
+
+	if condition.Field != "" {
+		filter := fmt.Sprintf("%s %s %v", condition.Field, condition.Operator, condition.Value)
+		*filters = append(*filters, filter)
+	}
+
+	o.extractFiltersRecursive(condition.And, filters)
+	o.extractFiltersRecursive(condition.Or, filters)
+}
+
+// formatCondition formats a condition tree as a string
+func (o *UQLOptimizerImpl) formatCondition(condition *models.UQLCondition) string {
+	if condition == nil {
+		return ""
+	}
+
+	var result strings.Builder
+	o.formatConditionRecursive(condition, &result)
+	return result.String()
+}
+
+// formatConditionRecursive recursively formats condition tree
+func (o *UQLOptimizerImpl) formatConditionRecursive(condition *models.UQLCondition, result *strings.Builder) {
+	if condition.Field != "" {
+		result.WriteString(fmt.Sprintf("%s %s %v", condition.Field, condition.Operator, condition.Value))
+	}
+
+	if condition.And != nil {
+		result.WriteString(" AND ")
+		o.formatConditionRecursive(condition.And, result)
+	}
+
+	if condition.Or != nil {
+		result.WriteString(" OR ")
+		o.formatConditionRecursive(condition.Or, result)
+	}
+}
+
+// formatFields formats field list as string
+func (o *UQLOptimizerImpl) formatFields(fields []models.UQLField) []string {
+	var result []string
+	for _, field := range fields {
+		if field.Function != "" {
+			result = append(result, fmt.Sprintf("%s(%s)", field.Function, field.Name))
+		} else {
+			result = append(result, field.Name)
+		}
+	}
+	return result
+}
+
+// formatOrderBy formats order by clause as string
+func (o *UQLOptimizerImpl) formatOrderBy(orderBy []models.UQLOrderBy) []string {
+	var result []string
+	for _, ob := range orderBy {
+		result = append(result, fmt.Sprintf("%s %s", ob.Field, ob.Direction))
+	}
+	return result
+}
+
+// formatExpression formats a UQL expression as string
+func (o *UQLOptimizerImpl) formatExpression(expr *models.UQLExpression) string {
+	if expr.DataSource != nil {
+		return fmt.Sprintf("%s:%s", expr.DataSource.Engine, expr.DataSource.Query)
+	}
+	return "unknown"
 }
 
 // deepCopyUQLQuery creates a deep copy of a UQL query
