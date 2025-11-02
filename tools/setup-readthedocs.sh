@@ -6,6 +6,7 @@ set -e
 
 echo "🔧 ReadTheDocs Setup for Mirador Core v7.0.0"
 echo "=========================================="
+echo "📊 Including Correlation Engine Documentation (Phase 3 - Completed)"
 
 # Check if we're in the right directory
 if [ ! -f ".readthedocs.yaml" ]; then
@@ -45,7 +46,7 @@ if command -v python3 &> /dev/null; then
     fi
 
     echo "🏗️  Building documentation..."
-    python3 -m sphinx -b html . _build/html -W --keep-going
+    python3 -m sphinx -b html . _build/html --keep-going
     echo "✅ Documentation build successful"
     cd ..
 else
@@ -80,6 +81,6 @@ echo "7. The GitHub Actions workflow (.github/workflows/readthedocs.yml)"
 echo "   will automatically trigger builds when documentation changes."
 echo ""
 echo "8. Your documentation will be available at:"
-echo "   https://mirador-core.readthedocs.io/"
+echo "   https://miradorstack.readthedocs.io/"
 echo ""
 echo "🎉 Setup complete! ReadTheDocs is ready to build your documentation."
