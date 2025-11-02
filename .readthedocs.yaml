@@ -37,9 +37,9 @@ python:
 # Search configuration
 search:
   ranking:
-    - title
-    - headers
-    - content
+    title: 10
+    headers: 5
+    content: 1
   ignore:
     - "search.html"
     - "genindex.html"
