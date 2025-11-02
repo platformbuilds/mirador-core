@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -97,6 +98,41 @@ func (m *MockValkeyCluster) CacheQueryResult(ctx context.Context, queryHash stri
 func (m *MockValkeyCluster) GetCachedQueryResult(ctx context.Context, queryHash string) ([]byte, error) {
 	args := m.Called(ctx, queryHash)
 	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (m *MockValkeyCluster) AddToPatternIndex(ctx context.Context, patternKey string, cacheKey string) error {
+	args := m.Called(ctx, patternKey, cacheKey)
+	return args.Error(0)
+}
+
+func (m *MockValkeyCluster) GetPatternIndexKeys(ctx context.Context, patternKey string) ([]string, error) {
+	args := m.Called(ctx, patternKey)
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *MockValkeyCluster) DeletePatternIndex(ctx context.Context, patternKey string) error {
+	args := m.Called(ctx, patternKey)
+	return args.Error(0)
+}
+
+func (m *MockValkeyCluster) DeleteMultiple(ctx context.Context, keys []string) error {
+	args := m.Called(ctx, keys)
+	return args.Error(0)
+}
+
+func (m *MockValkeyCluster) GetMemoryInfo(ctx context.Context) (*cache.CacheMemoryInfo, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(*cache.CacheMemoryInfo), args.Error(1)
+}
+
+func (m *MockValkeyCluster) AdjustCacheTTL(ctx context.Context, keyPattern string, newTTL time.Duration) error {
+	args := m.Called(ctx, keyPattern, newTTL)
+	return args.Error(0)
+}
+
+func (m *MockValkeyCluster) CleanupExpiredEntries(ctx context.Context, keyPattern string) (int64, error) {
+	args := m.Called(ctx, keyPattern)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 func TestCorrelationEngineImpl_ExecuteCorrelation(t *testing.T) {

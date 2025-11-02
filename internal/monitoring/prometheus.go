@@ -83,6 +83,7 @@
 package monitoring
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -325,6 +326,49 @@ var (
 		},
 		[]string{"operation", "result"},
 	)
+
+	// Unified Query metrics
+	unifiedQueryOperationsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "mirador_core_unified_query_operations_total",
+			Help: "Total number of unified query operations",
+		},
+		[]string{"query_type", "engine_routed", "cache_hit", "status"},
+	)
+
+	unifiedQueryOperationDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "mirador_core_unified_query_operation_duration_seconds",
+			Help:    "Unified query operation duration in seconds",
+			Buckets: []float64{.1, .25, .5, 1, 2.5, 5, 10, 25, 50, 100},
+		},
+		[]string{"query_type", "engine_routed", "cache_hit"},
+	)
+
+	unifiedQueryCacheOperations = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "mirador_core_unified_query_cache_operations_total",
+			Help: "Total number of unified query cache operations",
+		},
+		[]string{"operation", "result"}, // operation: get, set, invalidate; result: hit, miss, error
+	)
+
+	unifiedQueryCorrelationOperations = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "mirador_core_unified_query_correlation_operations_total",
+			Help: "Total number of correlation operations within unified queries",
+		},
+		[]string{"correlation_type", "engines_count", "status"},
+	)
+
+	unifiedQueryCorrelationDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "mirador_core_unified_query_correlation_duration_seconds",
+			Help:    "Correlation operation duration in seconds",
+			Buckets: []float64{.1, .25, .5, 1, 2.5, 5, 10, 25, 50, 100},
+		},
+		[]string{"correlation_type", "engines_count"},
+	)
 )
 
 // SetupPrometheusMetrics configures Prometheus metrics endpoint for MIRADOR-CORE
@@ -374,6 +418,13 @@ func SetupPrometheusMetrics(router gin.IRoutes) {
 	_ = prometheus.Register(bleveClusterLeadershipChanges)
 	_ = prometheus.Register(bleveRebalancingOperations)
 	_ = prometheus.Register(bleveCacheOperations)
+
+	// Register Unified Query metrics
+	_ = prometheus.Register(unifiedQueryOperationsTotal)
+	_ = prometheus.Register(unifiedQueryOperationDuration)
+	_ = prometheus.Register(unifiedQueryCacheOperations)
+	_ = prometheus.Register(unifiedQueryCorrelationOperations)
+	_ = prometheus.Register(unifiedQueryCorrelationDuration)
 
 	// Expose metrics endpoint using default registry
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
@@ -542,6 +593,45 @@ func RecordBleveRebalancingOperation(shardCount int, success bool) {
 // RecordBleveCacheOperation records cache operations
 func RecordBleveCacheOperation(operation, result string) {
 	bleveCacheOperations.WithLabelValues(operation, result).Inc()
+}
+
+// RecordUnifiedQueryOperation records unified query operation metrics
+func RecordUnifiedQueryOperation(queryType, engineRouted string, cacheHit bool, duration time.Duration, success bool) {
+	status := "success"
+	if !success {
+		status = "error"
+		errorsTotal.WithLabelValues("unified_query", queryType).Inc()
+	}
+
+	cacheHitStr := "false"
+	if cacheHit {
+		cacheHitStr = "true"
+	}
+
+	unifiedQueryOperationsTotal.WithLabelValues(queryType, engineRouted, cacheHitStr, status).Inc()
+	unifiedQueryOperationDuration.WithLabelValues(queryType, engineRouted, cacheHitStr).Observe(duration.Seconds())
+}
+
+// RecordUnifiedQueryCacheOperation records unified query cache operation metrics
+func RecordUnifiedQueryCacheOperation(operation, result string) {
+	unifiedQueryCacheOperations.WithLabelValues(operation, result).Inc()
+	if result == "error" {
+		errorsTotal.WithLabelValues("unified_query_cache", operation).Inc()
+	}
+}
+
+// RecordUnifiedQueryCorrelationOperation records correlation operation metrics
+func RecordUnifiedQueryCorrelationOperation(correlationType string, enginesCount int, duration time.Duration, success bool) {
+	status := "success"
+	if !success {
+		status = "error"
+		errorsTotal.WithLabelValues("correlation", correlationType).Inc()
+	}
+
+	enginesCountStr := fmt.Sprintf("%d", enginesCount)
+
+	unifiedQueryCorrelationOperations.WithLabelValues(correlationType, enginesCountStr, status).Inc()
+	unifiedQueryCorrelationDuration.WithLabelValues(correlationType, enginesCountStr).Observe(duration.Seconds())
 }
 
 // normalizeEndpoint normalizes API endpoints for consistent metrics

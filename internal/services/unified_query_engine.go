@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/monitoring"
+	"github.com/platformbuilds/mirador-core/internal/utils"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -20,6 +22,9 @@ type UnifiedQueryEngine interface {
 
 	// ExecuteCorrelationQuery executes a correlation query across multiple engines
 	ExecuteCorrelationQuery(ctx context.Context, query *models.UnifiedQuery) (*models.UnifiedResult, error)
+
+	// ExecuteUQLQuery executes a UQL query by parsing, optimizing, translating, and executing it
+	ExecuteUQLQuery(ctx context.Context, query *models.UnifiedQuery) (*models.UnifiedResult, error)
 
 	// GetQueryMetadata returns metadata about supported query types and capabilities
 	GetQueryMetadata(ctx context.Context) (*models.QueryMetadata, error)
@@ -89,6 +94,11 @@ func (r *QueryRouter) analyzeQueryPattern(query string) (models.QueryType, strin
 	}
 
 	query = strings.ToLower(strings.TrimSpace(query))
+
+	// Check for UQL SELECT queries
+	if r.isUQLQuery(query) {
+		return models.QueryTypeMetrics, "detected UQL query syntax" // Default to metrics, will be handled by ExecuteUQLQuery
+	}
 
 	// Check for metrics patterns
 	if r.isMetricsQuery(query) {
@@ -176,6 +186,24 @@ func (r *QueryRouter) isSearchQuery(query string) bool {
 	return false
 }
 
+// isUQLQuery checks if query contains UQL syntax
+func (r *QueryRouter) isUQLQuery(query string) bool {
+	// Check for SELECT statements
+	if strings.HasPrefix(strings.ToUpper(strings.TrimSpace(query)), "SELECT") {
+		return true
+	}
+
+	// Check for other UQL keywords
+	uqlKeywords := []string{"FROM", "WHERE", "GROUP BY", "ORDER BY", "LIMIT", "HAVING"}
+	for _, keyword := range uqlKeywords {
+		if strings.Contains(strings.ToUpper(query), keyword) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // UnifiedQueryEngineImpl implements the UnifiedQueryEngine interface
 type UnifiedQueryEngineImpl struct {
 	metricsService    *VictoriaMetricsService
@@ -185,6 +213,10 @@ type UnifiedQueryEngineImpl struct {
 	cache             cache.ValkeyCluster
 	logger            logger.Logger
 	queryRouter       *QueryRouter
+	queryPool         *utils.QueryPoolManager
+	uqlParser         *models.UQLParser
+	uqlTranslator     *UQLTranslatorRegistry
+	uqlOptimizer      UQLOptimizer
 }
 
 // NewUnifiedQueryEngine creates a new UnifiedQueryEngine instance
@@ -204,6 +236,10 @@ func NewUnifiedQueryEngine(
 		cache:             cache,
 		logger:            logger,
 		queryRouter:       NewQueryRouter(logger),
+		queryPool:         utils.NewQueryPoolManager(),
+		uqlParser:         models.NewUQLParser(),
+		uqlTranslator:     NewUQLTranslatorRegistry(logger),
+		uqlOptimizer:      NewUQLOptimizer(logger),
 	}
 }
 
@@ -249,6 +285,99 @@ func (u *UnifiedQueryEngineImpl) ExecuteCorrelationQuery(ctx context.Context, qu
 			DataSources:  []string{"correlation-engine"},
 		},
 	}, nil
+}
+
+// ExecuteUQLQuery executes a UQL query by parsing, optimizing, translating, and executing it
+func (u *UnifiedQueryEngineImpl) ExecuteUQLQuery(ctx context.Context, query *models.UnifiedQuery) (*models.UnifiedResult, error) {
+	start := time.Now()
+
+	// Parse the UQL query
+	uqlQuery, err := u.uqlParser.Parse(query.Query)
+	if err != nil {
+		return nil, fmt.Errorf("UQL parsing failed: %w", err)
+	}
+
+	u.logger.Info("UQL query parsed",
+		"query_id", query.ID,
+		"query_type", uqlQuery.Type,
+		"original_query", query.Query)
+
+	// Apply optimizations
+	optimizedQuery, err := u.uqlOptimizer.Optimize(uqlQuery)
+	if err != nil {
+		return nil, fmt.Errorf("UQL optimization failed: %w", err)
+	}
+
+	u.logger.Info("UQL query optimized",
+		"query_id", query.ID,
+		"optimizations_applied", "multiple passes")
+
+	// Translate the UQL query to engine-specific format
+	translatedQuery, err := u.uqlTranslator.TranslateQuery(optimizedQuery)
+	if err != nil {
+		return nil, fmt.Errorf("UQL translation failed: %w", err)
+	}
+
+	u.logger.Info("UQL query translated",
+		"from_type", optimizedQuery.Type,
+		"to_engine", translatedQuery.Engine,
+		"translated_query", translatedQuery.Query)
+
+	// Convert translated query to unified query format
+	unifiedQuery := &models.UnifiedQuery{
+		ID:         fmt.Sprintf("uql_%d", time.Now().UnixNano()),
+		Type:       u.mapUQLEngineToQueryType(translatedQuery.Engine),
+		Query:      translatedQuery.Query,
+		Parameters: translatedQuery.Parameters,
+	}
+
+	// Set time parameters
+	if translatedQuery.StartTime != nil {
+		unifiedQuery.StartTime = translatedQuery.StartTime
+	}
+	if translatedQuery.EndTime != nil {
+		unifiedQuery.EndTime = translatedQuery.EndTime
+	}
+
+	// Set time window if specified
+	if translatedQuery.TimeWindow != nil {
+		unifiedQuery.CorrelationOptions = &models.CorrelationOptions{
+			TimeWindow: *translatedQuery.TimeWindow,
+		}
+	}
+
+	// Execute using the existing unified query execution logic
+	result, err := u.ExecuteQuery(ctx, unifiedQuery)
+	if err != nil {
+		return nil, fmt.Errorf("UQL execution failed: %w", err)
+	}
+
+	// Add UQL-specific metadata
+	result.Metadata.DataSources = append(result.Metadata.DataSources, "uql-engine")
+	result.ExecutionTime = time.Since(start).Milliseconds()
+
+	u.logger.Info("UQL query executed successfully",
+		"query_id", result.QueryID,
+		"execution_time_ms", result.ExecutionTime)
+
+	return result, nil
+}
+
+// mapUQLEngineToQueryType maps UQL engine types to unified query types
+func (u *UnifiedQueryEngineImpl) mapUQLEngineToQueryType(engine models.UQLEngine) models.QueryType {
+	switch engine {
+	case models.EngineMetrics:
+		return models.QueryTypeMetrics
+	case models.EngineLogs:
+		return models.QueryTypeLogs
+	case models.EngineTraces:
+		return models.QueryTypeTraces
+	case models.EngineCorrelation:
+		return models.QueryTypeCorrelation
+	default:
+		u.logger.Warn("Unknown UQL engine type, defaulting to logs", "engine", engine)
+		return models.QueryTypeLogs
+	}
 }
 
 // GetQueryMetadata returns metadata about supported query types and capabilities
@@ -330,15 +459,101 @@ func (u *UnifiedQueryEngineImpl) HealthCheck(ctx context.Context) (*models.Engin
 
 // InvalidateCache invalidates cached results for a query pattern
 func (u *UnifiedQueryEngineImpl) InvalidateCache(ctx context.Context, queryPattern string) error {
-	// For now, just log the operation
-	// TODO: Implement pattern-based cache invalidation
-	u.logger.Info("Cache invalidation requested", "pattern", queryPattern)
+	u.logger.Info("Invalidating cache for pattern", "pattern", queryPattern)
+
+	// Generate pattern-based cache keys to invalidate
+	patterns := u.generateCacheInvalidationPatterns(queryPattern)
+
+	// Use a background goroutine to avoid blocking the caller
+	go func() {
+		backgroundCtx := context.Background()
+		for _, pattern := range patterns {
+			if err := u.invalidateCachePattern(backgroundCtx, pattern); err != nil {
+				u.logger.Warn("Failed to invalidate cache pattern", "pattern", pattern, "error", err)
+			}
+		}
+	}()
+
+	return nil
+}
+
+// generateCacheInvalidationPatterns generates cache key patterns for invalidation
+func (u *UnifiedQueryEngineImpl) generateCacheInvalidationPatterns(queryPattern string) []string {
+	patterns := []string{
+		fmt.Sprintf("query_cache:*%s*", queryPattern), // Contains pattern
+	}
+
+	// Add engine-specific patterns
+	engines := []models.QueryType{models.QueryTypeLogs, models.QueryTypeMetrics, models.QueryTypeTraces}
+	for _, engine := range engines {
+		patterns = append(patterns, fmt.Sprintf("query_cache:%s:*%s*", engine, queryPattern))
+	}
+
+	// Add correlation patterns if the pattern contains correlation keywords
+	if strings.Contains(strings.ToLower(queryPattern), "and") ||
+		strings.Contains(strings.ToLower(queryPattern), "within") ||
+		strings.Contains(strings.ToLower(queryPattern), "correlation") {
+		patterns = append(patterns, "query_cache:correlation:*")
+	}
+
+	return patterns
+}
+
+// invalidateCachePattern invalidates all cache keys matching a pattern
+func (u *UnifiedQueryEngineImpl) invalidateCachePattern(ctx context.Context, pattern string) error {
+	u.logger.Debug("Invalidating cache pattern using indexes", "pattern", pattern)
+
+	// Use pattern indexes for efficient invalidation instead of SCAN
+	// This approach maintains sets of cache keys organized by patterns
+
+	patternSetKey := fmt.Sprintf("pattern_index:%s", pattern)
+
+	// Get all cache keys in this pattern set
+	cacheKeys, err := u.cache.GetPatternIndexKeys(ctx, patternSetKey)
+	if err != nil {
+		u.logger.Warn("Failed to get pattern index keys", "pattern", pattern, "error", err)
+		return err
+	}
+
+	if len(cacheKeys) == 0 {
+		u.logger.Debug("No cache keys found for pattern", "pattern", pattern)
+		return nil
+	}
+
+	// Delete all cache keys in batches to avoid blocking
+	batchSize := 100
+	for i := 0; i < len(cacheKeys); i += batchSize {
+		end := i + batchSize
+		if end > len(cacheKeys) {
+			end = len(cacheKeys)
+		}
+
+		batch := cacheKeys[i:end]
+		if err := u.cache.DeleteMultiple(ctx, batch); err != nil {
+			u.logger.Warn("Failed to delete cache key batch", "pattern", pattern, "batch_size", len(batch), "error", err)
+			// Continue with other batches even if one fails
+		}
+	}
+
+	// Clean up the pattern index set
+	if err := u.cache.DeletePatternIndex(ctx, patternSetKey); err != nil {
+		u.logger.Warn("Failed to clean up pattern index", "pattern", patternSetKey, "error", err)
+		// Don't return error for cleanup failure
+	}
+
+	u.logger.Info("Invalidated cache pattern", "pattern", pattern, "keys_deleted", len(cacheKeys))
 	return nil
 }
 
 // ExecuteQuery executes a unified query across the appropriate engines
 func (u *UnifiedQueryEngineImpl) ExecuteQuery(ctx context.Context, query *models.UnifiedQuery) (*models.UnifiedResult, error) {
 	start := time.Now()
+
+	// Check if query can be parallelized across multiple engines
+	if u.canParallelizeQuery(query) {
+		u.logger.Info("Executing query in parallel across multiple engines", "query_id", query.ID)
+		return u.executeParallelQuery(ctx, query, start)
+	}
 
 	// Use intelligent query router to determine optimal engine
 	routedType, routingReason, err := u.queryRouter.RouteQuery(query)
@@ -360,12 +575,27 @@ func (u *UnifiedQueryEngineImpl) ExecuteQuery(ctx context.Context, query *models
 	cacheKey := u.generateCacheKey(query)
 
 	// Check cache first if enabled
+	var cacheHit bool
 	if query.CacheOptions != nil && query.CacheOptions.Enabled && !query.CacheOptions.BypassCache {
 		if cachedResult, err := u.getCachedResult(ctx, cacheKey); err == nil && cachedResult != nil {
 			u.logger.Info("Returning cached result", "query_id", query.ID, "cache_key", cacheKey)
 			cachedResult.Cached = true
+			cacheHit = true
+
+			// Record cache hit metrics
+			monitoring.RecordUnifiedQueryCacheOperation("get", "hit")
+			monitoring.RecordUnifiedQueryOperation(string(query.Type), string(routedType), true, time.Since(start), true)
+
 			return cachedResult, nil
 		}
+		// Record cache miss
+		monitoring.RecordUnifiedQueryCacheOperation("get", "miss")
+	}
+
+	// Check if this is a UQL query that needs special processing
+	if u.queryRouter.isUQLQuery(query.Query) {
+		u.logger.Info("Detected UQL query, using ExecuteUQLQuery", "query_id", query.ID)
+		return u.ExecuteUQLQuery(ctx, query)
 	}
 
 	// Route to appropriate engine based on routed query type
@@ -386,9 +616,15 @@ func (u *UnifiedQueryEngineImpl) ExecuteQuery(ctx context.Context, query *models
 	}
 
 	if routingErr != nil {
+		// Record failed operation metrics
+		monitoring.RecordUnifiedQueryOperation(string(query.Type), string(routedType), cacheHit, time.Since(start), false)
 		return nil, routingErr
 	}
 
+	// Use pooled result object for better performance
+	if result == nil {
+		result = u.queryPool.GetUnifiedResult()
+	}
 	result.ExecutionTime = time.Since(start).Milliseconds()
 	result.Cached = false
 
@@ -400,8 +636,14 @@ func (u *UnifiedQueryEngineImpl) ExecuteQuery(ctx context.Context, query *models
 		}
 		if err := u.cacheResult(ctx, cacheKey, result, ttl); err != nil {
 			u.logger.Warn("Failed to cache query result", "error", err, "query_id", query.ID)
+			monitoring.RecordUnifiedQueryCacheOperation("set", "error")
+		} else {
+			monitoring.RecordUnifiedQueryCacheOperation("set", "success")
 		}
 	}
+
+	// Record successful operation metrics
+	monitoring.RecordUnifiedQueryOperation(string(query.Type), string(routedType), cacheHit, time.Since(start), true)
 
 	return result, nil
 }
@@ -558,6 +800,207 @@ func (u *UnifiedQueryEngineImpl) executeTracesQuery(ctx context.Context, query *
 	}, nil
 }
 
+// canParallelizeQuery determines if a query can be executed in parallel across multiple engines
+func (u *UnifiedQueryEngineImpl) canParallelizeQuery(query *models.UnifiedQuery) bool {
+	queryStr := strings.ToLower(query.Query)
+
+	// Check for explicit parallel keywords
+	if strings.Contains(queryStr, "parallel") || strings.Contains(queryStr, "concurrent") {
+		return true
+	}
+
+	// Check for correlation patterns that can be parallelized
+	if strings.Contains(queryStr, " and ") || strings.Contains(queryStr, " within ") {
+		return true
+	}
+
+	// Check for multi-engine patterns (contains patterns from multiple engines)
+	enginePatterns := map[string][]string{
+		"metrics": {"rate(", "increase(", "cpu", "memory", "latency", "requests"},
+		"logs":    {"error", "warn", "info", "debug", "exception", "stacktrace"},
+		"traces":  {"service:", "operation:", "span", "trace", "duration:"},
+	}
+
+	enginesFound := 0
+	for _, patterns := range enginePatterns {
+		for _, pattern := range patterns {
+			if strings.Contains(queryStr, pattern) {
+				enginesFound++
+				break // Count each engine only once
+			}
+		}
+	}
+
+	// If query spans multiple engines, parallelize
+	return enginesFound >= 2
+}
+
+// executeParallelQuery executes a query across multiple engines in parallel
+func (u *UnifiedQueryEngineImpl) executeParallelQuery(ctx context.Context, query *models.UnifiedQuery, start time.Time) (*models.UnifiedResult, error) {
+	// Parse the query into sub-queries for different engines
+	subQueries := u.parseSubQueries(query)
+
+	if len(subQueries) == 0 {
+		// Fallback to single engine execution
+		query.Type = models.QueryTypeLogs // Default fallback
+		return u.ExecuteQuery(ctx, query)
+	}
+
+	u.logger.Info("Executing parallel sub-queries",
+		"query_id", query.ID,
+		"sub_queries", len(subQueries))
+
+	// Execute sub-queries in parallel
+	type subQueryResult struct {
+		engine models.QueryType
+		result *models.UnifiedResult
+		err    error
+	}
+
+	resultsChan := make(chan subQueryResult, len(subQueries))
+
+	// Launch goroutines for each sub-query
+	for _, subQuery := range subQueries {
+		go func(sq *models.UnifiedQuery) {
+			result, err := u.ExecuteQuery(ctx, sq)
+			resultsChan <- subQueryResult{
+				engine: sq.Type,
+				result: result,
+				err:    err,
+			}
+		}(subQuery)
+	}
+
+	// Collect results
+	engineResults := make(map[models.QueryType]*models.EngineResult)
+	var allData []interface{}
+	var allCorrelations []models.Correlation
+	totalRecords := 0
+	var firstError error
+
+	for i := 0; i < len(subQueries); i++ {
+		subResult := <-resultsChan
+
+		if subResult.err != nil {
+			u.logger.Warn("Sub-query failed",
+				"engine", subResult.engine,
+				"error", subResult.err)
+			if firstError == nil {
+				firstError = subResult.err
+			}
+			continue
+		}
+
+		// Merge results
+		if subResult.result.Metadata != nil {
+			for engine, engineResult := range subResult.result.Metadata.EngineResults {
+				engineResults[engine] = engineResult
+				totalRecords += engineResult.RecordCount
+			}
+		}
+
+		// Collect data based on type
+		switch subResult.result.Type {
+		case models.QueryTypeMetrics:
+			if subResult.result.Data != nil {
+				allData = append(allData, subResult.result.Data)
+			}
+		case models.QueryTypeLogs:
+			if logs, ok := subResult.result.Data.([]map[string]any); ok {
+				for _, log := range logs {
+					allData = append(allData, log)
+				}
+			}
+		case models.QueryTypeTraces:
+			if traces, ok := subResult.result.Data.([]map[string]interface{}); ok {
+				for _, trace := range traces {
+					allData = append(allData, trace)
+				}
+			}
+		case models.QueryTypeCorrelation:
+			if subResult.result.Correlations != nil {
+				allCorrelations = append(allCorrelations, subResult.result.Correlations.Correlations...)
+			}
+		}
+	}
+
+	// If all sub-queries failed, return the first error
+	if len(engineResults) == 0 && firstError != nil {
+		monitoring.RecordUnifiedQueryOperation("parallel", "multiple", false, time.Since(start), false)
+		return nil, fmt.Errorf("all parallel sub-queries failed: %w", firstError)
+	}
+
+	// Determine primary result type
+	resultType := models.QueryTypeLogs
+	if len(subQueries) > 0 {
+		resultType = subQueries[0].Type
+	}
+
+	// Create merged result
+	result := &models.UnifiedResult{
+		QueryID:       query.ID,
+		Type:          resultType,
+		Status:        "success",
+		Data:          allData,
+		Correlations:  &models.UnifiedCorrelationResult{Correlations: allCorrelations},
+		ExecutionTime: time.Since(start).Milliseconds(),
+		Cached:        false,
+		Metadata: &models.ResultMetadata{
+			EngineResults: engineResults,
+			TotalRecords:  totalRecords,
+			DataSources:   u.getDataSourcesFromEngines(engineResults),
+		},
+	}
+
+	// Record successful parallel operation metrics
+	monitoring.RecordUnifiedQueryOperation("parallel", "multiple", false, time.Since(start), true)
+
+	u.logger.Info("Parallel query execution completed",
+		"query_id", query.ID,
+		"engines_used", len(engineResults),
+		"total_records", totalRecords,
+		"execution_time_ms", time.Since(start).Milliseconds())
+
+	return result, nil
+}
+
+// parseSubQueries parses a complex query into sub-queries for different engines
+func (u *UnifiedQueryEngineImpl) parseSubQueries(query *models.UnifiedQuery) []*models.UnifiedQuery {
+	subQueries := []*models.UnifiedQuery{}
+
+	// Simple implementation: split on "AND" for correlation-like queries
+	queryParts := strings.Split(query.Query, " AND ")
+
+	if len(queryParts) <= 1 {
+		// Try other patterns or fallback to single query
+		return subQueries
+	}
+
+	for i, part := range queryParts {
+		part = strings.TrimSpace(part)
+
+		// Determine engine type for this part
+		subQuery := &models.UnifiedQuery{
+			ID:           fmt.Sprintf("%s_sub_%d", query.ID, i),
+			Query:        part,
+			TenantID:     query.TenantID,
+			StartTime:    query.StartTime,
+			EndTime:      query.EndTime,
+			Timeout:      query.Timeout,
+			Parameters:   query.Parameters,
+			CacheOptions: query.CacheOptions,
+		}
+
+		// Route each part to appropriate engine
+		if routedType, _, err := u.queryRouter.RouteQuery(subQuery); err == nil {
+			subQuery.Type = routedType
+			subQueries = append(subQueries, subQuery)
+		}
+	}
+
+	return subQueries
+}
+
 // parseCorrelationQuery parses a correlation query from a unified query
 func (u *UnifiedQueryEngineImpl) parseCorrelationQuery(query *models.UnifiedQuery) (*models.CorrelationQuery, error) {
 	parser := models.NewCorrelationQueryParser()
@@ -570,6 +1013,17 @@ func (u *UnifiedQueryEngineImpl) parseCorrelationQuery(query *models.UnifiedQuer
 	corrQuery.ID = query.ID
 
 	return corrQuery, nil
+}
+
+// getDataSourcesFromEngines extracts data source names from engine results
+func (u *UnifiedQueryEngineImpl) getDataSourcesFromEngines(engineResults map[models.QueryType]*models.EngineResult) []string {
+	dataSources := []string{}
+	for _, result := range engineResults {
+		if result.DataSource != "" {
+			dataSources = append(dataSources, result.DataSource)
+		}
+	}
+	return dataSources
 }
 
 // generateCacheKey generates a cache key for the query
@@ -616,5 +1070,51 @@ func (u *UnifiedQueryEngineImpl) cacheResult(ctx context.Context, cacheKey strin
 		return fmt.Errorf("failed to marshal result for caching: %w", err)
 	}
 
-	return u.cache.CacheQueryResult(ctx, cacheKey, data, ttl)
+	// Cache the result
+	if err := u.cache.CacheQueryResult(ctx, cacheKey, data, ttl); err != nil {
+		return err
+	}
+
+	// Maintain pattern indexes for efficient invalidation
+	// Add this cache key to relevant pattern sets
+	if err := u.maintainPatternIndexes(ctx, cacheKey, result); err != nil {
+		u.logger.Warn("Failed to maintain pattern indexes", "cache_key", cacheKey, "error", err)
+	}
+
+	return nil
+}
+
+// maintainPatternIndexes maintains pattern-based indexes for efficient cache invalidation
+func (u *UnifiedQueryEngineImpl) maintainPatternIndexes(ctx context.Context, cacheKey string, result *models.UnifiedResult) error {
+	// Generate patterns that this cache key should be indexed under
+	patterns := u.generateCachePatternsForResult(result)
+
+	// Add cache key to each pattern index
+	for _, pattern := range patterns {
+		patternSetKey := fmt.Sprintf("pattern_index:%s", pattern)
+		if err := u.cache.AddToPatternIndex(ctx, patternSetKey, cacheKey); err != nil {
+			u.logger.Warn("Failed to add cache key to pattern index", "pattern", pattern, "cache_key", cacheKey, "error", err)
+			// Continue with other patterns even if one fails
+		}
+	}
+
+	return nil
+}
+
+// generateCachePatternsForResult generates cache patterns for a query result
+func (u *UnifiedQueryEngineImpl) generateCachePatternsForResult(result *models.UnifiedResult) []string {
+	patterns := []string{
+		"query_cache:*", // All query cache keys
+		fmt.Sprintf("query_cache:%s:*", result.Type), // Engine-specific patterns
+	}
+
+	// Add correlation patterns if this is a correlation result
+	if result.Type == models.QueryTypeCorrelation || result.Correlations != nil {
+		patterns = append(patterns, "query_cache:correlation:*")
+	}
+
+	// Add tenant-specific patterns if tenant info is available
+	// Note: We don't have tenant info in the result, but this could be extended
+
+	return patterns
 }

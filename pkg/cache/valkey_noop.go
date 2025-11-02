@@ -118,3 +118,90 @@ func (n *noopValkeyCache) ReleaseLock(ctx context.Context, key string) error {
 func (n *noopValkeyCache) HealthCheck(ctx context.Context) error {
 	return fmt.Errorf("valkey noop cache in use (external cache not connected)")
 }
+
+// GetMemoryInfo returns empty memory info for noop cache
+func (n *noopValkeyCache) GetMemoryInfo(ctx context.Context) (*CacheMemoryInfo, error) {
+	return &CacheMemoryInfo{
+		UsedMemory:          0,
+		PeakMemory:          0,
+		MemoryFragmentation: 1.0,
+		TotalKeys:           int64(len(n.m)),
+		ExpiredKeys:         0,
+		EvictedKeys:         0,
+		HitRate:             0.0,
+		MissRate:            0.0,
+	}, nil
+}
+
+// AdjustCacheTTL is a no-op for noop cache
+func (n *noopValkeyCache) AdjustCacheTTL(ctx context.Context, keyPattern string, newTTL time.Duration) error {
+	// No-op for in-memory cache
+	return nil
+}
+
+// CleanupExpiredEntries is a no-op for noop cache
+func (n *noopValkeyCache) CleanupExpiredEntries(ctx context.Context, keyPattern string) (int64, error) {
+	// No-op for in-memory cache (no TTL support)
+	return 0, nil
+}
+
+/* --------------------------- pattern-based cache invalidation --------------------------- */
+
+func (n *noopValkeyCache) AddToPatternIndex(ctx context.Context, patternKey string, cacheKey string) error {
+	// For noop cache, we simulate sets using a simple key format
+	setKey := fmt.Sprintf("set:%s", patternKey)
+
+	// Get existing set members
+	existingData, _ := n.Get(ctx, setKey)
+	var members []string
+	if len(existingData) > 0 {
+		if err := json.Unmarshal(existingData, &members); err != nil {
+			members = []string{}
+		}
+	}
+
+	// Add new member if not already present
+	for _, member := range members {
+		if member == cacheKey {
+			return nil // Already in set
+		}
+	}
+
+	members = append(members, cacheKey)
+	data, err := json.Marshal(members)
+	if err != nil {
+		return err
+	}
+
+	return n.Set(ctx, setKey, data, 0)
+}
+
+func (n *noopValkeyCache) GetPatternIndexKeys(ctx context.Context, patternKey string) ([]string, error) {
+	setKey := fmt.Sprintf("set:%s", patternKey)
+	data, err := n.Get(ctx, setKey)
+	if err != nil {
+		return []string{}, nil // Empty set
+	}
+
+	var members []string
+	if err := json.Unmarshal(data, &members); err != nil {
+		return []string{}, nil
+	}
+
+	return members, nil
+}
+
+func (n *noopValkeyCache) DeletePatternIndex(ctx context.Context, patternKey string) error {
+	setKey := fmt.Sprintf("set:%s", patternKey)
+	return n.Delete(ctx, setKey)
+}
+
+func (n *noopValkeyCache) DeleteMultiple(ctx context.Context, keys []string) error {
+	for _, key := range keys {
+		if err := n.Delete(ctx, key); err != nil {
+			// Continue deleting other keys even if one fails
+			n.logger.Warn("Failed to delete key in noop cache", "key", key, "error", err)
+		}
+	}
+	return nil
+}

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -85,6 +86,8 @@ func (ce *CorrelationEngineImpl) ExecuteCorrelation(ctx context.Context, query *
 	// Execute expressions in parallel
 	results, err := ce.executeExpressionsParallel(ctx, query)
 	if err != nil {
+		// Record failed correlation metrics
+		monitoring.RecordUnifiedQueryCorrelationOperation("correlation", len(query.Expressions), time.Since(start), false)
 		return nil, fmt.Errorf("failed to execute expressions: %w", err)
 	}
 
@@ -106,6 +109,13 @@ func (ce *CorrelationEngineImpl) ExecuteCorrelation(ctx context.Context, query *
 		"query_id", query.ID,
 		"correlations_found", len(correlations),
 		"execution_time_ms", time.Since(start).Milliseconds())
+
+	// Record successful correlation metrics
+	correlationType := "time_window"
+	if query.TimeWindow == nil {
+		correlationType = "label_based"
+	}
+	monitoring.RecordUnifiedQueryCorrelationOperation(correlationType, len(query.Expressions), time.Since(start), true)
 
 	return result, nil
 }

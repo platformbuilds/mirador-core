@@ -44,6 +44,10 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="unified-query-architecture.html">Unified Query Engine Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="correlation-engine.html">Mirador Core v7.0.0 - Log-Metrics-Traces Correlation Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="correlation-queries-guide.html">Creating Correlation Queries in Mirador Core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="readthedocs-integration.html">ReadTheDocs Integration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api-reference.html">API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
@@ -81,10 +85,72 @@
 <li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting Started</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="getting-started.html#prerequisites">Prerequisites</a></li>
 <li class="toctree-l2"><a class="reference internal" href="getting-started.html#local-development-setup">Local Development Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#alternative-local-development-not-recommended">Alternative: Local Development (Not Recommended)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="getting-started.html#production-deployment">Production Deployment</a></li>
 <li class="toctree-l2"><a class="reference internal" href="getting-started.html#configuration">Configuration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="getting-started.html#first-api-call">First API Call</a></li>
 <li class="toctree-l2"><a class="reference internal" href="getting-started.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="unified-query-architecture.html">Unified Query Engine Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="unified-query-architecture.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unified-query-architecture.html#architecture-components">Architecture Components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unified-query-architecture.html#data-flow">Data Flow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unified-query-architecture.html#query-models">Query Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unified-query-architecture.html#caching-strategy">Caching Strategy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unified-query-architecture.html#health-monitoring">Health Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unified-query-architecture.html#error-handling">Error Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unified-query-architecture.html#performance-optimizations">Performance Optimizations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unified-query-architecture.html#integration-points">Integration Points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unified-query-architecture.html#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unified-query-architecture.html#future-extensions">Future Extensions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unified-query-architecture.html#monitoring-and-observability">Monitoring and Observability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unified-query-architecture.html#conclusion">Conclusion</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="correlation-engine.html">Mirador Core v7.0.0 - Log-Metrics-Traces Correlation Engine</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="correlation-engine.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-engine.html#correlation-query-syntax">Correlation Query Syntax</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-engine.html#query-examples">Query Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-engine.html#correlation-types">Correlation Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-engine.html#result-merging-and-deduplication">Result Merging and Deduplication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-engine.html#confidence-scoring">Confidence Scoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-engine.html#api-usage">API Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-engine.html#performance-considerations">Performance Considerations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-engine.html#error-handling">Error Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-engine.html#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-engine.html#monitoring-and-observability">Monitoring and Observability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-engine.html#best-practices">Best Practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-engine.html#future-enhancements">Future Enhancements</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="correlation-queries-guide.html">Creating Correlation Queries in Mirador Core</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#quick-start">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#query-structure">Query Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#engine-specific-query-formats">Engine-Specific Query Formats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#correlation-operators">Correlation Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#time-windows">Time Windows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#advanced-query-patterns">Advanced Query Patterns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#step-by-step-query-construction">Step-by-Step Query Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#common-query-patterns">Common Query Patterns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#best-practices">Best Practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#api-usage-examples">API Usage Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#response-format">Response Format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#next-steps">Next Steps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="correlation-queries-guide.html#support">Support</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="readthedocs-integration.html">ReadTheDocs Integration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="readthedocs-integration.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readthedocs-integration.html#configuration-files">Configuration Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readthedocs-integration.html#github-actions-integration">GitHub Actions Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readthedocs-integration.html#setup-instructions">Setup Instructions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readthedocs-integration.html#documentation-urls">Documentation URLs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readthedocs-integration.html#local-development">Local Development</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readthedocs-integration.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readthedocs-integration.html#version-management">Version Management</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api-reference.html">API Reference</a><ul>
@@ -194,8 +260,8 @@
 <section id="support">
 <h2>Support<a class="headerlink" href="#support" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p><strong>Documentation</strong>: <a class="reference external" href="https://mirador-core.readthedocs.io/">https://mirador-core.readthedocs.io/</a></p></li>
-<li><p><strong>API Reference</strong>: <a class="reference external" href="https://mirador-core.github.io/api/">https://mirador-core.github.io/api/</a></p></li>
+<li><p><strong>Documentation</strong>: https://miradorstack.readthedocs.io/</p></li>
+<li><p><strong>API Reference</strong>: https://mirador-core.github.io/api/</p></li>
 <li><p><strong>GitHub Issues</strong>: Bug reports and feature requests</p></li>
 <li><p><strong>Community Forum</strong>: General questions and community help</p></li>
 </ul>
