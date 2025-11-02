@@ -5,7 +5,7 @@
 # Required
 version: 2
 
-# Build configuration
+# Set the version of Python and other tools you might need
 build:
   os: ubuntu-22.04
   tools:
@@ -16,7 +16,7 @@ build:
     post_install:
       - echo "Post-install setup"
     pre_build:
-      - echo "Pre-build setup"
+      - echo "Pre-build setup - MIRADOR-CORE v7.0.0 with Correlation Engine"
     post_build:
       - echo "Post-build setup"
 

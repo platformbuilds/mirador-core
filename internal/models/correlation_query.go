@@ -27,21 +27,21 @@ const (
 
 // CorrelationQuery represents a parsed correlation query
 type CorrelationQuery struct {
-	ID          string                `json:"id"`
-	RawQuery    string                `json:"raw_query"`
+	ID          string                  `json:"id"`
+	RawQuery    string                  `json:"raw_query"`
 	Expressions []CorrelationExpression `json:"expressions"`
-	TimeWindow  *time.Duration        `json:"time_window,omitempty"`
-	Operator    CorrelationOperator   `json:"operator"`
+	TimeWindow  *time.Duration          `json:"time_window,omitempty"`
+	Operator    CorrelationOperator     `json:"operator"`
 }
 
 // CorrelationExpression represents a single query expression in a correlation
 type CorrelationExpression struct {
-	Engine      QueryType `json:"engine"`
-	Query       string    `json:"query"`
-	Condition   string    `json:"condition,omitempty"` // e.g., "> 1000", "== 'error'"
-	TimeWindow  *time.Duration `json:"time_window,omitempty"`
-	LabelKey    string    `json:"label_key,omitempty"` // for label-based correlation
-	LabelValue  string    `json:"label_value,omitempty"`
+	Engine     QueryType      `json:"engine"`
+	Query      string         `json:"query"`
+	Condition  string         `json:"condition,omitempty"` // e.g., "> 1000", "== 'error'"
+	TimeWindow *time.Duration `json:"time_window,omitempty"`
+	LabelKey   string         `json:"label_key,omitempty"` // for label-based correlation
+	LabelValue string         `json:"label_value,omitempty"`
 }
 
 // CorrelationQueryParser parses correlation query syntax
@@ -209,7 +209,7 @@ func (p *CorrelationQueryParser) parseTimeWindow(input string) (time.Duration, s
 	input = strings.TrimSpace(input)
 
 	// Find the time unit
-	re := regexp.MustCompile(`^(\d+)([smhd])$`)
+	re := regexp.MustCompile(`^(\d+)([smhd])`)
 	matches := re.FindStringSubmatch(input)
 	if len(matches) != 3 {
 		return 0, input, fmt.Errorf("invalid time window format: %s", input)

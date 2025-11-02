@@ -6593,6 +6593,163 @@
           }
         }
       ]
+    },
+    {
+      "name": "Unified",
+      "item": [
+        {
+          "name": "Correlation Queries",
+          "item": [
+            {
+              "name": "POST /unified/correlation - Basic Time-Window Correlation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/unified/correlation"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"id\": \"basic-time-window-correlation\",\n    \"type\": \"correlation\",\n    \"query\": \"logs:error WITHIN 5m OF metrics:cpu_usage > 80\",\n    \"start_time\": \"2025-01-01T00:00:00Z\",\n    \"end_time\": \"2025-01-01T01:00:00Z\",\n    \"timeout\": \"60s\",\n    \"correlation_options\": {\n      \"enabled\": true,\n      \"correlation_keys\": [\"service\", \"instance\"],\n      \"time_window\": \"5m\",\n      \"engines\": [\"logs\", \"metrics\"]\n    }\n  }\n}"
+                },
+                "description": "Basic time-window correlation: Find error logs that occurred within 5 minutes of CPU usage spikes above 80%"
+              }
+            },
+            {
+              "name": "POST /unified/correlation - Label-Based Correlation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/unified/correlation"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"id\": \"label-based-correlation\",\n    \"type\": \"correlation\",\n    \"query\": \"logs:service:checkout AND metrics:service:checkout\",\n    \"start_time\": \"2025-01-01T00:00:00Z\",\n    \"end_time\": \"2025-01-01T01:00:00Z\",\n    \"timeout\": \"60s\",\n    \"correlation_options\": {\n      \"enabled\": true,\n      \"correlation_keys\": [\"service\"],\n      \"engines\": [\"logs\", \"metrics\"]\n    }\n  }\n}"
+                },
+                "description": "Label-based correlation: Find correlations between logs and metrics for the same service (checkout)"
+              }
+            },
+            {
+              "name": "POST /unified/correlation - Multi-Engine Correlation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/unified/correlation"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"id\": \"multi-engine-correlation\",\n    \"type\": \"correlation\",\n    \"query\": \"logs:exception WITHIN 10m OF traces:status:error AND metrics:error_rate > 5\",\n    \"start_time\": \"2025-01-01T00:00:00Z\",\n    \"end_time\": \"2025-01-01T01:00:00Z\",\n    \"timeout\": \"60s\",\n    \"correlation_options\": {\n      \"enabled\": true,\n      \"correlation_keys\": [\"service\", \"operation\"],\n      \"time_window\": \"10m\",\n      \"engines\": [\"logs\", \"metrics\", \"traces\"]\n    }\n  }\n}"
+                },
+                "description": "Multi-engine correlation: Find exceptions within 10 minutes of error traces and high error rates"
+              }
+            },
+            {
+              "name": "POST /unified/correlation - Performance Issue Correlation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/unified/correlation"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"id\": \"performance-correlation\",\n    \"type\": \"correlation\",\n    \"query\": \"logs:response_time > 5000 WITHIN 1m OF metrics:cpu_usage > 70\",\n    \"start_time\": \"2025-01-01T00:00:00Z\",\n    \"end_time\": \"2025-01-01T01:00:00Z\",\n    \"timeout\": \"60s\",\n    \"correlation_options\": {\n      \"enabled\": true,\n      \"correlation_keys\": [\"service\"],\n      \"time_window\": \"1m\",\n      \"engines\": [\"logs\", \"metrics\"]\n    }\n  }\n}"
+                },
+                "description": "Performance correlation: Find slow requests (response time > 5s) that correlate with high CPU usage"
+              }
+            },
+            {
+              "name": "POST /unified/correlation - Database Connection Issues",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/unified/correlation"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"id\": \"db-connection-correlation\",\n    \"type\": \"correlation\",\n    \"query\": \"logs:'connection timeout' WITHIN 2m OF metrics:db_connections_active > 50\",\n    \"start_time\": \"2025-01-01T00:00:00Z\",\n    \"end_time\": \"2025-01-01T01:00:00Z\",\n    \"timeout\": \"60s\",\n    \"correlation_options\": {\n      \"enabled\": true,\n      \"correlation_keys\": [\"database\", \"instance\"],\n      \"time_window\": \"2m\",\n      \"engines\": [\"logs\", \"metrics\"]\n    }\n  }\n}"
+                },
+                "description": "Database correlation: Find connection timeouts that occur when database connection pool is exhausted"
+              }
+            },
+            {
+              "name": "POST /unified/correlation - Memory Issues",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/unified/correlation"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": {\n    \"id\": \"memory-correlation\",\n    \"type\": \"correlation\",\n    \"query\": \"logs:OutOfMemoryError WITHIN 5m OF metrics:memory_usage > 85\",\n    \"start_time\": \"2025-01-01T00:00:00Z\",\n    \"end_time\": \"2025-01-01T01:00:00Z\",\n    \"timeout\": \"60s\",\n    \"correlation_options\": {\n      \"enabled\": true,\n      \"correlation_keys\": [\"service\", \"pod\"],\n      \"time_window\": \"5m\",\n      \"engines\": [\"logs\", \"metrics\"]\n    }\n  }\n}"
+                },
+                "description": "Memory correlation: Find OutOfMemoryError logs that correlate with high memory usage"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unified Query Health",
+          "item": [
+            {
+              "name": "GET /unified/health",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/unified/health"
+                },
+                "description": "Get health status of all unified query engines (metrics, logs, traces, correlation)"
+              }
+            },
+            {
+              "name": "GET /unified/metadata",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/unified/metadata"
+                },
+                "description": "Get metadata about supported query capabilities and engines"
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

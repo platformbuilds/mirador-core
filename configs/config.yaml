@@ -191,7 +191,7 @@ unified_query:
   cache_ttl: 5m
   max_cache_ttl: 1h
   default_limit: 1000
-  enable_correlation: false
+  enable_correlation: true
 
 uploads:
   # Bulk CSV upload limit (bytes); default 5 MiB.

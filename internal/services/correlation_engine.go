@@ -23,11 +23,26 @@ type CorrelationEngine interface {
 	GetCorrelationExamples() []string
 }
 
+// MetricsService interface for metrics operations
+type MetricsService interface {
+	ExecuteQuery(ctx context.Context, req *models.MetricsQLQueryRequest) (*models.MetricsQLQueryResult, error)
+}
+
+// LogsService interface for logs operations
+type LogsService interface {
+	ExecuteQuery(ctx context.Context, req *models.LogsQLQueryRequest) (*models.LogsQLQueryResult, error)
+}
+
+// TracesService interface for traces operations
+type TracesService interface {
+	GetOperations(ctx context.Context, service, tenantID string) ([]string, error)
+}
+
 // CorrelationEngineImpl implements the CorrelationEngine interface
 type CorrelationEngineImpl struct {
-	metricsService *VictoriaMetricsService
-	logsService    *VictoriaLogsService
-	tracesService  *VictoriaTracesService
+	metricsService MetricsService
+	logsService    LogsService
+	tracesService  TracesService
 	cache          cache.ValkeyCluster
 	logger         logger.Logger
 	parser         *models.CorrelationQueryParser
@@ -36,9 +51,9 @@ type CorrelationEngineImpl struct {
 
 // NewCorrelationEngine creates a new correlation engine
 func NewCorrelationEngine(
-	metricsSvc *VictoriaMetricsService,
-	logsSvc *VictoriaLogsService,
-	tracesSvc *VictoriaTracesService,
+	metricsSvc MetricsService,
+	logsSvc LogsService,
+	tracesSvc TracesService,
 	cache cache.ValkeyCluster,
 	logger logger.Logger,
 ) CorrelationEngine {

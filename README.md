@@ -30,6 +30,7 @@ MIRADOR-CORE serves as the central orchestration layer for the MIRADOR observabi
 
 - **Unified Query API**: Single endpoint (`/api/v1/unified/*`) with intelligent routing across all data types
 - **Cross-Engine Correlation**: Query logs, metrics, and traces together with unified syntax
+- **Correlation Engine**: Advanced time-window and label-based correlation with confidence scoring
 - **Enhanced Caching**: Valkey cluster integration with TTL-based result caching
 - **Schema Definitions Store**: Weaviate-powered metadata storage for metrics, logs, and traces
 - **Performance Optimizations**: 10x RAM reduction and sub-millisecond query responses
@@ -42,6 +43,17 @@ curl -X POST https://mirador-core/api/v1/unified/query \
   -H "Authorization: Bearer <token>" \
   -d '{"query": {"type": "correlation", "query": "logs:error AND metrics:high_latency"}}'
 
+# Correlation queries - find relationships across observability data
+curl -X POST https://mirador-core/api/v1/unified/correlation \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "query": {
+      "id": "correlation-1",
+      "type": "correlation",
+      "query": "logs:exception WITHIN 5m OF metrics:cpu_usage > 80"
+    }
+  }'
+
 # Intelligent routing - no need to know which engine to query
 curl -X POST https://mirador-core/api/v1/unified/query \
   -d '{"query": {"type": "auto", "query": "service:api AND level:error"}}'
@@ -50,7 +62,7 @@ curl -X POST https://mirador-core/api/v1/unified/query \
 ### 🏗️ Architecture Enhancements
 
 - **Unified Query Engine**: Intelligent routing based on query patterns and content
-- **Correlation Engine**: Parallel execution across multiple engines with result merging
+- **Correlation Engine**: Parallel execution across multiple engines with result merging and confidence scoring
 - **Schema Registry**: Centralized definitions for metrics, labels, and log fields
 - **Enhanced Security**: RBAC improvements and tenant isolation
 
@@ -60,7 +72,7 @@ curl -X POST https://mirador-core/api/v1/unified/query \
 
 - **Phase 1**: Foundation & Architecture ✓
 - **Phase 2**: Metrics Metadata Integration (In Progress)
-- **Phase 3**: Log-Metrics-Traces Correlation Engine (Planned)
+- **Phase 3**: Log-Metrics-Traces Correlation Engine ✓
 - **Phase 4**: Performance & Caching (Planned)
 - **Phase 5**: Unified Query Language (Planned)
 - **Phase 6**: Monitoring & Observability (Planned)
@@ -78,7 +90,7 @@ curl -X POST https://mirador-core/api/v1/unified/query \
 
 - **API Functionality**: All unified endpoints functional with E2E tests
 - **Performance**: Unified queries within 200% of individual engine performance
-- **Correlation Accuracy**: >95% accurate results across time windows
+- **Correlation Accuracy**: >95% accurate results across time windows and label-based correlations
 - **Backward Compatibility**: All existing APIs remain functional
 
 ## Key Features
@@ -92,6 +104,7 @@ curl -X POST https://mirador-core/api/v1/unified/query \
 - **MetricsQL**: Enhanced PromQL with 150+ aggregate functions
 - **LogsQL**: Pipe-based log analysis supporting billions of entries
 - **VictoriaTraces**: Distributed tracing with Jaeger compatibility
+- **Correlation Engine**: Advanced cross-engine correlation with time-window and label-based analysis
 - **Dual Search Engines**: Choose between Lucene and Bleve for logs/traces
 
 ### 🚀 Enterprise Performance
@@ -197,14 +210,63 @@ curl -X GET https://mirador-core/api/v1/unified/health \
 - **Metrics**: MetricsQL queries routed to VictoriaMetrics
 - **Logs**: LogsQL queries routed to VictoriaLogs (Lucene/Bleve)
 - **Traces**: Trace queries routed to VictoriaTraces
-- **Correlation**: Cross-engine correlation queries (future implementation)
+- **Correlation**: Cross-engine correlation queries with time-window and label-based analysis
 
 #### Unified Query Features
 - **Intelligent Routing**: Automatic engine selection based on query patterns
 - **Caching**: Configurable TTL-based result caching with Valkey
-- **Cross-Engine Correlation**: Future support for complex correlation queries
+- **Cross-Engine Correlation**: Time-window and label-based correlation with confidence scoring
 - **Unified Response Format**: Consistent JSON responses across all query types
 - **Performance Monitoring**: Built-in metrics and execution time tracking
+
+#### Correlation Query Examples 🆕
+
+**Time-Window Correlation:**
+```bash
+# Find error logs within 5 minutes of CPU spikes
+curl -X POST https://mirador-core/api/v1/unified/correlation \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "id": "cpu-error-correlation",
+      "type": "correlation",
+      "query": "logs:error WITHIN 5m OF metrics:cpu_usage > 80",
+      "start_time": "2025-01-01T00:00:00Z",
+      "end_time": "2025-01-01T01:00:00Z"
+    }
+  }'
+```
+
+**Label-Based Correlation:**
+```bash
+# Find correlations between logs and metrics for the same service
+curl -X POST https://mirador-core/api/v1/unified/correlation \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "id": "service-correlation",
+      "type": "correlation",
+      "query": "logs:service:checkout AND metrics:service:checkout"
+    }
+  }'
+```
+
+**Multi-Engine Correlation:**
+```bash
+# Correlate exceptions with traces and error metrics
+curl -X POST https://mirador-core/api/v1/unified/correlation \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "id": "complex-correlation",
+      "type": "correlation",
+      "query": "logs:exception WITHIN 10m OF traces:status:error AND metrics:error_rate > 5"
+    }
+  }'
+```
 
 ### Metrics APIs
 
@@ -777,6 +839,11 @@ unified_query:
     metrics_engine: "victoriametrics"
     logs_engine: "victorialogs"
     traces_engine: "victoriatraces"
+    correlation_engine: "correlation"
+  correlation:
+    enabled: true
+    time_window_max: "24h"
+    confidence_threshold: 0.7
 ```
 
 ## Schema Definitions APIs
@@ -1280,6 +1347,11 @@ unified_query:
     metrics_engine: "victoriametrics"
     logs_engine: "victorialogs"
     traces_engine: "victoriatraces"
+    correlation_engine: "correlation"
+  correlation:
+    enabled: true
+    time_window_max: "24h"
+    confidence_threshold: 0.7
     correlation_engine: "rca"
 
 # Rate limiting

@@ -10,7 +10,8 @@ ReadTheDocs automatically builds and hosts the project documentation using Sphin
 - User Guides
 - Configuration Documentation
 - Deployment Guides
-- Correlation Engine Documentation
+- Correlation Engine Documentation (Phase 3 - Completed)
+- Unified Query Architecture
 
 ## Configuration Files
 
@@ -93,9 +94,9 @@ If webhooks aren't configured, ReadTheDocs can be set to:
 
 ## Documentation URLs
 
-- **Main Documentation**: https://mirador-core.readthedocs.io/
+- **Main Documentation**: https://miradorstack.readthedocs.io/
 - **API Documentation**: https://mirador-core.github.io/api/
-- **Version-specific**: https://mirador-core.readthedocs.io/en/v7.0.0/
+- **Version-specific**: https://miradorstack.readthedocs.io/en/v7.0.0/
 
 ## Local Development
 
