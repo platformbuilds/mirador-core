@@ -2,9 +2,6 @@ package utils
 
 import (
 	"testing"
-	"time"
-
-	"github.com/platformbuilds/mirador-core/internal/models"
 )
 
 func TestGenerateIDs(t *testing.T) {
@@ -31,24 +28,11 @@ func TestCountHelpers(t *testing.T) {
 }
 
 func TestFilterAndCalc(t *testing.T) {
-	fr := []*models.SystemFracture{
-		{Severity: "high", TimeToFracture: time.Second},
-		{Severity: "low", TimeToFracture: 2 * time.Second},
-		{Severity: "high", TimeToFracture: 3 * time.Second},
-	}
-	hi := FilterByRisk(fr, "high")
-	if len(hi) != 2 {
-		t.Fatalf("filter failed")
-	}
-	if CalculateAvgTimeToFailure(hi) != 2*time.Second {
-		t.Fatalf("avg failed")
-	}
+	// Removed predict-related test as SystemFracture model was removed
+	t.Skip("Predict functionality removed")
 }
 
 func TestMisc(t *testing.T) {
-	if CountAlertsBySeverity([]*models.Alert{{Severity: "s"}, {Severity: "x"}, {Severity: "s"}}, "s") != 2 {
-		t.Fatalf("count alerts")
-	}
 	if !Contains([]string{"a", "b"}, "a") || Contains([]string{"a"}, "z") {
 		t.Fatalf("contains")
 	}
