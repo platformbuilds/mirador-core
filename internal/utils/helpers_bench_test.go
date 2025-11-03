@@ -1,9 +1,7 @@
 package utils
 
 import (
-	"github.com/platformbuilds/mirador-core/internal/models"
 	"testing"
-	"time"
 )
 
 // Performance Test Cases: micro-benchmarks for utility helpers
@@ -32,16 +30,5 @@ func BenchmarkGenerateClientID(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		_ = GenerateClientID()
-	}
-}
-
-func BenchmarkCalculateAvgTimeToFailure(b *testing.B) {
-	in := make([]*models.SystemFracture, 0, 100)
-	for i := 0; i < 100; i++ {
-		in = append(in, &models.SystemFracture{TimeToFracture: time.Second})
-	}
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		_ = CalculateAvgTimeToFailure(in)
 	}
 }

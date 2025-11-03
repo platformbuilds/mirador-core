@@ -413,8 +413,6 @@ components:
           type: string
           description: Endpoint URL for the RCA (Root Cause Analysis) gRPC service
           example: "rca-service:50051"
-          type: string
-          description: Endpoint URL for the PREDICT gRPC service
         alerts_endpoint:
           type: string
           description: Endpoint URL for the ALERTS gRPC service
@@ -427,8 +425,6 @@ components:
           type: string
           description: New endpoint URL for the RCA gRPC service
           example: "rca-service-new:50051"
-          type: string
-          description: New endpoint URL for the PREDICT gRPC service
         alerts_endpoint:
           type: string
           description: New endpoint URL for the ALERTS gRPC service
@@ -845,23 +841,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CorrelationResult'
-    get:
-      summary: Predict Engine health
-      responses:
-        '200': { description: Healthy }
-    get:
-      parameters:
-        - in: query
-          name: time_range
-          schema: { type: string }
-        - in: query
-          name: min_prob
-          schema: { type: number }
-      responses:
-        '200': { description: OK }
-    get:
-      responses:
-        '200': { description: OK }
 
   # Traces Schema (Services & Operations)
   /schema/traces/services:
@@ -2716,7 +2695,6 @@ paths:
                           rca_enabled:
                             type: boolean
                             description: Whether RCA (Root Cause Analysis) features are enabled
-                            type: boolean
                           user_settings_enabled:
                             type: boolean
                             description: Whether user settings features are enabled
@@ -2755,7 +2733,6 @@ paths:
                     rca_enabled:
                       type: boolean
                       description: Enable/disable RCA features
-                      type: boolean
                     user_settings_enabled:
                       type: boolean
                       description: Enable/disable user settings features
@@ -2789,7 +2766,6 @@ paths:
                         type: object
                         properties:
                           rca_enabled:
-                            type: boolean
                             type: boolean
                           user_settings_enabled:
                             type: boolean
@@ -2856,7 +2832,6 @@ paths:
                         type: object
                         properties:
                           rca_enabled:
-                            type: boolean
                             type: boolean
                           user_settings_enabled:
                             type: boolean
@@ -3142,11 +3117,6 @@ paths:
     get:
       tags: [ws]
       summary: Alerts stream (WebSocket)
-      responses:
-        '101': { description: Switching Protocols }
-    get:
-      tags: [ws]
-      summary: Predictions stream (WebSocket)
       responses:
         '101': { description: Switching Protocols }
 
