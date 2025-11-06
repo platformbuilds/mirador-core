@@ -115,9 +115,7 @@ func (r *QueryRouter) analyzeQueryPattern(query string) (models.QueryType, strin
 
 	// Check for search/text patterns (route to Bleve for search)
 	if r.isSearchQuery(query) {
-		// For now, route search queries to logs since Bleve integration isn't complete
-		// TODO: Route to Bleve search engine when available
-		return models.QueryTypeLogs, "contains search patterns, routing to logs (Bleve integration pending)"
+		return models.QueryTypeLogs, "contains search patterns, routing to logs (Bleve integration enabled)"
 	}
 
 	// Default to logs for general queries
@@ -213,6 +211,7 @@ type UnifiedQueryEngineImpl struct {
 	logsService       *VictoriaLogsService
 	tracesService     *VictoriaTracesService
 	correlationEngine CorrelationEngine
+	bleveService      *BleveSearchService // Added Bleve search service
 	cache             cache.ValkeyCluster
 	logger            logger.Logger
 	queryRouter       *QueryRouter
@@ -229,6 +228,7 @@ func NewUnifiedQueryEngine(
 	logsSvc *VictoriaLogsService,
 	tracesSvc *VictoriaTracesService,
 	correlationEngine CorrelationEngine,
+	bleveSearchSvc *BleveSearchService, // Added parameter
 	cache cache.ValkeyCluster,
 	logger logger.Logger,
 ) UnifiedQueryEngine {
@@ -237,6 +237,7 @@ func NewUnifiedQueryEngine(
 		logsService:       logsSvc,
 		tracesService:     tracesSvc,
 		correlationEngine: correlationEngine,
+		bleveService:      bleveSearchSvc,
 		cache:             cache,
 		logger:            logger,
 		queryRouter:       NewQueryRouter(logger),
@@ -761,10 +762,16 @@ func (u *UnifiedQueryEngineImpl) executeMetricsQuery(ctx context.Context, query 
 	}, nil
 }
 
-// executeLogsQuery executes a logs query using VictoriaLogsService
+// executeLogsQuery executes a logs query using VictoriaLogsService or BleveSearchService
 func (u *UnifiedQueryEngineImpl) executeLogsQuery(ctx context.Context, query *models.UnifiedQuery) (*models.UnifiedResult, error) {
 	if u.logsService == nil {
 		return nil, fmt.Errorf("logs service not configured")
+	}
+
+	// Check if this is a full-text search query that should use Bleve
+	if u.bleveService != nil && u.shouldUseBleveForLogs(query.Query) {
+		u.logger.Info("Using Bleve for logs search", "query_id", query.ID, "query", query.Query)
+		return u.executeLogsSearchWithBleve(ctx, query)
 	}
 
 	// Convert unified query to LogsQL query
@@ -809,24 +816,188 @@ func (u *UnifiedQueryEngineImpl) executeLogsQuery(ctx context.Context, query *mo
 	}, nil
 }
 
-// executeTracesQuery executes a traces query using VictoriaTracesService
+// shouldUseBleveForLogs determines if a query should use Bleve instead of VictoriaLogs
+func (u *UnifiedQueryEngineImpl) shouldUseBleveForLogs(queryStr string) bool {
+	// Use Bleve for full-text search patterns
+	query := strings.ToLower(strings.TrimSpace(queryStr))
+
+	// Check for complex search patterns that benefit from Bleve
+	blevePatterns := []string{
+		"error", "exception", "stacktrace", "warning",
+		"text:", "content:", "message:",
+		"kubernetes", "docker", "container",
+	}
+
+	matchCount := 0
+	for _, pattern := range blevePatterns {
+		if strings.Contains(query, pattern) {
+			matchCount++
+		}
+	}
+
+	// Use Bleve if query contains search patterns or complex boolean logic
+	return matchCount >= 2 ||
+		(strings.Contains(query, " AND ") && strings.Contains(query, " OR ")) ||
+		strings.Contains(query, " NOT ")
+}
+
+// executeLogsSearchWithBleve executes a logs search using Bleve
+func (u *UnifiedQueryEngineImpl) executeLogsSearchWithBleve(ctx context.Context, query *models.UnifiedQuery) (*models.UnifiedResult, error) {
+	// Convert to Bleve search request
+	logsSearchReq := &models.LogsSearchRequest{
+		Query:    query.Query,
+		TenantID: query.TenantID,
+		Limit:    1000, // default limit
+	}
+
+	if query.StartTime != nil {
+		logsSearchReq.Start = query.StartTime.UnixMilli()
+	}
+	if query.EndTime != nil {
+		logsSearchReq.End = query.EndTime.UnixMilli()
+	}
+
+	result, err := u.bleveService.SearchLogs(ctx, logsSearchReq)
+	if err != nil {
+		return nil, fmt.Errorf("bleve logs search failed: %w", err)
+	}
+
+	return &models.UnifiedResult{
+		QueryID: query.ID,
+		Type:    models.QueryTypeLogs,
+		Status:  "success",
+		Data:    result.Rows,
+		Metadata: &models.ResultMetadata{
+			EngineResults: map[models.QueryType]*models.EngineResult{
+				models.QueryTypeLogs: {
+					Engine:      models.QueryTypeLogs,
+					Status:      "success",
+					RecordCount: len(result.Rows),
+					DataSource:  "bleve-search",
+				},
+			},
+			TotalRecords: len(result.Rows),
+			DataSources:  []string{"bleve-search"},
+		},
+	}, nil
+}
+
+// executeTracesQuery executes a traces query using VictoriaTracesService with full search capabilities
 func (u *UnifiedQueryEngineImpl) executeTracesQuery(ctx context.Context, query *models.UnifiedQuery) (*models.UnifiedResult, error) {
 	if u.tracesService == nil {
 		return nil, fmt.Errorf("traces service not configured")
 	}
 
-	// For now, use GetOperations as a basic traces query
-	// TODO: Implement full traces search functionality
-	operations, err := u.tracesService.GetOperations(ctx, query.Query, query.TenantID)
+	// Parse query string to extract service, operation, tags, and other filters
+	searchRequest := u.parseTracesQuery(query)
+
+	// Use full traces search if available (enhanced implementation)
+	result, err := u.tracesService.SearchTraces(ctx, searchRequest)
 	if err != nil {
-		return nil, fmt.Errorf("traces query failed: %w", err)
+		// Fallback to operations-based query if search fails
+		u.logger.Warn("Traces search failed, falling back to operations query", "error", err)
+		return u.executeTracesQueryFallback(ctx, query)
 	}
 
 	return &models.UnifiedResult{
 		QueryID: query.ID,
 		Type:    models.QueryTypeTraces,
 		Status:  "success",
-		Data:    operations,
+		Data:    result.Traces,
+		Metadata: &models.ResultMetadata{
+			EngineResults: map[models.QueryType]*models.EngineResult{
+				models.QueryTypeTraces: {
+					Engine:      models.QueryTypeTraces,
+					Status:      "success",
+					RecordCount: result.Total,
+					DataSource:  "victoria-traces",
+				},
+			},
+			TotalRecords: result.Total,
+			DataSources:  []string{"victoria-traces"},
+		},
+	}, nil
+}
+
+// parseTracesQuery parses a unified query into a TraceSearchRequest
+func (u *UnifiedQueryEngineImpl) parseTracesQuery(query *models.UnifiedQuery) *models.TraceSearchRequest {
+	searchReq := &models.TraceSearchRequest{
+		Query:    query.Query,
+		TenantID: query.TenantID,
+		Limit:    100, // default limit
+	}
+
+	// Set time range
+	if query.StartTime != nil {
+		searchReq.Start = models.FlexibleTime{Time: *query.StartTime}
+	}
+	if query.EndTime != nil {
+		searchReq.End = models.FlexibleTime{Time: *query.EndTime}
+	}
+
+	// Parse query string for specific filters
+	queryStr := strings.ToLower(query.Query)
+
+	// Extract service name if present
+	if strings.Contains(queryStr, "service:") {
+		parts := strings.Split(queryStr, "service:")
+		if len(parts) > 1 {
+			servicePart := strings.TrimSpace(strings.Split(parts[1], " ")[0])
+			searchReq.Service = servicePart
+		}
+	}
+
+	// Extract operation name if present
+	if strings.Contains(queryStr, "operation:") {
+		parts := strings.Split(queryStr, "operation:")
+		if len(parts) > 1 {
+			opPart := strings.TrimSpace(strings.Split(parts[1], " ")[0])
+			searchReq.Operation = opPart
+		}
+	}
+
+	// Extract duration filters if present
+	if strings.Contains(queryStr, "duration>") {
+		parts := strings.Split(queryStr, "duration>")
+		if len(parts) > 1 {
+			durationPart := strings.TrimSpace(strings.Split(parts[1], " ")[0])
+			searchReq.MinDuration = durationPart + "ms"
+		}
+	}
+
+	return searchReq
+}
+
+// executeTracesQueryFallback provides fallback using GetOperations when search is unavailable
+func (u *UnifiedQueryEngineImpl) executeTracesQueryFallback(ctx context.Context, query *models.UnifiedQuery) (*models.UnifiedResult, error) {
+	// Extract service name from query for GetOperations call
+	serviceName := "default"
+	if strings.Contains(query.Query, "service:") {
+		parts := strings.Split(query.Query, "service:")
+		if len(parts) > 1 {
+			serviceName = strings.TrimSpace(strings.Split(parts[1], " ")[0])
+		}
+	}
+
+	operations, err := u.tracesService.GetOperations(ctx, serviceName, query.TenantID)
+	if err != nil {
+		return nil, fmt.Errorf("traces fallback query failed: %w", err)
+	}
+
+	// Convert operations list to result format
+	operationsData := make([]map[string]interface{}, 0, len(operations))
+	for _, op := range operations {
+		operationsData = append(operationsData, map[string]interface{}{
+			"service":   serviceName,
+			"operation": op,
+		})
+	}
+
+	return &models.UnifiedResult{
+		QueryID: query.ID,
+		Type:    models.QueryTypeTraces,
+		Status:  "success",
+		Data:    operationsData,
 		Metadata: &models.ResultMetadata{
 			EngineResults: map[models.QueryType]*models.EngineResult{
 				models.QueryTypeTraces: {

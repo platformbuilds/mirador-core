@@ -150,10 +150,267 @@ docker compose -f deployments/localdev/mirador-core-docker-compose.yaml down
 
 Remove the Docker volumes (`vmdata`, `vldata`, `vtdata`) if you want a clean slate.
 
-## 9. Troubleshooting
+## 9. Query Your Data with the Unified API
+
+Once data is flowing, use the unified query API to explore it.
+
+### 9.1 Check Unified API Health
+
+```bash
+curl http://localhost:8010/api/v1/unified/health
+```
+
+This returns health status for all backend engines (VictoriaMetrics, VictoriaLogs, VictoriaTraces).
+
+### 9.2 Query Capabilities
+
+Check what the unified API supports:
+
+```bash
+curl http://localhost:8010/api/v1/unified/metadata
+```
+
+### 9.3 Query Metrics
+
+```bash
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "id": "metrics-query-1",
+      "type": "metrics",
+      "query": "up",
+      "start_time": "2025-01-01T00:00:00Z",
+      "end_time": "2025-01-01T01:00:00Z",
+      "cache_options": {
+        "enabled": true,
+        "ttl": "5m"
+      }
+    }
+  }'
+```
+
+### 9.4 Query Logs
+
+```bash
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "id": "logs-query-1",
+      "type": "logs",
+      "query": "_time:15m level:info",
+      "timeout": "30s"
+    }
+  }'
+```
+
+### 9.5 Query Traces
+
+```bash
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "id": "traces-query-1",
+      "type": "traces",
+      "query": "_time:15m service:telemetrygen",
+      "start_time": "2025-01-01T00:00:00Z",
+      "end_time": "2025-01-01T01:00:00Z"
+    }
+  }'
+```
+
+### 9.6 Correlation Queries (Cross-Engine Analysis)
+
+Find relationships between logs, metrics, and traces:
+
+**Time-Window Correlation:**
+```bash
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "id": "correlation-1",
+      "type": "correlation",
+      "query": "logs:error WITHIN 5m OF metrics:cpu_usage > 80",
+      "start_time": "2025-01-01T00:00:00Z",
+      "end_time": "2025-01-01T01:00:00Z"
+    }
+  }'
+```
+
+**Label-Based Correlation:**
+```bash
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "id": "correlation-2",
+      "type": "correlation",
+      "query": "logs:service:telemetrygen error AND traces:service:telemetrygen"
+    }
+  }'
+```
+
+**Multi-Engine Correlation:**
+```bash
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "id": "correlation-3",
+      "type": "correlation",
+      "query": "logs:exception WITHIN 10m OF traces:status:error AND metrics:error_rate > 5"
+    }
+  }'
+```
+
+### 9.7 Advanced Query Features
+
+**Enable Caching:**
+```bash
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "type": "metrics",
+      "query": "rate(http_requests_total[5m])",
+      "cache_options": {
+        "enabled": true,
+        "ttl": "5m"
+      }
+    }
+  }'
+```
+
+**Custom Timeouts:**
+```bash
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "type": "logs",
+      "query": "_time:1h level:error",
+      "timeout": "60s"
+    }
+  }'
+```
+
+## 10. Explore with Postman or OpenAPI
+
+### Using Postman
+
+Import the Postman collection for ready-to-use examples:
+
+```bash
+# Collection location
+deployments/localdev/postman/mirador-core-unified-queries.postman_collection.json
+```
+
+The collection includes examples for:
+- Metrics queries (instant, range, aggregations)
+- Logs queries (search, export, analytics)
+- Traces queries (search, flamegraphs)
+- Correlation queries (time-window, label-based)
+- Cache management
+- Health checks
+
+### Using OpenAPI/Swagger UI
+
+Access interactive API documentation:
+
+```bash
+# OpenAPI spec
+http://localhost:8010/api/openapi.yaml
+
+# Swagger UI (if enabled)
+http://localhost:8010/swagger-ui/
+```
+
+## 11. Common Workflows
+
+### Workflow 1: Troubleshooting an Application Error
+
+1. **Find error logs:**
+```bash
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -d '{"query": {"type": "logs", "query": "_time:1h level:error service:myapp"}}'
+```
+
+2. **Correlate with metrics:**
+```bash
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -d '{"query": {"type": "correlation", "query": "logs:service:myapp error WITHIN 5m OF metrics:service:myapp"}}'
+```
+
+3. **Find related traces:**
+```bash
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -d '{"query": {"type": "traces", "query": "service:myapp status:error"}}'
+```
+
+### Workflow 2: Performance Analysis
+
+1. **Check latency metrics:**
+```bash
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -d '{"query": {"type": "metrics", "query": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))"}}'
+```
+
+2. **Find slow requests in logs:**
+```bash
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -d '{"query": {"type": "logs", "query": "_time:1h duration:>5000"}}'
+```
+
+3. **Correlate with traces:**
+```bash
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -d '{"query": {"type": "correlation", "query": "logs:duration:>5000 WITHIN 1m OF traces:operation:GET"}}'
+```
+
+### Workflow 3: Real-Time Monitoring Dashboard
+
+Create a dashboard that queries all three data types:
+
+```bash
+# Query 1: Service health (metrics)
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -d '{"query": {"type": "metrics", "query": "up", "cache_options": {"enabled": true, "ttl": "30s"}}}'
+
+# Query 2: Recent errors (logs)
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -d '{"query": {"type": "logs", "query": "_time:5m level:error", "cache_options": {"enabled": true, "ttl": "30s"}}}'
+
+# Query 3: Active traces (traces)
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -d '{"query": {"type": "traces", "query": "_time:5m", "cache_options": {"enabled": true, "ttl": "30s"}}}'
+
+# Query 4: Cross-engine correlation
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -d '{"query": {"type": "correlation", "query": "logs:error WITHIN 2m OF traces:status:error"}}'
+```
+
+## 12. Troubleshooting
 
 - Run `docker compose logs -f <service>` to inspect any container.
-- If mirador-core can’t reach the Victoria endpoints, make sure `host.docker.internal` resolves on your platform or switch to service names on a shared network.
+- If mirador-core can't reach the Victoria endpoints, make sure `host.docker.internal` resolves on your platform or switch to service names on a shared network.
 - The handler logs are available via `docker compose logs -f mirador-core`. Look for errors mentioning `Failed to store ...` to debug connectivity/API issues.
+- Check unified API health: `curl http://localhost:8010/api/v1/unified/health`
+- Verify backend connectivity: `curl http://localhost:8428/health` (VictoriaMetrics), `curl http://localhost:9428/health` (VictoriaLogs)
+- Enable debug logs: Set `LOG_LEVEL=debug` in `mirador-core-docker-compose.yaml` and restart
+
+## 13. Next Steps
+
+With the stack running and data flowing:
+
+1. **Explore Unified Query Language (UQL)**: See [docs/uql-language-guide.md](docs/uql-language-guide.md) for advanced query syntax
+2. **Build Dashboards**: Use unified queries to build comprehensive monitoring dashboards
+3. **Set Up Alerts**: Configure alerting based on correlation queries
+4. **Optimize Performance**: Tune cache settings and timeouts based on your workload
+5. **Production Deployment**: Follow [docs/deployment.md](docs/deployment.md) for Kubernetes deployment
+6. **Migration Guide**: If migrating from engine-specific APIs, see [docs/migration-guide.md](docs/migration-guide.md)
+7. **Operations Guide**: For production operations, see [docs/unified-query-operations.md](docs/unified-query-operations.md)
 
 With the stack running, explore the API via the OpenAPI spec or the Postman collection in `deployments/localdev/postman`. Happy debugging!
