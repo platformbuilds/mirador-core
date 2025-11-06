@@ -570,5 +570,5 @@ timeline:
     - phase: "Testing and Quality Assurance"
       duration: "2 weeks"
     - phase: "Documentation and Adoption"
-      duration: "2 weeks"</content>
+      duration: "2 weeks"
 <parameter name="filePath">/Users/aarvee/repos/github/public/mirador-core/dev/action-plan-v7.0.0.yaml

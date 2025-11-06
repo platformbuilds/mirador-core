@@ -22,7 +22,7 @@ This document defines the exact JSON schemas and API endpoints that **mirador-co
 ## Base URL
 
 ```
-http://mirador-core:8080/api/v1
+http://mirador-core:8010/api/v1
 ```
 
 ---
