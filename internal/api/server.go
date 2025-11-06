@@ -374,11 +374,13 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup) {
 	)
 
 	// Create unified query engine
+	// Note: BleveSearchService is optional, can be nil if not configured
 	unifiedEngine := services.NewUnifiedQueryEngine(
 		s.vmServices.Metrics,
 		s.vmServices.Logs,
 		s.vmServices.Traces,
 		correlationEngine,
+		nil, // BleveSearchService - optional, can be configured later
 		s.cache,
 		s.logger,
 	)

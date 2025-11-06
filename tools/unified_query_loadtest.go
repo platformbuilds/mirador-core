@@ -507,7 +507,7 @@ func PrintResults(result *LoadTestResult) {
 		fmt.Printf("    Min Latency: %v\n", stats.MinLatency)
 		fmt.Printf("    Max Latency: %v\n", stats.MaxLatency)
 	}
-	fmt.Println("========================================\n")
+	fmt.Println("========================================")
 }
 
 // SaveResultsToFile saves results to a JSON file
