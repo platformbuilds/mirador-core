@@ -9,6 +9,7 @@ import (
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // UnifiedQueryEngineIntegrationTestSuite provides comprehensive integration testing
@@ -29,6 +30,7 @@ func TestUnifiedQueryEngineIntegration_CrossEngineQueries(t *testing.T) {
 	var logsSvc *VictoriaLogsService
 	var tracesSvc *VictoriaTracesService
 	var correlationEngine CorrelationEngine
+	var bleveSearchSvc *BleveSearchService
 
 	// Create unified query engine with nil services
 	engine := NewUnifiedQueryEngine(
@@ -36,6 +38,7 @@ func TestUnifiedQueryEngineIntegration_CrossEngineQueries(t *testing.T) {
 		logsSvc,
 		tracesSvc,
 		correlationEngine,
+		bleveSearchSvc,
 		cache,
 		logger,
 	)
@@ -107,7 +110,7 @@ func TestUnifiedQueryEngineIntegration_CrossEngineQueries(t *testing.T) {
 			{"Metrics Query", "cpu_usage > 80", models.QueryTypeMetrics},
 			{"Logs Query", "error", models.QueryTypeLogs},
 			{"Traces Query", "service:api", models.QueryTypeTraces},
-			{"Correlation Query", "logs:error WITHIN 5m OF metrics:cpu_usage > 80", models.QueryTypeCorrelation},
+			{"Search Query", "error exception stacktrace", models.QueryTypeLogs}, // Will use Bleve when available
 		}
 
 		for _, tc := range testCases {
@@ -128,6 +131,41 @@ func TestUnifiedQueryEngineIntegration_CrossEngineQueries(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("Query Metadata Retrieval", func(t *testing.T) {
+		metadata, err := engine.GetQueryMetadata(ctx)
+		require.NoError(t, err, "Should retrieve query metadata successfully")
+		require.NotNil(t, metadata, "Metadata should not be nil")
+
+		// Verify supported engines
+		assert.Contains(t, metadata.SupportedEngines, models.QueryTypeMetrics)
+		assert.Contains(t, metadata.SupportedEngines, models.QueryTypeLogs)
+		assert.Contains(t, metadata.SupportedEngines, models.QueryTypeTraces)
+
+		// Verify query capabilities
+		assert.NotEmpty(t, metadata.QueryCapabilities, "Should have query capabilities")
+		assert.NotEmpty(t, metadata.QueryCapabilities[models.QueryTypeMetrics])
+		assert.NotEmpty(t, metadata.QueryCapabilities[models.QueryTypeLogs])
+		assert.NotEmpty(t, metadata.QueryCapabilities[models.QueryTypeTraces])
+
+		// Verify cache capabilities
+		assert.True(t, metadata.CacheCapabilities.Supported)
+		assert.Greater(t, metadata.CacheCapabilities.DefaultTTL, time.Duration(0))
+	})
+
+	t.Run("Health Check with nil services", func(t *testing.T) {
+		health, err := engine.HealthCheck(ctx)
+		require.NoError(t, err, "Health check should not error even with nil services")
+		require.NotNil(t, health, "Health status should not be nil")
+
+		// All services should be marked as not_configured
+		assert.Equal(t, "not_configured", health.EngineHealth[models.QueryTypeMetrics])
+		assert.Equal(t, "not_configured", health.EngineHealth[models.QueryTypeLogs])
+		assert.Equal(t, "not_configured", health.EngineHealth[models.QueryTypeTraces])
+
+		// Overall health should be partial (some services available, some not)
+		assert.Contains(t, []string{"partial", "unhealthy"}, health.OverallHealth)
+	})
 }
 
 // TestUnifiedQueryEngineIntegration_Performance tests performance characteristics
@@ -144,8 +182,9 @@ func TestUnifiedQueryEngineIntegration_Performance(t *testing.T) {
 	var logsSvc *VictoriaLogsService
 	var tracesSvc *VictoriaTracesService
 	var correlationEngine CorrelationEngine
+	var bleveSearchSvc *BleveSearchService
 
-	engine := NewUnifiedQueryEngine(metricsSvc, logsSvc, tracesSvc, correlationEngine, cache, logger)
+	engine := NewUnifiedQueryEngine(metricsSvc, logsSvc, tracesSvc, correlationEngine, bleveSearchSvc, cache, logger)
 
 	ctx := context.Background()
 
@@ -177,6 +216,25 @@ func TestUnifiedQueryEngineIntegration_Performance(t *testing.T) {
 		// Assert reasonable routing performance (under 10ms average for routing)
 		assert.Less(t, avgLatency, 10*time.Millisecond, "Average routing latency should be under 10ms")
 	})
+
+	t.Run("Metadata Query Performance", func(t *testing.T) {
+		iterations := 1000
+		var totalLatency time.Duration
+
+		for i := 0; i < iterations; i++ {
+			start := time.Now()
+			_, err := engine.GetQueryMetadata(ctx)
+			duration := time.Since(start)
+			totalLatency += duration
+			require.NoError(t, err)
+		}
+
+		avgLatency := totalLatency / time.Duration(iterations)
+		t.Logf("Average metadata query latency: %v", avgLatency)
+
+		// Metadata should be extremely fast (< 1ms)
+		assert.Less(t, avgLatency, 1*time.Millisecond, "Metadata queries should be under 1ms")
+	})
 }
 
 // TestUnifiedQueryEngineIntegration_ErrorHandling tests error handling across engines
@@ -193,8 +251,9 @@ func TestUnifiedQueryEngineIntegration_ErrorHandling(t *testing.T) {
 	var logsSvc *VictoriaLogsService
 	var tracesSvc *VictoriaTracesService
 	var correlationEngine CorrelationEngine
+	var bleveSearchSvc *BleveSearchService
 
-	engine := NewUnifiedQueryEngine(metricsSvc, logsSvc, tracesSvc, correlationEngine, cache, logger)
+	engine := NewUnifiedQueryEngine(metricsSvc, logsSvc, tracesSvc, correlationEngine, bleveSearchSvc, cache, logger)
 
 	ctx := context.Background()
 
@@ -218,6 +277,7 @@ func TestUnifiedQueryEngineIntegration_ErrorHandling(t *testing.T) {
 			logsSvc,
 			tracesSvc,
 			correlationEngine,
+			bleveSearchSvc,
 			cache,
 			logger,
 		)
@@ -233,6 +293,20 @@ func TestUnifiedQueryEngineIntegration_ErrorHandling(t *testing.T) {
 		_, err := brokenEngine.ExecuteQuery(ctx, query)
 		assert.Error(t, err, "Should return error when metrics engine is unavailable")
 		assert.Contains(t, err.Error(), "metrics service not configured")
+	})
+
+	t.Run("Cache Invalidation with patterns", func(t *testing.T) {
+		queryPatterns := []string{
+			"cpu_usage",
+			"error AND high_latency",
+			"service:api",
+			"correlation",
+		}
+
+		for _, pattern := range queryPatterns {
+			err := engine.InvalidateCache(ctx, pattern)
+			assert.NoError(t, err, "Cache invalidation should not error for pattern: %s", pattern)
+		}
 	})
 }
 
@@ -251,8 +325,9 @@ func TestUnifiedQueryEngineIntegration_CacheBehavior(t *testing.T) {
 	var logsSvc *VictoriaLogsService
 	var tracesSvc *VictoriaTracesService
 	var correlationEngine CorrelationEngine
+	var bleveSearchSvc *BleveSearchService
 
-	engine := NewUnifiedQueryEngine(metricsSvc, logsSvc, tracesSvc, correlationEngine, cache, logger)
+	engine := NewUnifiedQueryEngine(metricsSvc, logsSvc, tracesSvc, correlationEngine, bleveSearchSvc, cache, logger)
 
 	ctx := context.Background()
 
@@ -262,5 +337,101 @@ func TestUnifiedQueryEngineIntegration_CacheBehavior(t *testing.T) {
 		// Invalidate cache (should not error even with noop cache)
 		err := engine.InvalidateCache(ctx, queryPattern)
 		assert.NoError(t, err, "Cache invalidation should succeed even with noop cache")
+	})
+
+	t.Run("Multiple Pattern Invalidation", func(t *testing.T) {
+		patterns := []string{
+			"logs:error",
+			"metrics:cpu_usage",
+			"traces:service",
+			"correlation:*",
+		}
+
+		for _, pattern := range patterns {
+			err := engine.InvalidateCache(ctx, pattern)
+			assert.NoError(t, err, "Should invalidate pattern: %s", pattern)
+		}
+	})
+}
+
+// TestUnifiedQueryEngineIntegration_BleveIntegration tests Bleve search integration
+func TestUnifiedQueryEngineIntegration_BleveIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Bleve integration test in short mode")
+	}
+
+	logger := logger.New("info")
+	cache := cache.NewNoopValkeyCache(logger)
+
+	var metricsSvc *VictoriaMetricsService
+	var logsSvc *VictoriaLogsService
+	var tracesSvc *VictoriaTracesService
+	var correlationEngine CorrelationEngine
+	var bleveSearchSvc *BleveSearchService // nil for now
+
+	engine := NewUnifiedQueryEngine(metricsSvc, logsSvc, tracesSvc, correlationEngine, bleveSearchSvc, cache, logger)
+
+	ctx := context.Background()
+
+	t.Run("Search query routing to Bleve", func(t *testing.T) {
+		// Create a complex search query
+		query := &models.UnifiedQuery{
+			ID:    "bleve-test-1",
+			Query: "error exception stacktrace kubernetes",
+			Type:  models.QueryTypeLogs,
+		}
+
+		// Query should fail due to nil services, but routing logic should work
+		_, err := engine.ExecuteQuery(ctx, query)
+		assert.Error(t, err)
+		// Should attempt logs service (with Bleve logic)
+		assert.Contains(t, err.Error(), "logs service not configured")
+	})
+}
+
+// TestUnifiedQueryEngineIntegration_TracesSearchEnhancement tests enhanced traces search
+func TestUnifiedQueryEngineIntegration_TracesSearchEnhancement(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping traces search integration test in short mode")
+	}
+
+	logger := logger.New("info")
+	cache := cache.NewNoopValkeyCache(logger)
+
+	var metricsSvc *VictoriaMetricsService
+	var logsSvc *VictoriaLogsService
+	var tracesSvc *VictoriaTracesService // nil for testing
+	var correlationEngine CorrelationEngine
+	var bleveSearchSvc *BleveSearchService
+
+	engine := NewUnifiedQueryEngine(metricsSvc, logsSvc, tracesSvc, correlationEngine, bleveSearchSvc, cache, logger)
+
+	ctx := context.Background()
+
+	t.Run("Enhanced traces query with filters", func(t *testing.T) {
+		// Create a query with service, operation, and duration filters
+		query := &models.UnifiedQuery{
+			ID:    "traces-enhanced-1",
+			Query: "service:api operation:GET duration>100",
+			Type:  models.QueryTypeTraces,
+		}
+
+		// Should fail due to nil service but parsing logic should work
+		_, err := engine.ExecuteQuery(ctx, query)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "traces service not configured")
+	})
+
+	t.Run("Traces query fallback", func(t *testing.T) {
+		// Simple query that would use fallback
+		query := &models.UnifiedQuery{
+			ID:    "traces-fallback-1",
+			Query: "service:auth",
+			Type:  models.QueryTypeTraces,
+		}
+
+		_, err := engine.ExecuteQuery(ctx, query)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "traces service not configured")
 	})
 }
