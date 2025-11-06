@@ -4,6 +4,9 @@ description: "Complete implementation of mirador-core REST API using Weaviate ve
 date: "2025-11-06"
 status: "planning"
 
+# Enhanced with parallelization opportunities, CI/CD readiness, and observability
+# Added parallelizable flags, CI stages, owner roles, and new phases for missing logical links
+
 phases:
   - name: "Weaviate Schema Design"
     description: "Design Weaviate classes and properties for all data models"
@@ -17,6 +20,9 @@ phases:
         dependencies: []
         estimated_effort: "3h"
         assignee: "backend-dev"
+        parallelizable: true  # Can be done in parallel with other schema designs
+        ci_stage: "pre-commit"  # Schema validation can run in CI
+        owner_role: "backend-dev"
 
       - id: "weaviate-schema-kpi-layouts"
         title: "Design KPILayout Weaviate class"
@@ -26,6 +32,9 @@ phases:
         dependencies: ["weaviate-schema-kpi-definitions"]
         estimated_effort: "2h"
         assignee: "backend-dev"
+        parallelizable: true  # Parallel with other schema tasks
+        ci_stage: "pre-commit"
+        owner_role: "backend-dev"
 
       - id: "weaviate-schema-dashboards"
         title: "Design Dashboard Weaviate class"
@@ -35,6 +44,9 @@ phases:
         dependencies: []
         estimated_effort: "1.5h"
         assignee: "backend-dev"
+        parallelizable: true  # Independent schema design
+        ci_stage: "pre-commit"
+        owner_role: "backend-dev"
 
       - id: "weaviate-schema-user-preferences"
         title: "Design UserPreferences Weaviate class"
@@ -44,6 +56,9 @@ phases:
         dependencies: ["weaviate-schema-dashboards"]
         estimated_effort: "2h"
         assignee: "backend-dev"
+        parallelizable: true  # Parallel with other schema tasks
+        ci_stage: "pre-commit"
+        owner_role: "backend-dev"
 
       - id: "weaviate-schema-validation"
         title: "Validate Weaviate schema design"
@@ -53,6 +68,9 @@ phases:
         dependencies: ["weaviate-schema-kpi-definitions", "weaviate-schema-kpi-layouts", "weaviate-schema-dashboards", "weaviate-schema-user-preferences"]
         estimated_effort: "2h"
         assignee: "backend-dev"
+        parallelizable: false  # Must validate all schemas together
+        ci_stage: "pre-commit"
+        owner_role: "backend-dev"
 
   - name: "Core Models & Types"
     description: "Define Go structs and types for all API data models"
@@ -66,6 +84,9 @@ phases:
         dependencies: []
         estimated_effort: "3h"
         assignee: "backend-dev"
+        parallelizable: true  # Can be developed in parallel with other models
+        ci_stage: "build"  # Compile-time validation
+        owner_role: "backend-dev"
 
       - id: "models-kpi-query"
         title: "Implement KpiQuery model"
@@ -75,6 +96,9 @@ phases:
         dependencies: []
         estimated_effort: "2h"
         assignee: "backend-dev"
+        parallelizable: true  # Parallel with other model implementations
+        ci_stage: "build"
+        owner_role: "backend-dev"
 
       - id: "models-dashboard"
         title: "Implement Dashboard model"
@@ -84,6 +108,9 @@ phases:
         dependencies: []
         estimated_effort: "1h"
         assignee: "backend-dev"
+        parallelizable: true  # Independent model
+        ci_stage: "build"
+        owner_role: "backend-dev"
 
       - id: "models-user-preferences"
         title: "Implement UserPreferences model"
@@ -93,6 +120,9 @@ phases:
         dependencies: []
         estimated_effort: "1.5h"
         assignee: "backend-dev"
+        parallelizable: true  # Parallel with other models
+        ci_stage: "build"
+        owner_role: "backend-dev"
 
       - id: "models-layout"
         title: "Implement Layout model"
@@ -102,6 +132,9 @@ phases:
         dependencies: []
         estimated_effort: "1h"
         assignee: "backend-dev"
+        parallelizable: true  # Independent model
+        ci_stage: "build"
+        owner_role: "backend-dev"
 
   - name: "Validation & Business Logic"
     description: "Implement validation rules and business logic constraints"
@@ -115,6 +148,9 @@ phases:
         dependencies: ["models-kpi-def"]
         estimated_effort: "3h"
         assignee: "backend-dev"
+        parallelizable: false  # Depends on specific model
+        ci_stage: "test"  # Validation tests in CI
+        owner_role: "backend-dev"
 
       - id: "validation-dashboard"
         title: "Dashboard validation"
@@ -124,6 +160,9 @@ phases:
         dependencies: ["models-dashboard"]
         estimated_effort: "1.5h"
         assignee: "backend-dev"
+        parallelizable: false  # Model-specific
+        ci_stage: "test"
+        owner_role: "backend-dev"
 
       - id: "validation-layout"
         title: "Layout validation"
@@ -133,6 +172,9 @@ phases:
         dependencies: ["models-layout"]
         estimated_effort: "1h"
         assignee: "backend-dev"
+        parallelizable: false  # Model-specific
+        ci_stage: "test"
+        owner_role: "backend-dev"
 
       - id: "business-rules-visibility"
         title: "Visibility hierarchy logic"
@@ -142,6 +184,9 @@ phases:
         dependencies: []
         estimated_effort: "2h"
         assignee: "backend-dev"
+        parallelizable: true  # Can be developed independently
+        ci_stage: "test"
+        owner_role: "backend-dev"
 
   - name: "Weaviate Integration"
     description: "Set up Weaviate client and connection management"
@@ -155,6 +200,9 @@ phases:
         dependencies: []
         estimated_effort: "3h"
         assignee: "backend-dev"
+        parallelizable: false  # Single integration point
+        ci_stage: "build"  # Dependency check
+        owner_role: "backend-dev"
 
       - id: "weaviate-schema-deployment"
         title: "Deploy Weaviate schema"
@@ -164,6 +212,9 @@ phases:
         dependencies: ["weaviate-schema-validation", "weaviate-client-setup"]
         estimated_effort: "2h"
         assignee: "backend-dev"
+        parallelizable: false  # Depends on client setup
+        ci_stage: "deploy"  # Schema deployment in CI/CD
+        owner_role: "backend-dev"
 
       - id: "weaviate-connection-pooling"
         title: "Connection management and pooling"
@@ -173,6 +224,9 @@ phases:
         dependencies: ["weaviate-client-setup"]
         estimated_effort: "2h"
         assignee: "backend-dev"
+        parallelizable: false  # Builds on client setup
+        ci_stage: "test"  # Health check tests
+        owner_role: "backend-dev"
 
   - name: "Weaviate Repository Layer"
     description: "Implement repository pattern using Weaviate REST API"
@@ -186,6 +240,9 @@ phases:
         dependencies: ["weaviate-schema-deployment", "models-kpi-def"]
         estimated_effort: "4h"
         assignee: "backend-dev"
+        parallelizable: true  # Can develop repos in parallel
+        ci_stage: "test"  # Unit tests for repos
+        owner_role: "backend-dev"
 
       - id: "weaviate-layout-repo"
         title: "KPI Layouts Weaviate repository"
@@ -195,6 +252,9 @@ phases:
         dependencies: ["weaviate-schema-deployment", "models-layout"]
         estimated_effort: "3h"
         assignee: "backend-dev"
+        parallelizable: true  # Parallel with other repos
+        ci_stage: "test"
+        owner_role: "backend-dev"
 
       - id: "weaviate-dashboard-repo"
         title: "Dashboard Weaviate repository"
@@ -204,6 +264,9 @@ phases:
         dependencies: ["weaviate-schema-deployment", "models-dashboard"]
         estimated_effort: "3h"
         assignee: "backend-dev"
+        parallelizable: true  # Parallel development
+        ci_stage: "test"
+        owner_role: "backend-dev"
 
       - id: "weaviate-user-prefs-repo"
         title: "User Preferences Weaviate repository"
@@ -213,6 +276,147 @@ phases:
         dependencies: ["weaviate-schema-deployment", "models-user-preferences"]
         estimated_effort: "2.5h"
         assignee: "backend-dev"
+        parallelizable: true  # Parallel with other repos
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+  # New phase added: API Handlers Implementation - missing logical link for endpoint development
+  # Added to ensure complete API implementation with contract alignment
+  - name: "API Handlers Implementation"
+    description: "Implement HTTP handlers for all API endpoints with contract validation"
+    priority: "high"
+    tasks:
+      - id: "api-kpi-defs-get"
+        title: "GET /api/v1/kpi/defs handler"
+        description: "Implement handler to retrieve all KPI definitions with optional filtering"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-kpi-def-repo", "validation-kpi-def"]
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+        parallelizable: true  # Handlers can be developed in parallel
+        ci_stage: "test"  # Handler tests
+        owner_role: "backend-dev"
+
+      - id: "api-kpi-defs-post"
+        title: "POST /api/v1/kpi/defs handler"
+        description: "Implement upsert handler for KPI definitions (create or update)"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-kpi-def-repo", "validation-kpi-def"]
+        estimated_effort: "2.5h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel handler development
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "api-kpi-defs-delete"
+        title: "DELETE /api/v1/kpi/defs/:id handler"
+        description: "Implement KPI definition deletion with cascade to layouts"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-kpi-def-repo", "weaviate-layout-repo"]
+        estimated_effort: "1.5h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel with other handlers
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "api-layouts-get"
+        title: "GET /api/v1/kpi/layouts handler"
+        description: "Implement handler to retrieve layouts for a dashboard (default dashboard support)"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-layout-repo"]
+        estimated_effort: "1.5h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel handler development
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "api-layouts-batch-post"
+        title: "POST /api/v1/kpi/layouts/batch handler"
+        description: "Implement batch layout save with transaction support"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-layout-repo", "validation-layout"]
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel with other handlers
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "api-dashboards-get"
+        title: "GET /api/v1/dashboards handler"
+        description: "Implement handler to retrieve all dashboards with user/visibility filtering"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-dashboard-repo"]
+        estimated_effort: "1.5h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel handler development
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "api-dashboards-post"
+        title: "POST /api/v1/dashboards handler"
+        description: "Implement dashboard creation handler"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-dashboard-repo", "validation-dashboard"]
+        estimated_effort: "1.5h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel with other handlers
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "api-dashboards-put"
+        title: "PUT /api/v1/dashboards/:id handler"
+        description: "Implement dashboard update handler"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["weaviate-dashboard-repo", "validation-dashboard"]
+        estimated_effort: "1.5h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel handler development
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "api-dashboards-delete"
+        title: "DELETE /api/v1/dashboards/:id handler"
+        description: "Implement dashboard deletion with cascade protection for 'default'"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["weaviate-dashboard-repo", "validation-dashboard"]
+        estimated_effort: "1.5h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel with other handlers
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "api-user-prefs-get"
+        title: "GET /api/v1/user/preferences handler"
+        description: "Implement user preferences retrieval with default values"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-user-prefs-repo"]
+        estimated_effort: "1.5h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel handler development
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "api-user-prefs-post"
+        title: "POST /api/v1/user/preferences handler"
+        description: "Implement partial user preferences update (merge with existing)"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-user-prefs-repo"]
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel with other handlers
+        ci_stage: "test"
+        owner_role: "backend-dev"
 
   - name: "Routing & Middleware"
     description: "Set up HTTP routing, middleware, and base infrastructure"
@@ -226,6 +430,9 @@ phases:
         dependencies: []
         estimated_effort: "2h"
         assignee: "backend-dev"
+        parallelizable: false  # Central routing setup
+        ci_stage: "build"  # Route validation
+        owner_role: "backend-dev"
 
       - id: "middleware-cors"
         title: "CORS middleware"
@@ -235,6 +442,9 @@ phases:
         dependencies: []
         estimated_effort: "1h"
         assignee: "backend-dev"
+        parallelizable: true  # Can be developed independently
+        ci_stage: "build"
+        owner_role: "backend-dev"
 
       - id: "middleware-logging"
         title: "Request logging middleware"
@@ -244,6 +454,9 @@ phases:
         dependencies: []
         estimated_effort: "1.5h"
         assignee: "backend-dev"
+        parallelizable: true  # Independent middleware
+        ci_stage: "build"
+        owner_role: "backend-dev"
 
       - id: "middleware-error"
         title: "Error handling middleware"
@@ -253,6 +466,9 @@ phases:
         dependencies: []
         estimated_effort: "2h"
         assignee: "backend-dev"
+        parallelizable: true  # Independent middleware
+        ci_stage: "build"
+        owner_role: "backend-dev"
 
   - name: "Error Handling & Responses"
     description: "Implement standardized error responses and validation error formatting"
@@ -266,6 +482,9 @@ phases:
         dependencies: ["middleware-error"]
         estimated_effort: "2h"
         assignee: "backend-dev"
+        parallelizable: false  # Depends on middleware
+        ci_stage: "test"  # Error response tests
+        owner_role: "backend-dev"
 
       - id: "validation-errors"
         title: "Validation error handling"
@@ -275,6 +494,9 @@ phases:
         dependencies: ["validation-kpi-def", "validation-dashboard", "validation-layout"]
         estimated_effort: "2h"
         assignee: "backend-dev"
+        parallelizable: false  # Depends on validation logic
+        ci_stage: "test"
+        owner_role: "backend-dev"
 
   - name: "Weaviate Data Seeding"
     description: "Create data seeding for initial Weaviate objects"
@@ -288,6 +510,9 @@ phases:
         dependencies: ["weaviate-schema-deployment"]
         estimated_effort: "1h"
         assignee: "backend-dev"
+        parallelizable: false  # Depends on schema deployment
+        ci_stage: "deploy"  # Seeding in deployment
+        owner_role: "backend-dev"
 
       - id: "seed-sample-kpis-weaviate"
         title: "Seed sample KPI definitions in Weaviate"
@@ -297,6 +522,9 @@ phases:
         dependencies: ["seed-default-dashboard-weaviate"]
         estimated_effort: "2h"
         assignee: "backend-dev"
+        parallelizable: true  # Can be done after basic seeding
+        ci_stage: "deploy"
+        owner_role: "backend-dev"
 
       - id: "seed-default-user-prefs-weaviate"
         title: "Seed default user preferences in Weaviate"
@@ -306,6 +534,41 @@ phases:
         dependencies: ["seed-default-dashboard-weaviate"]
         estimated_effort: "1h"
         assignee: "backend-dev"
+        parallelizable: true  # Parallel with sample KPIs
+        ci_stage: "deploy"
+        owner_role: "backend-dev"
+
+  # New phase added: Mock Testing - for early validation and parallel development
+  # Added to enable frontend-backend parallel development and early API contract validation
+  - name: "Mock Testing & Contract Validation"
+    description: "Implement mock services and contract testing for frontend alignment"
+    priority: "medium"
+    tasks:
+      - id: "mock-weaviate-service"
+        title: "Create mock Weaviate service"
+        description: "Implement in-memory mock Weaviate service for testing without full Weaviate setup"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["weaviate-schema-validation"]
+        estimated_effort: "4h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can be developed early
+        ci_stage: "test"  # Mock tests in CI
+        owner_role: "backend-dev"
+        # Added for parallel frontend development
+
+      - id: "contract-validation-tests"
+        title: "API contract validation tests"
+        description: "Create tests to validate API responses match mirador-ui TypeScript types and contract"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["api-kpi-defs-get", "api-user-prefs-get"]
+        estimated_effort: "3h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can run with handler development
+        ci_stage: "test"
+        owner_role: "backend-dev"
+        # Ensures frontend-backend alignment
 
   - name: "Testing"
     description: "Comprehensive testing suite"
@@ -319,6 +582,9 @@ phases:
         dependencies: ["models-kpi-def", "models-dashboard", "models-user-preferences", "models-layout"]
         estimated_effort: "6h"
         assignee: "backend-dev"
+        parallelizable: true  # Can be developed in parallel with implementation
+        ci_stage: "test"
+        owner_role: "backend-dev"
 
       - id: "integration-tests-api"
         title: "API integration tests"
@@ -328,6 +594,9 @@ phases:
         dependencies: ["api-kpi-defs-get", "api-kpi-defs-post", "api-layouts-get", "api-dashboards-get", "api-user-prefs-get"]
         estimated_effort: "8h"
         assignee: "backend-dev"
+        parallelizable: false  # Requires full API implementation
+        ci_stage: "test"
+        owner_role: "backend-dev"
 
       - id: "tests-validation"
         title: "Validation tests"
@@ -337,6 +606,9 @@ phases:
         dependencies: ["validation-kpi-def", "validation-dashboard", "validation-layout"]
         estimated_effort: "4h"
         assignee: "backend-dev"
+        parallelizable: true  # Can run with validation implementation
+        ci_stage: "test"
+        owner_role: "backend-dev"
 
       - id: "tests-error-handling"
         title: "Error handling tests"
@@ -346,6 +618,54 @@ phases:
         dependencies: ["error-responses", "validation-errors"]
         estimated_effort: "3h"
         assignee: "backend-dev"
+        parallelizable: true  # Can run with error handling
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+  # New phase added: CI/CD Pipeline - for automated testing and deployment
+  # Added to ensure CI/CD readiness and automated quality gates
+  - name: "CI/CD Pipeline & Automation"
+    description: "Set up continuous integration and deployment pipeline"
+    priority: "medium"
+    tasks:
+      - id: "ci-linting"
+        title: "Code linting and formatting"
+        description: "Configure Go linting, formatting, and static analysis tools (golangci-lint, gofmt)"
+        priority: "high"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "2h"
+        assignee: "devops"
+        parallelizable: true  # Can be set up early
+        ci_stage: "pre-commit"
+        owner_role: "devops"
+        # Ensures code quality from day one
+
+      - id: "ci-testing-pipeline"
+        title: "Automated testing pipeline"
+        description: "Set up GitHub Actions/Jenkins for unit, integration, and contract tests"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["unit-tests-models", "integration-tests-api"]
+        estimated_effort: "4h"
+        assignee: "devops"
+        parallelizable: false  # Depends on test implementation
+        ci_stage: "test"
+        owner_role: "devops"
+        # Enables automated testing
+
+      - id: "ci-deployment-pipeline"
+        title: "Deployment pipeline"
+        description: "Configure automated deployment to staging/production with Weaviate schema migration"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["weaviate-schema-deployment", "deployment-weaviate-config"]
+        estimated_effort: "3h"
+        assignee: "devops"
+        parallelizable: false  # Depends on deployment config
+        ci_stage: "deploy"
+        owner_role: "devops"
+        # Ensures reliable deployments
 
   - name: "Documentation & Deployment"
     description: "API documentation and deployment configuration"
@@ -359,6 +679,9 @@ phases:
         dependencies: ["routing-setup"]
         estimated_effort: "4h"
         assignee: "backend-dev"
+        parallelizable: true  # Can be done with implementation
+        ci_stage: "build"  # Docs generation in CI
+        owner_role: "backend-dev"
 
       - id: "deployment-weaviate-config"
         title: "Weaviate deployment configuration"
@@ -368,6 +691,9 @@ phases:
         dependencies: []
         estimated_effort: "3h"
         assignee: "devops"
+        parallelizable: true  # Can be developed early
+        ci_stage: "deploy"
+        owner_role: "devops"
 
       - id: "health-endpoints"
         title: "Health check endpoints"
@@ -377,6 +703,9 @@ phases:
         dependencies: ["routing-setup"]
         estimated_effort: "1h"
         assignee: "backend-dev"
+        parallelizable: true  # Simple endpoint
+        ci_stage: "build"
+        owner_role: "backend-dev"
 
       - id: "monitoring-setup"
         title: "Monitoring and observability"
@@ -386,8 +715,11 @@ phases:
         dependencies: ["middleware-logging"]
         estimated_effort: "4h"
         assignee: "backend-dev"
+        parallelizable: true  # Can be added incrementally
+        ci_stage: "deploy"
+        owner_role: "backend-dev"
 
-total_estimated_effort: "112h"
+total_estimated_effort: "140h"  # Increased due to new phases and parallelization overhead
 critical_path:
   - "Weaviate Schema Design"
   - "Weaviate Integration"
@@ -395,6 +727,7 @@ critical_path:
   - "Weaviate Repository Layer"
   - "API Handlers Implementation"
   - "Routing & Middleware"
+  # Added CI/CD for governance
 
 milestones:
   - name: "Weaviate Schema Ready"
@@ -422,26 +755,31 @@ milestones:
     tasks: ["seed-default-dashboard-weaviate", "seed-default-user-prefs-weaviate", "api-docs-openapi", "deployment-weaviate-config", "health-endpoints"]
     due_date: "2025-12-11"
 
+# Enhanced risks with actionable mitigations
 risks:
   - description: "Complex formula validation logic may require multiple iterations"
-    mitigation: "Start with basic regex validation, iterate based on test cases"
+    mitigation: "Start with basic regex validation, iterate based on test cases. Schedule weekly validation reviews."
     impact: "medium"
     probability: "medium"
+    action_items: ["Create validation test suite early", "Schedule bi-weekly validation reviews", "Document edge cases"]
 
   - description: "Weaviate schema evolution and data migration challenges"
-    mitigation: "Design schema to be backward compatible, implement proper migration strategies"
+    mitigation: "Design schema to be backward compatible, implement proper migration strategies. Use Weaviate's schema versioning."
     impact: "high"
     probability: "medium"
+    action_items: ["Review Weaviate migration docs", "Implement schema versioning", "Test migrations with sample data"]
 
   - description: "Weaviate performance characteristics for complex queries"
-    mitigation: "Profile query performance early, optimize with proper indexing and batch operations"
+    mitigation: "Profile query performance early, optimize with proper indexing and batch operations. Set up performance benchmarks."
     impact: "medium"
     probability: "medium"
+    action_items: ["Implement query profiling", "Set performance SLIs", "Optimize batch operations"]
 
   - description: "Weaviate cluster management and high availability"
-    mitigation: "Use managed Weaviate service or implement proper clustering configuration"
+    mitigation: "Use managed Weaviate service or implement proper clustering configuration. Plan for multi-zone deployment."
     impact: "high"
     probability: "low"
+    action_items: ["Evaluate managed Weaviate options", "Design HA architecture", "Implement failover testing"]
 
 assumptions:
   - "Go 1.21+ with Weaviate Go client library"
