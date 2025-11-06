@@ -1,0 +1,468 @@
+version: "8.0.0"
+title: "Mirador Core API Implementation - v8.0.0"
+description: "Complete implementation of mirador-core REST API using Weaviate vector database for stateless UI integration with mirador-ui dashboard"
+date: "2025-11-06"
+status: "planning"
+
+phases:
+  - name: "Weaviate Schema Design"
+    description: "Design Weaviate classes and properties for all data models"
+    priority: "high"
+    tasks:
+      - id: "weaviate-schema-kpi-definitions"
+        title: "Design KPIDefinition Weaviate class"
+        description: "Design Weaviate class for KPI definitions with properties: id, kind, name, unit, format, query_type, query_data, thresholds, tags, sparkline_config, owner_user_id, visibility, timestamps"
+        priority: "high"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "3h"
+        assignee: "backend-dev"
+
+      - id: "weaviate-schema-kpi-layouts"
+        title: "Design KPILayout Weaviate class"
+        description: "Design Weaviate class for KPI layouts with cross-references to KPIDefinition and Dashboard classes, including layout coordinates (x,y,w,h)"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-schema-kpi-definitions"]
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+
+      - id: "weaviate-schema-dashboards"
+        title: "Design Dashboard Weaviate class"
+        description: "Design Weaviate class for dashboards with id, name, owner_user_id, visibility, timestamps, and ensure 'default' dashboard protection"
+        priority: "high"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "1.5h"
+        assignee: "backend-dev"
+
+      - id: "weaviate-schema-user-preferences"
+        title: "Design UserPreferences Weaviate class"
+        description: "Design Weaviate class for user preferences with all UI state fields, extensible preferences JSON, and cross-reference to Dashboard class"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-schema-dashboards"]
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+
+      - id: "weaviate-schema-validation"
+        title: "Validate Weaviate schema design"
+        description: "Ensure schema design supports all API contract requirements and relationships between classes"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-schema-kpi-definitions", "weaviate-schema-kpi-layouts", "weaviate-schema-dashboards", "weaviate-schema-user-preferences"]
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+
+  - name: "Core Models & Types"
+    description: "Define Go structs and types for all API data models"
+    priority: "high"
+    tasks:
+      - id: "models-kpi-def"
+        title: "Implement KpiDef model"
+        description: "Create Go struct for KpiDef with JSON tags, validation tags, and methods for metric/formula query handling"
+        priority: "high"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "3h"
+        assignee: "backend-dev"
+
+      - id: "models-kpi-query"
+        title: "Implement KpiQuery model"
+        description: "Create Go structs for KpiQuery (metric and formula types) with proper JSON marshaling/unmarshaling"
+        priority: "high"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+
+      - id: "models-dashboard"
+        title: "Implement Dashboard model"
+        description: "Create Go struct for Dashboard with validation and timestamp handling"
+        priority: "high"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "1h"
+        assignee: "backend-dev"
+
+      - id: "models-user-preferences"
+        title: "Implement UserPreferences model"
+        description: "Create Go struct for UserPreferences with extensible preferences JSON field"
+        priority: "high"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "1.5h"
+        assignee: "backend-dev"
+
+      - id: "models-layout"
+        title: "Implement Layout model"
+        description: "Create Go struct for KPI layout coordinates with grid validation (12-column system)"
+        priority: "high"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "1h"
+        assignee: "backend-dev"
+
+  - name: "Validation & Business Logic"
+    description: "Implement validation rules and business logic constraints"
+    priority: "high"
+    tasks:
+      - id: "validation-kpi-def"
+        title: "KPI Definition validation"
+        description: "Implement validation for KPI definitions: unique IDs, formula expression regex, threshold ordering, required fields"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["models-kpi-def"]
+        estimated_effort: "3h"
+        assignee: "backend-dev"
+
+      - id: "validation-dashboard"
+        title: "Dashboard validation"
+        description: "Implement validation for dashboards: prevent deletion of 'default' dashboard, visibility hierarchy"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["models-dashboard"]
+        estimated_effort: "1.5h"
+        assignee: "backend-dev"
+
+      - id: "validation-layout"
+        title: "Layout validation"
+        description: "Implement grid layout validation: 12-column system, min/max dimensions, coordinate bounds"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["models-layout"]
+        estimated_effort: "1h"
+        assignee: "backend-dev"
+
+      - id: "business-rules-visibility"
+        title: "Visibility hierarchy logic"
+        description: "Implement visibility filtering logic: private < team < org hierarchy for KPI access control"
+        priority: "medium"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+
+  - name: "Weaviate Integration"
+    description: "Set up Weaviate client and connection management"
+    priority: "high"
+    tasks:
+      - id: "weaviate-client-setup"
+        title: "Weaviate Go client integration"
+        description: "Integrate Weaviate Go client library and configure connection to Weaviate instance"
+        priority: "high"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "3h"
+        assignee: "backend-dev"
+
+      - id: "weaviate-schema-deployment"
+        title: "Deploy Weaviate schema"
+        description: "Create and deploy Weaviate schema with all classes and properties via REST API"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-schema-validation", "weaviate-client-setup"]
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+
+      - id: "weaviate-connection-pooling"
+        title: "Connection management and pooling"
+        description: "Implement connection pooling, health checks, and error handling for Weaviate client"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["weaviate-client-setup"]
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+
+  - name: "Weaviate Repository Layer"
+    description: "Implement repository pattern using Weaviate REST API"
+    priority: "high"
+    tasks:
+      - id: "weaviate-kpi-def-repo"
+        title: "KPI Definitions Weaviate repository"
+        description: "Implement CRUD operations for KPIDefinition class using Weaviate REST API: Create, Read, Update, Delete with proper error handling"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-schema-deployment", "models-kpi-def"]
+        estimated_effort: "4h"
+        assignee: "backend-dev"
+
+      - id: "weaviate-layout-repo"
+        title: "KPI Layouts Weaviate repository"
+        description: "Implement batch save/read operations for KPILayout class with cross-reference handling"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-schema-deployment", "models-layout"]
+        estimated_effort: "3h"
+        assignee: "backend-dev"
+
+      - id: "weaviate-dashboard-repo"
+        title: "Dashboard Weaviate repository"
+        description: "Implement CRUD operations for Dashboard class with 'default' dashboard protection"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-schema-deployment", "models-dashboard"]
+        estimated_effort: "3h"
+        assignee: "backend-dev"
+
+      - id: "weaviate-user-prefs-repo"
+        title: "User Preferences Weaviate repository"
+        description: "Implement user preferences CRUD with default value handling and partial updates using Weaviate"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-schema-deployment", "models-user-preferences"]
+        estimated_effort: "2.5h"
+        assignee: "backend-dev"
+
+  - name: "Routing & Middleware"
+    description: "Set up HTTP routing, middleware, and base infrastructure"
+    priority: "high"
+    tasks:
+      - id: "routing-setup"
+        title: "API routing setup"
+        description: "Configure Gorilla Mux router with /api/v1 prefix and all endpoint routes"
+        priority: "high"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+
+      - id: "middleware-cors"
+        title: "CORS middleware"
+        description: "Implement CORS middleware for mirador-ui origins (localhost:3000, mirador-ui:3000)"
+        priority: "high"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "1h"
+        assignee: "backend-dev"
+
+      - id: "middleware-logging"
+        title: "Request logging middleware"
+        description: "Implement structured logging middleware for all API requests"
+        priority: "medium"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "1.5h"
+        assignee: "backend-dev"
+
+      - id: "middleware-error"
+        title: "Error handling middleware"
+        description: "Implement centralized error handling middleware with proper HTTP status codes"
+        priority: "high"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+
+  - name: "Error Handling & Responses"
+    description: "Implement standardized error responses and validation error formatting"
+    priority: "high"
+    tasks:
+      - id: "error-responses"
+        title: "Standard error response format"
+        description: "Implement consistent error response structure: {error: string} with proper HTTP status codes"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["middleware-error"]
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+
+      - id: "validation-errors"
+        title: "Validation error handling"
+        description: "Implement field-level validation error formatting and aggregation"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["validation-kpi-def", "validation-dashboard", "validation-layout"]
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+
+  - name: "Weaviate Data Seeding"
+    description: "Create data seeding for initial Weaviate objects"
+    priority: "medium"
+    tasks:
+      - id: "seed-default-dashboard-weaviate"
+        title: "Seed default dashboard in Weaviate"
+        description: "Create and import the required 'default' dashboard object in Weaviate"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-schema-deployment"]
+        estimated_effort: "1h"
+        assignee: "backend-dev"
+
+      - id: "seed-sample-kpis-weaviate"
+        title: "Seed sample KPI definitions in Weaviate"
+        description: "Create optional sample KPI definition objects for development/demo purposes"
+        priority: "low"
+        status: "not-started"
+        dependencies: ["seed-default-dashboard-weaviate"]
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+
+      - id: "seed-default-user-prefs-weaviate"
+        title: "Seed default user preferences in Weaviate"
+        description: "Create default user preferences objects with sensible defaults"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["seed-default-dashboard-weaviate"]
+        estimated_effort: "1h"
+        assignee: "backend-dev"
+
+  - name: "Testing"
+    description: "Comprehensive testing suite"
+    priority: "high"
+    tasks:
+      - id: "unit-tests-models"
+        title: "Unit tests for models"
+        description: "Write unit tests for all data models, validation logic, and business rules"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["models-kpi-def", "models-dashboard", "models-user-preferences", "models-layout"]
+        estimated_effort: "6h"
+        assignee: "backend-dev"
+
+      - id: "integration-tests-api"
+        title: "API integration tests"
+        description: "Write integration tests for all API endpoints with real database"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["api-kpi-defs-get", "api-kpi-defs-post", "api-layouts-get", "api-dashboards-get", "api-user-prefs-get"]
+        estimated_effort: "8h"
+        assignee: "backend-dev"
+
+      - id: "tests-validation"
+        title: "Validation tests"
+        description: "Test all validation rules: formula expressions, layout bounds, required fields, etc."
+        priority: "high"
+        status: "not-started"
+        dependencies: ["validation-kpi-def", "validation-dashboard", "validation-layout"]
+        estimated_effort: "4h"
+        assignee: "backend-dev"
+
+      - id: "tests-error-handling"
+        title: "Error handling tests"
+        description: "Test error responses, HTTP status codes, and edge cases"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["error-responses", "validation-errors"]
+        estimated_effort: "3h"
+        assignee: "backend-dev"
+
+  - name: "Documentation & Deployment"
+    description: "API documentation and deployment configuration"
+    priority: "medium"
+    tasks:
+      - id: "api-docs-openapi"
+        title: "OpenAPI specification"
+        description: "Generate OpenAPI 3.0 spec from code annotations for API documentation"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["routing-setup"]
+        estimated_effort: "4h"
+        assignee: "backend-dev"
+
+      - id: "deployment-weaviate-config"
+        title: "Weaviate deployment configuration"
+        description: "Create Docker, Kubernetes configs for mirador-core service with Weaviate dependency"
+        priority: "medium"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "3h"
+        assignee: "devops"
+
+      - id: "health-endpoints"
+        title: "Health check endpoints"
+        description: "Implement /health and /ready endpoints for Kubernetes probes"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["routing-setup"]
+        estimated_effort: "1h"
+        assignee: "backend-dev"
+
+      - id: "monitoring-setup"
+        title: "Monitoring and observability"
+        description: "Add metrics collection, structured logging, and tracing support"
+        priority: "low"
+        status: "not-started"
+        dependencies: ["middleware-logging"]
+        estimated_effort: "4h"
+        assignee: "backend-dev"
+
+total_estimated_effort: "112h"
+critical_path:
+  - "Weaviate Schema Design"
+  - "Weaviate Integration"
+  - "Core Models & Types"
+  - "Weaviate Repository Layer"
+  - "API Handlers Implementation"
+  - "Routing & Middleware"
+
+milestones:
+  - name: "Weaviate Schema Ready"
+    description: "Weaviate schema designed, validated, and deployed"
+    tasks: ["weaviate-schema-kpi-definitions", "weaviate-schema-kpi-layouts", "weaviate-schema-dashboards", "weaviate-schema-user-preferences", "weaviate-schema-validation", "weaviate-client-setup", "weaviate-schema-deployment"]
+    due_date: "2025-11-13"
+
+  - name: "Core API Working"
+    description: "Basic CRUD operations working for all entities using Weaviate"
+    tasks: ["models-kpi-def", "models-dashboard", "models-user-preferences", "weaviate-kpi-def-repo", "weaviate-dashboard-repo", "weaviate-user-prefs-repo", "api-kpi-defs-get", "api-kpi-defs-post", "api-dashboards-get", "api-user-prefs-get", "routing-setup"]
+    due_date: "2025-11-20"
+
+  - name: "Full API Complete"
+    description: "All API endpoints implemented with validation and error handling using Weaviate"
+    tasks: ["api-kpi-defs-delete", "api-layouts-get", "api-layouts-batch-post", "api-dashboards-post", "api-dashboards-put", "api-dashboards-delete", "api-user-prefs-post", "validation-kpi-def", "validation-dashboard", "error-responses"]
+    due_date: "2025-11-27"
+
+  - name: "Testing Complete"
+    description: "Comprehensive test coverage and validation with Weaviate"
+    tasks: ["unit-tests-models", "integration-tests-api", "tests-validation", "tests-error-handling"]
+    due_date: "2025-12-04"
+
+  - name: "Production Ready"
+    description: "Seeding, documentation, and deployment configs complete for Weaviate"
+    tasks: ["seed-default-dashboard-weaviate", "seed-default-user-prefs-weaviate", "api-docs-openapi", "deployment-weaviate-config", "health-endpoints"]
+    due_date: "2025-12-11"
+
+risks:
+  - description: "Complex formula validation logic may require multiple iterations"
+    mitigation: "Start with basic regex validation, iterate based on test cases"
+    impact: "medium"
+    probability: "medium"
+
+  - description: "Weaviate schema evolution and data migration challenges"
+    mitigation: "Design schema to be backward compatible, implement proper migration strategies"
+    impact: "high"
+    probability: "medium"
+
+  - description: "Weaviate performance characteristics for complex queries"
+    mitigation: "Profile query performance early, optimize with proper indexing and batch operations"
+    impact: "medium"
+    probability: "medium"
+
+  - description: "Weaviate cluster management and high availability"
+    mitigation: "Use managed Weaviate service or implement proper clustering configuration"
+    impact: "high"
+    probability: "low"
+
+assumptions:
+  - "Go 1.21+ with Weaviate Go client library"
+  - "Weaviate 1.24+ instance available (cloud or self-hosted)"
+  - "No authentication required for v8.0.0 (as per contract)"
+  - "Single mirador-core instance (no clustering considerations yet)"
+  - "mirador-ui will handle optimistic UI updates and error recovery"
+  - "Weaviate vector capabilities not required for v8.0.0 (can be added later)"
+
+dependencies:
+  - name: "mirador-ui contract alignment"
+    description: "Ensure API contract matches mirador-ui expectations"
+    owner: "platform-team"
+    status: "completed"
+
+  - name: "Weaviate infrastructure"
+    description: "Weaviate instance available for development and production"
+    owner: "devops"
+    status: "pending"
+
+  - name: "Weaviate Go client"
+    description: "Official Weaviate Go client library available and compatible"
+    owner: "backend-dev"
+    status: "pending"
