@@ -842,6 +842,105 @@ func (u *UnifiedQueryEngineImpl) executeTracesQuery(ctx context.Context, query *
 	}, nil
 }
 
+// executeSingleEngineQuery executes a query on a single engine (used as fallback from parallel execution)
+func (u *UnifiedQueryEngineImpl) executeSingleEngineQuery(ctx context.Context, query *models.UnifiedQuery, start time.Time) (*models.UnifiedResult, error) {
+	// Start tracing span
+	queryCtx, querySpan := u.startQuerySpan(ctx, query)
+	defer querySpan.End()
+
+	// Generate cache key
+	cacheKey := u.generateCacheKey(query)
+
+	// Check cache first if enabled
+	var cacheHit bool
+	if query.CacheOptions != nil && query.CacheOptions.Enabled && !query.CacheOptions.BypassCache {
+		cacheStart := time.Now()
+		if cachedResult, err := u.getCachedResult(queryCtx, cacheKey); err == nil && cachedResult != nil {
+			cacheDuration := time.Since(cacheStart)
+			u.logger.Info("Returning cached result", "query_id", query.ID, "cache_key", cacheKey)
+			cachedResult.Cached = true
+			cacheHit = true
+
+			// Record cache hit metrics and tracing
+			monitoring.RecordUnifiedQueryCacheOperation("get", "hit")
+			u.tracer.RecordCacheMetrics(querySpan, true, cacheDuration)
+			u.tracer.RecordQueryMetrics(querySpan, time.Since(start), int64(cachedResult.Metadata.TotalRecords), true)
+			monitoring.RecordUnifiedQueryOperation(string(query.Type), string(query.Type), true, time.Since(start), true)
+
+			return cachedResult, nil
+		}
+		// Record cache miss
+		cacheDuration := time.Since(cacheStart)
+		monitoring.RecordUnifiedQueryCacheOperation("get", "miss")
+		u.tracer.RecordCacheMetrics(querySpan, false, cacheDuration)
+	}
+
+	// Check if this is a UQL query that needs special processing
+	if u.queryRouter.isUQLQuery(query.Query) {
+		u.logger.Info("Detected UQL query, using ExecuteUQLQuery", "query_id", query.ID)
+		return u.ExecuteUQLQuery(queryCtx, query)
+	}
+
+	// Route to appropriate engine based on query type
+	var result *models.UnifiedResult
+	var routingErr error
+
+	switch query.Type {
+	case models.QueryTypeMetrics:
+		result, routingErr = u.executeMetricsQuery(queryCtx, query)
+	case models.QueryTypeLogs:
+		result, routingErr = u.executeLogsQuery(queryCtx, query)
+	case models.QueryTypeTraces:
+		result, routingErr = u.executeTracesQuery(queryCtx, query)
+	case models.QueryTypeCorrelation:
+		result, routingErr = u.ExecuteCorrelationQuery(queryCtx, query)
+	default:
+		err := fmt.Errorf("unsupported query type: %s", query.Type)
+		u.tracer.RecordError(querySpan, err)
+		return nil, err
+	}
+
+	if routingErr != nil {
+		// Record failed operation metrics and tracing
+		u.tracer.RecordError(querySpan, routingErr)
+		u.tracer.RecordQueryMetrics(querySpan, time.Since(start), 0, false)
+		monitoring.RecordUnifiedQueryOperation(string(query.Type), string(query.Type), cacheHit, time.Since(start), false)
+		return nil, routingErr
+	}
+
+	// Use pooled result object for better performance
+	if result == nil {
+		result = u.queryPool.GetUnifiedResult()
+	}
+	result.ExecutionTime = time.Since(start).Milliseconds()
+	result.Cached = false
+
+	// Cache the result if caching is enabled
+	if query.CacheOptions != nil && query.CacheOptions.Enabled {
+		cacheStart := time.Now()
+		ttl := query.CacheOptions.TTL
+		if ttl == 0 {
+			ttl = 5 * time.Minute // default TTL
+		}
+		if err := u.cacheResult(queryCtx, cacheKey, result, ttl); err != nil {
+			cacheDuration := time.Since(cacheStart)
+			u.logger.Warn("Failed to cache query result", "error", err, "query_id", query.ID)
+			monitoring.RecordUnifiedQueryCacheOperation("set", "error")
+			u.tracer.RecordCacheMetrics(querySpan, false, cacheDuration)
+		} else {
+			cacheDuration := time.Since(cacheStart)
+			monitoring.RecordUnifiedQueryCacheOperation("set", "success")
+			u.tracer.RecordCacheMetrics(querySpan, true, cacheDuration)
+		}
+	}
+
+	// Record successful operation metrics and tracing
+	u.tracer.RecordQueryMetrics(querySpan, time.Since(start), int64(result.Metadata.TotalRecords), true)
+	monitoring.RecordUnifiedQueryOperation(string(query.Type), string(query.Type), cacheHit, time.Since(start), true)
+
+	return result, nil
+}
+
 // canParallelizeQuery determines if a query can be executed in parallel across multiple engines
 func (u *UnifiedQueryEngineImpl) canParallelizeQuery(query *models.UnifiedQuery) bool {
 	queryStr := strings.ToLower(query.Query)
@@ -883,9 +982,20 @@ func (u *UnifiedQueryEngineImpl) executeParallelQuery(ctx context.Context, query
 	subQueries := u.parseSubQueries(query)
 
 	if len(subQueries) == 0 {
-		// Fallback to single engine execution
-		query.Type = models.QueryTypeLogs // Default fallback
-		return u.ExecuteQuery(ctx, query)
+		// Fallback to single engine execution using the query router
+		routedType, routingReason, err := u.queryRouter.RouteQuery(query)
+		if err != nil {
+			return nil, fmt.Errorf("query routing failed in parallel execution: %w", err)
+		}
+		query.Type = routedType
+
+		u.logger.Info("Parallel execution fallback to single engine",
+			"query_id", query.ID,
+			"routed_type", routedType,
+			"reason", routingReason)
+
+		// Execute as single engine query
+		return u.executeSingleEngineQuery(ctx, query, start)
 	}
 
 	u.logger.Info("Executing parallel sub-queries",
