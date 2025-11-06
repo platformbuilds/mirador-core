@@ -98,21 +98,17 @@ func NewServer(
 	}
 	server.searchRouter = searchRouter
 
-	// Initialize metrics metadata indexer (ShardManager will be nil for now)
-	// TODO: Initialize proper Bleve ShardManager, DocumentMapper, and MetadataStore for production
-	// For now, skip initialization in local development
-	server.metricsMetadataIndexer = nil // Set to nil to disable metrics metadata endpoints
-
-	// Initialize metrics metadata synchronizer
-	// TODO: Initialize when indexer is available
-	server.metricsMetadataSynchronizer = nil // Set to nil to disable synchronizer
-
 	// Initialize metrics metadata components if enabled
 	if cfg.Search.Bleve.MetricsEnabled {
 		if err := server.initializeMetricsMetadataComponents(); err != nil {
 			log.Error("Failed to initialize metrics metadata components", "error", err)
 			return nil
 		}
+	} else {
+		// Create stub implementations for development/testing
+		log.Info("Metrics metadata components disabled - creating stub implementations for API compatibility")
+		server.metricsMetadataIndexer = services.NewStubMetricsMetadataIndexer(log)
+		server.metricsMetadataSynchronizer = services.NewStubMetricsMetadataSynchronizer(log)
 	}
 
 	server.setupMiddleware()

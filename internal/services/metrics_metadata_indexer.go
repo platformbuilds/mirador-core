@@ -36,6 +36,63 @@ type MetricsMetadataIndexerImpl struct {
 	logger             logger.Logger
 }
 
+// NewStubMetricsMetadataIndexer creates a stub implementation for development/testing
+func NewStubMetricsMetadataIndexer(logger logger.Logger) MetricsMetadataIndexer {
+	return &StubMetricsMetadataIndexer{
+		logger: logger,
+	}
+}
+
+// StubMetricsMetadataIndexer provides stub implementations for metrics metadata operations
+type StubMetricsMetadataIndexer struct {
+	logger logger.Logger
+}
+
+// SyncMetadata returns a stub sync result
+func (s *StubMetricsMetadataIndexer) SyncMetadata(ctx context.Context, request *models.MetricMetadataSyncRequest) (*models.MetricMetadataSyncResult, error) {
+	s.logger.Info("StubMetricsMetadataIndexer.SyncMetadata called", "tenant_id", request.TenantID)
+
+	return &models.MetricMetadataSyncResult{
+		TenantID:         request.TenantID,
+		MetricsProcessed: 0,
+		MetricsAdded:     0,
+		MetricsUpdated:   0,
+		MetricsRemoved:   0,
+		Duration:         0,
+		LastSyncTime:     time.Now(),
+		Errors:           []string{"Metrics metadata indexing is disabled in this environment"},
+	}, nil
+}
+
+// SearchMetrics returns a stub search result
+func (s *StubMetricsMetadataIndexer) SearchMetrics(ctx context.Context, request *models.MetricMetadataSearchRequest) (*models.MetricMetadataSearchResult, error) {
+	s.logger.Info("StubMetricsMetadataIndexer.SearchMetrics called", "query", request.Query)
+
+	return &models.MetricMetadataSearchResult{
+		Metrics:    []*models.MetricMetadataDocument{},
+		TotalCount: 0,
+		QueryTime:  0,
+	}, nil
+}
+
+// GetHealthStatus returns a stub health status
+func (s *StubMetricsMetadataIndexer) GetHealthStatus(ctx context.Context) (*models.MetricMetadataHealthStatus, error) {
+	return &models.MetricMetadataHealthStatus{
+		IsHealthy:      false,
+		LastSyncTime:   time.Now(),
+		TotalMetrics:   0,
+		ActiveMetrics:  0,
+		IndexSizeBytes: 0,
+		SyncErrors:     []string{"Metrics metadata indexing is disabled in this environment"},
+	}, nil
+}
+
+// InvalidateCache returns nil (no-op)
+func (s *StubMetricsMetadataIndexer) InvalidateCache(ctx context.Context, tenantID string) error {
+	s.logger.Info("StubMetricsMetadataIndexer.InvalidateCache called", "tenant_id", tenantID)
+	return nil
+}
+
 // NewMetricsMetadataIndexer creates a new metrics metadata indexer
 func NewMetricsMetadataIndexer(
 	victoriaSvc *VictoriaMetricsService,
@@ -50,8 +107,6 @@ func NewMetricsMetadataIndexer(
 		logger:             logger,
 	}
 }
-
-// SyncMetadata synchronizes metrics metadata from VictoriaMetrics to Bleve
 func (m *MetricsMetadataIndexerImpl) SyncMetadata(ctx context.Context, request *models.MetricMetadataSyncRequest) (*models.MetricMetadataSyncResult, error) {
 	start := time.Now()
 	result := &models.MetricMetadataSyncResult{
