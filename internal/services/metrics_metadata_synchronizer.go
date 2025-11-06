@@ -397,3 +397,84 @@ func (s *MetricsMetadataSynchronizerImpl) saveSyncStates(ctx context.Context) er
 	// For now, this is a placeholder
 	return nil
 }
+
+// NewStubMetricsMetadataSynchronizer creates a stub implementation for development/testing
+func NewStubMetricsMetadataSynchronizer(logger logger.Logger) MetricsMetadataSynchronizer {
+	return &StubMetricsMetadataSynchronizer{
+		logger: logger,
+	}
+}
+
+// StubMetricsMetadataSynchronizer provides stub implementations for metrics metadata synchronization
+type StubMetricsMetadataSynchronizer struct {
+	logger logger.Logger
+}
+
+// Start returns nil (no-op)
+func (s *StubMetricsMetadataSynchronizer) Start(ctx context.Context) error {
+	s.logger.Info("StubMetricsMetadataSynchronizer.Start called")
+	return nil
+}
+
+// Stop returns nil (no-op)
+func (s *StubMetricsMetadataSynchronizer) Stop() error {
+	s.logger.Info("StubMetricsMetadataSynchronizer.Stop called")
+	return nil
+}
+
+// SyncNow returns a stub sync result
+func (s *StubMetricsMetadataSynchronizer) SyncNow(ctx context.Context, tenantID string, forceFull bool) (*models.MetricMetadataSyncResult, error) {
+	s.logger.Info("StubMetricsMetadataSynchronizer.SyncNow called", "tenant_id", tenantID, "force_full", forceFull)
+
+	return &models.MetricMetadataSyncResult{
+		TenantID:         tenantID,
+		MetricsProcessed: 0,
+		MetricsAdded:     0,
+		MetricsUpdated:   0,
+		MetricsRemoved:   0,
+		Duration:         0,
+		LastSyncTime:     time.Now(),
+		Errors:           []string{"Metrics metadata synchronization is disabled in this environment"},
+	}, nil
+}
+
+// GetSyncState returns a stub sync state
+func (s *StubMetricsMetadataSynchronizer) GetSyncState(tenantID string) (*models.MetricMetadataSyncState, error) {
+	s.logger.Info("StubMetricsMetadataSynchronizer.GetSyncState called", "tenant_id", tenantID)
+
+	return &models.MetricMetadataSyncState{
+		TenantID:           tenantID,
+		LastSyncTime:       time.Now(),
+		LastFullSyncTime:   time.Now(),
+		TotalSyncs:         0,
+		SuccessfulSyncs:    0,
+		FailedSyncs:        0,
+		MetricsInIndex:     0,
+		IsCurrentlySyncing: false,
+	}, nil
+}
+
+// GetSyncStatus returns a stub sync status
+func (s *StubMetricsMetadataSynchronizer) GetSyncStatus(tenantID string) (*models.MetricMetadataSyncStatus, error) {
+	s.logger.Info("StubMetricsMetadataSynchronizer.GetSyncStatus called", "tenant_id", tenantID)
+
+	return &models.MetricMetadataSyncStatus{
+		TenantID:         tenantID,
+		Status:           "disabled",
+		StartTime:        time.Now(),
+		EndTime:          time.Now(),
+		Strategy:         models.SyncStrategyFull,
+		MetricsProcessed: 0,
+		MetricsAdded:     0,
+		MetricsUpdated:   0,
+		MetricsRemoved:   0,
+		Errors:           []string{"Metrics metadata synchronization is disabled in this environment"},
+		Duration:         0,
+	}, nil
+}
+
+// UpdateConfig returns nil (no-op)
+func (s *StubMetricsMetadataSynchronizer) UpdateConfig(config *models.MetricMetadataSyncConfig) error {
+	s.logger.Info("StubMetricsMetadataSynchronizer.UpdateConfig called")
+	return nil
+}
