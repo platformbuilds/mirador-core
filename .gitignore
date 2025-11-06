@@ -63,3 +63,6 @@ docs/_build/
 ./deployments/localdev/e2e-report.txt 
 deployments/localdev/e2e-report.json 
 deployments/localdev/e2e-report.txt 
+
+# Development files (local only)
+dev/
