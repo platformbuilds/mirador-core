@@ -11,6 +11,7 @@ correlation-engine
 correlation-queries-guide
 monitoring-observability
 testing
+migration-guide
 readthedocs-integration
 api-reference
 deployment

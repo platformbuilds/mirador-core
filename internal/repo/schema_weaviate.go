@@ -1126,6 +1126,25 @@ func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
 		{"Operation", class("Operation", props(
 			text("tenantId"), text("service"), text("name"), text("definition"), text("purpose"), text("owner"), stringArray("tags"), text("category"), text("sentiment"), intp("version"), date("updatedAt"), // Updated to stringDict
 		))},
+		// New API classes for mirador-core v8.0.0
+		{"KPIDefinition", class("KPIDefinition", props(
+			text("id"), text("kind"), text("name"), text("unit"), text("format"),
+			object("query"), object("thresholds"), stringArray("tags"), object("sparkline"),
+			text("ownerUserId"), text("visibility"), date("createdAt"), date("updatedAt"),
+		))},
+		{"KPILayout", class("KPILayout", props(
+			text("id"), refp("kpiDefinition", "KPIDefinition"), refp("dashboard", "Dashboard"),
+			intp("x"), intp("y"), intp("w"), intp("h"), date("createdAt"), date("updatedAt"),
+		))},
+		{"Dashboard", class("Dashboard", props(
+			text("id"), text("name"), text("ownerUserId"), text("visibility"), boolp("isDefault"),
+			date("createdAt"), date("updatedAt"),
+		))},
+		{"UserPreferences", class("UserPreferences", props(
+			text("id"), refp("currentDashboard", "Dashboard"), text("theme"), boolp("sidebarCollapsed"),
+			text("defaultDashboard"), text("timezone"), boolp("keyboardHintSeen"), text("miradorCoreEndpoint"),
+			object("preferences"), date("createdAt"), date("updatedAt"),
+		))},
 		// Version classes with proper payload schemas
 		{"MetricVersion", class("MetricVersion", props(text("tenantId"), text("name"), intp("version"), metricVersionPayload(), text("author"), date("createdAt")))},
 		{"LabelVersion", class("LabelVersion", props(text("tenantId"), text("name"), intp("version"), labelVersionPayload(), text("author"), date("createdAt")))},
