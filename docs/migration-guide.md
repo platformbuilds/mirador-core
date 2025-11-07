@@ -16,6 +16,7 @@ This guide helps you migrate from using separate engine-specific APIs (VictoriaM
 8. [Rollback Plan](#rollback-plan)
 9. [Performance Considerations](#performance-considerations)
 10. [Troubleshooting](#troubleshooting)
+11. [Weaviate Schema Management](#weaviate-schema-management)
 
 ## Why Migrate?
 
@@ -808,6 +809,325 @@ curl https://mirador-core/api/v1/unified/metadata
 - **API Reference**: [API Reference](api-reference.md)
 - **Community**: https://github.com/platformbuilds/mirador-core/discussions
 - **Support**: Open an issue on GitHub
+
+## Weaviate Schema Management
+
+This section covers the process for evolving and managing Weaviate schemas in mirador-core, including adding new classes, modifying existing ones, and handling schema migrations safely.
+
+### Schema Architecture Overview
+
+Mirador-core uses Weaviate as its vector database backend for storing API entities like KPIDefinition, KPILayout, Dashboard, and UserPreferences. The schema is defined in Go code and deployed automatically through the `EnsureSchema()` function.
+
+**Key Files:**
+- `internal/storage/weaviate/schema.go` - Schema class definitions
+- `internal/repo/schema_weaviate.go` - Schema deployment logic
+
+### Schema Change Process
+
+#### 1. Schema Definition Changes
+
+**Location**: `internal/storage/weaviate/schema.go`
+
+Modify the `GetAllClasses()` function to add new classes or update existing class definitions:
+
+```go
+func GetAllClasses() []models.Class {
+    return []models.Class{
+        // Existing classes...
+        {"KPIDefinition", class("KPIDefinition", props(
+            text("id"), text("kind"), text("name"), text("unit"), text("format"),
+            object("query"), object("thresholds"), stringArray("tags"), object("sparkline"),
+            text("ownerUserId"), text("visibility"), date("createdAt"), date("updatedAt"),
+        ))},
+        
+        // Add new class
+        {"NewEntity", class("NewEntity", props(
+            text("id"), text("name"), text("description"),
+            date("createdAt"), date("updatedAt"),
+        ))},
+    }
+}
+```
+
+#### 2. Deployment Logic Updates
+
+**Location**: `internal/repo/schema_weaviate.go`
+
+Update the `EnsureSchema()` function to include new classes in the deployment:
+
+```go
+func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
+    classDefinitions := []struct {
+        name string
+        def  map[string]any
+    }{
+        // Existing classes...
+        {"KPIDefinition", class("KPIDefinition", props(/* ... */))},
+        
+        // Add new class definition
+        {"NewEntity", class("NewEntity", props(
+            text("id"), text("name"), text("description"),
+            date("createdAt"), date("updatedAt"),
+        ))},
+    }
+    
+    // Create classes individually
+    for _, classDef := range classDefinitions {
+        if err := r.ensureClass(ctx, classDef.name, classDef.def); err != nil {
+            return fmt.Errorf("failed to create class %s: %w", classDef.name, err)
+        }
+    }
+    return nil
+}
+```
+
+#### 3. Migration Strategies
+
+Since Weaviate doesn't support altering existing classes, use these strategies for schema evolution:
+
+##### Option A: New Classes (Recommended)
+
+Create new class versions alongside existing ones:
+
+```go
+// Add versioned class
+{"KPIDefinition_v2", class("KPIDefinition_v2", props(
+    text("id"), text("kind"), text("name"), text("unit"), text("format"),
+    object("query"), object("thresholds"), stringArray("tags"), object("sparkline"),
+    text("ownerUserId"), text("visibility"), 
+    text("newProperty"), // New field
+    date("createdAt"), date("updatedAt"),
+))},
+```
+
+##### Option B: Property Extensions
+
+Add new optional properties to existing classes (Weaviate allows this):
+
+```go
+// Extend existing class with new optional property
+{"KPIDefinition", class("KPIDefinition", props(
+    text("id"), text("kind"), text("name"), text("unit"), text("format"),
+    object("query"), object("thresholds"), stringArray("tags"), object("sparkline"),
+    text("ownerUserId"), text("visibility"), 
+    text("newOptionalProperty"), // New optional property
+    date("createdAt"), date("updatedAt"),
+))},
+```
+
+##### Option C: Data Migration
+
+For breaking changes, create migration scripts:
+
+```go
+// Migration function to copy data from old to new class
+func (r *WeaviateRepo) MigrateKPIDefinitionToV2(ctx context.Context) error {
+    // 1. Query all existing KPIDefinition objects
+    // 2. Transform data to new schema format
+    // 3. Create new objects in KPIDefinition_v2 class
+    // 4. Optionally mark old objects as migrated
+    // 5. Update application code to use new class
+}
+```
+
+### Safety Features
+
+The schema deployment system includes built-in safety measures:
+
+#### Existence Checking
+
+The `ensureClass()` function automatically checks if a class exists before attempting creation:
+
+```go
+func (r *WeaviateRepo) ensureClass(ctx context.Context, className string, classDef map[string]any) error {
+    exists, err := r.classExists(ctx, className)
+    if err != nil {
+        return fmt.Errorf("failed to check if class %s exists: %w", className, err)
+    }
+    
+    if exists {
+        // Class already exists, skip creation (safe!)
+        return nil
+    }
+    
+    // Create the class
+    return r.t.EnsureClasses(ctx, []map[string]any{classDef})
+}
+```
+
+#### Idempotent Operations
+
+Schema deployment is **idempotent** - it can be run multiple times safely without side effects.
+
+### Testing Schema Changes
+
+#### Unit Tests
+
+Test schema definitions and deployment:
+
+```go
+func TestSchemaDefinitions(t *testing.T) {
+    classes := GetAllClasses()
+    
+    // Verify expected classes exist
+    classNames := make([]string, len(classes))
+    for i, c := range classes {
+        classNames[i] = c.Class
+    }
+    
+    assert.Contains(t, classNames, "KPIDefinition")
+    assert.Contains(t, classNames, "Dashboard")
+    assert.Contains(t, classNames, "UserPreferences")
+}
+
+func TestEnsureSchema(t *testing.T) {
+    repo := setupTestRepo(t)
+    
+    // Should not error even if schema already exists
+    err := repo.EnsureSchema(context.Background())
+    assert.NoError(t, err)
+    
+    // Verify classes were created
+    exists, err := repo.classExists(context.Background(), "KPIDefinition")
+    assert.NoError(t, err)
+    assert.True(t, exists)
+}
+```
+
+#### Integration Tests
+
+Test with actual Weaviate instance:
+
+```go
+func TestSchemaDeployment(t *testing.T) {
+    if testing.Short() {
+        t.Skip("Skipping integration test")
+    }
+    
+    repo := setupWeaviateRepo(t)
+    
+    // Deploy schema
+    err := repo.EnsureSchema(context.Background())
+    assert.NoError(t, err)
+    
+    // Verify all expected classes exist
+    expectedClasses := []string{
+        "KPIDefinition", "KPILayout", "Dashboard", "UserPreferences",
+    }
+    
+    for _, className := range expectedClasses {
+        exists, err := repo.classExists(context.Background(), className)
+        assert.NoError(t, err, "Failed to check class %s", className)
+        assert.True(t, exists, "Class %s should exist", className)
+    }
+}
+```
+
+### Deployment Checklist
+
+Before deploying schema changes:
+
+- [ ] Schema definitions updated in `schema.go`
+- [ ] Deployment logic updated in `schema_weaviate.go`
+- [ ] Unit tests pass
+- [ ] Integration tests pass with test Weaviate instance
+- [ ] Migration strategy documented
+- [ ] Rollback plan prepared
+- [ ] Data backup taken (if migrating existing data)
+- [ ] Application code updated to handle new schema
+- [ ] API contract documentation updated
+
+### Rollback Procedures
+
+#### For New Classes
+
+Simply remove the class definition from code and redeploy:
+
+```go
+// Remove from GetAllClasses()
+func GetAllClasses() []models.Class {
+    return []models.Class{
+        // Remove NewEntity class definition
+        // {"NewEntity", class("NewEntity", props(...))}, // REMOVED
+    }
+}
+```
+
+#### For Property Extensions
+
+New optional properties can be safely removed (Weaviate allows this).
+
+#### For Breaking Changes
+
+If migration is needed, implement rollback migration:
+
+```go
+func (r *WeaviateRepo) RollbackKPIDefinitionV2(ctx context.Context) error {
+    // Migrate data back to original schema
+    // Remove v2 objects
+    // Restore original application logic
+}
+```
+
+### Monitoring Schema Health
+
+Monitor schema deployment and health:
+
+```go
+// Check schema health
+func (r *WeaviateRepo) GetSchemaHealth(ctx context.Context) (*SchemaHealth, error) {
+    // Verify all expected classes exist
+    // Check class properties match expectations
+    // Report any inconsistencies
+}
+```
+
+### Best Practices
+
+1. **Version Class Names**: Use semantic versioning for class names when breaking changes are needed
+2. **Test Thoroughly**: Always test schema changes against a test Weaviate instance
+3. **Document Changes**: Update API contract documentation for any schema changes
+4. **Plan Migrations**: Have a clear migration and rollback strategy
+5. **Monitor Deployments**: Watch for schema deployment errors in production
+6. **Backup Data**: Ensure data is backed up before major schema changes
+7. **Gradual Rollout**: Test schema changes in staging before production deployment
+
+### Common Schema Issues
+
+#### Issue: Class Already Exists
+
+**Problem**: Schema deployment fails because class exists with different definition
+
+**Solution**: Weaviate doesn't allow altering existing classes. Create a new version:
+
+```go
+// Instead of modifying existing class
+{"KPIDefinition", class("KPIDefinition", props(/* modified */))},
+
+// Create new version
+{"KPIDefinition_v2", class("KPIDefinition_v2", props(/* new definition */))},
+```
+
+#### Issue: Property Type Mismatch
+
+**Problem**: Attempting to change property data type
+
+**Solution**: Create new class version with correct types. Weaviate property types cannot be changed.
+
+#### Issue: Schema Deployment Timeout
+
+**Problem**: Large schemas take too long to deploy
+
+**Solution**: 
+- Deploy classes individually with proper error handling
+- Increase timeout settings
+- Monitor deployment progress
+
+### Getting Help
+
+- **Schema Documentation**: Check Weaviate official documentation
+- **Community**: GitHub Discussions for mirador-core
+- **API Contract**: Review `dev/MIRADOR-CORE-API-CONTRACT.md`
 
 ## Next Steps
 
