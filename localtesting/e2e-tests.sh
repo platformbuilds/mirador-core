@@ -329,8 +329,6 @@ generate_suggested_fix() {
         500)
             if [[ "$url" == *"/predict/"* ]]; then
                 echo "Predict engine not running. Start predict microservice or disable predict tests"
-            elif [[ "$url" == *"/config/user-settings"* ]]; then
-                echo "User management not configured. Check authentication and user store configuration"
             else
                 echo "Internal server error. Check service logs and microservice dependencies"
             fi
@@ -548,7 +546,6 @@ test_config_endpoints() {
     
     http_request "GET" "$API_BASE/config/datasources" "200" "" "Get Data Sources"
     http_request "GET" "$API_BASE/config/integrations" "200" "" "Get Integrations"
-    http_request "GET" "$API_BASE/config/user-settings" "200" "" "Get User Settings"
 }
 
 # Schema API Tests

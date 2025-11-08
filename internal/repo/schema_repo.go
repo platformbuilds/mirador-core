@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"strings"
 	"time"
+
+	"github.com/platformbuilds/mirador-core/internal/models"
 )
 
 type MetricDef struct {
@@ -462,4 +464,221 @@ func (r *SchemaRepo) GetLogFieldVersion(ctx context.Context, tenantID, field str
 		_ = json.Unmarshal([]byte(payloadStr.String), &payload)
 	}
 	return payload, vi, nil
+}
+
+// ------------------- KPI Operations -------------------
+
+func (r *SchemaRepo) UpsertKPI(kpi *models.KPIDefinition) error {
+	kpiJSON, _ := json.Marshal(kpi)
+	_, err := r.DB.ExecContext(context.Background(),
+		`INSERT INTO kpi_definitions (tenant_id, id, name, definition, query, kind, sentiment, tags, created_at, updated_at) 
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
+		 ON DUPLICATE KEY UPDATE name=VALUES(name), definition=VALUES(definition), query=VALUES(query), kind=VALUES(kind), sentiment=VALUES(sentiment), tags=VALUES(tags), updated_at=VALUES(updated_at)`,
+		kpi.TenantID, kpi.ID, kpi.Name, kpi.Definition, string(kpiJSON), kpi.Kind, kpi.Sentiment, string(kpiJSON), kpi.CreatedAt, kpi.UpdatedAt)
+	return err
+}
+
+func (r *SchemaRepo) GetKPI(tenantID, id string) (*models.KPIDefinition, error) {
+	row := r.DB.QueryRowContext(context.Background(), `SELECT name, definition, query, kind, sentiment, tags, created_at, updated_at FROM kpi_definitions WHERE tenant_id=? AND id=?`, tenantID, id)
+	var name, definition, kind, sentiment string
+	var queryRaw, tagsRaw sql.NullString
+	var createdAt, updatedAt time.Time
+	if err := row.Scan(&name, &definition, &queryRaw, &kind, &sentiment, &tagsRaw, &createdAt, &updatedAt); err != nil {
+		return nil, err
+	}
+	var query map[string]interface{}
+	if queryRaw.Valid {
+		_ = json.Unmarshal([]byte(queryRaw.String), &query)
+	}
+	var tags []string
+	if tagsRaw.Valid {
+		_ = json.Unmarshal([]byte(tagsRaw.String), &tags)
+	}
+	return &models.KPIDefinition{
+		ID:         id,
+		TenantID:   tenantID,
+		Name:       name,
+		Definition: definition,
+		Query:      query,
+		Kind:       kind,
+		Sentiment:  sentiment,
+		Tags:       tags,
+		CreatedAt:  createdAt,
+		UpdatedAt:  updatedAt,
+	}, nil
+}
+
+func (r *SchemaRepo) ListKPIs(tenantID string, tags []string, limit, offset int) ([]*models.KPIDefinition, int, error) {
+	query := `SELECT id, name, definition, query, kind, sentiment, tags, created_at, updated_at FROM kpi_definitions WHERE tenant_id=?`
+	args := []interface{}{tenantID}
+
+	if len(tags) > 0 {
+		placeholders := make([]string, len(tags))
+		for i, tag := range tags {
+			placeholders[i] = "?"
+			args = append(args, tag)
+		}
+		query += " AND JSON_CONTAINS(tags, JSON_ARRAY(" + strings.Join(placeholders, ",") + "))"
+	}
+
+	query += " ORDER BY updated_at DESC LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+
+	rows, err := r.DB.QueryContext(context.Background(), query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var kpis []*models.KPIDefinition
+	for rows.Next() {
+		var id, name, definition, kind, sentiment string
+		var queryRaw, tagsRaw sql.NullString
+		var createdAt, updatedAt time.Time
+		if err := rows.Scan(&id, &name, &definition, &queryRaw, &kind, &sentiment, &tagsRaw, &createdAt, &updatedAt); err != nil {
+			return nil, 0, err
+		}
+		var query map[string]interface{}
+		if queryRaw.Valid {
+			_ = json.Unmarshal([]byte(queryRaw.String), &query)
+		}
+		var tags []string
+		if tagsRaw.Valid {
+			_ = json.Unmarshal([]byte(tagsRaw.String), &tags)
+		}
+		kpis = append(kpis, &models.KPIDefinition{
+			ID:         id,
+			TenantID:   tenantID,
+			Name:       name,
+			Definition: definition,
+			Query:      query,
+			Kind:       kind,
+			Sentiment:  sentiment,
+			Tags:       tags,
+			CreatedAt:  createdAt,
+			UpdatedAt:  updatedAt,
+		})
+	}
+
+	// Get total count
+	countQuery := `SELECT COUNT(*) FROM kpi_definitions WHERE tenant_id=?`
+	countArgs := []interface{}{tenantID}
+	if len(tags) > 0 {
+		placeholders := make([]string, len(tags))
+		for i, tag := range tags {
+			placeholders[i] = "?"
+			countArgs = append(countArgs, tag)
+		}
+		countQuery += " AND JSON_CONTAINS(tags, JSON_ARRAY(" + strings.Join(placeholders, ",") + "))"
+	}
+	var total int
+	if err := r.DB.QueryRowContext(context.Background(), countQuery, countArgs...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	return kpis, total, nil
+}
+
+func (r *SchemaRepo) DeleteKPI(tenantID, id string) error {
+	_, err := r.DB.ExecContext(context.Background(), `DELETE FROM kpi_definitions WHERE tenant_id=? AND id=?`, tenantID, id)
+	return err
+}
+
+// ------------------- KPI Layouts Operations -------------------
+
+func (r *SchemaRepo) GetKPILayoutsForDashboard(tenantID, dashboardID string) (map[string]interface{}, error) {
+	row := r.DB.QueryRowContext(context.Background(), `SELECT layouts FROM kpi_layouts WHERE tenant_id=? AND dashboard_id=?`, tenantID, dashboardID)
+	var layoutsRaw sql.NullString
+	if err := row.Scan(&layoutsRaw); err != nil {
+		if err == sql.ErrNoRows {
+			return map[string]interface{}{}, nil
+		}
+		return nil, err
+	}
+	var layouts map[string]interface{}
+	if layoutsRaw.Valid {
+		_ = json.Unmarshal([]byte(layoutsRaw.String), &layouts)
+	}
+	return layouts, nil
+}
+
+func (r *SchemaRepo) BatchUpsertKPILayouts(tenantID, dashboardID string, layouts map[string]interface{}) error {
+	layoutsJSON, _ := json.Marshal(layouts)
+	_, err := r.DB.ExecContext(context.Background(),
+		`INSERT INTO kpi_layouts (tenant_id, dashboard_id, layouts, updated_at) VALUES (?, ?, ?, ?) 
+		 ON DUPLICATE KEY UPDATE layouts=VALUES(layouts), updated_at=VALUES(updated_at)`,
+		tenantID, dashboardID, string(layoutsJSON), time.Now())
+	return err
+}
+
+// ------------------- Dashboard Operations -------------------
+
+func (r *SchemaRepo) UpsertDashboard(dashboard *models.Dashboard) error {
+	_, err := r.DB.ExecContext(context.Background(),
+		`INSERT INTO dashboards (tenant_id, id, name, owner_user_id, visibility, is_default, created_at, updated_at) 
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
+		 ON DUPLICATE KEY UPDATE name=VALUES(name), owner_user_id=VALUES(owner_user_id), visibility=VALUES(visibility), is_default=VALUES(is_default), updated_at=VALUES(updated_at)`,
+		dashboard.TenantID, dashboard.ID, dashboard.Name, dashboard.OwnerUserID, dashboard.Visibility, dashboard.IsDefault, dashboard.CreatedAt, dashboard.UpdatedAt)
+	return err
+}
+
+func (r *SchemaRepo) GetDashboard(tenantID, id string) (*models.Dashboard, error) {
+	row := r.DB.QueryRowContext(context.Background(), `SELECT name, owner_user_id, visibility, is_default, created_at, updated_at FROM dashboards WHERE tenant_id=? AND id=?`, tenantID, id)
+	var name, ownerUserID, visibility string
+	var isDefault bool
+	var createdAt, updatedAt time.Time
+	if err := row.Scan(&name, &ownerUserID, &visibility, &isDefault, &createdAt, &updatedAt); err != nil {
+		return nil, err
+	}
+	return &models.Dashboard{
+		ID:          id,
+		TenantID:    tenantID,
+		Name:        name,
+		OwnerUserID: ownerUserID,
+		Visibility:  visibility,
+		IsDefault:   isDefault,
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
+	}, nil
+}
+
+func (r *SchemaRepo) ListDashboards(tenantID string, limit, offset int) ([]*models.Dashboard, int, error) {
+	rows, err := r.DB.QueryContext(context.Background(), `SELECT id, name, owner_user_id, visibility, is_default, created_at, updated_at FROM dashboards WHERE tenant_id=? ORDER BY updated_at DESC LIMIT ? OFFSET ?`, tenantID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var dashboards []*models.Dashboard
+	for rows.Next() {
+		var id, name, ownerUserID, visibility string
+		var isDefault bool
+		var createdAt, updatedAt time.Time
+		if err := rows.Scan(&id, &name, &ownerUserID, &visibility, &isDefault, &createdAt, &updatedAt); err != nil {
+			return nil, 0, err
+		}
+		dashboards = append(dashboards, &models.Dashboard{
+			ID:          id,
+			TenantID:    tenantID,
+			Name:        name,
+			OwnerUserID: ownerUserID,
+			Visibility:  visibility,
+			IsDefault:   isDefault,
+			CreatedAt:   createdAt,
+			UpdatedAt:   updatedAt,
+		})
+	}
+
+	// Get total count
+	var total int
+	if err := r.DB.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM dashboards WHERE tenant_id=?`, tenantID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	return dashboards, total, nil
+}
+
+func (r *SchemaRepo) DeleteDashboard(tenantID, id string) error {
+	_, err := r.DB.ExecContext(context.Background(), `DELETE FROM dashboards WHERE tenant_id=? AND id=?`, tenantID, id)
+	return err
 }

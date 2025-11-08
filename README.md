@@ -690,6 +690,82 @@ curl -X POST https://mirador-core/api/v1/config/grpc/endpoints/reset \
   -H "Authorization: Bearer <token>"
 ```
 
+#### User Preferences APIs
+```bash
+# Get user preferences
+curl -X GET https://mirador-core/api/v1/config/user-preferences \
+  -H "Authorization: Bearer <token>"
+
+# Create user preferences
+curl -X POST https://mirador-core/api/v1/config/user-preferences \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "preferences": {
+      "theme": "dark",
+      "timezone": "UTC",
+      "notifications": true
+    }
+  }'
+
+# Update user preferences
+curl -X PUT https://mirador-core/api/v1/config/user-preferences \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "preferences": {
+      "theme": "light",
+      "timezone": "America/New_York",
+      "notifications": false
+    }
+  }'
+
+# Delete user preferences
+curl -X DELETE https://mirador-core/api/v1/config/user-preferences \
+  -H "Authorization: Bearer <token>"
+```
+
+#### Dashboards APIs
+```bash
+# Get dashboards
+curl -X GET https://mirador-core/api/v1/config/dashboards \
+  -H "Authorization: Bearer <token>"
+
+# Create dashboard
+curl -X POST https://mirador-core/api/v1/config/dashboards \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "API Performance Dashboard",
+    "description": "Monitor API performance metrics",
+    "shared": false,
+    "layout": {
+      "panels": []
+    }
+  }'
+
+# Get specific dashboard
+curl -X GET https://mirador-core/api/v1/config/dashboards/dash-123 \
+  -H "Authorization: Bearer <token>"
+
+# Update dashboard
+curl -X PUT https://mirador-core/api/v1/config/dashboards/dash-123 \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated API Dashboard",
+    "description": "Updated dashboard for monitoring API endpoints",
+    "shared": true,
+    "layout": {
+      "panels": []
+    }
+  }'
+
+# Delete dashboard
+curl -X DELETE https://mirador-core/api/v1/config/dashboards/dash-123 \
+  -H "Authorization: Bearer <token>"
+```
+
 ### Health & Monitoring APIs
 
 #### Health Checks
@@ -846,86 +922,243 @@ unified_query:
     confidence_threshold: 0.7
 ```
 
-## Schema Definitions APIs
+## Unified Schema API
 
-These APIs allow defining metric definitions (and label definitions) and log field definitions for contextualization and future LLM use.
+The unified schema API provides a single, consistent interface for managing all schema definitions. KPIs serve as the central schema definitions, with support for metrics, labels, log fields, traces, dashboards, layouts, and user preferences.
 
-Routes (under `/api/v1`):
+### Schema Types
 
-- Metrics definitions
-  - `POST /schema/metrics` — upsert metric definition
-    - Body: `{ tenantId?, metric, description?, owner?, tags?, author? }`
-  - `GET /schema/metrics/{metric}` — get current definition
-  - `GET /schema/metrics/{metric}/versions` — list version metadata
-  - `GET /schema/metrics/{metric}/versions/{version}` — fetch specific version payload
-  - `POST /schema/metrics/bulk` — bulk upsert via CSV (secure upload)
-    - Required header and columns:
-      - `tenant_id` (optional; defaults to request tenant)
-      - `metric` (required)
-      - `description`, `owner`, `tags_json` (JSON array of strings)
-      - `label`, `label_type`, `label_required`, `label_allowed_json`, `label_description`
-      - `author`
-    - Tags note: All schema `tags` are flat arrays of strings. In CSV, `tags_json` must be a JSON array of strings. Example: `["domain:web", "owner:team-observability"]`.
-    - Security controls: 5MiB limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, in‑memory only (no disk writes)
-  - `GET /schema/metrics/bulk/sample` — download a sample CSV template
-    - Optional: `?metrics=http_requests_total,process_cpu_seconds_total` pre-fills rows for listed metrics with discovered label keys
+The API supports the following schema types:
+- `metric` - Metric definitions with descriptions, owners, and tags
+- `label` - Label definitions with types, constraints, and descriptions
+- `log_field` - Log field definitions with types and examples
+- `trace_service` - Trace service definitions
+- `trace_operation` - Trace operation definitions (scoped to services)
+- `kpi` - KPI definitions with queries, thresholds, and visualizations
+- `dashboard` - Dashboard configurations
+- `layout` - KPI layout configurations within dashboards
+- `user_preferences` - User interface preferences
 
-- Label definitions (for a metric)
-  - Included in the metric upsert flow; label CRUD can be added similarly if needed.
+### API Endpoints
 
-- Log field definitions
-  - `POST /schema/logs/fields` — upsert log field definition
-    - Body: `{ tenantId?, field, type?, description?, tags?, examples?, author? }`
-  - `GET /schema/logs/fields/{field}` — get current definition
-  - `GET /schema/logs/fields/{field}/versions` — list versions
-  - `GET /schema/logs/fields/{field}/versions/{version}` — fetch version payload
-  - `POST /schema/logs/fields/bulk` — bulk upsert via CSV (secure upload)
-    - Columns: `tenant_id, category, logfieldname, logfieldtype, logfielddefinition, sentiment, tags_json (JSON array), examples_json, author`
-    - Tags note: `tags_json` must be a JSON array of strings. Example: `["category:security", "format:json", "indexed:true"]`.
-    - Security: 5MiB limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota
-  - `GET /schema/logs/fields/bulk/sample` — download a sample CSV template (one row per discovered log field)
+All schema operations use the unified `/api/v1/schema/:type` endpoints:
 
-- Traces schema (services & operations)
-  - Services
-    - `POST /schema/traces/services` — upsert trace service definition
-      - Body: `{ tenantId?, service, purpose?, owner?, tags?, author? }`
-    - `GET /schema/traces/services/{service}` — get current definition
-    - `GET /schema/traces/services/{service}/versions` — list version metadata
-    - `GET /schema/traces/services/{service}/versions/{version}` — fetch specific version payload
-    - `POST /schema/traces/services/bulk` — bulk upsert via CSV (secure upload)
-      - Columns: `tenant_id, service, purpose, owner, tags_json (JSON array), author`
-      - Tags note: `tags_json` must be a JSON array of strings. Example: `["environment:production", "team:platform"]`.
-      - Security: 5MiB limit, MIME allowlist + sniffing, UTF‑8 validation, CSV injection mitigation, header strict mode (reject unknown columns), 10k row cap, in‑memory only (no disk writes), per‑tenant daily quota (429)
-  - Operations
-    - `POST /schema/traces/operations` — upsert trace operation definition
-      - Body: `{ tenantId?, service, operation, purpose?, owner?, tags?, author? }`
-    - `GET /schema/traces/services/{service}/operations/{operation}` — get current definition
-    - `GET /schema/traces/services/{service}/operations/{operation}/versions` — list version metadata
-    - `GET /schema/traces/services/{service}/operations/{operation}/versions/{version}` — fetch specific version payload
-    - `POST /schema/traces/operations/bulk` — bulk upsert via CSV (secure upload)
-      - Columns: `tenant_id, service, operation, purpose, owner, tags_json (JSON array), author`
-      - Tags note: `tags_json` must be a JSON array of strings. Example: `["method:GET", "endpoint:/api/v1/users"]`.
-      - Security: 5MiB limit, MIME allowlist + sniffing, UTF‑8 validation, CSV injection mitigation, header strict mode (reject unknown columns), 10k row cap, in‑memory only (no disk writes), per‑tenant daily quota (429). Each row must reference an existing service (operations are per service).
+```bash
+# Create or update a schema definition
+POST /api/v1/schema/{type}
 
-- Labels (independent)
-  - `POST /schema/labels` — upsert label definition (not tied to a metric)
-    - Body: `{ tenantId?, name, type?, required?, allowedValues?, description?, author? }`
-  - `GET /schema/labels/{name}` — get current label definition
-  - `GET /schema/labels/{name}/versions` — list version metadata
-  - `GET /schema/labels/{name}/versions/{version}` — fetch specific version payload
-  - `DELETE /schema/labels/{name}` — delete label definition
-  - `POST /schema/labels/bulk` — bulk upsert via CSV (secure upload)
-    - Columns: `tenant_id, name, type, required, allowed_json, description, author`
-    - Tags note: `allowed_json` is a JSON object of constraints or allowed values
-    - Security: 5MiB limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota
-  - `GET /schema/labels/bulk/sample` — download a sample CSV template for labels
+# Get a specific schema definition
+GET /api/v1/schema/{type}/{id}
 
-Configuration: Bulk CSV Upload Size Limit
-- Config key: `uploads.bulk_max_bytes` (bytes). Default 5 MiB.
-- Ways to set:
-  - Helm values (`chart/values.yaml` → `.Values.mirador.uploads.bulk_max_bytes`), templated into `/etc/mirador/config.yaml`.
-  - Env vars: `BULK_UPLOAD_MAX_BYTES` or `BULK_UPLOAD_MAX_MIB` (takes precedence over file).
-  - Local dev compose sets `BULK_UPLOAD_MAX_BYTES` by default; adjust as needed.
+# List schema definitions with optional filtering
+GET /api/v1/schema/{type}?limit=50&offset=0&tags=domain:web
+
+# Delete a schema definition (requires confirmation)
+DELETE /api/v1/schema/{type}/{id}?confirm=1
+```
+
+### Examples
+
+#### Metric Definitions
+```bash
+# Create/update metric definition
+curl -X POST https://mirador-core/api/v1/schema/metric \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "http_requests_total",
+    "description": "Total number of HTTP requests",
+    "tags": ["domain:web", "category:performance"],
+    "extensions": {
+      "metric": {
+        "description": "Total number of HTTP requests",
+        "owner": "platform-team"
+      }
+    },
+    "author": "john.doe"
+  }'
+
+# Get metric definition
+curl -X GET https://mirador-core/api/v1/schema/metric/http_requests_total \
+  -H "Authorization: Bearer <token>"
+
+# List metrics
+curl -X GET https://mirador-core/api/v1/schema/metric?limit=20 \
+  -H "Authorization: Bearer <token>"
+```
+
+#### Label Definitions
+```bash
+# Create/update label definition
+curl -X POST https://mirador-core/api/v1/schema/label \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "status",
+    "tags": ["category:monitoring", "indexed:true"],
+    "extensions": {
+      "label": {
+        "type": "string",
+        "required": false,
+        "allowedVals": ["success", "error", "warning"],
+        "description": "Request status"
+      }
+    },
+    "author": "jane.smith"
+  }'
+```
+
+#### Log Field Definitions
+```bash
+# Create/update log field definition
+curl -X POST https://mirador-core/api/v1/schema/log_field \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "level",
+    "tags": ["category:logging", "indexed:true"],
+    "extensions": {
+      "logField": {
+        "fieldType": "string",
+        "description": "Log level severity"
+      }
+    },
+    "author": "jane.smith"
+  }'
+```
+
+#### Trace Definitions
+```bash
+# Create/update trace service definition
+curl -X POST https://mirador-core/api/v1/schema/trace_service \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "checkout",
+    "tags": ["domain:ecommerce", "language:go"],
+    "extensions": {
+      "trace": {
+        "servicePurpose": "Handles e-commerce checkout process",
+        "owner": "commerce-team"
+      }
+    },
+    "author": "mike.wilson"
+  }'
+
+# Create/update trace operation definition
+curl -X POST https://mirador-core/api/v1/schema/trace_operation \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "ProcessPayment",
+    "tags": ["method:POST", "endpoint:/api/payment"],
+    "extensions": {
+      "trace": {
+        "service": "checkout",
+        "servicePurpose": "Processes payment for order",
+        "owner": "commerce-team"
+      }
+    },
+    "author": "mike.wilson"
+  }'
+```
+
+#### KPI Definitions
+```bash
+# Create/update KPI definition
+curl -X POST https://mirador-core/api/v1/schema/kpi \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Error Rate",
+    "kind": "percentage",
+    "unit": "%",
+    "format": "0.00",
+    "query": "rate(errors_total[5m]) / rate(http_requests_total[5m]) * 100",
+    "thresholds": {
+      "warning": 5.0,
+      "critical": 10.0
+    },
+    "tags": ["domain:api", "category:reliability"],
+    "sparkline": true,
+    "visibility": "public",
+    "author": "ops.team"
+  }'
+
+# Get KPI definition
+curl -X GET https://mirador-core/api/v1/schema/kpi/error-rate \
+  -H "Authorization: Bearer <token>"
+```
+
+#### Dashboard Definitions
+```bash
+# Create/update dashboard definition
+curl -X POST https://mirador-core/api/v1/schema/dashboard \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "API Health Dashboard",
+    "visibility": "team",
+    "extensions": {
+      "dashboard": {
+        "isDefault": false
+      }
+    },
+    "author": "dashboard.admin"
+  }'
+```
+
+### Schema Definition Structure
+
+All schema definitions follow a common structure:
+
+```json
+{
+  "id": "unique-identifier",
+  "name": "human-readable-name",
+  "type": "schema-type",
+  "tenantId": "optional-tenant-id",
+  "tags": ["tag1", "tag2:key"],
+  "category": "optional-category",
+  "sentiment": "optional-sentiment",
+  "author": "creator-username",
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z",
+  "extensions": {
+    "typeSpecific": {
+      // Type-specific fields
+    }
+  }
+}
+```
+
+### Tags Format
+
+All schema definitions use flat arrays of strings for tags:
+- `["domain:web", "owner:platform-team", "category:performance"]`
+- Tags support key:value pairs or simple labels
+- Used for filtering and organization
+
+### Bulk Operations
+
+Bulk CSV upload is supported for schema definitions:
+
+```bash
+# Bulk upload schema definitions via CSV
+curl -X POST https://mirador-core/api/v1/schema/{type}/bulk \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@schema_definitions.csv"
+```
+
+CSV format includes `tags_json` column containing JSON arrays of tag strings.
+
+### Security & Validation
+
+- **Input Validation**: Comprehensive sanitization and validation
+- **Rate Limiting**: Per-tenant request throttling
+- **Audit Logging**: All schema changes are logged
+- **Tenant Isolation**: Automatic tenant scoping
+- **File Upload Limits**: 5MiB maximum for bulk operations
 
 ## Logs (Lucene) & Traces
 

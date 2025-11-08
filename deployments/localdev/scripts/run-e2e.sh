@@ -94,8 +94,6 @@ request "rca:store" POST "/api/v1/rca/store" '{"correlationId":"c1","incidentId"
 # Config & Sessions & RBAC
 request "config:datasources:get" GET "/api/v1/config/datasources"
 request "config:datasources:add" POST "/api/v1/config/datasources" '{"name":"vm","type":"metrics","url":"http://vm"}' "201"
-request "config:user-settings:get" GET "/api/v1/config/user-settings" '' "200,500"
-request "config:user-settings:put" PUT "/api/v1/config/user-settings" '{"theme":"dark"}' "200,500"
 request "config:integrations" GET "/api/v1/config/integrations"
 request "sessions:active" GET "/api/v1/sessions/active"
 request "sessions:invalidate" POST "/api/v1/sessions/invalidate" '{}' "200,400"

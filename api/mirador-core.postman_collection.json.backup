@@ -5046,7 +5046,7 @@
       "name": "Schema",
       "item": [
         {
-          "name": "POST /schema/metric - Create Metric Schema",
+          "name": "POST /schema/metrics (tags array)",
           "request": {
             "method": "POST",
             "header": [
@@ -5056,17 +5056,16 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/metric"
+              "raw": "{{baseUrl}}/schema/metrics"
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"name\": \"http_requests_total\",\n  \"description\": \"Total HTTP requests\",\n  \"type\": \"metric\",\n  \"extensions\": {\n    \"metric\": {\n      \"unit\": \"requests\",\n      \"aggregation\": \"sum\",\n      \"dataType\": \"counter\"\n    }\n  },\n  \"tags\": [\"domain:web\", \"source:prometheus\"],\n  \"owner\": \"team-observability\",\n  \"author\": \"user@example.com\"\n}"
-            },
-            "description": "Create or update a metric schema definition using the unified API"
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"metric\": \"http_requests_total\",\n  \"description\": \"Total HTTP requests\",\n  \"owner\": \"team-observability\",\n  \"tags\": [\"domain:web\", \"source:prometheus\"],\n  \"author\": \"user@example.com\"\n}"
+            }
           }
         },
         {
-          "name": "POST /schema/label - Create Label Schema",
+          "name": "POST /schema/logs/fields (tags array)",
           "request": {
             "method": "POST",
             "header": [
@@ -5076,17 +5075,16 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/label"
+              "raw": "{{baseUrl}}/schema/logs/fields"
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"name\": \"instance\",\n  \"description\": \"Pod or host instance label\",\n  \"type\": \"label\",\n  \"extensions\": {\n    \"label\": {\n      \"dataType\": \"string\",\n      \"required\": false,\n      \"allowedValues\": {}\n    }\n  },\n  \"author\": \"user@example.com\"\n}"
-            },
-            "description": "Create or update a label schema definition using the unified API"
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"logFieldName\": \"service\",\n  \"logFieldType\": \"string\",\n  \"logFieldDefinition\": \"Service name\",\n  \"tags\": [\"category:identity\"],\n  \"examples\": {\"normal\": \"auth\"},\n  \"author\": \"user@example.com\"\n}"
+            }
           }
         },
         {
-          "name": "POST /schema/log_field - Create Log Field Schema",
+          "name": "POST /schema/traces/services (tags array)",
           "request": {
             "method": "POST",
             "header": [
@@ -5096,17 +5094,16 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/log_field"
+              "raw": "{{baseUrl}}/schema/traces/services"
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"name\": \"service\",\n  \"description\": \"Service name\",\n  \"type\": \"log_field\",\n  \"extensions\": {\n    \"log_field\": {\n      \"dataType\": \"string\",\n      \"examples\": {\"normal\": \"auth\"}\n    }\n  },\n  \"tags\": [\"category:identity\"],\n  \"author\": \"user@example.com\"\n}"
-            },
-            "description": "Create or update a log field schema definition using the unified API"
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"service\": \"checkout\",\n  \"servicePurpose\": \"handles customer checkout\",\n  \"owner\": \"team-payments\",\n  \"tags\": [\"environment:production\", \"team:platform\"],\n  \"author\": \"user@example.com\"\n}"
+            }
           }
         },
         {
-          "name": "POST /schema/trace_service - Create Trace Service Schema",
+          "name": "POST /schema/traces/operations (tags array)",
           "request": {
             "method": "POST",
             "header": [
@@ -5116,17 +5113,16 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/trace_service"
+              "raw": "{{baseUrl}}/schema/traces/operations"
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"name\": \"checkout\",\n  \"description\": \"Handles customer checkout\",\n  \"type\": \"trace_service\",\n  \"extensions\": {\n    \"trace_service\": {\n      \"purpose\": \"handles customer checkout\"\n    }\n  },\n  \"tags\": [\"environment:production\", \"team:platform\"],\n  \"owner\": \"team-payments\",\n  \"author\": \"user@example.com\"\n}"
-            },
-            "description": "Create or update a trace service schema definition using the unified API"
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"service\": \"checkout\",\n  \"operation\": \"CreateOrder\",\n  \"servicePurpose\": \"creates orders\",\n  \"owner\": \"team-payments\",\n  \"tags\": [\"method:POST\", \"endpoint:/api/v1/orders\"],\n  \"author\": \"user@example.com\"\n}"
+            }
           }
         },
         {
-          "name": "POST /schema/trace_operation - Create Trace Operation Schema",
+          "name": "POST /schema/labels (independent label)",
           "request": {
             "method": "POST",
             "header": [
@@ -5136,367 +5132,52 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/trace_operation"
+              "raw": "{{baseUrl}}/schema/labels"
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"name\": \"CreateOrder\",\n  \"description\": \"Creates orders\",\n  \"type\": \"trace_operation\",\n  \"extensions\": {\n    \"trace_operation\": {\n      \"service\": \"checkout\",\n      \"method\": \"POST\",\n      \"endpoint\": \"/api/v1/orders\"\n    }\n  },\n  \"tags\": [\"method:POST\", \"endpoint:/api/v1/orders\"],\n  \"owner\": \"team-payments\",\n  \"author\": \"user@example.com\"\n}"
-            },
-            "description": "Create or update a trace operation schema definition using the unified API"
+              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"name\": \"instance\",\n  \"type\": \"string\",\n  \"required\": false,\n  \"allowedValues\": {},\n  \"description\": \"Pod or host instance label\",\n  \"author\": \"user@example.com\"\n}"
+            }
           }
         },
         {
-          "name": "POST /schema/kpi - Create KPI Schema",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/kpi"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"name\": \"error_rate\",\n  \"description\": \"Application error rate KPI\",\n  \"type\": \"kpi\",\n  \"extensions\": {\n    \"kpi\": {\n      \"query\": \"rate(errors_total[5m])\",\n      \"threshold\": 0.05,\n      \"unit\": \"percent\"\n    }\n  },\n  \"tags\": [\"type:reliability\", \"severity:high\"],\n  \"owner\": \"team-sre\",\n  \"author\": \"user@example.com\"\n}"
-            },
-            "description": "Create or update a KPI schema definition using the unified API"
-          }
-        },
-        {
-          "name": "POST /schema/dashboard - Create Dashboard Schema",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/dashboard"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"name\": \"service-overview\",\n  \"description\": \"Service overview dashboard\",\n  \"type\": \"dashboard\",\n  \"extensions\": {\n    \"dashboard\": {\n      \"panels\": [\n        {\"type\": \"graph\", \"title\": \"Request Rate\"},\n        {\"type\": \"table\", \"title\": \"Error Logs\"}\n      ],\n      \"layout\": \"grid\",\n      \"refresh\": \"30s\"\n    }\n  },\n  \"tags\": [\"category:overview\"],\n  \"owner\": \"team-observability\",\n  \"author\": \"user@example.com\"\n}"
-            },
-            "description": "Create or update a dashboard schema definition using the unified API"
-          }
-        },
-        {
-          "name": "POST /schema/layout - Create Layout Schema",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/layout"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"name\": \"default-layout\",\n  \"description\": \"Default dashboard layout\",\n  \"type\": \"layout\",\n  \"extensions\": {\n    \"layout\": {\n      \"columns\": 3,\n      \"rows\": 2,\n      \"widgets\": [\n        {\"type\": \"metric\", \"position\": {\"x\": 0, \"y\": 0, \"width\": 1, \"height\": 1}},\n        {\"type\": \"chart\", \"position\": {\"x\": 1, \"y\": 0, \"width\": 2, \"height\": 1}}\n      ]\n    }\n  },\n  \"tags\": [\"type:default\"],\n  \"author\": \"user@example.com\"\n}"
-            },
-            "description": "Create or update a layout schema definition using the unified API"
-          }
-        },
-        {
-          "name": "POST /schema/user_preferences - Create User Preferences Schema",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/user_preferences"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"tenantId\": \"{{tenantId}}\",\n  \"name\": \"user-prefs\",\n  \"description\": \"User interface preferences\",\n  \"type\": \"user_preferences\",\n  \"extensions\": {\n    \"user_preferences\": {\n      \"theme\": \"dark\",\n      \"timezone\": \"UTC\",\n      \"notifications\": {\n        \"email\": true,\n        \"slack\": false\n      },\n      \"dashboard\": {\n        \"autoRefresh\": true,\n        \"refreshInterval\": \"30s\"\n      }\n    }\n  },\n  \"author\": \"user@example.com\"\n}"
-            },
-            "description": "Create or update user preferences schema definition using the unified API"
-          }
-        },
-        {
-          "name": "GET /schema/metric - List Metric Schemas",
+          "name": "GET /schema/labels/{name}",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/metric"
-            },
-            "description": "List all metric schema definitions"
+              "raw": "{{baseUrl}}/schema/labels/instance"
+            }
           }
         },
         {
-          "name": "GET /schema/label - List Label Schemas",
+          "name": "GET /schema/labels/{name}/versions",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/label"
-            },
-            "description": "List all label schema definitions"
+              "raw": "{{baseUrl}}/schema/labels/instance/versions"
+            }
           }
         },
         {
-          "name": "GET /schema/log_field - List Log Field Schemas",
+          "name": "GET /schema/labels/{name}/versions/{version}",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/log_field"
-            },
-            "description": "List all log field schema definitions"
+              "raw": "{{baseUrl}}/schema/labels/instance/versions/1"
+            }
           }
         },
         {
-          "name": "GET /schema/trace_service - List Trace Service Schemas",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/trace_service"
-            },
-            "description": "List all trace service schema definitions"
-          }
-        },
-        {
-          "name": "GET /schema/trace_operation - List Trace Operation Schemas",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/trace_operation"
-            },
-            "description": "List all trace operation schema definitions"
-          }
-        },
-        {
-          "name": "GET /schema/kpi - List KPI Schemas",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/kpi"
-            },
-            "description": "List all KPI schema definitions"
-          }
-        },
-        {
-          "name": "GET /schema/dashboard - List Dashboard Schemas",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/dashboard"
-            },
-            "description": "List all dashboard schema definitions"
-          }
-        },
-        {
-          "name": "GET /schema/layout - List Layout Schemas",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/layout"
-            },
-            "description": "List all layout schema definitions"
-          }
-        },
-        {
-          "name": "GET /schema/user_preferences - List User Preferences Schemas",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/user_preferences"
-            },
-            "description": "List all user preferences schema definitions"
-          }
-        },
-        {
-          "name": "GET /schema/metric/{name} - Get Metric Schema",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/metric/http_requests_total"
-            },
-            "description": "Get a specific metric schema definition by name"
-          }
-        },
-        {
-          "name": "GET /schema/label/{name} - Get Label Schema",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/label/instance"
-            },
-            "description": "Get a specific label schema definition by name"
-          }
-        },
-        {
-          "name": "GET /schema/log_field/{name} - Get Log Field Schema",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/log_field/service"
-            },
-            "description": "Get a specific log field schema definition by name"
-          }
-        },
-        {
-          "name": "GET /schema/trace_service/{name} - Get Trace Service Schema",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/trace_service/checkout"
-            },
-            "description": "Get a specific trace service schema definition by name"
-          }
-        },
-        {
-          "name": "GET /schema/trace_operation/{name} - Get Trace Operation Schema",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/trace_operation/CreateOrder"
-            },
-            "description": "Get a specific trace operation schema definition by name"
-          }
-        },
-        {
-          "name": "GET /schema/kpi/{name} - Get KPI Schema",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/kpi/error_rate"
-            },
-            "description": "Get a specific KPI schema definition by name"
-          }
-        },
-        {
-          "name": "GET /schema/dashboard/{name} - Get Dashboard Schema",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/dashboard/service-overview"
-            },
-            "description": "Get a specific dashboard schema definition by name"
-          }
-        },
-        {
-          "name": "GET /schema/layout/{name} - Get Layout Schema",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/layout/default-layout"
-            },
-            "description": "Get a specific layout schema definition by name"
-          }
-        },
-        {
-          "name": "GET /schema/user_preferences/{name} - Get User Preferences Schema",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/user_preferences/user-prefs"
-            },
-            "description": "Get a specific user preferences schema definition by name"
-          }
-        },
-        {
-          "name": "DELETE /schema/metric/{name} - Delete Metric Schema",
+          "name": "DELETE /schema/labels/{name}",
           "request": {
             "method": "DELETE",
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/metric/http_requests_total?confirm=1"
-            },
-            "description": "Delete a metric schema definition"
+              "raw": "{{baseUrl}}/schema/labels/instance?confirm=1"
+            }
           }
         },
         {
-          "name": "DELETE /schema/label/{name} - Delete Label Schema",
-          "request": {
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/label/instance?confirm=1"
-            },
-            "description": "Delete a label schema definition"
-          }
-        },
-        {
-          "name": "DELETE /schema/log_field/{name} - Delete Log Field Schema",
-          "request": {
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/log_field/service?confirm=1"
-            },
-            "description": "Delete a log field schema definition"
-          }
-        },
-        {
-          "name": "DELETE /schema/trace_service/{name} - Delete Trace Service Schema",
-          "request": {
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/trace_service/checkout?confirm=1"
-            },
-            "description": "Delete a trace service schema definition"
-          }
-        },
-        {
-          "name": "DELETE /schema/trace_operation/{name} - Delete Trace Operation Schema",
-          "request": {
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/trace_operation/CreateOrder?confirm=1"
-            },
-            "description": "Delete a trace operation schema definition"
-          }
-        },
-        {
-          "name": "DELETE /schema/kpi/{name} - Delete KPI Schema",
-          "request": {
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/kpi/error_rate?confirm=1"
-            },
-            "description": "Delete a KPI schema definition"
-          }
-        },
-        {
-          "name": "DELETE /schema/dashboard/{name} - Delete Dashboard Schema",
-          "request": {
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/dashboard/service-overview?confirm=1"
-            },
-            "description": "Delete a dashboard schema definition"
-          }
-        },
-        {
-          "name": "DELETE /schema/layout/{name} - Delete Layout Schema",
-          "request": {
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/layout/default-layout?confirm=1"
-            },
-            "description": "Delete a layout schema definition"
-          }
-        },
-        {
-          "name": "DELETE /schema/user_preferences/{name} - Delete User Preferences Schema",
-          "request": {
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/user_preferences/user-prefs?confirm=1"
-            },
-            "description": "Delete a user preferences schema definition"
-          }
-        },
-        {
-          "name": "POST /schema/metric/bulk - Bulk Upload Metric Schemas",
+          "name": "POST /schema/labels/bulk (CSV)",
           "request": {
             "method": "POST",
             "header": [
@@ -5506,7 +5187,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/metric/bulk"
+              "raw": "{{baseUrl}}/schema/labels/bulk"
             },
             "body": {
               "mode": "formdata",
@@ -5515,174 +5196,589 @@
                   "key": "file",
                   "type": "file",
                   "src": [
-                    "metric-schemas-sample.csv"
+                    "labels-sample.csv"
                   ]
                 }
               ]
             },
-            "description": "Bulk upload metric schema definitions via CSV. Header: tenant_id,name,description,type,unit,aggregation,data_type,tags,owner,author"
+            "description": "Upload a CSV with header: tenant_id,name,type,required,allowed_json,description,author"
           }
         },
         {
-          "name": "POST /schema/label/bulk - Bulk Upload Label Schemas",
+          "name": "GET /schema/labels/bulk/sample",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/schema/labels/bulk/sample"
+            }
+          }
+        },
+        {
+          "name": "POST /schema/traces/services",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
-                "value": "multipart/form-data"
+                "value": "application/json"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/label/bulk"
+              "raw": "{{baseUrl}}/schema/traces/services"
             },
+            "description": "Upsert trace service definition",
             "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": [
-                    "label-schemas-sample.csv"
-                  ]
-                }
-              ]
-            },
-            "description": "Bulk upload label schema definitions via CSV. Header: tenant_id,name,description,type,data_type,required,allowed_values,author"
+              "mode": "raw",
+              "raw": "{}"
+            }
           }
         },
         {
-          "name": "POST /schema/log_field/bulk - Bulk Upload Log Field Schemas",
+          "name": "POST /schema/traces/services/bulk",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
-                "value": "multipart/form-data"
+                "value": "application/json"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/log_field/bulk"
+              "raw": "{{baseUrl}}/schema/traces/services/bulk"
             },
+            "description": "Bulk upsert trace services via CSV",
             "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": [
-                    "log-field-schemas-sample.csv"
-                  ]
-                }
-              ]
-            },
-            "description": "Bulk upload log field schema definitions via CSV. Header: tenant_id,name,description,type,data_type,examples,tags,author"
+              "mode": "raw",
+              "raw": "{}"
+            }
           }
         },
         {
-          "name": "POST /schema/trace_service/bulk - Bulk Upload Trace Service Schemas",
+          "name": "GET /schema/traces/services/{service}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/traces/services/{service}"
+            },
+            "description": "Get current trace service definition"
+          }
+        },
+        {
+          "name": "DELETE /schema/traces/services/{service}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/traces/services/{service}"
+            },
+            "description": "Delete trace service definition"
+          }
+        },
+        {
+          "name": "GET /schema/traces/services/{service}/versions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/traces/services/{service}/versions"
+            },
+            "description": "List versions for a trace service"
+          }
+        },
+        {
+          "name": "GET /schema/traces/services/{service}/versions/{version}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/traces/services/{service}/versions/{version}"
+            },
+            "description": "Get a specific version of a trace service definition"
+          }
+        },
+        {
+          "name": "POST /schema/traces/operations",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
-                "value": "multipart/form-data"
+                "value": "application/json"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/trace_service/bulk"
+              "raw": "{{baseUrl}}/schema/traces/operations"
             },
+            "description": "Upsert trace operation definition",
             "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": [
-                    "trace-service-schemas-sample.csv"
-                  ]
-                }
-              ]
-            },
-            "description": "Bulk upload trace service schema definitions via CSV. Header: tenant_id,name,description,type,purpose,tags,owner,author"
+              "mode": "raw",
+              "raw": "{}"
+            }
           }
         },
         {
-          "name": "POST /schema/trace_operation/bulk - Bulk Upload Trace Operation Schemas",
+          "name": "POST /schema/traces/operations/bulk",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
-                "value": "multipart/form-data"
+                "value": "application/json"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/trace_operation/bulk"
+              "raw": "{{baseUrl}}/schema/traces/operations/bulk"
             },
+            "description": "Bulk upsert trace operations via CSV",
             "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": [
-                    "trace-operation-schemas-sample.csv"
-                  ]
-                }
-              ]
-            },
-            "description": "Bulk upload trace operation schema definitions via CSV. Header: tenant_id,name,description,type,service,method,endpoint,tags,owner,author"
+              "mode": "raw",
+              "raw": "{}"
+            }
           }
         },
         {
-          "name": "GET /schema/metric/bulk/sample - Download Metric Schema Sample",
+          "name": "GET /schema/traces/services/{service}/operations/{operation}",
           "request": {
             "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/metric/bulk/sample"
+              "raw": "{{baseUrl}}/schema/traces/services/{service}/operations/{operation}"
             },
-            "description": "Download sample CSV template for metric schema bulk upload"
+            "description": "Get current trace operation definition"
           }
         },
         {
-          "name": "GET /schema/label/bulk/sample - Download Label Schema Sample",
+          "name": "DELETE /schema/traces/services/{service}/operations/{operation}",
           "request": {
-            "method": "GET",
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/label/bulk/sample"
+              "raw": "{{baseUrl}}/schema/traces/services/{service}/operations/{operation}"
             },
-            "description": "Download sample CSV template for label schema bulk upload"
+            "description": "Delete trace operation definition"
           }
         },
         {
-          "name": "GET /schema/log_field/bulk/sample - Download Log Field Schema Sample",
+          "name": "GET /schema/traces/services/{service}/operations/{operation}/versions",
           "request": {
             "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/log_field/bulk/sample"
+              "raw": "{{baseUrl}}/schema/traces/services/{service}/operations/{operation}/versions"
             },
-            "description": "Download sample CSV template for log field schema bulk upload"
+            "description": "List versions for a trace operation"
           }
         },
         {
-          "name": "GET /schema/trace_service/bulk/sample - Download Trace Service Schema Sample",
+          "name": "GET /schema/traces/services/{service}/operations/{operation}/versions/{version}",
           "request": {
             "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/trace_service/bulk/sample"
+              "raw": "{{baseUrl}}/schema/traces/services/{service}/operations/{operation}/versions/{version}"
             },
-            "description": "Download sample CSV template for trace service schema bulk upload"
+            "description": "Get a specific version of a trace operation definition"
           }
         },
         {
-          "name": "GET /schema/trace_operation/bulk/sample - Download Trace Operation Schema Sample",
+          "name": "POST /schema/metrics",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/metrics"
+            },
+            "description": "Upsert metric definition",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /schema/metrics/bulk",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/metrics/bulk"
+            },
+            "description": "Bulk upsert metric and label definitions (CSV)",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "GET /schema/metrics/bulk/sample",
           "request": {
             "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/schema/trace_operation/bulk/sample"
+              "raw": "{{baseUrl}}/schema/metrics/bulk/sample"
             },
-            "description": "Download sample CSV template for trace operation schema bulk upload"
+            "description": "Download sample CSV template"
+          }
+        },
+        {
+          "name": "GET /schema/metrics/{metric}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/metrics/{metric}"
+            },
+            "description": "Get metric definition"
+          }
+        },
+        {
+          "name": "DELETE /schema/metrics/{metric}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/metrics/{metric}"
+            },
+            "description": "Delete metric definition"
+          }
+        },
+        {
+          "name": "GET /schema/metrics/{metric}/versions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/metrics/{metric}/versions"
+            },
+            "description": "List metric definition versions"
+          }
+        },
+        {
+          "name": "GET /schema/metrics/{metric}/versions/{version}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/metrics/{metric}/versions/{version}"
+            },
+            "description": "Get specific metric definition version"
+          }
+        },
+        {
+          "name": "POST /schema/labels",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/labels"
+            },
+            "description": "Upsert label definition (independent)",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "GET /schema/labels/{name}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/labels/{name}"
+            },
+            "description": "Get label definition"
+          }
+        },
+        {
+          "name": "DELETE /schema/labels/{name}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/labels/{name}"
+            },
+            "description": "Delete label definition"
+          }
+        },
+        {
+          "name": "GET /schema/labels/{name}/versions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/labels/{name}/versions"
+            },
+            "description": "List label definition versions"
+          }
+        },
+        {
+          "name": "GET /schema/labels/{name}/versions/{version}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/labels/{name}/versions/{version}"
+            },
+            "description": "Get specific label definition version"
+          }
+        },
+        {
+          "name": "POST /schema/labels/bulk",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/labels/bulk"
+            },
+            "description": "Bulk upsert label definitions (CSV)",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "GET /schema/labels/bulk/sample",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/labels/bulk/sample"
+            },
+            "description": "Download sample CSV template for labels"
+          }
+        },
+        {
+          "name": "POST /schema/logs/fields",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/logs/fields"
+            },
+            "description": "Upsert log field definition",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "POST /schema/logs/fields/bulk",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/logs/fields/bulk"
+            },
+            "description": "Bulk upsert log field definitions (CSV)",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "GET /schema/logs/fields/bulk/sample",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/logs/fields/bulk/sample"
+            },
+            "description": "Download sample CSV template for log fields"
+          }
+        },
+        {
+          "name": "GET /schema/logs/fields/{field}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/logs/fields/{field}"
+            },
+            "description": "Get log field definition"
+          }
+        },
+        {
+          "name": "DELETE /schema/logs/fields/{field}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/logs/fields/{field}"
+            },
+            "description": "Delete log field definition"
+          }
+        },
+        {
+          "name": "GET /schema/logs/fields/{field}/versions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/logs/fields/{field}/versions"
+            },
+            "description": "List log field definition versions"
+          }
+        },
+        {
+          "name": "GET /schema/logs/fields/{field}/versions/{version}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schema/logs/fields/{field}/versions/{version}"
+            },
+            "description": "Get specific log field definition version"
           }
         }
       ]
@@ -6005,6 +6101,42 @@
           }
         },
         {
+          "name": "GET /config/user-settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/config/user-settings"
+            },
+            "description": "Get user settings"
+          }
+        },
+        {
+          "name": "PUT /config/user-settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/config/user-settings"
+            },
+            "description": "Update user settings",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
           "name": "GET /config/integrations",
           "request": {
             "method": "GET",
@@ -6122,176 +6254,6 @@
               "raw": "{{baseUrl}}/config/grpc/endpoints/reset"
             },
             "description": "Reset gRPC endpoint configurations to default values"
-          }
-        }
-      ]
-    },
-    {
-      "name": "User Preferences",
-      "item": [
-        {
-          "name": "GET /config/user-preferences",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/config/user-preferences"
-            },
-            "description": "Get user preferences for current user or specified user"
-          }
-        },
-        {
-          "name": "POST /config/user-preferences",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/config/user-preferences"
-            },
-            "description": "Create user preferences for a user",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"preferences\": {\n    \"theme\": \"dark\",\n    \"timezone\": \"UTC\",\n    \"notifications\": true\n  }\n}"
-            }
-          }
-        },
-        {
-          "name": "PUT /config/user-preferences",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/config/user-preferences"
-            },
-            "description": "Update user preferences for current user or specified user",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"preferences\": {\n    \"theme\": \"light\",\n    \"timezone\": \"America/New_York\",\n    \"notifications\": false\n  }\n}"
-            }
-          }
-        },
-        {
-          "name": "DELETE /config/user-preferences",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/config/user-preferences"
-            },
-            "description": "Delete user preferences for current user or specified user"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Dashboards",
-      "item": [
-        {
-          "name": "GET /config/dashboards",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/config/dashboards"
-            },
-            "description": "Get dashboards for current user or all dashboards if admin"
-          }
-        },
-        {
-          "name": "POST /config/dashboards",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/config/dashboards"
-            },
-            "description": "Create a new dashboard for the current user",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"API Performance Dashboard\",\n  \"description\": \"Monitor API performance metrics\",\n  \"shared\": false,\n  \"layout\": {\n    \"panels\": []\n  }\n}"
-            }
-          }
-        },
-        {
-          "name": "GET /config/dashboards/{dashboardId}",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/config/dashboards/{dashboardId}"
-            },
-            "description": "Get a specific dashboard by ID"
-          }
-        },
-        {
-          "name": "PUT /config/dashboards/{dashboardId}",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/config/dashboards/{dashboardId}"
-            },
-            "description": "Update an existing dashboard",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Updated API Dashboard\",\n  \"description\": \"Updated dashboard for monitoring API endpoints\",\n  \"shared\": true,\n  \"layout\": {\n    \"panels\": []\n  }\n}"
-            }
-          }
-        },
-        {
-          "name": "DELETE /config/dashboards/{dashboardId}",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/config/dashboards/{dashboardId}"
-            },
-            "description": "Delete a dashboard by ID"
           }
         }
       ]

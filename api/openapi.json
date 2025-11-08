@@ -59,8 +59,7 @@
             ]
           },
           "time_to_fracture": {
-            "type": "integer",
-            "description": "Seconds until predicted fracture"
+            "type": "integer"
           },
           "severity": {
             "type": "string",
@@ -392,217 +391,410 @@
           }
         }
       },
-      "TraceServiceRequest": {
+      "SchemaDefinition": {
         "type": "object",
+        "required": [
+          "id",
+          "type",
+          "name",
+          "extensions",
+          "created_at",
+          "updated_at"
+        ],
         "properties": {
-          "tenantId": {
+          "id": {
             "type": "string",
-            "description": "Optional tenant ID (defaults to request tenant)"
+            "description": "Unique identifier for the schema definition"
           },
-          "service": {
+          "type": {
             "type": "string",
-            "description": "Service name"
+            "enum": [
+              "metric",
+              "label",
+              "log_field",
+              "trace_service",
+              "trace_operation",
+              "kpi",
+              "dashboard",
+              "layout",
+              "user_preferences"
+            ],
+            "description": "The type of schema definition"
           },
-          "purpose": {
+          "name": {
             "type": "string",
-            "description": "Service purpose/description"
+            "description": "Human-readable name for the definition"
           },
-          "owner": {
+          "description": {
             "type": "string",
-            "description": "Service owner"
+            "description": "Optional description"
           },
           "tags": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Flat list of tags (e.g., \"key:value\" or free-form labels)",
-            "example": [
-              "environment:production",
-              "team:platform",
-              "version:1.2.3"
-            ]
+            "description": "Flat array of tags (e.g., [\"domain:web\", \"category:performance\"])"
           },
           "author": {
             "type": "string",
-            "description": "Author of this change"
-          }
-        },
-        "required": [
-          "service"
-        ]
-      },
-      "TraceOperationRequest": {
-        "type": "object",
-        "properties": {
-          "tenantId": {
-            "type": "string",
-            "description": "Optional tenant ID (defaults to request tenant)"
+            "description": "Author of the change"
           },
-          "service": {
-            "type": "string",
-            "description": "Service name"
-          },
-          "operation": {
-            "type": "string",
-            "description": "Operation name"
-          },
-          "purpose": {
-            "type": "string",
-            "description": "Operation purpose/description"
-          },
-          "owner": {
-            "type": "string",
-            "description": "Operation owner"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Flat list of tags",
-            "example": [
-              "GET",
-              "/api/v1/users",
-              "30s"
+          "extensions": {
+            "type": "object",
+            "description": "Type-specific extension fields",
+            "additionalProperties": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MetricExtension"
+              },
+              {
+                "$ref": "#/components/schemas/LabelExtension"
+              },
+              {
+                "$ref": "#/components/schemas/LogFieldExtension"
+              },
+              {
+                "$ref": "#/components/schemas/TraceServiceExtension"
+              },
+              {
+                "$ref": "#/components/schemas/TraceOperationExtension"
+              },
+              {
+                "$ref": "#/components/schemas/KPIExtension"
+              },
+              {
+                "$ref": "#/components/schemas/DashboardExtension"
+              },
+              {
+                "$ref": "#/components/schemas/LayoutExtension"
+              },
+              {
+                "$ref": "#/components/schemas/UserPreferencesExtension"
+              }
             ]
           },
-          "author": {
+          "created_at": {
             "type": "string",
-            "description": "Author of this change"
+            "format": "date-time",
+            "description": "Creation timestamp"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp"
           }
-        },
-        "required": [
-          "service",
-          "operation"
-        ]
+        }
       },
-      "MetricRequest": {
+      "SchemaDefinitionResponse": {
+        "type": "object",
+        "required": [
+          "schemaDefinition"
+        ],
+        "properties": {
+          "schemaDefinition": {
+            "$ref": "#/components/schemas/SchemaDefinition"
+          }
+        }
+      },
+      "MetricExtension": {
         "type": "object",
         "properties": {
-          "tenantId": {
-            "type": "string",
-            "description": "Optional tenant ID (defaults to request tenant)"
-          },
-          "metric": {
-            "type": "string",
-            "description": "Metric name"
-          },
           "description": {
             "type": "string",
             "description": "Metric description"
           },
           "owner": {
             "type": "string",
-            "description": "Metric owner"
+            "description": "Team or person responsible for the metric"
           },
-          "tags": {
+          "unit": {
+            "type": "string",
+            "description": "Unit of measurement (e.g., \"requests\", \"bytes\", \"seconds\")"
+          }
+        }
+      },
+      "LabelExtension": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "string",
+              "number",
+              "boolean"
+            ],
+            "description": "Data type of the label"
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether the label is required",
+            "default": false
+          },
+          "allowed_values": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Flat list of tags",
-            "example": [
-              "category:performance",
-              "unit:seconds",
-              "source:prometheus"
-            ]
+            "description": "Allowed values for the label"
           },
-          "author": {
+          "description": {
             "type": "string",
-            "description": "Author of this change"
+            "description": "Label description"
           }
-        },
-        "required": [
-          "metric"
-        ]
+        }
       },
-      "LogFieldRequest": {
+      "LogFieldExtension": {
         "type": "object",
         "properties": {
-          "tenantId": {
-            "type": "string",
-            "description": "Optional tenant ID (defaults to request tenant)"
-          },
-          "field": {
-            "type": "string",
-            "description": "Log field name"
-          },
           "type": {
             "type": "string",
-            "description": "Field data type"
+            "enum": [
+              "string",
+              "number",
+              "boolean",
+              "object"
+            ],
+            "description": "Data type of the log field"
+          },
+          "indexed": {
+            "type": "boolean",
+            "description": "Whether the field is indexed for search",
+            "default": false
           },
           "description": {
             "type": "string",
             "description": "Field description"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Flat list of tags",
-            "example": [
-              "category:security",
-              "format:json",
-              "indexed:true"
-            ]
           },
           "examples": {
             "type": "object",
             "additionalProperties": {
               "type": "string"
             },
-            "description": "Example values as key-value string pairs",
-            "example": {
-              "normal": "INFO",
-              "error": "ERROR",
-              "debug": "DEBUG"
-            }
-          },
-          "author": {
-            "type": "string",
-            "description": "Author of this change"
+            "description": "Example values"
           }
-        },
-        "required": [
-          "field"
-        ]
+        }
       },
-      "LabelRequest": {
+      "TraceServiceExtension": {
         "type": "object",
         "properties": {
-          "tenantId": {
+          "purpose": {
             "type": "string",
-            "description": "Optional tenant ID (defaults to request tenant)"
+            "description": "Service purpose/description"
           },
-          "name": {
+          "owner": {
             "type": "string",
-            "description": "Label name (e.g., instance)"
+            "description": "Team or person responsible for the service"
           },
-          "type": {
+          "language": {
             "type": "string",
-            "description": "Data type (string, number, bool, etc.)"
+            "description": "Programming language (e.g., \"go\", \"java\", \"python\")"
+          }
+        }
+      },
+      "TraceOperationExtension": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string",
+            "description": "Associated service name"
           },
-          "required": {
-            "type": "boolean"
+          "purpose": {
+            "type": "string",
+            "description": "Operation purpose/description"
           },
-          "allowedValues": {
+          "method": {
+            "type": "string",
+            "description": "HTTP method or operation type"
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "API endpoint or operation path"
+          }
+        }
+      },
+      "KPIExtension": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "percentage",
+              "number",
+              "duration",
+              "bytes"
+            ],
+            "description": "KPI data type"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit of measurement"
+          },
+          "format": {
+            "type": "string",
+            "description": "Display format (e.g., \"0.00\", \"0.0%\")"
+          },
+          "query": {
+            "type": "string",
+            "description": "MetricsQL query for KPI calculation"
+          },
+          "thresholds": {
+            "type": "object",
+            "properties": {
+              "warning": {
+                "type": "number",
+                "description": "Warning threshold value"
+              },
+              "critical": {
+                "type": "number",
+                "description": "Critical threshold value"
+              }
+            }
+          },
+          "sparkline": {
+            "type": "boolean",
+            "description": "Whether to show sparkline chart",
+            "default": true
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private",
+              "team"
+            ],
+            "description": "KPI visibility level",
+            "default": "public"
+          }
+        }
+      },
+      "DashboardExtension": {
+        "type": "object",
+        "properties": {
+          "layout": {
+            "type": "string",
+            "description": "Dashboard layout configuration"
+          },
+          "widgets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Widget type"
+                },
+                "config": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "description": "Widget configuration"
+                }
+              }
+            }
+          },
+          "refresh_interval": {
+            "type": "string",
+            "description": "Auto-refresh interval (e.g., \"30s\", \"5m\")"
+          }
+        }
+      },
+      "LayoutExtension": {
+        "type": "object",
+        "properties": {
+          "grid": {
+            "type": "object",
+            "properties": {
+              "columns": {
+                "type": "integer",
+                "description": "Number of grid columns"
+              },
+              "rows": {
+                "type": "integer",
+                "description": "Number of grid rows"
+              }
+            }
+          },
+          "widgets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Widget ID"
+                },
+                "position": {
+                  "type": "object",
+                  "properties": {
+                    "x": {
+                      "type": "integer"
+                    },
+                    "y": {
+                      "type": "integer"
+                    },
+                    "width": {
+                      "type": "integer"
+                    },
+                    "height": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "config": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "UserPreferencesExtension": {
+        "type": "object",
+        "properties": {
+          "theme": {
+            "type": "string",
+            "enum": [
+              "light",
+              "dark",
+              "auto"
+            ],
+            "description": "UI theme preference"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "Preferred timezone"
+          },
+          "date_format": {
+            "type": "string",
+            "description": "Preferred date format"
+          },
+          "notifications": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "default": true
+              },
+              "channels": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "email",
+                    "slack",
+                    "webhook"
+                  ]
+                }
+              }
+            }
+          },
+          "dashboard_defaults": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Optional allowed set or constraints map"
-          },
-          "description": {
-            "type": "string"
-          },
-          "author": {
-            "type": "string",
-            "description": "Author of this change"
+            "description": "Default dashboard settings"
           }
-        },
-        "required": [
-          "name"
-        ]
+        }
       },
       "GRPCEndpointsConfig": {
         "type": "object",
@@ -612,22 +804,12 @@
             "description": "Endpoint URL for the RCA (Root Cause Analysis) gRPC service",
             "example": "rca-service:50051"
           },
-          "predict_endpoint": {
-            "type": "string",
-            "description": "Endpoint URL for the PREDICT gRPC service",
-            "example": "predict-service:50052"
-          },
           "alerts_endpoint": {
             "type": "string",
             "description": "Endpoint URL for the ALERTS gRPC service",
             "example": "alerts-service:50053"
           }
-        },
-        "required": [
-          "rca_endpoint",
-          "predict_endpoint",
-          "alerts_endpoint"
-        ]
+        }
       },
       "GRPCEndpointsUpdateRequest": {
         "type": "object",
@@ -636,11 +818,6 @@
             "type": "string",
             "description": "New endpoint URL for the RCA gRPC service",
             "example": "rca-service-new:50051"
-          },
-          "predict_endpoint": {
-            "type": "string",
-            "description": "New endpoint URL for the PREDICT gRPC service",
-            "example": "predict-service-new:50052"
           },
           "alerts_endpoint": {
             "type": "string",
@@ -1184,13 +1361,8 @@
             "description": "Prometheus metrics data"
           }
         }
-      }
-    },
-    "/predict/analyze": {
+      },
       "post": {
-        "tags": [
-          "predict"
-        ],
         "summary": "Analyze system fractures",
         "description": "Predict possible fracture/fatigue in running services",
         "requestBody": {
@@ -1302,972 +1474,131 @@
         }
       }
     },
-    "/predict/health": {
-      "get": {
-        "tags": [
-          "predict"
-        ],
-        "summary": "Predict Engine health",
-        "responses": {
-          "200": {
-            "description": "Healthy"
-          }
-        }
-      }
-    },
-    "/predict/fractures": {
-      "get": {
-        "tags": [
-          "predict"
-        ],
-        "summary": "List predicted fractures",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "time_range",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "min_prob",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/predict/models": {
-      "get": {
-        "tags": [
-          "predict"
-        ],
-        "summary": "List active prediction models",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/schema/traces/services": {
+    "/kpi/{type}": {
       "post": {
         "tags": [
-          "schema"
+          "kpi"
         ],
-        "summary": "Upsert trace service definition",
-        "description": "Create or update a trace service definition and record a new version.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TraceServiceRequest"
-              },
-              "example": {
-                "service": "otelgen",
-                "purpose": "this is a test service created by otelgen tool",
-                "owner": "aarvee",
-                "tags": [
-                  "development",
-                  "bda"
-                ],
-                "author": "aarvee"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          }
-        }
-      }
-    },
-    "/schema/traces/services/bulk": {
-      "post": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Bulk upsert trace services via CSV",
-        "description": "Upload a CSV to create/update trace service definitions.\nCSV columns (header required; strict header mode):\n- tenantId (optional; defaults to request tenant)\n- service (required)\n- servicePurpose, owner, tags (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).\n",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "429": {
-            "description": "Too Many Requests"
-          }
-        }
-      }
-    },
-    "/schema/traces/services/{service}": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Get current trace service definition",
+        "summary": "Create or update KPI definition",
+        "description": "Create or update a KPI definition of the specified type. KPIs serve as the central schema definitions,\nsupporting metrics, labels, log fields, traces, dashboards, layouts, and user preferences.\n",
         "parameters": [
           {
             "in": "path",
-            "name": "service",
+            "name": "type",
             "required": true,
             "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "404": {
-            "description": "Not found"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Delete trace service definition",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "service",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "confirm",
-            "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "metric",
+                "label",
+                "log_field",
+                "trace_service",
+                "trace_operation",
+                "kpi",
+                "dashboard",
+                "layout",
+                "user_preferences"
+              ]
             },
-            "description": "Must be '1', 'true', or 'yes'"
+            "description": "The type of KPI definition"
           }
         ],
-        "responses": {
-          "200": {
-            "description": "Deleted"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Failed to delete"
-          }
-        }
-      }
-    },
-    "/schema/traces/services/{service}/versions": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "List versions for a trace service",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "service",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/schema/traces/services/{service}/versions/{version}": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Get a specific version of a trace service definition",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "service",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "version",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "404": {
-            "description": "Not found"
-          }
-        }
-      }
-    },
-    "/schema/traces/operations": {
-      "post": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Upsert trace operation definition",
-        "description": "Create or update a trace operation definition and record a new version.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TraceOperationRequest"
-              },
-              "example": {
-                "service": "otelgen",
-                "operation": "handle_request",
-                "purpose": "handles incoming HTTP requests",
-                "owner": "aarvee",
-                "tags": [
-                  "POST",
-                  "/api/v1/data",
-                  "30s"
-                ],
-                "author": "aarvee"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          }
-        }
-      }
-    },
-    "/schema/traces/operations/bulk": {
-      "post": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Bulk upsert trace operations via CSV",
-        "description": "Upload a CSV to create/update trace operation definitions. Operations are scoped per service; rows referencing undefined services are rejected.\nCSV columns (header required; strict header mode):\n- tenantId (optional; defaults to request tenant)\n- service (required)\n- operation (required)\n- servicePurpose, owner, tags (JSON array), author\nSecurity: 5MiB payload limit, MIME allowlist with sniffing, UTF‑8 validation, CSV injection mitigation, no disk writes.\nLimits: header strict mode (reject unknown columns), 10k row cap, per‑tenant daily quota (429 on exceed).\n",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
                 "type": "object",
                 "properties": {
-                  "file": {
+                  "name": {
                     "type": "string",
-                    "format": "binary"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "429": {
-            "description": "Too Many Requests"
-          }
-        }
-      }
-    },
-    "/schema/traces/services/{service}/operations/{operation}": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Get current trace operation definition",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "service",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "operation",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "404": {
-            "description": "Not found"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Delete trace operation definition",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "service",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "operation",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "confirm",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Must be '1', 'true', or 'yes'"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Deleted"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Failed to delete"
-          }
-        }
-      }
-    },
-    "/schema/traces/services/{service}/operations/{operation}/versions": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "List versions for a trace operation",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "service",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "operation",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/schema/traces/services/{service}/operations/{operation}/versions/{version}": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Get a specific version of a trace operation definition",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "service",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "operation",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "version",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "404": {
-            "description": "Not found"
-          }
-        }
-      }
-    },
-    "/schema/metrics": {
-      "post": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Upsert metric definition",
-        "description": "Create or update a metric definition and record a new version.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "metric"
-                ],
-                "properties": {
-                  "tenantId": {
-                    "type": "string"
-                  },
-                  "metric": {
-                    "type": "string"
+                    "description": "Human-readable name for the definition"
                   },
                   "description": {
-                    "type": "string"
-                  },
-                  "owner": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Optional description"
                   },
                   "tags": {
                     "type": "array",
                     "items": {
                       "type": "string"
-                    }
-                  },
-                  "category": {
-                    "type": "string"
-                  },
-                  "sentiment": {
-                    "type": "string"
+                    },
+                    "description": "Flat array of tags (e.g., [\"domain:web\", \"category:performance\"])"
                   },
                   "author": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          }
-        }
-      }
-    },
-    "/schema/metrics/bulk": {
-      "post": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Bulk upsert metric and label definitions (CSV)",
-        "description": "Upload a CSV to create/update metric and label definitions.\nSecurity: payload limited to 5MiB, MIME allowlist, UTF‑8 validation, and CSV injection mitigations.\n\nColumns (header required):\n\n- tenantId (optional; defaults to authenticated tenant)\n- metric (required)\n- description\n- owner\n- tags (JSON array)\n- category\n- sentiment\n- label\n- labelType\n- labelRequired (true/false/1/0/yes/no)\n- labelAllowed (JSON object)\n- labelDescription\n- author\n\nNote: Use the sample endpoint below to generate a pre-filled template.\n",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "file"
-                ],
-                "properties": {
-                  "file": {
                     "type": "string",
-                    "format": "binary"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          }
-        }
-      }
-    },
-    "/schema/metrics/bulk/sample": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Download sample CSV template",
-        "description": "Generates a CSV with header and rows per metric/label to guide users.\n- If `metrics` is omitted, the server enumerates all metric names (via `__name__`) and includes a row per discovered label.\n- If `metrics` is provided (comma-separated), only those metrics are included.\n",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "metrics",
-            "required": false,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Comma-separated metric names to include in the sample"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "CSV",
-            "content": {
-              "text/csv": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/schema/metrics/{metric}": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Get metric definition",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "metric",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Delete metric definition",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "metric",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "confirm",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Must be '1', 'true', or 'yes'"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Deleted"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Failed to delete"
-          }
-        }
-      }
-    },
-    "/schema/metrics/{metric}/versions": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "List metric definition versions",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "metric",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "versions": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "version": {
-                            "type": "integer"
-                          },
-                          "author": {
-                            "type": "string"
-                          },
-                          "created_at": {
-                            "type": "string",
-                            "format": "date-time"
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/schema/metrics/{metric}/versions/{version}": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Get specific metric definition version",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "metric",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "version",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      }
-    },
-    "/schema/metrics/{metric}/labels": {
-      "post": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Upsert metric label definition",
-        "description": "Create or update a label definition for a specific metric and record a new version.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "metric",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The metric name"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "label"
-                ],
-                "properties": {
-                  "tenantId": {
-                    "type": "string",
-                    "description": "Optional tenant ID (defaults to request tenant)"
+                    "description": "Author of the change"
                   },
-                  "label": {
-                    "type": "string",
-                    "description": "Label name"
-                  },
-                  "type": {
-                    "type": "string",
-                    "description": "Data type (string",
-                    "number": null,
-                    "bool": null,
-                    "etc.)": null
-                  },
-                  "required": {
-                    "type": "boolean",
-                    "description": "Whether the label is required"
-                  },
-                  "allowedValues": {
+                  "extensions": {
                     "type": "object",
-                    "additionalProperties": true,
-                    "description": "Optional allowed set or constraints map"
-                  },
-                  "description": {
-                    "type": "string",
-                    "description": "Label description"
-                  },
-                  "author": {
-                    "type": "string",
-                    "description": "Author of this change"
+                    "description": "Type-specific extension fields",
+                    "additionalProperties": true
                   }
                 }
               },
-              "example": {
-                "label": "instance",
-                "type": "string",
-                "required": false,
-                "allowedValues": {},
-                "description": "Pod or host instance label",
-                "author": "aarvee"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/schema/labels": {
-      "post": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Upsert label definition (independent)",
-        "description": "Create or update a label definition (not tied to a metric) and record a new version.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LabelRequest"
-              },
-              "example": {
-                "name": "instance",
-                "type": "string",
-                "required": false,
-                "allowedValues": {},
-                "description": "Pod or host instance label",
-                "author": "aarvee"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          }
-        }
-      }
-    },
-    "/schema/labels/{name}": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Get label definition",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Delete label definition",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "confirm",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Must be '1', 'true', or 'yes'"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Deleted"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Failed to delete"
-          }
-        }
-      }
-    },
-    "/schema/labels/{name}/versions": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "List label definition versions",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "versions": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "version": {
-                            "type": "integer"
-                          },
-                          "author": {
-                            "type": "string"
-                          },
-                          "created_at": {
-                            "type": "string",
-                            "format": "date-time"
-                          }
-                        }
+              "examples": {
+                "metric": {
+                  "summary": "Create metric definition",
+                  "value": {
+                    "name": "http_requests_total",
+                    "description": "Total number of HTTP requests",
+                    "tags": [
+                      "domain:web",
+                      "category:performance"
+                    ],
+                    "author": "john.doe",
+                    "extensions": {
+                      "metric": {
+                        "description": "Total number of HTTP requests",
+                        "owner": "platform-team"
+                      }
+                    }
+                  }
+                },
+                "label": {
+                  "summary": "Create label definition",
+                  "value": {
+                    "name": "status",
+                    "tags": [
+                      "category:monitoring",
+                      "indexed:true"
+                    ],
+                    "author": "jane.smith",
+                    "extensions": {
+                      "label": {
+                        "type": "string",
+                        "required": false,
+                        "allowedVals": [
+                          "success",
+                          "error",
+                          "warning"
+                        ],
+                        "description": "Request status"
+                      }
+                    }
+                  }
+                },
+                "kpi": {
+                  "summary": "Create KPI definition",
+                  "value": {
+                    "name": "Error Rate",
+                    "tags": [
+                      "domain:api",
+                      "category:reliability"
+                    ],
+                    "author": "ops.team",
+                    "extensions": {
+                      "kpi": {
+                        "kind": "percentage",
+                        "unit": "%",
+                        "format": "0.00",
+                        "query": "rate(errors_total[5m]) / rate(http_requests_total[5m]) * 100",
+                        "thresholds": {
+                          "warning": 5.0,
+                          "critical": 10.0
+                        },
+                        "sparkline": true,
+                        "visibility": "public"
                       }
                     }
                   }
@@ -2275,50 +1606,303 @@
               }
             }
           }
+        },
+        "responses": {
+          "200": {
+            "description": "KPI definition created/updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Unique identifier of the created/updated definition"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request format or unsupported schema type"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
         }
-      }
-    },
-    "/schema/labels/{name}/versions/{version}": {
+      },
       "get": {
         "tags": [
-          "schema"
+          "kpi"
         ],
-        "summary": "Get specific label definition version",
+        "summary": "List KPI definitions",
+        "description": "List KPI definitions of the specified type with optional filtering and pagination.",
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "type",
             "required": true,
             "schema": {
-              "type": "string"
-            }
+              "type": "string",
+              "enum": [
+                "metric",
+                "label",
+                "log_field",
+                "trace_service",
+                "trace_operation",
+                "kpi",
+                "dashboard",
+                "layout",
+                "user_preferences"
+              ]
+            },
+            "description": "The type of KPI definitions to list"
           },
           {
-            "in": "path",
-            "name": "version",
-            "required": true,
+            "in": "query",
+            "name": "limit",
             "schema": {
-              "type": "integer"
-            }
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 50
+            },
+            "description": "Maximum number of results to return"
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "Pagination offset"
+          },
+          {
+            "in": "query",
+            "name": "tags",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "style": "form",
+            "explode": true,
+            "description": "Filter by tags (comma-separated)"
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "KPI definitions retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schemaDefinitions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SchemaDefinition"
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "Total number of definitions available"
+                    },
+                    "nextOffset": {
+                      "type": "integer",
+                      "description": "Offset for next page (0 if no more results)"
+                    }
+                  }
+                }
+              }
+            }
           },
-          "404": {
-            "description": "Not Found"
+          "400": {
+            "description": "Invalid request parameters or unsupported schema type"
+          },
+          "500": {
+            "description": "Internal server error"
           }
         }
       }
     },
-    "/schema/labels/bulk": {
+    "/schema/{type}/{id}": {
+      "get": {
+        "tags": [
+          "kpi"
+        ],
+        "summary": "Get KPI definition by ID",
+        "description": "Retrieve a specific KPI definition by its type and ID.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "metric",
+                "label",
+                "log_field",
+                "trace_service",
+                "trace_operation",
+                "kpi",
+                "dashboard",
+                "layout",
+                "user_preferences"
+              ]
+            },
+            "description": "The type of KPI definition"
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Unique identifier of the schema definition"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "KPI definition retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaDefinitionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "KPI definition not found"
+          },
+          "400": {
+            "description": "Invalid request parameters or unsupported schema type"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "kpi"
+        ],
+        "summary": "Delete KPI definition",
+        "description": "Delete a KPI definition by its type and ID. Requires confirmation via query parameter.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "metric",
+                "label",
+                "log_field",
+                "trace_service",
+                "trace_operation",
+                "kpi",
+                "dashboard",
+                "layout",
+                "user_preferences"
+              ]
+            },
+            "description": "The type of KPI definition"
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Unique identifier of the KPI definition"
+          },
+          {
+            "in": "query",
+            "name": "confirm",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1",
+                "true",
+                "yes"
+              ]
+            },
+            "description": "Confirmation required for deletion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "KPI definition deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "deleted"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing confirmation or invalid parameters"
+          },
+          "404": {
+            "description": "KPI definition not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/schema/{type}/bulk": {
       "post": {
         "tags": [
-          "schema"
+          "kpi"
         ],
-        "summary": "Bulk upsert label definitions (CSV)",
-        "description": "Upload a CSV to create/update label definitions.\nSecurity: 5MiB payload limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota.\n\nColumns (header required):\n- tenantId (optional)\n- name (required)\n- type\n- required (true/false/1/0/yes/no)\n- allowed (JSON object)\n- description\n- author\n",
+        "summary": "Bulk upload KPI definitions via CSV",
+        "description": "Upload multiple KPI definitions via CSV file. Supports secure file handling with size limits,\nMIME validation, and CSV injection protection.\n",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "metric",
+                "label",
+                "log_field",
+                "trace_service",
+                "trace_operation",
+                "kpi",
+                "dashboard",
+                "layout",
+                "user_preferences"
+              ]
+            },
+            "description": "The type of KPI definitions to upload"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2331,7 +1915,8 @@
                 "properties": {
                   "file": {
                     "type": "string",
-                    "format": "binary"
+                    "format": "binary",
+                    "description": "CSV file containing KPI definitions"
                   }
                 }
               }
@@ -2340,299 +1925,69 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Bulk upload completed successfully"
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Invalid CSV format or data validation errors"
+          },
+          "413": {
+            "description": "File too large (exceeds 5MiB limit)"
           },
           "429": {
-            "description": "Too Many Requests"
-          }
-        }
-      }
-    },
-    "/schema/labels/bulk/sample": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Download sample CSV template for labels",
-        "description": "Generates a CSV with header and example rows for common labels.",
-        "responses": {
-          "200": {
-            "description": "CSV",
-            "content": {
-              "text/csv": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/schema/logs/fields": {
-      "post": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Upsert log field definition",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "field"
-                ],
-                "properties": {
-                  "tenantId": {
-                    "type": "string"
-                  },
-                  "field": {
-                    "type": "string"
-                  },
-                  "type": {
-                    "type": "string"
-                  },
-                  "description": {
-                    "type": "string"
-                  },
-                  "category": {
-                    "type": "string"
-                  },
-                  "sentiment": {
-                    "type": "string"
-                  },
-                  "tags": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "author": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          }
-        }
-      }
-    },
-    "/schema/logs/fields/bulk": {
-      "post": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Bulk upsert log field definitions (CSV)",
-        "description": "Upload a CSV to create/update log field definitions.\nSecurity: 5MiB payload limit, MIME allowlist, UTF‑8 validation, CSV injection mitigation, daily per‑tenant quota.\n\nColumns (header required):\n- tenantId (optional)\n- category (optional)\n- logFieldName (required)\n- logFieldType (optional)\n- logFieldDefinition (optional)\n- sentiment (optional)\n- tags (optional, JSON array)\n- author (optional)\n",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "file"
-                ],
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "429": {
-            "description": "Too Many Requests"
-          }
-        }
-      }
-    },
-    "/schema/logs/fields/bulk/sample": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Download sample CSV template for log fields",
-        "description": "Generates a CSV with header and one row per discovered log field.",
-        "responses": {
-          "200": {
-            "description": "CSV",
-            "content": {
-              "text/csv": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/schema/logs/fields/{field}": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Get log field definition",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "field",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Delete log field definition",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "field",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "confirm",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Must be '1', 'true', or 'yes'"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Deleted"
-          },
-          "404": {
-            "description": "Not Found"
+            "description": "Rate limit exceeded for bulk uploads"
           },
           "500": {
-            "description": "Failed to delete"
+            "description": "Internal server error during processing"
           }
         }
       }
     },
-    "/schema/logs/fields/{field}/versions": {
+    "/schema/{type}/bulk/sample": {
       "get": {
         "tags": [
-          "schema"
+          "kpi"
         ],
-        "summary": "List log field definition versions",
+        "summary": "Download CSV template for bulk KPI upload",
+        "description": "Download a sample CSV template with headers and example rows for bulk KPI definition uploads.",
         "parameters": [
           {
             "in": "path",
-            "name": "field",
+            "name": "type",
             "required": true,
             "schema": {
-              "type": "string"
-            }
+              "type": "string",
+              "enum": [
+                "metric",
+                "label",
+                "log_field",
+                "trace_service",
+                "trace_operation",
+                "kpi",
+                "dashboard",
+                "layout",
+                "user_preferences"
+              ]
+            },
+            "description": "The type of KPI definitions for the template"
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "CSV template downloaded successfully",
             "content": {
-              "application/json": {
+              "text/csv": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "versions": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "version": {
-                            "type": "integer"
-                          },
-                          "author": {
-                            "type": "string"
-                          },
-                          "created_at": {
-                            "type": "string",
-                            "format": "date-time"
-                          }
-                        }
-                      }
-                    }
-                  }
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/schema/logs/fields/{field}/versions/{version}": {
-      "get": {
-        "tags": [
-          "schema"
-        ],
-        "summary": "Get specific log field definition version",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "field",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
           },
-          {
-            "in": "path",
-            "name": "version",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
+          "400": {
+            "description": "Unsupported KPI type"
           },
-          "404": {
-            "description": "Not Found"
+          "500": {
+            "description": "Internal server error"
           }
         }
       }
@@ -4771,10 +4126,6 @@
                               "type": "boolean",
                               "description": "Whether RCA (Root Cause Analysis) features are enabled"
                             },
-                            "predict_enabled": {
-                              "type": "boolean",
-                              "description": "Whether prediction engine features are enabled"
-                            },
                             "user_settings_enabled": {
                               "type": "boolean",
                               "description": "Whether user settings features are enabled"
@@ -4783,13 +4134,7 @@
                               "type": "boolean",
                               "description": "Whether RBAC (Role-Based Access Control) features are enabled"
                             }
-                          },
-                          "required": [
-                            "rca_enabled",
-                            "predict_enabled",
-                            "user_settings_enabled",
-                            "rbac_enabled"
-                          ]
+                          }
                         }
                       },
                       "required": [
@@ -4815,7 +4160,6 @@
                     "tenantId": "default",
                     "features": {
                       "rca_enabled": true,
-                      "predict_enabled": true,
                       "user_settings_enabled": true,
                       "rbac_enabled": true
                     }
@@ -4847,10 +4191,6 @@
                         "type": "boolean",
                         "description": "Enable/disable RCA features"
                       },
-                      "predict_enabled": {
-                        "type": "boolean",
-                        "description": "Enable/disable prediction engine features"
-                      },
                       "user_settings_enabled": {
                         "type": "boolean",
                         "description": "Enable/disable user settings features"
@@ -4870,8 +4210,7 @@
               },
               "example": {
                 "features": {
-                  "rca_enabled": false,
-                  "predict_enabled": true
+                  "rca_enabled": false
                 }
               }
             }
@@ -4904,22 +4243,13 @@
                             "rca_enabled": {
                               "type": "boolean"
                             },
-                            "predict_enabled": {
-                              "type": "boolean"
-                            },
                             "user_settings_enabled": {
                               "type": "boolean"
                             },
                             "rbac_enabled": {
                               "type": "boolean"
                             }
-                          },
-                          "required": [
-                            "rca_enabled",
-                            "predict_enabled",
-                            "user_settings_enabled",
-                            "rbac_enabled"
-                          ]
+                          }
                         },
                         "updated": {
                           "type": "boolean",
@@ -4949,7 +4279,6 @@
                     "tenantId": "default",
                     "features": {
                       "rca_enabled": false,
-                      "predict_enabled": true,
                       "user_settings_enabled": true,
                       "rbac_enabled": true
                     },
@@ -5027,22 +4356,13 @@
                             "rca_enabled": {
                               "type": "boolean"
                             },
-                            "predict_enabled": {
-                              "type": "boolean"
-                            },
                             "user_settings_enabled": {
                               "type": "boolean"
                             },
                             "rbac_enabled": {
                               "type": "boolean"
                             }
-                          },
-                          "required": [
-                            "rca_enabled",
-                            "predict_enabled",
-                            "user_settings_enabled",
-                            "rbac_enabled"
-                          ]
+                          }
                         },
                         "reset": {
                           "type": "boolean",
@@ -5072,7 +4392,6 @@
                     "tenantId": "default",
                     "features": {
                       "rca_enabled": true,
-                      "predict_enabled": true,
                       "user_settings_enabled": true,
                       "rbac_enabled": true
                     },
@@ -5152,7 +4471,6 @@
                   "status": "success",
                   "data": {
                     "rca_endpoint": "rca-service:50051",
-                    "predict_endpoint": "predict-service:50052",
                     "alerts_endpoint": "alerts-service:50053"
                   },
                   "timestamp": "2025-10-19T14:00:00Z"
@@ -5202,8 +4520,7 @@
                 "$ref": "#/components/schemas/GRPCEndpointsUpdateRequest"
               },
               "example": {
-                "rca_endpoint": "rca-service-new:50051",
-                "predict_endpoint": "predict-service-new:50052"
+                "rca_endpoint": "rca-service-new:50051"
               }
             }
           }
@@ -5260,7 +4577,6 @@
                     "tenantId": "default",
                     "endpoints": {
                       "rca_endpoint": "rca-service-new:50051",
-                      "predict_endpoint": "predict-service-new:50052",
                       "alerts_endpoint": "alerts-service:50053"
                     },
                     "updated": true
@@ -5388,7 +4704,6 @@
                     "tenantId": "default",
                     "endpoints": {
                       "rca_endpoint": "rca-service:50051",
-                      "predict_endpoint": "predict-service:50052",
                       "alerts_endpoint": "alerts-service:50053"
                     },
                     "reset": true
@@ -5400,6 +4715,1670 @@
           },
           "500": {
             "description": "Failed to reset gRPC endpoints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config/user-preferences": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Get user preferences",
+        "description": "Retrieve user preferences for the current user or specified user",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "userId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional user ID to get preferences for (defaults to current user)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User preferences retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string",
+                          "description": "The user identifier"
+                        },
+                        "preferences": {
+                          "type": "object",
+                          "description": "User preference settings"
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenant identifier"
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "preferences",
+                        "tenantId"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Timestamp of the response"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "userId": "user123",
+                    "preferences": {
+                      "theme": "dark",
+                      "timezone": "UTC",
+                      "notifications": true
+                    },
+                    "tenantId": "default"
+                  },
+                  "timestamp": "2025-11-08T10:00:00Z"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User preferences not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                },
+                "example": {
+                  "status": "error",
+                  "error": "User preferences not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve user preferences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Create user preferences",
+        "description": "Create user preferences for a user",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "userId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional user ID to create preferences for (defaults to current user)"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "preferences": {
+                    "type": "object",
+                    "description": "User preference settings to create"
+                  }
+                },
+                "required": [
+                  "preferences"
+                ]
+              },
+              "example": {
+                "preferences": {
+                  "theme": "dark",
+                  "timezone": "UTC",
+                  "notifications": true
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User preferences created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string",
+                          "description": "The user identifier"
+                        },
+                        "preferences": {
+                          "type": "object",
+                          "description": "Created user preference settings"
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenant identifier"
+                        },
+                        "created": {
+                          "type": "boolean",
+                          "description": "Indicates if preferences were created"
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "preferences",
+                        "tenantId",
+                        "created"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "userId": "user123",
+                    "preferences": {
+                      "theme": "dark",
+                      "timezone": "UTC",
+                      "notifications": true
+                    },
+                    "tenantId": "default",
+                    "created": true
+                  },
+                  "timestamp": "2025-11-08T10:00:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the validation failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "User preferences already exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to create user preferences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Update user preferences",
+        "description": "Update user preferences for the current user or specified user",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "userId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional user ID to update preferences for (defaults to current user)"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "preferences": {
+                    "type": "object",
+                    "description": "User preference settings to update"
+                  }
+                },
+                "required": [
+                  "preferences"
+                ]
+              },
+              "example": {
+                "preferences": {
+                  "theme": "light",
+                  "timezone": "America/New_York",
+                  "notifications": false
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User preferences updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string",
+                          "description": "The user identifier"
+                        },
+                        "preferences": {
+                          "type": "object",
+                          "description": "Updated user preference settings"
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenant identifier"
+                        },
+                        "updated": {
+                          "type": "boolean",
+                          "description": "Indicates if preferences were updated"
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "preferences",
+                        "tenantId",
+                        "updated"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "userId": "user123",
+                    "preferences": {
+                      "theme": "light",
+                      "timezone": "America/New_York",
+                      "notifications": false
+                    },
+                    "tenantId": "default",
+                    "updated": true
+                  },
+                  "timestamp": "2025-11-08T10:00:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the validation failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User preferences not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to update user preferences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Delete user preferences",
+        "description": "Delete user preferences for the current user or specified user",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "userId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional user ID to delete preferences for (defaults to current user)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User preferences deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string",
+                          "description": "The user identifier"
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenant identifier"
+                        },
+                        "deleted": {
+                          "type": "boolean",
+                          "description": "Indicates if preferences were deleted"
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "tenantId",
+                        "deleted"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "userId": "user123",
+                    "tenantId": "default",
+                    "deleted": true
+                  },
+                  "timestamp": "2025-11-08T10:00:00Z"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User preferences not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to delete user preferences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config/dashboards": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Get dashboards",
+        "description": "Retrieve dashboards for the current user or all dashboards if admin",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "userId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional user ID to get dashboards for (defaults to current user)"
+          },
+          {
+            "in": "query",
+            "name": "shared",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Include shared dashboards (default false)"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "description": "Maximum number of dashboards to return (default 50)"
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Number of dashboards to skip (default 0)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboards retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "dashboards": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Dashboard unique identifier"
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "Dashboard name"
+                              },
+                              "description": {
+                                "type": "string",
+                                "description": "Dashboard description"
+                              },
+                              "userId": {
+                                "type": "string",
+                                "description": "Owner user ID"
+                              },
+                              "shared": {
+                                "type": "boolean",
+                                "description": "Whether dashboard is shared"
+                              },
+                              "layout": {
+                                "type": "object",
+                                "description": "Dashboard layout configuration"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "description": "Creation timestamp"
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "description": "Last update timestamp"
+                              }
+                            }
+                          }
+                        },
+                        "total": {
+                          "type": "integer",
+                          "description": "Total number of dashboards"
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "description": "Requested limit"
+                        },
+                        "offset": {
+                          "type": "integer",
+                          "description": "Requested offset"
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenant identifier"
+                        }
+                      },
+                      "required": [
+                        "dashboards",
+                        "total",
+                        "tenantId"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Timestamp of the response"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "dashboards": [
+                      {
+                        "id": "dash-123",
+                        "name": "API Performance Dashboard",
+                        "description": "Monitor API performance metrics",
+                        "userId": "user123",
+                        "shared": false,
+                        "layout": {},
+                        "createdAt": "2025-11-01T10:00:00Z",
+                        "updatedAt": "2025-11-08T09:00:00Z"
+                      }
+                    ],
+                    "total": 1,
+                    "limit": 50,
+                    "offset": 0,
+                    "tenantId": "default"
+                  },
+                  "timestamp": "2025-11-08T10:00:00Z"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve dashboards",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Create dashboard",
+        "description": "Create a new dashboard for the current user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Dashboard name"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Dashboard description"
+                  },
+                  "shared": {
+                    "type": "boolean",
+                    "description": "Whether dashboard should be shared (default false)"
+                  },
+                  "layout": {
+                    "type": "object",
+                    "description": "Dashboard layout configuration"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              },
+              "example": {
+                "name": "New API Dashboard",
+                "description": "Dashboard for monitoring API endpoints",
+                "shared": false,
+                "layout": {
+                  "panels": []
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Dashboard created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "dashboard": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Dashboard unique identifier"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Dashboard name"
+                            },
+                            "description": {
+                              "type": "string",
+                              "description": "Dashboard description"
+                            },
+                            "userId": {
+                              "type": "string",
+                              "description": "Owner user ID"
+                            },
+                            "shared": {
+                              "type": "boolean",
+                              "description": "Whether dashboard is shared"
+                            },
+                            "layout": {
+                              "type": "object",
+                              "description": "Dashboard layout configuration"
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "description": "Creation timestamp"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "description": "Last update timestamp"
+                            }
+                          }
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenant identifier"
+                        },
+                        "created": {
+                          "type": "boolean",
+                          "description": "Indicates if dashboard was created"
+                        }
+                      },
+                      "required": [
+                        "dashboard",
+                        "tenantId",
+                        "created"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "dashboard": {
+                      "id": "dash-456",
+                      "name": "New API Dashboard",
+                      "description": "Dashboard for monitoring API endpoints",
+                      "userId": "user123",
+                      "shared": false,
+                      "layout": {
+                        "panels": []
+                      },
+                      "createdAt": "2025-11-08T10:00:00Z",
+                      "updatedAt": "2025-11-08T10:00:00Z"
+                    },
+                    "tenantId": "default",
+                    "created": true
+                  },
+                  "timestamp": "2025-11-08T10:00:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the validation failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to create dashboard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config/dashboards/{dashboardId}": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Get dashboard by ID",
+        "description": "Retrieve a specific dashboard by its ID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboardId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Dashboard unique identifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "dashboard": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Dashboard unique identifier"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Dashboard name"
+                            },
+                            "description": {
+                              "type": "string",
+                              "description": "Dashboard description"
+                            },
+                            "userId": {
+                              "type": "string",
+                              "description": "Owner user ID"
+                            },
+                            "shared": {
+                              "type": "boolean",
+                              "description": "Whether dashboard is shared"
+                            },
+                            "layout": {
+                              "type": "object",
+                              "description": "Dashboard layout configuration"
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "description": "Creation timestamp"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "description": "Last update timestamp"
+                            }
+                          }
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenant identifier"
+                        }
+                      },
+                      "required": [
+                        "dashboard",
+                        "tenantId"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Timestamp of the response"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "dashboard": {
+                      "id": "dash-123",
+                      "name": "API Performance Dashboard",
+                      "description": "Monitor API performance metrics",
+                      "userId": "user123",
+                      "shared": false,
+                      "layout": {},
+                      "createdAt": "2025-11-01T10:00:00Z",
+                      "updatedAt": "2025-11-08T09:00:00Z"
+                    },
+                    "tenantId": "default"
+                  },
+                  "timestamp": "2025-11-08T10:00:00Z"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied to dashboard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Dashboard not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve dashboard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Update dashboard",
+        "description": "Update an existing dashboard",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboardId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Dashboard unique identifier"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Dashboard name"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Dashboard description"
+                  },
+                  "shared": {
+                    "type": "boolean",
+                    "description": "Whether dashboard should be shared"
+                  },
+                  "layout": {
+                    "type": "object",
+                    "description": "Dashboard layout configuration"
+                  }
+                }
+              },
+              "example": {
+                "name": "Updated API Dashboard",
+                "description": "Updated dashboard for monitoring API endpoints",
+                "shared": true,
+                "layout": {
+                  "panels": []
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dashboard updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "dashboard": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Dashboard unique identifier"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "Dashboard name"
+                            },
+                            "description": {
+                              "type": "string",
+                              "description": "Dashboard description"
+                            },
+                            "userId": {
+                              "type": "string",
+                              "description": "Owner user ID"
+                            },
+                            "shared": {
+                              "type": "boolean",
+                              "description": "Whether dashboard is shared"
+                            },
+                            "layout": {
+                              "type": "object",
+                              "description": "Dashboard layout configuration"
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "description": "Creation timestamp"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "description": "Last update timestamp"
+                            }
+                          }
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenant identifier"
+                        },
+                        "updated": {
+                          "type": "boolean",
+                          "description": "Indicates if dashboard was updated"
+                        }
+                      },
+                      "required": [
+                        "dashboard",
+                        "tenantId",
+                        "updated"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "dashboard": {
+                      "id": "dash-123",
+                      "name": "Updated API Dashboard",
+                      "description": "Updated dashboard for monitoring API endpoints",
+                      "userId": "user123",
+                      "shared": true,
+                      "layout": {
+                        "panels": []
+                      },
+                      "createdAt": "2025-11-01T10:00:00Z",
+                      "updatedAt": "2025-11-08T10:00:00Z"
+                    },
+                    "tenantId": "default",
+                    "updated": true
+                  },
+                  "timestamp": "2025-11-08T10:00:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the validation failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied to dashboard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Dashboard not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to update dashboard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the failure"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Delete dashboard",
+        "description": "Delete a dashboard by its ID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboardId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Dashboard unique identifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "dashboardId": {
+                          "type": "string",
+                          "description": "Deleted dashboard ID"
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "description": "The tenant identifier"
+                        },
+                        "deleted": {
+                          "type": "boolean",
+                          "description": "Indicates if dashboard was deleted"
+                        }
+                      },
+                      "required": [
+                        "dashboardId",
+                        "tenantId",
+                        "deleted"
+                      ]
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "data",
+                    "timestamp"
+                  ]
+                },
+                "example": {
+                  "status": "success",
+                  "data": {
+                    "dashboardId": "dash-123",
+                    "tenantId": "default",
+                    "deleted": true
+                  },
+                  "timestamp": "2025-11-08T10:00:00Z"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied to dashboard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Dashboard not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to delete dashboard",
             "content": {
               "application/json": {
                 "schema": {
@@ -5565,19 +6544,6 @@
           "ws"
         ],
         "summary": "Alerts stream (WebSocket)",
-        "responses": {
-          "101": {
-            "description": "Switching Protocols"
-          }
-        }
-      }
-    },
-    "/ws/predictions": {
-      "get": {
-        "tags": [
-          "ws"
-        ],
-        "summary": "Predictions stream (WebSocket)",
         "responses": {
           "101": {
             "description": "Switching Protocols"

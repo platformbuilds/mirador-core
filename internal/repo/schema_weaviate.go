@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	storageweaviate "github.com/platformbuilds/mirador-core/internal/storage/weaviate"
 )
@@ -1370,4 +1371,226 @@ func (r *WeaviateRepo) DeleteTraceOperation(ctx context.Context, tenantID, servi
 	err := r.t.DeleteObject(ctx, id)
 	monitoring.RecordWeaviateOperation("DeleteObject", "Operation", time.Since(start), err == nil)
 	return err
+}
+
+// Unified KPI-based schema operations (migrating traditional schema types to KPIs)
+
+// UpsertSchemaAsKPI stores any schema definition as a KPI with type-specific extensions
+func (r *WeaviateRepo) UpsertSchemaAsKPI(ctx context.Context, schemaDef *models.SchemaDefinition, author string) error {
+	// Convert SchemaDefinition to KPIDefinition format
+	kpiDef := &models.KPIDefinition{
+		ID:          schemaDef.ID,
+		Kind:        "schema", // All schema definitions are of kind "schema"
+		Name:        schemaDef.Name,
+		Tags:        schemaDef.Tags,
+		OwnerUserID: schemaDef.Author,
+		Visibility:  "private", // Schema definitions are typically private
+		TenantID:    schemaDef.TenantID,
+		CreatedAt:   schemaDef.CreatedAt,
+		UpdatedAt:   schemaDef.UpdatedAt,
+	}
+
+	// Store type-specific data in the query field as JSON
+	typeSpecificData := map[string]interface{}{
+		"type":       string(schemaDef.Type),
+		"category":   schemaDef.Category,
+		"sentiment":  schemaDef.Sentiment,
+		"extensions": schemaDef.Extensions,
+	}
+	kpiDef.Query = typeSpecificData
+
+	// For now, delegate to the existing schema-specific methods based on type
+	// This maintains backward compatibility while migrating to KPI-based storage
+	switch schemaDef.Type {
+	case models.SchemaTypeLabel:
+		if schemaDef.Extensions.Label == nil {
+			return fmt.Errorf("label extension required")
+		}
+		ext := schemaDef.Extensions.Label
+		return r.UpsertLabel(ctx, schemaDef.TenantID, schemaDef.Name, ext.Type, ext.Required, ext.AllowedVals, ext.Description, schemaDef.Category, schemaDef.Sentiment, author)
+
+	case models.SchemaTypeMetric:
+		if schemaDef.Extensions.Metric == nil {
+			return fmt.Errorf("metric extension required")
+		}
+		ext := schemaDef.Extensions.Metric
+		metricDef := MetricDef{
+			TenantID:    schemaDef.TenantID,
+			Metric:      schemaDef.Name,
+			Description: ext.Description,
+			Owner:       ext.Owner,
+			Tags:        schemaDef.Tags,
+			Category:    schemaDef.Category,
+			Sentiment:   schemaDef.Sentiment,
+		}
+		return r.UpsertMetric(ctx, metricDef, author)
+
+	case models.SchemaTypeLogField:
+		if schemaDef.Extensions.LogField == nil {
+			return fmt.Errorf("log field extension required")
+		}
+		ext := schemaDef.Extensions.LogField
+		logFieldDef := LogFieldDef{
+			TenantID:    schemaDef.TenantID,
+			Field:       schemaDef.Name,
+			Type:        ext.FieldType,
+			Description: ext.Description,
+			Tags:        schemaDef.Tags,
+			Category:    schemaDef.Category,
+			Sentiment:   schemaDef.Sentiment,
+		}
+		return r.UpsertLogField(ctx, logFieldDef, author)
+
+	case models.SchemaTypeTraceService:
+		if schemaDef.Extensions.Trace == nil {
+			return fmt.Errorf("trace extension required")
+		}
+		ext := schemaDef.Extensions.Trace
+		return r.UpsertTraceServiceWithAuthor(ctx, schemaDef.TenantID, schemaDef.Name, ext.ServicePurpose, ext.Owner, schemaDef.Category, schemaDef.Sentiment, schemaDef.Tags, author)
+
+	case models.SchemaTypeTraceOperation:
+		if schemaDef.Extensions.Trace == nil {
+			return fmt.Errorf("trace extension required")
+		}
+		ext := schemaDef.Extensions.Trace
+		if ext.Service == "" {
+			return fmt.Errorf("service name required for trace operations")
+		}
+		return r.UpsertTraceOperationWithAuthor(ctx, schemaDef.TenantID, ext.Service, schemaDef.Name, ext.ServicePurpose, ext.Owner, schemaDef.Category, schemaDef.Sentiment, schemaDef.Tags, author)
+
+	default:
+		return fmt.Errorf("unsupported schema type for KPI migration: %s", schemaDef.Type)
+	}
+}
+
+// GetSchemaAsKPI retrieves any schema definition stored as a KPI
+func (r *WeaviateRepo) GetSchemaAsKPI(ctx context.Context, tenantID, schemaType, id string) (*models.SchemaDefinition, error) {
+	// For now, delegate to existing schema-specific methods
+	// This maintains backward compatibility while migrating to KPI-based retrieval
+	switch models.SchemaType(schemaType) {
+	case models.SchemaTypeLabel:
+		labelDef, err := r.GetLabel(ctx, tenantID, id)
+		if err != nil {
+			return nil, err
+		}
+		return &models.SchemaDefinition{
+			ID:        labelDef.Name,
+			Name:      labelDef.Name,
+			Type:      models.SchemaTypeLabel,
+			TenantID:  labelDef.TenantID,
+			Category:  labelDef.Category,
+			Sentiment: labelDef.Sentiment,
+			UpdatedAt: labelDef.UpdatedAt,
+			Extensions: models.SchemaExtensions{
+				Label: &models.LabelExtension{
+					Type:        labelDef.Type,
+					Required:    labelDef.Required,
+					AllowedVals: labelDef.AllowedVals,
+					Description: labelDef.Description,
+				},
+			},
+		}, nil
+
+	case models.SchemaTypeMetric:
+		metricDef, err := r.GetMetric(ctx, tenantID, id)
+		if err != nil {
+			return nil, err
+		}
+		return &models.SchemaDefinition{
+			ID:        metricDef.Metric,
+			Name:      metricDef.Metric,
+			Type:      models.SchemaTypeMetric,
+			TenantID:  metricDef.TenantID,
+			Tags:      metricDef.Tags,
+			Category:  metricDef.Category,
+			Sentiment: metricDef.Sentiment,
+			UpdatedAt: metricDef.UpdatedAt,
+			Extensions: models.SchemaExtensions{
+				Metric: &models.MetricExtension{
+					Description: metricDef.Description,
+					Owner:       metricDef.Owner,
+				},
+			},
+		}, nil
+
+	case models.SchemaTypeLogField:
+		logFieldDef, err := r.GetLogField(ctx, tenantID, id)
+		if err != nil {
+			return nil, err
+		}
+		return &models.SchemaDefinition{
+			ID:        logFieldDef.Field,
+			Name:      logFieldDef.Field,
+			Type:      models.SchemaTypeLogField,
+			TenantID:  logFieldDef.TenantID,
+			Tags:      logFieldDef.Tags,
+			Category:  logFieldDef.Category,
+			Sentiment: logFieldDef.Sentiment,
+			UpdatedAt: logFieldDef.UpdatedAt,
+			Extensions: models.SchemaExtensions{
+				LogField: &models.LogFieldExtension{
+					FieldType:   logFieldDef.Type,
+					Description: logFieldDef.Description,
+				},
+			},
+		}, nil
+
+	case models.SchemaTypeTraceService:
+		traceServiceDef, err := r.GetTraceService(ctx, tenantID, id)
+		if err != nil {
+			return nil, err
+		}
+		return &models.SchemaDefinition{
+			ID:        traceServiceDef.Service,
+			Name:      traceServiceDef.Service,
+			Type:      models.SchemaTypeTraceService,
+			TenantID:  traceServiceDef.TenantID,
+			Tags:      traceServiceDef.Tags,
+			Category:  traceServiceDef.Category,
+			Sentiment: traceServiceDef.Sentiment,
+			UpdatedAt: traceServiceDef.UpdatedAt,
+			Extensions: models.SchemaExtensions{
+				Trace: &models.TraceExtension{
+					ServicePurpose: traceServiceDef.ServicePurpose,
+					Owner:          traceServiceDef.Owner,
+				},
+			},
+		}, nil
+
+	case models.SchemaTypeTraceOperation:
+		// For trace operations, we need the service name from query params
+		// This is a limitation - we may need to store operations differently
+		return nil, fmt.Errorf("trace operation retrieval requires service parameter")
+
+	default:
+		return nil, fmt.Errorf("unsupported schema type for KPI retrieval: %s", schemaType)
+	}
+}
+
+// ListSchemasAsKPIs lists schema definitions of a specific type stored as KPIs
+func (r *WeaviateRepo) ListSchemasAsKPIs(ctx context.Context, tenantID, schemaType string, limit, offset int) ([]*models.SchemaDefinition, int, error) {
+	// For now, return empty results as listing is not implemented for most schema types
+	// This would need to be implemented for each schema type
+	return []*models.SchemaDefinition{}, 0, nil
+}
+
+// DeleteSchemaAsKPI deletes any schema definition stored as a KPI
+func (r *WeaviateRepo) DeleteSchemaAsKPI(ctx context.Context, tenantID, schemaType, id string) error {
+	// Delegate to existing schema-specific delete methods
+	switch models.SchemaType(schemaType) {
+	case models.SchemaTypeLabel:
+		return r.DeleteLabel(ctx, tenantID, id)
+	case models.SchemaTypeMetric:
+		return r.DeleteMetric(ctx, tenantID, id)
+	case models.SchemaTypeLogField:
+		return r.DeleteLogField(ctx, tenantID, id)
+	case models.SchemaTypeTraceService:
+		return r.DeleteTraceService(ctx, tenantID, id)
+	case models.SchemaTypeTraceOperation:
+		// For trace operations, we need the service name
+		// This is a limitation of the current approach
+		return fmt.Errorf("trace operation deletion requires service parameter")
+	default:
+		return fmt.Errorf("unsupported schema type for KPI deletion: %s", schemaType)
+	}
 }
