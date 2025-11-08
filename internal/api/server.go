@@ -296,22 +296,7 @@ func (s *Server) setupRoutes() {
 	v1.GET("/ws/metrics", ws.HandleMetricsStream)
 	v1.GET("/ws/alerts", ws.HandleAlertsStream)
 
-	// Schema definitions (Weaviate-backed - unified API only)
-	if s.schemaRepo != nil {
-		unifiedSchemaHandler := handlers.NewUnifiedSchemaHandler(s.schemaRepo, s.vmServices.Metrics, s.vmServices.Logs, s.cache, s.logger, s.config.Uploads.BulkMaxBytes)
-
-		// Unified schema routes (KPIs are the new schema definitions)
-		// POST /api/v1/schema/:type - Create/update schema definition
-		v1.POST("/schema/:type", unifiedSchemaHandler.UpsertSchemaDefinition)
-		// GET /api/v1/schema/:type/:id - Get schema definition by ID
-		v1.GET("/schema/:type/:id", unifiedSchemaHandler.GetSchemaDefinition)
-		// GET /api/v1/schema/:type - List schema definitions with query params
-		v1.GET("/schema/:type", unifiedSchemaHandler.ListSchemaDefinitions)
-		// DELETE /api/v1/schema/:type/:id - Delete schema definition
-		v1.DELETE("/schema/:type/:id", unifiedSchemaHandler.DeleteSchemaDefinition)
-	}
-
-	// Separate KPI APIs (as defined in API contract)
+	// KPI APIs (primary interface for schema definitions)
 	if s.schemaRepo != nil {
 		kpiHandler := handlers.NewKPIHandler(s.schemaRepo, s.cache, s.logger)
 		if kpiHandler != nil {
