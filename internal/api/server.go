@@ -262,12 +262,16 @@ func (s *Server) setupRoutes() {
 
 	// Configuration endpoints (user-driven settings storage)
 	dynamicConfigService := services.NewDynamicConfigService(s.cache, s.logger)
-	configHandler := handlers.NewConfigHandler(s.cache, s.logger, dynamicConfigService, s.grpcClients)
+	configHandler := handlers.NewConfigHandler(s.cache, s.logger, dynamicConfigService, s.grpcClients, s.schemaRepo)
 	v1.GET("/config/datasources", configHandler.GetDataSources)
 	v1.POST("/config/datasources", configHandler.AddDataSource)
-	v1.GET("/config/user-settings", configHandler.GetUserSettings)
-	v1.PUT("/config/user-settings", configHandler.UpdateUserSettings)
 	v1.GET("/config/integrations", configHandler.GetIntegrations)
+
+	// User Preferences API (moved from KPI handler)
+	v1.GET("/config/user-preferences", configHandler.GetUserPreferences)
+	v1.POST("/config/user-preferences", configHandler.CreateUserPreferences)
+	v1.PUT("/config/user-preferences", configHandler.UpdateUserPreferences)
+	v1.DELETE("/config/user-preferences", configHandler.DeleteUserPreferences)
 
 	// Runtime feature flag endpoints
 	v1.GET("/config/features", configHandler.GetFeatureFlags)
@@ -296,47 +300,42 @@ func (s *Server) setupRoutes() {
 	v1.GET("/ws/metrics", ws.HandleMetricsStream)
 	v1.GET("/ws/alerts", ws.HandleAlertsStream)
 
-	// Schema definitions (Weaviate-backed once enabled)
+	// Schema definitions (Weaviate-backed - unified API only)
 	if s.schemaRepo != nil {
-		schemaHandler := handlers.NewSchemaHandler(s.schemaRepo, s.vmServices.Metrics, s.vmServices.Logs, s.cache, s.logger, s.config.Uploads.BulkMaxBytes)
-		v1.POST("/schema/metrics/:metric/labels", schemaHandler.UpsertMetricLabel)
-		v1.GET("/schema/metrics/:metric", schemaHandler.GetMetric)
-		v1.GET("/schema/metrics/:metric/versions", schemaHandler.ListMetricVersions)
-		v1.DELETE("/schema/metrics/:metric", schemaHandler.DeleteMetric)
-		v1.POST("/schema/metrics", schemaHandler.UpsertMetric)
-		v1.POST("/schema/metrics/bulk", schemaHandler.BulkUpsertMetricsCSV)
-		v1.GET("/schema/metrics/bulk/sample", schemaHandler.SampleCSV)
-		v1.POST("/schema/logs/fields", schemaHandler.UpsertLogField)
-		v1.POST("/schema/logs/fields/bulk", schemaHandler.BulkUpsertLogFieldsCSV)
-		v1.GET("/schema/logs/fields/bulk/sample", schemaHandler.SampleCSVLogFields)
-		v1.GET("/schema/logs/fields/:field", schemaHandler.GetLogField)
-		v1.GET("/schema/logs/fields/:field/versions", schemaHandler.ListLogFieldVersions)
-		v1.GET("/schema/logs/fields/:field/versions/:version", schemaHandler.GetLogFieldVersion)
-		v1.DELETE("/schema/logs/fields/:field", schemaHandler.DeleteLogField)
-		v1.GET("/schema/metrics/:metric/versions/:version", schemaHandler.GetMetricVersion)
-		// Independent label schema
-		v1.POST("/schema/labels", schemaHandler.UpsertLabel)
-		v1.GET("/schema/labels/:name", schemaHandler.GetLabel)
-		v1.GET("/schema/labels/:name/versions", schemaHandler.ListLabelVersions)
-		v1.GET("/schema/labels/:name/versions/:version", schemaHandler.GetLabelVersion)
-		v1.DELETE("/schema/labels/:name", schemaHandler.DeleteLabel)
-		v1.POST("/schema/labels/bulk", schemaHandler.BulkUpsertLabelsCSV)
-		v1.GET("/schema/labels/bulk/sample", schemaHandler.SampleCSVLabels)
-		// Traces: services and operations schema
-		v1.POST("/schema/traces/services", schemaHandler.UpsertTraceService)
-		v1.POST("/schema/traces/services/bulk", schemaHandler.BulkUpsertTraceServicesCSV)
-		v1.GET("/schema/traces/services/bulk/sample", schemaHandler.SampleCSVTraceServices)
-		v1.GET("/schema/traces/services/:service", schemaHandler.GetTraceService)
-		v1.GET("/schema/traces/services/:service/versions", schemaHandler.ListTraceServiceVersions)
-		v1.GET("/schema/traces/services/:service/versions/:version", schemaHandler.GetTraceServiceVersion)
-		v1.DELETE("/schema/traces/services/:service", schemaHandler.DeleteTraceService)
-		v1.POST("/schema/traces/operations", schemaHandler.UpsertTraceOperation)
-		v1.POST("/schema/traces/operations/bulk", schemaHandler.BulkUpsertTraceOperationsCSV)
-		v1.GET("/schema/traces/operations/bulk/sample", schemaHandler.SampleCSVTraceOperations)
-		v1.GET("/schema/traces/services/:service/operations/:operation", schemaHandler.GetTraceOperation)
-		v1.GET("/schema/traces/services/:service/operations/:operation/versions", schemaHandler.ListTraceOperationVersions)
-		v1.GET("/schema/traces/services/:service/operations/:operation/versions/:version", schemaHandler.GetTraceOperationVersion)
-		v1.DELETE("/schema/traces/services/:service/operations/:operation", schemaHandler.DeleteTraceOperation)
+		unifiedSchemaHandler := handlers.NewUnifiedSchemaHandler(s.schemaRepo, s.vmServices.Metrics, s.vmServices.Logs, s.cache, s.logger, s.config.Uploads.BulkMaxBytes)
+
+		// Unified schema routes (KPIs are the new schema definitions)
+		// POST /api/v1/schema/:type - Create/update schema definition
+		v1.POST("/schema/:type", unifiedSchemaHandler.UpsertSchemaDefinition)
+		// GET /api/v1/schema/:type/:id - Get schema definition by ID
+		v1.GET("/schema/:type/:id", unifiedSchemaHandler.GetSchemaDefinition)
+		// GET /api/v1/schema/:type - List schema definitions with query params
+		v1.GET("/schema/:type", unifiedSchemaHandler.ListSchemaDefinitions)
+		// DELETE /api/v1/schema/:type/:id - Delete schema definition
+		v1.DELETE("/schema/:type/:id", unifiedSchemaHandler.DeleteSchemaDefinition)
+	}
+
+	// Separate KPI APIs (as defined in API contract)
+	if s.schemaRepo != nil {
+		kpiHandler := handlers.NewKPIHandler(s.schemaRepo, s.cache, s.logger)
+		if kpiHandler != nil {
+			// KPI Definitions API
+			v1.GET("/kpi/defs", kpiHandler.GetKPIDefinitions)
+			v1.POST("/kpi/defs", kpiHandler.CreateOrUpdateKPIDefinition)
+			v1.DELETE("/kpi/defs/:id", kpiHandler.DeleteKPIDefinition)
+
+			// KPI Layouts API
+			v1.GET("/kpi/layouts", kpiHandler.GetKPILayouts)
+			v1.POST("/kpi/layouts/batch", kpiHandler.BatchUpdateKPILayouts)
+
+			// Dashboard API
+			v1.GET("/kpi/dashboards", kpiHandler.GetDashboards)
+			v1.POST("/kpi/dashboards", kpiHandler.CreateDashboard)
+			v1.PUT("/kpi/dashboards/:id", kpiHandler.UpdateDashboard)
+			v1.DELETE("/kpi/dashboards/:id", kpiHandler.DeleteDashboard)
+
+			// User Preferences API moved to /config/user-preferences
+		}
 	}
 
 	// Unified Query Engine (Phase 1.5: Unified API Implementation)

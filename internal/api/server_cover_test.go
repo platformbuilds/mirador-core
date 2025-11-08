@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
+	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
@@ -93,6 +94,50 @@ func (stubSchemaRepo) DeleteTraceService(ctx context.Context, tenantID, service 
 func (stubSchemaRepo) DeleteTraceOperation(ctx context.Context, tenantID, service, operation string) error {
 	return nil
 }
+func (stubSchemaRepo) UpsertSchemaAsKPI(ctx context.Context, schemaDef *models.SchemaDefinition, author string) error {
+	return nil
+}
+func (stubSchemaRepo) GetSchemaAsKPI(ctx context.Context, tenantID, schemaType, id string) (*models.SchemaDefinition, error) {
+	return &models.SchemaDefinition{ID: id, Type: models.SchemaType(schemaType), TenantID: tenantID}, nil
+}
+func (stubSchemaRepo) ListSchemasAsKPIs(ctx context.Context, tenantID, schemaType string, limit, offset int) ([]*models.SchemaDefinition, int, error) {
+	return []*models.SchemaDefinition{}, 0, nil
+}
+func (stubSchemaRepo) DeleteSchemaAsKPI(ctx context.Context, tenantID, schemaType, id string) error {
+	return nil
+}
+
+// KPI methods
+func (stubSchemaRepo) UpsertKPI(kpi *models.KPIDefinition) error {
+	return nil
+}
+func (stubSchemaRepo) GetKPI(tenantID, id string) (*models.KPIDefinition, error) {
+	return &models.KPIDefinition{ID: id, TenantID: tenantID}, nil
+}
+func (stubSchemaRepo) ListKPIs(tenantID string, tags []string, limit, offset int) ([]*models.KPIDefinition, int, error) {
+	return []*models.KPIDefinition{}, 0, nil
+}
+func (stubSchemaRepo) DeleteKPI(tenantID, id string) error {
+	return nil
+}
+func (stubSchemaRepo) GetKPILayoutsForDashboard(tenantID, dashboardID string) (map[string]interface{}, error) {
+	return map[string]interface{}{}, nil
+}
+func (stubSchemaRepo) BatchUpsertKPILayouts(tenantID, dashboardID string, layouts map[string]interface{}) error {
+	return nil
+}
+func (stubSchemaRepo) UpsertDashboard(dashboard *models.Dashboard) error {
+	return nil
+}
+func (stubSchemaRepo) GetDashboard(tenantID, id string) (*models.Dashboard, error) {
+	return &models.Dashboard{ID: id, TenantID: tenantID}, nil
+}
+func (stubSchemaRepo) ListDashboards(tenantID string, limit, offset int) ([]*models.Dashboard, int, error) {
+	return []*models.Dashboard{}, 0, nil
+}
+func (stubSchemaRepo) DeleteDashboard(tenantID, id string) error {
+	return nil
+}
 
 func TestServer_AuthOn_And_SchemaRegistered(t *testing.T) {
 	// Ensure switching gin mode for production path does not leak globally
@@ -102,6 +147,7 @@ func TestServer_AuthOn_And_SchemaRegistered(t *testing.T) {
 	log := logger.New("error")
 	cfg := &config.Config{Environment: "production", Port: 0}
 	cfg.Auth.Enabled = true
+	cfg.UnifiedQuery.Enabled = false
 
 	vms := &services.VictoriaMetricsServices{
 		Metrics: services.NewVictoriaMetricsService(config.VictoriaMetricsConfig{}, log),

@@ -228,7 +228,7 @@ Upload a CSV file with metric definitions.
 
 ## Configuration APIs
 
-### Update Runtime Features
+#### Update Runtime Features
 
 ```http
 PUT /api/v1/config/features
@@ -245,6 +245,155 @@ PUT /api/v1/config/features
   }
 }
 ```
+
+## User Preferences APIs
+
+### Get User Preferences
+
+```http
+GET /api/v1/config/user-preferences
+```
+
+Retrieve user preferences for the current user or specified user.
+
+**Query Parameters:**
+- `userId` (optional): User ID to get preferences for (defaults to current user)
+
+### Create User Preferences
+
+```http
+POST /api/v1/config/user-preferences
+```
+
+Create user preferences for a user.
+
+**Query Parameters:**
+- `userId` (optional): User ID to create preferences for (defaults to current user)
+
+**Request Body:**
+```json
+{
+  "preferences": {
+    "theme": "dark",
+    "timezone": "UTC",
+    "notifications": true
+  }
+}
+```
+
+### Update User Preferences
+
+```http
+PUT /api/v1/config/user-preferences
+```
+
+Update user preferences for the current user or specified user.
+
+**Query Parameters:**
+- `userId` (optional): User ID to update preferences for (defaults to current user)
+
+**Request Body:**
+```json
+{
+  "preferences": {
+    "theme": "light",
+    "timezone": "America/New_York",
+    "notifications": false
+  }
+}
+```
+
+### Delete User Preferences
+
+```http
+DELETE /api/v1/config/user-preferences
+```
+
+Delete user preferences for the current user or specified user.
+
+**Query Parameters:**
+- `userId` (optional): User ID to delete preferences for (defaults to current user)
+
+## Dashboards APIs
+
+### Get Dashboards
+
+```http
+GET /api/v1/config/dashboards
+```
+
+Retrieve dashboards for the current user or all dashboards if admin.
+
+**Query Parameters:**
+- `userId` (optional): User ID to get dashboards for (defaults to current user)
+- `shared` (optional): Include shared dashboards (default false)
+- `limit` (optional): Maximum number of dashboards to return (default 50)
+- `offset` (optional): Number of dashboards to skip (default 0)
+
+### Create Dashboard
+
+```http
+POST /api/v1/config/dashboards
+```
+
+Create a new dashboard for the current user.
+
+**Request Body:**
+```json
+{
+  "name": "API Performance Dashboard",
+  "description": "Monitor API performance metrics",
+  "shared": false,
+  "layout": {
+    "panels": []
+  }
+}
+```
+
+### Get Dashboard by ID
+
+```http
+GET /api/v1/config/dashboards/{dashboardId}
+```
+
+Retrieve a specific dashboard by its ID.
+
+**Path Parameters:**
+- `dashboardId`: Dashboard unique identifier
+
+### Update Dashboard
+
+```http
+PUT /api/v1/config/dashboards/{dashboardId}
+```
+
+Update an existing dashboard.
+
+**Path Parameters:**
+- `dashboardId`: Dashboard unique identifier
+
+**Request Body:**
+```json
+{
+  "name": "Updated API Dashboard",
+  "description": "Updated dashboard for monitoring API endpoints",
+  "shared": true,
+  "layout": {
+    "panels": []
+  }
+}
+```
+
+### Delete Dashboard
+
+```http
+DELETE /api/v1/config/dashboards/{dashboardId}
+```
+
+Delete a dashboard by its ID.
+
+**Path Parameters:**
+- `dashboardId`: Dashboard unique identifier
 
 ## Health & Monitoring
 

@@ -12,7 +12,6 @@ The following table provides detailed information about failed API tests, includ
 | Predict Engine Health | `http://localhost:8010/api/v1/predict/health` | 200 | 503 | Expected status 200, got 503 | Predict engine unhealthy. Check predict microservice status and dependencies |
 | Get Active Models | `http://localhost:8010/api/v1/predict/models` | 200 | 500 | Expected status 200, got 500 | Predict engine not running. Start predict microservice or disable predict tests |
 | Get Predicted Fractures | `http://localhost:8010/api/v1/predict/fractures` | 200 | 500 | Expected status 200, got 500 | Predict engine not running. Start predict microservice or disable predict tests |
-| Get User Settings | `http://localhost:8010/api/v1/config/user-settings` | 200 | 500 | Expected status 200, got 500 | User management not configured. Check authentication and user store configuration |
 | Get Metrics Schema | `http://localhost:8010/api/v1/schema/metrics` | 200 | 404 | Expected status 200, got 404 | Schema endpoints may be disabled. Check feature flags or enable schema store |
 | Get Logs Fields Schema | `http://localhost:8010/api/v1/schema/logs/fields` | 200 | 404 | Expected status 200, got 404 | Schema endpoints may be disabled. Check feature flags or enable schema store |
 | Get Traces Services Schema | `http://localhost:8010/api/v1/schema/traces/services` | 200 | 404 | Expected status 200, got 404 | Schema endpoints may be disabled. Check feature flags or enable schema store |

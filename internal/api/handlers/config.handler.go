@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -9,6 +11,7 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
@@ -20,156 +23,18 @@ type ConfigHandler struct {
 	featureFlagService *services.RuntimeFeatureFlagService
 	dynamicConfig      *services.DynamicConfigService
 	grpcClients        *clients.GRPCClients
+	schemaRepo         repo.SchemaStore
 }
 
-func NewConfigHandler(cache cache.ValkeyCluster, logger logger.Logger, dynamicConfig *services.DynamicConfigService, grpcClients *clients.GRPCClients) *ConfigHandler {
+func NewConfigHandler(cache cache.ValkeyCluster, logger logger.Logger, dynamicConfig *services.DynamicConfigService, grpcClients *clients.GRPCClients, schemaRepo repo.SchemaStore) *ConfigHandler {
 	return &ConfigHandler{
 		cache:              cache,
 		logger:             logger,
 		dynamicConfig:      dynamicConfig,
 		grpcClients:        grpcClients,
+		schemaRepo:         schemaRepo,
 		featureFlagService: services.NewRuntimeFeatureFlagService(cache, logger),
 	}
-}
-
-// checkUserSettingsEnabled checks if user settings feature is enabled
-func (h *ConfigHandler) checkUserSettingsEnabled(c *gin.Context) bool {
-	tenantID := c.GetString("tenant_id")
-	flags, err := h.featureFlagService.GetFeatureFlags(c.Request.Context(), tenantID)
-	if err != nil {
-		h.logger.Error("Failed to check feature flags", "tenantID", tenantID, "error", err)
-		return false
-	}
-	return flags.UserSettingsEnabled
-}
-
-// GET /api/v1/config/user-settings - Get user-driven settings
-func (h *ConfigHandler) GetUserSettings(c *gin.Context) {
-	// Check if user settings feature is enabled
-	if !h.checkUserSettingsEnabled(c) {
-		c.JSON(http.StatusForbidden, gin.H{
-			"status": "error",
-			"error":  "User settings feature is disabled",
-		})
-		return
-	}
-
-	userID := c.GetString("user_id")
-	tenantID := c.GetString("tenant_id")
-
-	// Get user session with settings (use session_id from auth middleware)
-	sessionID := c.GetString("session_id")
-
-	// Default settings for testing/development when no session exists
-	defaultSettings := map[string]interface{}{
-		"dashboard_layout": "default",
-		"refresh_interval": 30,
-		"timezone":         "UTC",
-		"theme":            "light",
-		"notifications": map[string]bool{
-			"email": true,
-			"slack": false,
-			"push":  true,
-		},
-		"query_preferences": map[string]interface{}{
-			"default_time_range": "1h",
-			"auto_refresh":       true,
-			"query_timeout":      "30s",
-		},
-	}
-
-	// Try to get session, but don't fail if it doesn't exist (for testing)
-	var sessionSettings map[string]interface{}
-	var lastActivity string
-
-	if sessionID != "" {
-		session, err := h.cache.GetSession(c.Request.Context(), sessionID)
-		if err == nil && session != nil {
-			sessionSettings = session.Settings
-			lastActivity = session.LastActivity.Format(time.RFC3339)
-		}
-	}
-
-	// Use session settings if available, otherwise use defaults
-	if sessionSettings == nil {
-		sessionSettings = defaultSettings
-		lastActivity = time.Now().Format(time.RFC3339)
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data": gin.H{
-			"userId":      userID,
-			"tenantId":    tenantID,
-			"settings":    sessionSettings,
-			"lastUpdated": lastActivity,
-		},
-	})
-}
-
-// PUT /api/v1/config/user-settings - Update user-driven settings
-func (h *ConfigHandler) UpdateUserSettings(c *gin.Context) {
-	// Check if user settings feature is enabled
-	if !h.checkUserSettingsEnabled(c) {
-		c.JSON(http.StatusForbidden, gin.H{
-			"status": "error",
-			"error":  "User settings feature is disabled",
-		})
-		return
-	}
-
-	userID := c.GetString("user_id")
-
-	var updateRequest map[string]interface{}
-	if err := c.ShouldBindJSON(&updateRequest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  "Invalid settings format",
-		})
-		return
-	}
-
-	// Get current session
-	sessionID := c.GetString("session_id")
-	session, err := h.cache.GetSession(c.Request.Context(), sessionID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "error",
-			"error":  "Failed to retrieve session",
-		})
-		return
-	}
-
-	// Update settings
-	if session.Settings == nil {
-		session.Settings = make(map[string]interface{})
-	}
-
-	// Merge new settings with existing ones
-	for key, value := range updateRequest {
-		session.Settings[key] = value
-	}
-
-	// Store updated session in Valkey cluster
-	if err := h.cache.SetSession(c.Request.Context(), session); err != nil {
-		h.logger.Error("Failed to update user settings", "userId", userID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "error",
-			"error":  "Failed to save settings",
-		})
-		return
-	}
-
-	h.logger.Info("User settings updated", "userId", userID, "settingsCount", len(session.Settings))
-
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data": gin.H{
-			"updated":   true,
-			"settings":  session.Settings,
-			"updatedAt": time.Now().Format(time.RFC3339),
-		},
-	})
 }
 
 // GET /api/v1/config/datasources - Get configured data sources
@@ -413,6 +278,163 @@ func (h *ConfigHandler) ResetFeatureFlags(c *gin.Context) {
 		},
 		"timestamp": time.Now().Format(time.RFC3339),
 	})
+}
+
+// GET /api/v1/config/user-preferences - Get user preferences
+func (h *ConfigHandler) GetUserPreferences(c *gin.Context) {
+	userID := c.GetString("user_id") // Assuming middleware sets this
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user authentication required"})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+
+	userPrefs, err := h.getUserPreferences(tenantID, userID)
+	if err != nil {
+		// If not found, return default preferences
+		defaultPrefs := &models.UserPreferences{
+			ID:                 userID,
+			Theme:              "system",
+			SidebarCollapsed:   false,
+			DefaultDashboardID: "default",
+			Timezone:           "UTC",
+			KeyboardHintSeen:   false,
+			TenantID:           tenantID,
+			CreatedAt:          time.Now(),
+			UpdatedAt:          time.Now(),
+		}
+		c.JSON(http.StatusOK, models.UserPreferencesResponse{UserPreferences: defaultPrefs})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.UserPreferencesResponse{UserPreferences: userPrefs})
+}
+
+// POST /api/v1/config/user-preferences - Create user preferences
+func (h *ConfigHandler) CreateUserPreferences(c *gin.Context) {
+	userID := c.GetString("user_id") // Assuming middleware sets this
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user authentication required"})
+		return
+	}
+
+	var req models.UserPreferencesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	if req.UserPreferences == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user preferences is required"})
+		return
+	}
+
+	userPrefs := req.UserPreferences
+	userPrefs.ID = userID // Ensure ID matches authenticated user
+	userPrefs.TenantID = c.GetString("tenant_id")
+	userPrefs.CreatedAt = time.Now()
+	userPrefs.UpdatedAt = userPrefs.CreatedAt
+
+	err := h.upsertUserPreferences(userPrefs)
+	if err != nil {
+		h.logger.Error("user preferences create failed", "error", err, "user", userID)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user preferences"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, models.UserPreferencesResponse{UserPreferences: userPrefs})
+}
+
+// PUT /api/v1/config/user-preferences - Update user preferences
+func (h *ConfigHandler) UpdateUserPreferences(c *gin.Context) {
+	userID := c.GetString("user_id") // Assuming middleware sets this
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user authentication required"})
+		return
+	}
+
+	var req models.UserPreferencesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	if req.UserPreferences == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user preferences is required"})
+		return
+	}
+
+	userPrefs := req.UserPreferences
+	userPrefs.ID = userID // Ensure ID matches authenticated user
+	userPrefs.TenantID = c.GetString("tenant_id")
+	userPrefs.UpdatedAt = time.Now()
+
+	if userPrefs.CreatedAt.IsZero() {
+		userPrefs.CreatedAt = userPrefs.UpdatedAt
+	}
+
+	err := h.upsertUserPreferences(userPrefs)
+	if err != nil {
+		h.logger.Error("user preferences update failed", "error", err, "user", userID)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update user preferences"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.UserPreferencesResponse{UserPreferences: userPrefs})
+}
+
+// DELETE /api/v1/config/user-preferences - Delete user preferences
+func (h *ConfigHandler) DeleteUserPreferences(c *gin.Context) {
+	userID := c.GetString("user_id") // Assuming middleware sets this
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user authentication required"})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+
+	q := c.Query("confirm")
+	if q != "1" && q != "true" && q != "yes" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "confirmation required: add ?confirm=1"})
+		return
+	}
+
+	err := h.deleteUserPreferences(tenantID, userID)
+	if err != nil {
+		h.logger.Error("user preferences delete failed", "error", err, "user", userID)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete user preferences"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "deleted"})
+}
+
+// Implementation methods for user preferences
+
+func (h *ConfigHandler) upsertUserPreferences(userPrefs *models.UserPreferences) error {
+	key := fmt.Sprintf("user_prefs:%s:%s", userPrefs.TenantID, userPrefs.ID)
+	return h.cache.Set(context.Background(), key, userPrefs, 30*24*time.Hour) // 30 days TTL
+}
+
+func (h *ConfigHandler) getUserPreferences(tenantID, userID string) (*models.UserPreferences, error) {
+	key := fmt.Sprintf("user_prefs:%s:%s", tenantID, userID)
+	data, err := h.cache.Get(context.Background(), key)
+	if err != nil {
+		return nil, err
+	}
+
+	var userPrefs models.UserPreferences
+	if err := json.Unmarshal(data, &userPrefs); err != nil {
+		return nil, err
+	}
+
+	return &userPrefs, nil
+}
+
+func (h *ConfigHandler) deleteUserPreferences(tenantID, userID string) error {
+	key := fmt.Sprintf("user_prefs:%s:%s", tenantID, userID)
+	return h.cache.Delete(context.Background(), key)
 }
 
 // GET /api/v1/config/grpc/endpoints - Get current gRPC endpoint configurations

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,10 +12,106 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
+
+// mockSchemaStore implements the SchemaStore interface for testing
+type mockSchemaStore struct{}
+
+func (m *mockSchemaStore) UpsertMetric(ctx context.Context, metric repo.MetricDef, author string) error {
+	return nil
+}
+func (m *mockSchemaStore) GetMetric(ctx context.Context, tenantID, metric string) (*repo.MetricDef, error) {
+	return nil, nil
+}
+func (m *mockSchemaStore) ListMetricVersions(ctx context.Context, tenantID, metric string) ([]repo.VersionInfo, error) {
+	return nil, nil
+}
+func (m *mockSchemaStore) GetMetricVersion(ctx context.Context, tenantID, metric string, version int64) (map[string]any, repo.VersionInfo, error) {
+	return nil, repo.VersionInfo{}, nil
+}
+func (m *mockSchemaStore) UpsertMetricLabel(ctx context.Context, tenantID, metric, label, typ string, required bool, allowed map[string]any, description string) error {
+	return nil
+}
+func (m *mockSchemaStore) GetMetricLabelDefs(ctx context.Context, tenantID, metric string, labels []string) (map[string]*repo.MetricLabelDef, error) {
+	return nil, nil
+}
+func (m *mockSchemaStore) UpsertLogField(ctx context.Context, f repo.LogFieldDef, author string) error {
+	return nil
+}
+func (m *mockSchemaStore) GetLogField(ctx context.Context, tenantID, field string) (*repo.LogFieldDef, error) {
+	return nil, nil
+}
+func (m *mockSchemaStore) ListLogFieldVersions(ctx context.Context, tenantID, field string) ([]repo.VersionInfo, error) {
+	return nil, nil
+}
+func (m *mockSchemaStore) GetLogFieldVersion(ctx context.Context, tenantID, field string, version int64) (map[string]any, repo.VersionInfo, error) {
+	return nil, repo.VersionInfo{}, nil
+}
+func (m *mockSchemaStore) UpsertTraceServiceWithAuthor(ctx context.Context, tenantID, service, servicePurpose, owner, category, sentiment string, tags []string, author string) error {
+	return nil
+}
+func (m *mockSchemaStore) GetTraceService(ctx context.Context, tenantID, service string) (*repo.TraceServiceDef, error) {
+	return nil, nil
+}
+func (m *mockSchemaStore) ListTraceServiceVersions(ctx context.Context, tenantID, service string) ([]repo.VersionInfo, error) {
+	return nil, nil
+}
+func (m *mockSchemaStore) GetTraceServiceVersion(ctx context.Context, tenantID, service string, version int64) (map[string]any, repo.VersionInfo, error) {
+	return nil, repo.VersionInfo{}, nil
+}
+func (m *mockSchemaStore) UpsertTraceOperationWithAuthor(ctx context.Context, tenantID, service, operation, servicePurpose, owner, category, sentiment string, tags []string, author string) error {
+	return nil
+}
+func (m *mockSchemaStore) GetTraceOperation(ctx context.Context, tenantID, service, operation string) (*repo.TraceOperationDef, error) {
+	return nil, nil
+}
+func (m *mockSchemaStore) ListTraceOperationVersions(ctx context.Context, tenantID, service, operation string) ([]repo.VersionInfo, error) {
+	return nil, nil
+}
+func (m *mockSchemaStore) GetTraceOperationVersion(ctx context.Context, tenantID, service, operation string, version int64) (map[string]any, repo.VersionInfo, error) {
+	return nil, repo.VersionInfo{}, nil
+}
+func (m *mockSchemaStore) UpsertLabel(ctx context.Context, tenantID, name, typ string, required bool, allowed map[string]any, description, category, sentiment, author string) error {
+	return nil
+}
+func (m *mockSchemaStore) GetLabel(ctx context.Context, tenantID, name string) (*repo.LabelDef, error) {
+	return nil, nil
+}
+func (m *mockSchemaStore) ListLabelVersions(ctx context.Context, tenantID, name string) ([]repo.VersionInfo, error) {
+	return nil, nil
+}
+func (m *mockSchemaStore) GetLabelVersion(ctx context.Context, tenantID, name string, version int64) (map[string]any, repo.VersionInfo, error) {
+	return nil, repo.VersionInfo{}, nil
+}
+func (m *mockSchemaStore) DeleteLabel(ctx context.Context, tenantID, name string) error { return nil }
+func (m *mockSchemaStore) DeleteMetric(ctx context.Context, tenantID, metric string) error {
+	return nil
+}
+func (m *mockSchemaStore) DeleteLogField(ctx context.Context, tenantID, field string) error {
+	return nil
+}
+func (m *mockSchemaStore) DeleteTraceService(ctx context.Context, tenantID, service string) error {
+	return nil
+}
+func (m *mockSchemaStore) DeleteTraceOperation(ctx context.Context, tenantID, service, operation string) error {
+	return nil
+}
+func (m *mockSchemaStore) UpsertSchemaAsKPI(ctx context.Context, schemaDef *models.SchemaDefinition, author string) error {
+	return nil
+}
+func (m *mockSchemaStore) GetSchemaAsKPI(ctx context.Context, tenantID, schemaType, id string) (*models.SchemaDefinition, error) {
+	return &models.SchemaDefinition{ID: id, Type: models.SchemaType(schemaType), TenantID: tenantID}, nil
+}
+func (m *mockSchemaStore) ListSchemasAsKPIs(ctx context.Context, tenantID, schemaType string, limit, offset int) ([]*models.SchemaDefinition, int, error) {
+	return []*models.SchemaDefinition{}, 0, nil
+}
+func (m *mockSchemaStore) DeleteSchemaAsKPI(ctx context.Context, tenantID, schemaType, id string) error {
+	return nil
+}
 
 func newTestRouterWithContext(cch cache.ValkeyCluster, mw func(*gin.Context)) *gin.Engine {
 	gin.SetMode(gin.TestMode)
@@ -40,9 +137,7 @@ func newTestRouterWithContext(cch cache.ValkeyCluster, mw func(*gin.Context)) *g
 	v1.GET("/sessions/user/:userId", sess.GetUserSessions)
 
 	// Config
-	cfg := NewConfigHandler(cch, log, dynamicConfig, grpcClients)
-	v1.GET("/config/user-settings", cfg.GetUserSettings)
-	v1.PUT("/config/user-settings", cfg.UpdateUserSettings)
+	cfg := NewConfigHandler(cch, log, dynamicConfig, grpcClients, &mockSchemaStore{})
 	v1.GET("/config/datasources", cfg.GetDataSources)
 	v1.POST("/config/datasources", cfg.AddDataSource)
 	v1.GET("/config/integrations", cfg.GetIntegrations)
@@ -55,7 +150,7 @@ func TestRBAC_Session_Config(t *testing.T) {
 	cch := cache.NewNoopValkeyCache(log)
 	// Preseed a session
 	sess := &models.UserSession{ID: "tok1", TenantID: "t1", UserID: "u1", Settings: map[string]any{"theme": "light"}}
-	_ = cch.SetSession(nil, sess)
+	_ = cch.SetSession(context.TODO(), sess)
 
 	r := newTestRouterWithContext(cch, func(c *gin.Context) {
 		c.Set("tenant_id", "t1")
@@ -115,23 +210,6 @@ func TestRBAC_Session_Config(t *testing.T) {
 	r2.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/v1/sessions/invalidate", bytes.NewReader([]byte("{}"))))
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("invalidate missing should 400, got=%d", w.Code)
-	}
-
-	// Config get user settings (uses session)
-	w = httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/config/user-settings", nil))
-	if w.Code != http.StatusOK {
-		t.Fatalf("get settings=%d", w.Code)
-	}
-
-	// Config update settings
-	upd, _ := json.Marshal(map[string]any{"theme": "dark"})
-	w = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPut, "/api/v1/config/user-settings", bytes.NewReader(upd))
-	req.Header.Set("Content-Type", "application/json")
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Fatalf("update settings=%d body=%s", w.Code, w.Body.String())
 	}
 
 	// Config list datasources
