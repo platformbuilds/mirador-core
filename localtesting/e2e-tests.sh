@@ -775,7 +775,7 @@ EOF
 - **RCA Engine**: Root Cause Analysis features require additional microservices.
 
 ### Configuration Issues
-- **Schema Endpoints (404)**: Schema management may be disabled. Check feature flags.
+- **Schema Endpoints (404)**: KPI management may be disabled. Check feature flags.
 - **User Settings (500)**: User management requires proper authentication configuration.
 
 ### API Usage
@@ -816,7 +816,7 @@ EOF
         echo "📖 COMMON ISSUES & SOLUTIONS:"
         echo "-----------------------------"
         echo "🔸 Predict Engine (503/500): Predict microservice not running (optional)"
-        echo "🔸 Schema Endpoints (404): Schema management may be disabled"
+        echo "🔸 Schema Endpoints (404): KPI management may be disabled"
         echo "🔸 User Settings (500): User management requires authentication config"
         echo "🔸 Traces Search (400): Needs proper time range parameters"
         echo "🔸 Invalid Method (404): Endpoint may not support the HTTP method"

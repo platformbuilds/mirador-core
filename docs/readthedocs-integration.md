@@ -10,7 +10,7 @@ ReadTheDocs automatically builds and hosts the project documentation using Sphin
 - User Guides
 - Configuration Documentation
 - Deployment Guides
-- Migration Guide (including Weaviate Schema Management)
+- Migration Guide (including Weaviate KPI Management)
 - Correlation Engine Documentation (Phase 3 - Completed)
 - Unified Query Architecture
 

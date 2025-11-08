@@ -555,7 +555,7 @@ curl -X POST https://mirador-core/api/v1/rca/service-graph \
   }'
 ```
 
-### Schema Management APIs
+### KPI Management APIs
 
 #### Metrics Schema
 ```bash

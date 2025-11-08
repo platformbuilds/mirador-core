@@ -321,7 +321,7 @@ rateLimit:
   storage: "redis"  # memory or redis
 ```
 
-## Schema Management
+## KPI Management
 
 ```yaml
 schema:

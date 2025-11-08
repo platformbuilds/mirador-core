@@ -2078,44 +2078,6 @@
         }
       }
     },
-    "/series": {
-      "get": {
-        "deprecated": true,
-        "summary": "Series listing (deprecated - use /metrics/series)",
-        "description": "This endpoint is deprecated. Use /metrics/series instead.",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "match",
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "style": "form",
-            "explode": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/labels": {
-      "get": {
-        "deprecated": true,
-        "summary": "Labels listing (deprecated - use /metrics/labels)",
-        "description": "This endpoint is deprecated. Use /metrics/labels instead.",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/metrics/names": {
       "get": {
         "tags": [
@@ -4027,40 +3989,6 @@
           "config"
         ],
         "summary": "Add data source",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/config/user-settings": {
-      "get": {
-        "tags": [
-          "config"
-        ],
-        "summary": "Get user settings",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "config"
-        ],
-        "summary": "Update user settings",
         "requestBody": {
           "required": true,
           "content": {

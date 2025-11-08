@@ -204,7 +204,7 @@ POST /api/v1/schema/kpi
 1. **Consistency:** Single API pattern for all schema types
 2. **Extensibility:** Easy to add new schema types
 3. **KPIs as Schema:** All schema definitions are now KPIs with rich metadata
-4. **Unified Management:** Single interface for schema management
+4. **Unified Management:** Single interface for KPI management
 5. **Better Organization:** Type-based routing with consistent patterns
 
 ## Backward Compatibility
@@ -220,7 +220,7 @@ The old API endpoints are maintained for backward compatibility. You can migrate
 1. **Consistency:** Single API pattern for all schema types
 2. **Extensibility:** Easy to add new schema types
 3. **KPIs as Schema:** All schema definitions are now KPIs with rich metadata
-4. **Unified Management:** Single interface for schema management
+4. **Unified Management:** Single interface for KPI management
 5. **Better Organization:** Type-based routing with consistent patterns
 
 ## Migration Checklist

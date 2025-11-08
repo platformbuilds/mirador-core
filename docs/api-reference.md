@@ -199,7 +199,7 @@ POST /api/v1/predict/analyze
 }
 ```
 
-## Schema Management APIs
+## KPI Management APIs
 
 ### Create Metric Definition
 

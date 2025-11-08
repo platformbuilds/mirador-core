@@ -16,7 +16,7 @@ This guide helps you migrate from using separate engine-specific APIs (VictoriaM
 8. [Rollback Plan](#rollback-plan)
 9. [Performance Considerations](#performance-considerations)
 10. [Troubleshooting](#troubleshooting)
-11. [Weaviate Schema Management](#weaviate-schema-management)
+11. [Weaviate KPI Management](#weaviate-kpi-management)
 
 ## Why Migrate?
 
@@ -810,7 +810,7 @@ curl https://mirador-core/api/v1/unified/metadata
 - **Community**: https://github.com/platformbuilds/mirador-core/discussions
 - **Support**: Open an issue on GitHub
 
-## Weaviate Schema Management
+## Weaviate KPI Management
 
 This section covers the process for evolving and managing Weaviate schemas in mirador-core, including adding new classes, modifying existing ones, and handling schema migrations safely.
 

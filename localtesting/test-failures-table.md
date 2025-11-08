@@ -26,7 +26,7 @@ The following table provides detailed information about failed API tests, includ
 - **RCA Engine**: Root Cause Analysis features require additional microservices.
 
 ### Configuration Issues
-- **Schema Endpoints (404)**: Schema management may be disabled. Check feature flags.
+- **Schema Endpoints (404)**: KPI management may be disabled. Check feature flags.
 - **User Settings (500)**: User management requires proper authentication configuration.
 
 ### API Usage
