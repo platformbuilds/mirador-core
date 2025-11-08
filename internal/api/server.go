@@ -194,8 +194,6 @@ func (s *Server) setupRoutes() {
 	// Back-compat (deprecated): keep old routes registered
 	v1.POST("/query", metricsHandler.ExecuteQuery)
 	v1.POST("/query_range", metricsHandler.ExecuteRangeQuery)
-	v1.GET("/series", metricsHandler.GetSeries)
-	v1.GET("/labels", metricsHandler.GetLabels)
 	v1.GET("/metrics/names", metricsHandler.GetMetricNames)
 	v1.GET("/metrics/series", metricsHandler.GetSeries)
 	v1.POST("/metrics/labels", metricsHandler.GetLabels)
@@ -203,8 +201,6 @@ func (s *Server) setupRoutes() {
 	// Back-compat aliases at root so Swagger with base "/" also works
 	s.router.POST("/query", metricsHandler.ExecuteQuery)
 	s.router.POST("/query_range", metricsHandler.ExecuteRangeQuery)
-	s.router.GET("/series", metricsHandler.GetSeries)
-	s.router.GET("/labels", metricsHandler.GetLabels)
 	s.router.GET("/metrics/names", metricsHandler.GetMetricNames)
 	s.router.GET("/metrics/series", metricsHandler.GetSeries)
 	s.router.POST("/metrics/labels", metricsHandler.GetLabels)

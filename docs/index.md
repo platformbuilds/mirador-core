@@ -28,7 +28,7 @@ MIRADORSTACK is an advanced observability platform that provides unified access 
 - **VictoriaMetrics Integration**: Native support for VictoriaMetrics, VictoriaLogs, and VictoriaTraces
 - **AI-Powered Analysis**: Root cause analysis and predictive fracture detection
 - **Multi-Engine Search**: Support for both Lucene and Bleve search engines
-- **Schema Management**: Comprehensive metadata management for observability data
+- **KPI Management**: Comprehensive metadata management for observability data
 - **Enterprise Security**: LDAP/AD integration, RBAC, and comprehensive audit logging
 
 ### Architecture

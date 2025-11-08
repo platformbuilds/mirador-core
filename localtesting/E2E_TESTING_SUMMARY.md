@@ -17,7 +17,7 @@ I've successfully created a comprehensive end-to-end testing infrastructure for 
    - RCA (Root Cause Analysis) endpoints
    - Predict API endpoints
    - Configuration management
-   - Schema management
+   - KPI management
    - Session management
    - RBAC (Role-Based Access Control)
    - Legacy/compatibility endpoints
@@ -42,7 +42,7 @@ I've successfully created a comprehensive end-to-end testing infrastructure for 
 - RCA: 3 tests
 - Predict: 3 tests
 - Configuration: 3 tests
-- Schema: 3 tests
+- KPI: 3 tests
 - Sessions: 1 test
 - RBAC: 1 test
 - Compatibility: 6 tests
@@ -82,7 +82,7 @@ make localdev-down            # Clean up environment
 8. **RCA** - Correlations, patterns, service graphs
 9. **Predict** - Health, models, fractures
 10. **Config** - Data sources, integrations, user settings
-11. **Schema** - Metrics, logs, traces, labels definitions
+11. **KPI** - Metrics, logs, traces, labels definitions
 12. **Sessions** - Active session management
 13. **RBAC** - Role-based access control
 14. **Legacy** - Backward compatibility endpoints
@@ -94,7 +94,7 @@ make localdev-down            # Clean up environment
 The 11 failed tests are expected and indicate healthy system behavior:
 
 1. **Predict Engine** (503/500) - Predict microservice not running (optional)
-2. **Schema endpoints** (404) - Schema management endpoints may be disabled
+2. **KPI endpoints** (404) - KPI management endpoints may be disabled
 3. **User Settings** (500) - User management not configured
 4. **Traces Search** (400) - Requires specific query parameters
 5. **Invalid Method** (404 vs 405) - Router returns 404 for unmatched routes

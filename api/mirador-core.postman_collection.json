@@ -5916,38 +5916,6 @@
           }
         },
         {
-          "name": "GET /series",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/series"
-            },
-            "description": "Series listing (deprecated - use /metrics/series)"
-          }
-        },
-        {
-          "name": "GET /labels",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/labels"
-            },
-            "description": "Labels listing (deprecated - use /metrics/labels)"
-          }
-        },
-        {
           "name": "GET /label/{name}/values",
           "request": {
             "method": "GET",
