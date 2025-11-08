@@ -80,55 +80,71 @@ Instead of using AccountID headers with shared deployments, we'll maintain separ
 **Recommended Approach: Physical Isolation with Separate Deployments**
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      MIRADOR-CORE API                               │
-│                   (Intelligent Routing Layer)                       │
-│                                                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐            │
-│  │   Tenant A   │  │   Tenant B   │  │   Tenant C   │            │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘            │
-│         │                  │                  │                     │
-│    ┌────▼──────────────────▼──────────────────▼────┐              │
-│    │      Tenant Context & Routing Middleware       │              │
-│    │  (Extract, Validate, Route to Deployment)      │              │
-│    └────┬──────────────────┬──────────────────┬────┘              │
-│         │                  │                  │                     │
-│    ┌────▼─────┐       ┌───▼──────┐      ┌───▼──────┐             │
-│    │ Tenant A │       │ Tenant B │      │ Tenant C │             │
-│    │Deployment│       │Deployment│      │Deployment│             │
-│    │ Registry │       │ Registry │      │ Registry │             │
-│    └────┬─────┘       └───┬──────┘      └───┬──────┘             │
-└─────────┼──────────────────┼──────────────────┼────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         MIRADOR-CORE API                                    │
+│              (Intelligent Multi-Cluster Routing Layer)                      │
+│                                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                    │
+│  │   Tenant A   │  │   Tenant B   │  │   Tenant C   │                    │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘                    │
+│         │                  │                  │                             │
+│    ┌────▼──────────────────▼──────────────────▼────┐                      │
+│    │   Tenant Context & Multi-Cluster Router        │                      │
+│    │  (Extract, Validate, Route to Clusters)        │                      │
+│    └────┬──────────────────┬──────────────────┬────┘                      │
+│         │                  │                  │                             │
+│    ┌────▼─────┐       ┌───▼──────┐      ┌───▼──────┐                     │
+│    │ Tenant A │       │ Tenant B │      │ Tenant C │                     │
+│    │  Multi-  │       │  Multi-  │      │  Multi-  │                     │
+│    │ Cluster  │       │ Cluster  │      │ Cluster  │                     │
+│    │ Registry │       │ Registry │      │ Registry │                     │
+│    └────┬─────┘       └───┬──────┘      └───┬──────┘                     │
+└─────────┼──────────────────┼──────────────────┼──────────────────────────┘
           │                  │                  │
-          │                  │                  │
-    ┌─────▼─────┐      ┌────▼────┐       ┌────▼─────┐
-    │ Victoria* │      │Victoria*│       │Victoria*│
-    │Deployment │      │Deployment       │Deployment│
-    │  (Tenant A)      │(Tenant B)       │(Tenant C)│
-    │                  │                 │          │
-    │ ┌─────────┐      │ ┌─────────┐    │┌─────────┐│
-    │ │ Metrics │      │ │ Metrics │    ││ Metrics ││
-    │ └─────────┘      │ └─────────┘    │└─────────┘│
-    │ ┌─────────┐      │ ┌─────────┐    │┌─────────┐│
-    │ │  Logs   │      │ │  Logs   │    ││  Logs   ││
-    │ └─────────┘      │ └─────────┘    │└─────────┘│
-    │ ┌─────────┐      │ ┌─────────┐    │┌─────────┐│
-    │ │ Traces  │      │ │ Traces  │    ││ Traces  ││
-    │ └─────────┘      │ └─────────┘    │└─────────┘│
-    └───────────┘      └─────────┘      └──────────┘
-    
-    Separate K8s      Separate K8s     Separate K8s
-    Namespaces or     Namespaces or    Namespaces or
-    Clusters          Clusters         Clusters
+     ┌────┴────┬────────┐    │             ┌────┴────┬────────┐
+     │         │        │    │             │         │        │
+┌────▼───┐ ┌──▼────┐ ┌─▼────▼──┐    ┌────▼───┐ ┌──▼────┐ ┌─▼──────┐
+│Prod    │ │Staging│ │   Dev   │    │Prod    │ │Staging│ │  Dev   │
+│Cluster │ │Cluster│ │ Cluster │    │Cluster │ │Cluster│ │Cluster │
+│(Tenant │ │(Tenant│ │(Tenant  │    │(Tenant │ │(Tenant│ │(Tenant │
+│   A)   │ │   A)  │ │   A)    │    │   C)   │ │   C)  │ │   C)   │
+│        │ │       │ │         │    │        │ │       │ │        │
+│┌──────┐│ │┌─────┐│ │┌───────┐│    │┌──────┐│ │┌─────┐│ │┌──────┐│
+││Metrics││ ││Metr-││ ││Metrics││    ││Metrics││ ││Metr-││ ││Metr- ││
+│└──────┘│ │└─────┘│ │└───────┘│    │└──────┘│ │└─────┘│ │└─────┘│
+│┌──────┐│ │┌─────┐│ │┌───────┐│    │┌──────┐│ │┌─────┐│ │┌──────┐│
+││ Logs  ││ ││Logs ││ ││ Logs  ││    ││ Logs  ││ ││Logs ││ ││Logs  ││
+│└──────┘│ │└─────┘│ │└───────┘│    │└──────┘│ │└─────┘│ │└─────┘│
+│┌──────┐│ │┌─────┐│ │┌───────┐│    │┌──────┐│ │┌─────┐│ │┌──────┐│
+││Traces ││ ││Trace││ ││Traces ││    ││Traces ││ ││Trace││ ││Traces││
+│└──────┘│ │└─────┘│ │└───────┘│    │└──────┘│ │└─────┘│ │└─────┘│
+└────────┘ └───────┘ └─────────┘    └────────┘ └───────┘ └────────┘
+
+K8s Prod    K8s Stag   K8s Dev       K8s Prod   K8s Stag   K8s Dev
+Namespace   Namespace  Namespace     Namespace  Namespace  Namespace
+
+**Key Features:**
+- Multiple clusters per tenant (prod, staging, dev, custom)
+- Independent scaling and configuration per cluster
+- Environment-specific isolation and resource allocation
+- Flexible cluster targeting via cluster_id or environment tags
 ```
 
 **Key Principles:**
-1. **Physical Isolation:** Each tenant has dedicated Victoria* deployments
-2. **No Shared Backend:** Complete data and infrastructure separation
-3. **Intelligent Routing:** Mirador-Core routes requests to correct deployment
-4. **Scalability:** Independent scaling per tenant
-5. **Security:** Network-level isolation between tenant deployments
-6. **Compliance:** Meets strictest data residency and isolation requirements
+1. **Multi-Cluster Architecture:** Each tenant can have multiple Victoria* clusters for different purposes
+2. **Environment Isolation:** Separate clusters for prod, staging, dev, or custom environments
+3. **Physical Isolation:** Each cluster has dedicated Victoria* deployments
+4. **No Shared Backend:** Complete data and infrastructure separation between tenants and clusters
+5. **Intelligent Multi-Cluster Routing:** Mirador-Core routes requests to the correct tenant cluster based on:
+   - Explicit `cluster_id` in request
+   - Environment tag (prod/staging/dev)
+   - Default cluster configuration
+   - Failover priority
+6. **Flexible Cluster Selection:** Query any cluster via cluster_id, environment, or tags
+7. **Independent Scaling:** Each cluster scales independently based on workload
+8. **Security:** Network-level isolation between tenant clusters
+9. **Compliance:** Meets strictest data residency and isolation requirements
+10. **High Availability:** Multiple clusters enable blue-green deployments and disaster recovery
 
 ### 2.2 Tenant Hierarchy
 
@@ -332,17 +348,61 @@ type Tenant struct {
     BillingInfo *BillingInfo           `json:"billing_info,omitempty"`
 }
 
-// TenantDeployments holds endpoints for tenant-specific Victoria* deployments
+// TenantDeployments holds multiple clusters for tenant-specific Victoria* deployments
 type TenantDeployments struct {
-    // VictoriaMetrics deployment endpoints
-    Metrics DeploymentConfig `json:"metrics" binding:"required"`
+    // Multiple VictoriaMetrics clusters (e.g., prod, staging, dev, custom)
+    MetricsClusters []ClusterConfig `json:"metrics_clusters" binding:"required,min=1"`
     
-    // VictoriaLogs deployment endpoints
-    Logs    DeploymentConfig `json:"logs" binding:"required"`
+    // Multiple VictoriaLogs clusters
+    LogsClusters    []ClusterConfig `json:"logs_clusters" binding:"required,min=1"`
     
-    // VictoriaTraces deployment endpoints
-    Traces  DeploymentConfig `json:"traces" binding:"required"`
+    // Multiple VictoriaTraces clusters
+    TracesClusters  []ClusterConfig `json:"traces_clusters" binding:"required,min=1"`
+    
+    // Default cluster IDs for each type (if not specified in request)
+    DefaultMetricsCluster string `json:"default_metrics_cluster,omitempty"`
+    DefaultLogsCluster    string `json:"default_logs_cluster,omitempty"`
+    DefaultTracesCluster  string `json:"default_traces_cluster,omitempty"`
 }
+
+// ClusterConfig represents a single cluster deployment
+type ClusterConfig struct {
+    // Unique identifier for this cluster within the tenant
+    ClusterID   string `json:"cluster_id" binding:"required"`
+    
+    // Display name for the cluster
+    Name        string `json:"name" binding:"required"`
+    
+    // Description of cluster purpose
+    Description string `json:"description,omitempty"`
+    
+    // Environment type (prod, staging, dev, qa, custom)
+    Environment string `json:"environment" binding:"required"`
+    
+    // Deployment configuration
+    Deployment  DeploymentConfig `json:"deployment" binding:"required"`
+    
+    // Cluster status
+    Status      ClusterStatus `json:"status" default:"active"`
+    
+    // Priority for failover (higher = preferred)
+    Priority    int `json:"priority" default:"0"`
+    
+    // Tags for flexible cluster selection
+    Tags        []string `json:"tags,omitempty"`
+    
+    // Metadata
+    Metadata    map[string]interface{} `json:"metadata,omitempty"`
+}
+
+type ClusterStatus string
+
+const (
+    ClusterStatusActive      ClusterStatus = "active"
+    ClusterStatusInactive    ClusterStatus = "inactive"
+    ClusterStatusMaintenance ClusterStatus = "maintenance"
+    ClusterStatusDegraded    ClusterStatus = "degraded"
+)
 
 // DeploymentConfig represents a tenant-specific deployment
 type DeploymentConfig struct {
@@ -1160,19 +1220,89 @@ func GetTenant(ctx context.Context) *models.Tenant {
 
 ## 5. Victoria* Services Integration
 
-### 5.1 Intelligent Routing Layer
+### 5.1 Intelligent Multi-Cluster Routing Layer
 
-The core concept: **Mirador-Core dynamically routes requests to tenant-specific Victoria* deployments** based on tenant context.
+The core concept: **Mirador-Core dynamically routes requests to tenant-specific Victoria* clusters** based on:
+- Tenant context (tenant_id)
+- Cluster selection (cluster_id, environment, tags)
+- Failover priority and health status
 
-**Architecture:**
+**Multi-Cluster Routing Architecture:**
 ```
-Request → Tenant Context → Deployment Lookup → Route to Endpoints
+Request → Tenant Context → Cluster Selection → Route to Specific Cluster
 ```
 
-### 5.2 Enhanced VictoriaMetrics Service with Routing
+**Cluster Selection Strategy:**
+1. **Explicit Cluster ID**: Use `cluster_id` from request if specified
+2. **Environment Tag**: Use `environment` parameter (prod/staging/dev)
+3. **Default Cluster**: Use tenant's default cluster for the data type
+4. **Failover**: If selected cluster is unavailable, fallback to next priority cluster
+5. **Tags-Based**: Select cluster matching specific tags
+
+**Example Request with Cluster Selection:**
+```json
+{
+  "query": "up{job='api'}",
+  "cluster_id": "prod-us-east",
+  "environment": "production"
+}
+```
+
+### 5.2 Enhanced Request Models for Multi-Cluster Support
 
 ```go
-// internal/services/victoria_metrics_tenant.go
+// internal/models/queries.go - Enhanced models
+
+// Add cluster selection fields to existing query models
+type MetricsQLQueryRequest struct {
+    Query    string `json:"query" binding:"required"`
+    Time     string `json:"time,omitempty"`
+    Timeout  string `json:"timeout,omitempty"`
+    TenantID string `json:"-"` // Set by middleware
+    
+    // Multi-cluster support
+    ClusterID   string   `json:"cluster_id,omitempty"`   // Explicit cluster ID
+    Environment string   `json:"environment,omitempty"`  // Environment tag (prod/staging/dev)
+    ClusterTags []string `json:"cluster_tags,omitempty"` // Tags for cluster selection
+    
+    // Optional: include definitions
+    IncludeDefinitions *bool    `json:"include_definitions,omitempty"`
+    DefinitionsMinimal *bool    `json:"definitions_minimal,omitempty"`
+    LabelKeys          []string `json:"label_keys,omitempty"`
+}
+
+type LogsQLQueryRequest struct {
+    Query    string `json:"query" binding:"required"`
+    Start    string `json:"start,omitempty"`
+    End      string `json:"end,omitempty"`
+    Limit    int    `json:"limit,omitempty"`
+    TenantID string `json:"-"`
+    
+    // Multi-cluster support
+    ClusterID   string   `json:"cluster_id,omitempty"`
+    Environment string   `json:"environment,omitempty"`
+    ClusterTags []string `json:"cluster_tags,omitempty"`
+}
+
+type TraceSearchRequest struct {
+    ServiceName string `json:"service_name,omitempty"`
+    Operation   string `json:"operation,omitempty"`
+    Start       string `json:"start" binding:"required"`
+    End         string `json:"end" binding:"required"`
+    Limit       int    `json:"limit,omitempty"`
+    TenantID    string `json:"-"`
+    
+    // Multi-cluster support
+    ClusterID   string   `json:"cluster_id,omitempty"`
+    Environment string   `json:"environment,omitempty"`
+    ClusterTags []string `json:"cluster_tags,omitempty"`
+}
+```
+
+### 5.3 Enhanced VictoriaMetrics Service with Multi-Cluster Routing
+
+```go
+// internal/services/victoria_metrics_router.go
 package services
 
 import (
@@ -1185,19 +1315,207 @@ import (
     "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
-// VictoriaMetricsRouter handles routing to tenant-specific deployments
+// VictoriaMetricsRouter handles routing to tenant-specific clusters
 type VictoriaMetricsRouter struct {
     tenantRepo repo.TenantRepository
     logger     logger.Logger
     
-    // Cache of tenant services (tenant_id -> service instance)
-    tenantServices map[string]*VictoriaMetricsService
-    mu             sync.RWMutex
+    // Cache of cluster services (tenant_id:cluster_id -> service instance)
+    clusterServices map[string]*VictoriaMetricsService
+    mu              sync.RWMutex
 }
 
 func NewVictoriaMetricsRouter(
     tenantRepo repo.TenantRepository,
     logger logger.Logger,
+) *VictoriaMetricsRouter {
+    return &VictoriaMetricsRouter{
+        tenantRepo:      tenantRepo,
+        logger:          logger,
+        clusterServices: make(map[string]*VictoriaMetricsService),
+    }
+}
+
+// selectCluster chooses the appropriate cluster based on request parameters
+func (r *VictoriaMetricsRouter) selectCluster(
+    ctx context.Context,
+    tenant *models.Tenant,
+    clusterID string,
+    environment string,
+    tags []string,
+) (*models.ClusterConfig, error) {
+    clusters := tenant.Deployments.MetricsClusters
+    
+    // 1. Explicit cluster ID takes priority
+    if clusterID != "" {
+        for _, cluster := range clusters {
+            if cluster.ClusterID == clusterID && cluster.Status == models.ClusterStatusActive {
+                return &cluster, nil
+            }
+        }
+        return nil, fmt.Errorf("cluster %s not found or inactive", clusterID)
+    }
+    
+    // 2. Filter by environment if specified
+    if environment != "" {
+        for _, cluster := range clusters {
+            if cluster.Environment == environment && cluster.Status == models.ClusterStatusActive {
+                return &cluster, nil
+            }
+        }
+        return nil, fmt.Errorf("no active cluster found for environment %s", environment)
+    }
+    
+    // 3. Match by tags
+    if len(tags) > 0 {
+        for _, cluster := range clusters {
+            if cluster.Status != models.ClusterStatusActive {
+                continue
+            }
+            if matchesTags(cluster.Tags, tags) {
+                return &cluster, nil
+            }
+        }
+    }
+    
+    // 4. Use default cluster
+    defaultClusterID := tenant.Deployments.DefaultMetricsCluster
+    if defaultClusterID != "" {
+        for _, cluster := range clusters {
+            if cluster.ClusterID == defaultClusterID && cluster.Status == models.ClusterStatusActive {
+                return &cluster, nil
+            }
+        }
+    }
+    
+    // 5. Fallback to highest priority active cluster
+    var selectedCluster *models.ClusterConfig
+    highestPriority := -1
+    for i, cluster := range clusters {
+        if cluster.Status == models.ClusterStatusActive && cluster.Priority > highestPriority {
+            selectedCluster = &clusters[i]
+            highestPriority = cluster.Priority
+        }
+    }
+    
+    if selectedCluster == nil {
+        return nil, fmt.Errorf("no active metrics cluster available for tenant")
+    }
+    
+    return selectedCluster, nil
+}
+
+// matchesTags checks if cluster tags contain all required tags
+func matchesTags(clusterTags, requiredTags []string) bool {
+    tagSet := make(map[string]bool)
+    for _, tag := range clusterTags {
+        tagSet[tag] = true
+    }
+    
+    for _, tag := range requiredTags {
+        if !tagSet[tag] {
+            return false
+        }
+    }
+    return true
+}
+
+// GetServiceForCluster returns or creates a VictoriaMetrics service for the specific cluster
+func (r *VictoriaMetricsRouter) GetServiceForCluster(
+    ctx context.Context,
+    tenantID string,
+    clusterID string,
+    environment string,
+    tags []string,
+) (*VictoriaMetricsService, *models.ClusterConfig, error) {
+    // Load tenant
+    tenant, err := r.tenantRepo.GetTenant(ctx, tenantID)
+    if err != nil {
+        return nil, nil, fmt.Errorf("failed to load tenant: %w", err)
+    }
+    
+    // Select appropriate cluster
+    cluster, err := r.selectCluster(ctx, tenant, clusterID, environment, tags)
+    if err != nil {
+        return nil, nil, err
+    }
+    
+    // Generate cache key
+    cacheKey := fmt.Sprintf("%s:%s", tenantID, cluster.ClusterID)
+    
+    // Check cache first
+    r.mu.RLock()
+    if svc, exists := r.clusterServices[cacheKey]; exists {
+        r.mu.RUnlock()
+        return svc, cluster, nil
+    }
+    r.mu.RUnlock()
+    
+    // Create service for this cluster
+    r.mu.Lock()
+    defer r.mu.Unlock()
+    
+    // Double-check after acquiring write lock
+    if svc, exists := r.clusterServices[cacheKey]; exists {
+        return svc, cluster, nil
+    }
+    
+    // Validate cluster has endpoints
+    if len(cluster.Deployment.Endpoints) == 0 {
+        return nil, nil, fmt.Errorf("no endpoints configured for cluster %s", cluster.ClusterID)
+    }
+    
+    // Create service instance for this cluster
+    svc := &VictoriaMetricsService{
+        name:      fmt.Sprintf("metrics-%s-%s", tenant.Name, cluster.ClusterID),
+        endpoints: cluster.Deployment.Endpoints,
+        timeout:   time.Duration(cluster.Deployment.Timeout) * time.Millisecond,
+        client: &http.Client{
+            Timeout: time.Duration(cluster.Deployment.Timeout) * time.Millisecond,
+        },
+        logger:    r.logger,
+        username:  cluster.Deployment.Username,
+        password:  cluster.Deployment.Password,
+        retries:   3,
+        backoffMS: 1000,
+    }
+    
+    // Cache the service
+    r.clusterServices[cacheKey] = svc
+    
+    r.logger.Info("Created VictoriaMetrics service for cluster",
+        "tenant_id", tenantID,
+        "cluster_id", cluster.ClusterID,
+        "environment", cluster.Environment,
+        "endpoints", cluster.Deployment.Endpoints)
+    
+    return svc, cluster, nil
+}
+
+// InvalidateClusterCache removes cached service for specific cluster
+func (r *VictoriaMetricsRouter) InvalidateClusterCache(tenantID, clusterID string) {
+    r.mu.Lock()
+    defer r.mu.Unlock()
+    cacheKey := fmt.Sprintf("%s:%s", tenantID, clusterID)
+    delete(r.clusterServices, cacheKey)
+    r.logger.Info("Invalidated metrics cluster cache", 
+        "tenant_id", tenantID, 
+        "cluster_id", clusterID)
+}
+
+// InvalidateTenantCache removes all cached services for a tenant
+func (r *VictoriaMetricsRouter) InvalidateTenantCache(tenantID string) {
+    r.mu.Lock()
+    defer r.mu.Unlock()
+    
+    prefix := tenantID + ":"
+    for key := range r.clusterServices {
+        if strings.HasPrefix(key, prefix) {
+            delete(r.clusterServices, key)
+        }
+    }
+    r.logger.Info("Invalidated all metrics clusters cache for tenant", "tenant_id", tenantID)
+}
 ) *VictoriaMetricsRouter {
     return &VictoriaMetricsRouter{
         tenantRepo:     tenantRepo,
@@ -1206,74 +1524,8 @@ func NewVictoriaMetricsRouter(
     }
 }
 
-// GetServiceForTenant returns or creates a VictoriaMetrics service for the tenant
-func (r *VictoriaMetricsRouter) GetServiceForTenant(
-    ctx context.Context,
-    tenantID string,
-) (*VictoriaMetricsService, error) {
-    // Check cache first
-    r.mu.RLock()
-    if svc, exists := r.tenantServices[tenantID]; exists {
-        r.mu.RUnlock()
-        return svc, nil
-    }
-    r.mu.RUnlock()
-    
-    // Not in cache, load tenant and create service
-    r.mu.Lock()
-    defer r.mu.Unlock()
-    
-    // Double-check after acquiring write lock
-    if svc, exists := r.tenantServices[tenantID]; exists {
-        return svc, nil
-    }
-    
-    // Load tenant from repository
-    tenant, err := r.tenantRepo.GetTenant(ctx, tenantID)
-    if err != nil {
-        return nil, fmt.Errorf("failed to load tenant: %w", err)
-    }
-    
-    // Validate tenant has metrics deployment configured
-    if len(tenant.Deployments.Metrics.Endpoints) == 0 {
-        return nil, fmt.Errorf("no metrics endpoints configured for tenant %s", tenantID)
-    }
-    
-    // Create service instance for this tenant
-    svc := &VictoriaMetricsService{
-        name:      fmt.Sprintf("metrics-%s", tenant.Name),
-        endpoints: tenant.Deployments.Metrics.Endpoints,
-        timeout:   time.Duration(tenant.Deployments.Metrics.Timeout) * time.Millisecond,
-        client: &http.Client{
-            Timeout: time.Duration(tenant.Deployments.Metrics.Timeout) * time.Millisecond,
-        },
-        logger:    r.logger,
-        username:  tenant.Deployments.Metrics.Username,
-        password:  tenant.Deployments.Metrics.Password,
-        retries:   3,
-        backoffMS: 1000,
-    }
-    
-    // Cache the service
-    r.tenantServices[tenantID] = svc
-    
-    r.logger.Info("Created VictoriaMetrics service for tenant",
-        "tenant_id", tenantID,
-        "endpoints", tenant.Deployments.Metrics.Endpoints)
-    
-    return svc, nil
-}
-
-// InvalidateTenantCache removes cached service (call when tenant config changes)
-func (r *VictoriaMetricsRouter) InvalidateTenantCache(tenantID string) {
-    r.mu.Lock()
-    defer r.mu.Unlock()
-    delete(r.tenantServices, tenantID)
-    r.logger.Info("Invalidated metrics service cache", "tenant_id", tenantID)
-}
-
-// ExecuteQueryWithTenant routes query to tenant-specific deployment
-func (r *VictoriaMetricsRouter) ExecuteQueryWithTenant(
+// ExecuteQueryWithCluster routes query to tenant-specific cluster
+func (r *VictoriaMetricsRouter) ExecuteQueryWithCluster(
     ctx context.Context,
     request *models.MetricsQLQueryRequest,
 ) (*models.MetricsQLQueryResult, error) {
@@ -1282,18 +1534,41 @@ func (r *VictoriaMetricsRouter) ExecuteQueryWithTenant(
         return nil, fmt.Errorf("tenant context required")
     }
     
-    // Get tenant-specific service
-    svc, err := r.GetServiceForTenant(ctx, tenantID)
+    // Get service for selected cluster
+    svc, cluster, err := r.GetServiceForCluster(
+        ctx, 
+        tenantID, 
+        request.ClusterID, 
+        request.Environment,
+        request.ClusterTags,
+    )
     if err != nil {
         return nil, fmt.Errorf("failed to get metrics service: %w", err)
     }
     
-    // Execute query on tenant's deployment
-    return svc.ExecuteQuery(ctx, request)
+    r.logger.Debug("Executing query on cluster",
+        "tenant_id", tenantID,
+        "cluster_id", cluster.ClusterID,
+        "environment", cluster.Environment,
+        "query", request.Query)
+    
+    // Execute query on tenant's cluster
+    result, err := svc.ExecuteQuery(ctx, request)
+    if err != nil {
+        return nil, err
+    }
+    
+    // Add cluster metadata to result
+    if result != nil {
+        result.ClusterID = cluster.ClusterID
+        result.Environment = cluster.Environment
+    }
+    
+    return result, nil
 }
 
-// ExecuteRangeQueryWithTenant routes range query to tenant-specific deployment
-func (r *VictoriaMetricsRouter) ExecuteRangeQueryWithTenant(
+// ExecuteRangeQueryWithCluster routes range query to tenant-specific cluster
+func (r *VictoriaMetricsRouter) ExecuteRangeQueryWithCluster(
     ctx context.Context,
     request *models.MetricsQLRangeQueryRequest,
 ) (*models.MetricsQLRangeQueryResult, error) {
@@ -1302,16 +1577,33 @@ func (r *VictoriaMetricsRouter) ExecuteRangeQueryWithTenant(
         return nil, fmt.Errorf("tenant context required")
     }
     
-    svc, err := r.GetServiceForTenant(ctx, tenantID)
+    svc, cluster, err := r.GetServiceForCluster(
+        ctx,
+        tenantID,
+        request.ClusterID,
+        request.Environment,
+        request.ClusterTags,
+    )
     if err != nil {
         return nil, err
     }
     
-    return svc.ExecuteRangeQuery(ctx, request)
+    result, err := svc.ExecuteRangeQuery(ctx, request)
+    if err != nil {
+        return nil, err
+    }
+    
+    // Add cluster metadata
+    if result != nil {
+        result.ClusterID = cluster.ClusterID
+        result.Environment = cluster.Environment
+    }
+    
+    return result, nil
 }
 
-// GetSeriesWithTenant gets series from tenant-specific deployment
-func (r *VictoriaMetricsRouter) GetSeriesWithTenant(
+// GetSeriesWithCluster gets series from tenant-specific cluster
+func (r *VictoriaMetricsRouter) GetSeriesWithCluster(
     ctx context.Context,
     request *models.SeriesRequest,
 ) ([]map[string]string, error) {
@@ -1320,7 +1612,13 @@ func (r *VictoriaMetricsRouter) GetSeriesWithTenant(
         return nil, fmt.Errorf("tenant context required")
     }
     
-    svc, err := r.GetServiceForTenant(ctx, tenantID)
+    svc, _, err := r.GetServiceForCluster(
+        ctx,
+        tenantID,
+        request.ClusterID,
+        request.Environment,
+        request.ClusterTags,
+    )
     if err != nil {
         return nil, err
     }
@@ -1328,12 +1626,36 @@ func (r *VictoriaMetricsRouter) GetSeriesWithTenant(
     return svc.GetSeries(ctx, request)
 }
 
-// HealthCheckWithTenant checks health of tenant's deployment
-func (r *VictoriaMetricsRouter) HealthCheckWithTenant(
+// ListClusters returns all available clusters for a tenant
+func (r *VictoriaMetricsRouter) ListClusters(
     ctx context.Context,
     tenantID string,
+    dataType string, // "metrics", "logs", "traces"
+) ([]models.ClusterConfig, error) {
+    tenant, err := r.tenantRepo.GetTenant(ctx, tenantID)
+    if err != nil {
+        return nil, err
+    }
+    
+    switch dataType {
+    case "metrics":
+        return tenant.Deployments.MetricsClusters, nil
+    case "logs":
+        return tenant.Deployments.LogsClusters, nil
+    case "traces":
+        return tenant.Deployments.TracesClusters, nil
+    default:
+        return nil, fmt.Errorf("invalid data type: %s", dataType)
+    }
+}
+
+// HealthCheckWithCluster checks health of specific cluster
+func (r *VictoriaMetricsRouter) HealthCheckWithCluster(
+    ctx context.Context,
+    tenantID string,
+    clusterID string,
 ) error {
-    svc, err := r.GetServiceForTenant(ctx, tenantID)
+    svc, _, err := r.GetServiceForCluster(ctx, tenantID, clusterID, "", nil)
     if err != nil {
         return err
     }
@@ -1341,44 +1663,65 @@ func (r *VictoriaMetricsRouter) HealthCheckWithTenant(
     return svc.HealthCheck(ctx)
 }
 
-// CreateTenantMetrics initializes metrics deployment for a new tenant
-func (r *VictoriaMetricsRouter) CreateTenantMetrics(
+// CreateTenantCluster initializes a new cluster for a tenant
+func (r *VictoriaMetricsRouter) CreateTenantCluster(
     ctx context.Context,
     tenant *models.Tenant,
+    cluster *models.ClusterConfig,
 ) error {
-    // Validate deployment configuration
-    if len(tenant.Deployments.Metrics.Endpoints) == 0 {
-        return fmt.Errorf("tenant must have at least one metrics endpoint")
+    // Validate cluster configuration
+    if len(cluster.Deployment.Endpoints) == 0 {
+        return fmt.Errorf("cluster must have at least one endpoint")
     }
     
-    // Create service for tenant
-    svc, err := r.GetServiceForTenant(ctx, tenant.ID)
-    if err != nil {
-        return err
+    // Create cache key
+    cacheKey := fmt.Sprintf("%s:%s", tenant.ID, cluster.ClusterID)
+    
+    // Create service for cluster
+    svc := &VictoriaMetricsService{
+        name:      fmt.Sprintf("metrics-%s-%s", tenant.Name, cluster.ClusterID),
+        endpoints: cluster.Deployment.Endpoints,
+        timeout:   time.Duration(cluster.Deployment.Timeout) * time.Millisecond,
+        client: &http.Client{
+            Timeout: time.Duration(cluster.Deployment.Timeout) * time.Millisecond,
+        },
+        logger:    r.logger,
+        username:  cluster.Deployment.Username,
+        password:  cluster.Deployment.Password,
+        retries:   3,
+        backoffMS: 1000,
     }
     
     // Verify connectivity
     if err := svc.HealthCheck(ctx); err != nil {
-        return fmt.Errorf("metrics deployment health check failed: %w", err)
+        return fmt.Errorf("cluster health check failed: %w", err)
     }
     
-    r.logger.Info("Tenant metrics deployment initialized",
+    // Cache the service
+    r.mu.Lock()
+    r.clusterServices[cacheKey] = svc
+    r.mu.Unlock()
+    
+    r.logger.Info("Tenant metrics cluster initialized",
         "tenant_id", tenant.ID,
-        "endpoints", tenant.Deployments.Metrics.Endpoints)
+        "cluster_id", cluster.ClusterID,
+        "environment", cluster.Environment,
+        "endpoints", cluster.Deployment.Endpoints)
     
     return nil
 }
 
-// DeleteTenantMetrics removes tenant from cache
-func (r *VictoriaMetricsRouter) DeleteTenantMetrics(
+// DeleteTenantCluster removes cluster from cache
+func (r *VictoriaMetricsRouter) DeleteTenantCluster(
     ctx context.Context,
     tenantID string,
+    clusterID string,
 ) error {
-    r.InvalidateTenantCache(tenantID)
+    r.InvalidateClusterCache(tenantID, clusterID)
     
-    // Note: Actual deployment deletion would be handled by K8s/infrastructure
-    r.logger.Info("Tenant metrics service removed from cache",
+    r.logger.Info("Tenant metrics cluster removed from cache",
         "tenant_id", tenantID,
+        "cluster_id", clusterID,
         "note", "physical deployment cleanup handled externally")
     
     return nil
@@ -1645,6 +1988,330 @@ func (r *VictoriaTracesRouter) InvalidateTenantCache(tenantID string) {
     defer r.mu.Unlock()
     delete(r.tenantServices, tenantID)
     r.logger.Info("Invalidated traces service cache", "tenant_id", tenantID)
+}
+```
+
+### 5.5 Multi-Cluster Usage Examples
+
+#### Example 1: Tenant Configuration with Multiple Clusters
+
+```json
+{
+  "id": "tenant-acme-corp",
+  "name": "acme-corp",
+  "display_name": "ACME Corporation",
+  "deployments": {
+    "metrics_clusters": [
+      {
+        "cluster_id": "prod-us-east",
+        "name": "Production US East",
+        "description": "Primary production metrics cluster",
+        "environment": "production",
+        "deployment": {
+          "endpoints": [
+            "https://vm-prod-us-east-1.acme.internal:8428",
+            "https://vm-prod-us-east-2.acme.internal:8428"
+          ],
+          "timeout": 30000,
+          "max_connections": 200,
+          "namespace": "acme-prod-us-east",
+          "cluster": "prod-us-east-k8s",
+          "region": "us-east-1"
+        },
+        "status": "active",
+        "priority": 100,
+        "tags": ["production", "primary", "us-east"]
+      },
+      {
+        "cluster_id": "prod-eu-west",
+        "name": "Production EU West",
+        "description": "EU production metrics cluster (GDPR compliant)",
+        "environment": "production",
+        "deployment": {
+          "endpoints": [
+            "https://vm-prod-eu-west-1.acme.internal:8428"
+          ],
+          "timeout": 30000,
+          "namespace": "acme-prod-eu-west",
+          "region": "eu-west-1"
+        },
+        "status": "active",
+        "priority": 90,
+        "tags": ["production", "eu", "gdpr"]
+      },
+      {
+        "cluster_id": "staging",
+        "name": "Staging Cluster",
+        "environment": "staging",
+        "deployment": {
+          "endpoints": ["https://vm-staging.acme.internal:8428"],
+          "timeout": 20000
+        },
+        "status": "active",
+        "priority": 50,
+        "tags": ["staging", "non-production"]
+      },
+      {
+        "cluster_id": "dev",
+        "name": "Development Cluster",
+        "environment": "development",
+        "deployment": {
+          "endpoints": ["https://vm-dev.acme.internal:8428"],
+          "timeout": 15000
+        },
+        "status": "active",
+        "priority": 10,
+        "tags": ["dev", "testing"]
+      }
+    ],
+    "logs_clusters": [
+      {
+        "cluster_id": "prod-logs",
+        "name": "Production Logs",
+        "environment": "production",
+        "deployment": {
+          "endpoints": ["https://vl-prod.acme.internal:9428"]
+        },
+        "status": "active",
+        "priority": 100
+      },
+      {
+        "cluster_id": "staging-logs",
+        "name": "Staging Logs",
+        "environment": "staging",
+        "deployment": {
+          "endpoints": ["https://vl-staging.acme.internal:9428"]
+        },
+        "status": "active",
+        "priority": 50
+      }
+    ],
+    "traces_clusters": [
+      {
+        "cluster_id": "prod-traces",
+        "name": "Production Traces",
+        "environment": "production",
+        "deployment": {
+          "endpoints": ["https://vt-prod.acme.internal:4318"]
+        },
+        "status": "active",
+        "priority": 100
+      }
+    ],
+    "default_metrics_cluster": "prod-us-east",
+    "default_logs_cluster": "prod-logs",
+    "default_traces_cluster": "prod-traces"
+  }
+}
+```
+
+#### Example 2: API Requests Targeting Different Clusters
+
+**Query Production US Cluster Explicitly:**
+```bash
+POST /api/v1/query/metrics
+{
+  "query": "sum(rate(http_requests_total[5m])) by (service)",
+  "cluster_id": "prod-us-east"
+}
+```
+
+**Query EU Cluster for GDPR Compliance:**
+```bash
+POST /api/v1/query/metrics
+{
+  "query": "avg(response_time_seconds) by (endpoint)",
+  "cluster_id": "prod-eu-west"
+}
+```
+
+**Query Staging Environment:**
+```bash
+POST /api/v1/query/metrics
+{
+  "query": "up{job='api'}",
+  "environment": "staging"
+}
+```
+
+**Query Using Tags:**
+```bash
+POST /api/v1/query/metrics
+{
+  "query": "node_cpu_usage",
+  "cluster_tags": ["production", "us-east"]
+}
+```
+
+**Query Logs from Staging:**
+```bash
+POST /api/v1/query/logs
+{
+  "query": "error | logfmt",
+  "cluster_id": "staging-logs",
+  "start": "2024-11-08T00:00:00Z",
+  "end": "2024-11-08T23:59:59Z"
+}
+```
+
+**Search Traces in Production:**
+```bash
+POST /api/v1/query/traces
+{
+  "service_name": "order-service",
+  "operation": "process_order",
+  "cluster_id": "prod-traces",
+  "start": "2024-11-08T00:00:00Z",
+  "end": "2024-11-08T23:59:59Z"
+}
+```
+
+**Default Cluster (No Cluster Specified):**
+```bash
+POST /api/v1/query/metrics
+{
+  "query": "up"
+}
+# Routes to default_metrics_cluster: "prod-us-east"
+```
+
+#### Example 3: Multi-Cluster Correlation Queries
+
+**Compare Production Clusters:**
+```bash
+POST /api/v1/correlation/analyze
+{
+  "metrics_query": "sum(rate(errors_total[5m]))",
+  "logs_query": "error",
+  "start": "2024-11-08T10:00:00Z",
+  "end": "2024-11-08T11:00:00Z",
+  "clusters": [
+    {
+      "cluster_id": "prod-us-east",
+      "types": ["metrics", "logs"]
+    },
+    {
+      "cluster_id": "prod-eu-west",
+      "types": ["metrics", "logs"]
+    }
+  ]
+}
+```
+
+#### Example 4: Cluster Management API
+
+**List Available Clusters:**
+```bash
+GET /api/v1/tenants/{tenant_id}/clusters?type=metrics
+
+Response:
+{
+  "status": "success",
+  "data": {
+    "clusters": [
+      {
+        "cluster_id": "prod-us-east",
+        "name": "Production US East",
+        "environment": "production",
+        "status": "active",
+        "priority": 100,
+        "endpoints": ["https://vm-prod-us-east-1.acme.internal:8428"],
+        "health": "healthy"
+      },
+      {
+        "cluster_id": "staging",
+        "name": "Staging Cluster",
+        "environment": "staging",
+        "status": "active",
+        "priority": 50,
+        "health": "healthy"
+      }
+    ]
+  }
+}
+```
+
+**Add New Cluster:**
+```bash
+POST /api/v1/tenants/{tenant_id}/clusters
+{
+  "data_type": "metrics",
+  "cluster": {
+    "cluster_id": "prod-ap-south",
+    "name": "Production APAC",
+    "environment": "production",
+    "deployment": {
+      "endpoints": ["https://vm-prod-ap.acme.internal:8428"],
+      "timeout": 30000
+    },
+    "priority": 95,
+    "tags": ["production", "apac"]
+  }
+}
+```
+
+**Update Cluster Status:**
+```bash
+PATCH /api/v1/tenants/{tenant_id}/clusters/staging
+{
+  "status": "maintenance"
+}
+```
+
+**Health Check Specific Cluster:**
+```bash
+GET /api/v1/tenants/{tenant_id}/clusters/prod-us-east/health
+
+Response:
+{
+  "status": "success",
+  "data": {
+    "cluster_id": "prod-us-east",
+    "status": "active",
+    "health": "healthy",
+    "endpoints": [
+      {
+        "url": "https://vm-prod-us-east-1.acme.internal:8428",
+        "status": "healthy",
+        "response_time_ms": 45
+      },
+      {
+        "url": "https://vm-prod-us-east-2.acme.internal:8428",
+        "status": "healthy",
+        "response_time_ms": 52
+      }
+    ]
+  }
+}
+```
+
+#### Example 5: Failover Scenario
+
+```go
+// When primary cluster fails, router automatically selects next priority cluster
+
+// User queries prod-us-east which is down
+request := &models.MetricsQLQueryRequest{
+    Query:     "up",
+    ClusterID: "prod-us-east", // This cluster is down
+}
+
+// Router detects cluster is unhealthy and fails over:
+// 1. Checks prod-us-east (priority 100) - FAILED
+// 2. Falls back to prod-eu-west (priority 90) - SUCCESS
+// 3. Returns data with metadata indicating failover occurred
+
+response := &models.MetricsQLQueryResult{
+    Status: "success",
+    Data:   [...],
+    ClusterID: "prod-eu-west",
+    Environment: "production",
+    Metadata: {
+        "requested_cluster": "prod-us-east",
+        "actual_cluster": "prod-eu-west",
+        "failover": true,
+        "failover_reason": "requested cluster unhealthy"
+    }
 }
 ```
 
