@@ -774,6 +774,18 @@ phases:
         ci_stage: "test"
         owner_role: "backend-dev"
 
+      - id: "api-cluster-management"
+        title: "Multi-cluster management endpoints"
+        description: "Implement /api/v1/tenants/{id}/clusters endpoints: GET (list clusters), POST (add cluster with environment/priority/tags), PATCH (update cluster config), DELETE (remove cluster). Implement /api/v1/tenants/{id}/clusters/{clusterId}/health endpoint for cluster health checks. Requires global_admin or global_tenant_admin for creation, tenant_admin for viewing."
+        priority: "high"
+        status: "not-started"
+        dependencies: ["rbac-models-go", "rbac-schema-tenant", "policy-evaluator-core"]
+        estimated_effort: "7h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel with other admin APIs
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
   - name: "Data Seeding & Bootstrap"
     description: "Create initial data seeding for multi-tenant RBAC with default tenant, global admin user, and local auth bootstrap"
     priority: "high"
@@ -887,6 +899,18 @@ phases:
         estimated_effort: "3h"
         assignee: "backend-dev"
         parallelizable: true  # Can be added after integration
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "tenant-provisioning-integration"
+        title: "Tenant provisioning workflow integration"
+        description: "Integrate TenantProvisioner service with CreateTenant handler for automatic cluster provisioning on tenant creation. Implement rollback mechanism for failed provisioning with cleanup of partially created resources. Add provisioning status tracking and async job handling."
+        priority: "high"
+        status: "not-started"
+        dependencies: ["api-tenant-crud", "api-cluster-management"]
+        estimated_effort: "8h"
+        assignee: "backend-dev"
+        parallelizable: false  # Depends on tenant and cluster APIs
         ci_stage: "test"
         owner_role: "backend-dev"
 
@@ -1208,8 +1232,8 @@ milestones:
     due_date: "2025-12-11"
 
   - name: "Admin APIs Functional"
-    description: "RBAC management APIs (users, MiradorAuth users, roles, permissions, bindings, groups, auth config, 2FA management, sessions) and federation config endpoints functional"
-    tasks: ["api-rbac-users-crud", "api-local-users-crud", "api-auth-config", "api-2fa-management", "api-auth-login", "api-rbac-roles-crud", "api-rbac-permissions-crud", "api-rbac-bindings-crud", "api-rbac-groups-crud", "api-federation-config", "api-rbac-audit", "api-rbac-dry-run", "api-session-management"]
+    description: "RBAC management APIs (users, MiradorAuth users, roles, permissions, bindings, groups, auth config, 2FA management, sessions, clusters) and federation config endpoints functional"
+    tasks: ["api-rbac-users-crud", "api-local-users-crud", "api-auth-config", "api-2fa-management", "api-auth-login", "api-rbac-roles-crud", "api-rbac-permissions-crud", "api-rbac-bindings-crud", "api-rbac-groups-crud", "api-federation-config", "api-rbac-audit", "api-rbac-dry-run", "api-session-management", "api-cluster-management"]
     due_date: "2025-12-18"
 
   - name: "Bootstrap & Seeding Complete"
@@ -1218,8 +1242,8 @@ milestones:
     due_date: "2025-12-22"
 
   - name: "RBAC Integration Complete"
-    description: "RBAC enforcement applied to all v8.0.0 APIs with resource scoping and compatibility mode"
-    tasks: ["rbac-middleware-integration", "resource-scope-enforcement", "rbac-v8-api-integration", "rbac-compatibility-mode"]
+    description: "RBAC enforcement applied to all v8.0.0 APIs with resource scoping, tenant provisioning automation, and compatibility mode"
+    tasks: ["rbac-middleware-integration", "resource-scope-enforcement", "rbac-v8-api-integration", "rbac-compatibility-mode", "tenant-provisioning-integration"]
     due_date: "2025-12-25"
 
   - name: "Enterprise Federation Validated"
@@ -1316,4 +1340,4 @@ dependencies:
     owner: "platform-team"
     status: "pending"
 
-total_estimated_effort: "380h"  # Updated to reflect multi-tenant RBAC tasks
+total_estimated_effort: "395h"  # Updated to include cluster management and provisioning tasks (380h + 7h + 8h)
