@@ -1,10 +1,10 @@
 # Schema API Migration Guide
 
-This guide documents the completed migration from separate schema APIs to the unified schema API where KPIs serve as the central schema definitions.
+This guide documents the completed migration from separate schema APIs to the unified KPI Management APIs where KPIs serve as the central schema definitions.
 
 ## Migration Status: ✅ COMPLETE
 
-The migration from legacy schema APIs to the unified schema API has been completed. All legacy endpoints have been removed and only the unified API is now available.
+The migration from legacy schema APIs to the unified KPI Management APIs has been completed. All legacy schema endpoints have been removed and only the KPI APIs are now available.
 
 ## API Changes
 
@@ -20,7 +20,7 @@ GET  /api/v1/schema/metrics/:metric
 etc.
 ```
 
-### Current Unified API Structure
+### Legacy Unified Schema API (REMOVED)
 ```
 POST /api/v1/schema/:type
 GET  /api/v1/schema/:type/:id
@@ -28,16 +28,27 @@ GET  /api/v1/schema/:type
 DELETE /api/v1/schema/:type/:id
 ```
 
-Where `:type` can be:
-- `label`
-- `metric`
-- `log_field`
-- `trace_service`
-- `trace_operation`
-- `kpi`
-- `dashboard`
-- `layout`
-- `user_preferences`
+### Current KPI Management API Structure
+```
+# KPI Definitions
+GET    /api/v1/kpi/defs
+POST   /api/v1/kpi/defs
+DELETE /api/v1/kpi/defs/:id
+
+# KPI Layouts
+GET    /api/v1/kpi/layouts
+POST   /api/v1/kpi/layouts/batch
+
+# KPI Dashboards
+GET    /api/v1/kpi/dashboards
+POST   /api/v1/kpi/dashboards
+PUT    /api/v1/kpi/dashboards/:id
+DELETE /api/v1/kpi/dashboards/:id
+```
+
+## Migration Status: ✅ COMPLETE
+
+The migration from legacy schema APIs to the KPI Management APIs has been completed. All legacy endpoints have been removed and only the KPI APIs are now available.
 
 ## Migration Status: ✅ COMPLETE
 
@@ -78,89 +89,11 @@ Where `:type` can be:
 
 ## Migration Examples
 
-### Creating a Label
+### Creating a KPI Definition
 
-**Legacy API (REMOVED):**
+**Current KPI API:**
 ```bash
-POST /api/v1/schema/labels
-{
-  "tenantId": "tenant1",
-  "name": "instance",
-  "type": "string",
-  "required": false,
-  "allowedValues": {"prod": "production", "dev": "development"},
-  "description": "Pod or host instance label",
-  "category": "infrastructure",
-  "sentiment": "NEUTRAL",
-  "author": "user@example.com"
-}
-```
-
-**Current Unified API:**
-```bash
-POST /api/v1/schema/label
-{
-  "id": "instance",
-  "name": "instance",
-  "type": "label",
-  "tenantId": "tenant1",
-  "category": "infrastructure",
-  "sentiment": "NEUTRAL",
-  "author": "user@example.com",
-  "extensions": {
-    "label": {
-      "type": "string",
-      "required": false,
-      "allowedValues": {"prod": "production", "dev": "development"},
-      "description": "Pod or host instance label"
-    }
-  }
-}
-```
-
-### Creating a Metric
-
-**Legacy API (REMOVED):**
-```bash
-POST /api/v1/schema/metrics
-{
-  "tenantId": "tenant1",
-  "metric": "http_requests_total",
-  "description": "Total HTTP requests",
-  "owner": "team@company.com",
-  "tags": ["web", "api"],
-  "category": "business",
-  "sentiment": "POSITIVE",
-  "author": "user@example.com"
-}
-```
-
-**Current Unified API:**
-```bash
-POST /api/v1/schema/metric
-{
-  "id": "http_requests_total",
-  "name": "http_requests_total",
-  "type": "metric",
-  "tenantId": "tenant1",
-  "tags": ["web", "api"],
-  "category": "business",
-  "sentiment": "POSITIVE",
-  "author": "user@example.com",
-  "extensions": {
-    "metric": {
-      "description": "Total HTTP requests",
-      "owner": "team@company.com"
-    }
-  }
-}
-```
-
-### Creating a KPI
-
-**Current Unified API:**
-```bash
-POST /api/v1/schema/kpi
+POST /api/v1/kpi/defs
 {
   "id": "error_rate",
   "name": "Error Rate",
@@ -193,42 +126,131 @@ POST /api/v1/schema/kpi
 }
 ```
 
+### Getting KPI Definitions
+
+**Current KPI API:**
+```bash
+GET /api/v1/kpi/defs?tenantId=tenant1
+```
+
+Response:
+```json
+{
+  "kpis": [
+    {
+      "id": "error_rate",
+      "name": "Error Rate",
+      "type": "kpi",
+      "kind": "business",
+      "unit": "%",
+      "format": "0.00",
+      "query": {...},
+      "thresholds": [...],
+      "tags": ["reliability", "slo"],
+      "ownerUserId": "user123",
+      "visibility": "team",
+      "tenantId": "tenant1"
+    }
+  ],
+  "total": 1
+}
+```
+
+### Managing KPI Layouts
+
+**Current KPI API:**
+```bash
+# Get layouts
+GET /api/v1/kpi/layouts?tenantId=tenant1
+
+# Batch update layouts
+POST /api/v1/kpi/layouts/batch
+{
+  "layouts": [
+    {
+      "kpiId": "error_rate",
+      "position": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "chartType": "line"
+    },
+    {
+      "kpiId": "response_time",
+      "position": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "chartType": "gauge"
+    }
+  ]
+}
+```
+
+### Managing Dashboards
+
+**Current KPI API:**
+```bash
+# Create dashboard
+POST /api/v1/kpi/dashboards
+{
+  "name": "API Performance Dashboard",
+  "description": "Monitor API performance metrics",
+  "shared": false,
+  "layout": {
+    "panels": []
+  }
+}
+
+# Update dashboard
+PUT /api/v1/kpi/dashboards/{dashboardId}
+{
+  "name": "Updated API Dashboard",
+  "description": "Updated dashboard for monitoring API endpoints",
+  "shared": true,
+  "layout": {
+    "panels": []
+  }
+}
+
+# Delete dashboard
+DELETE /api/v1/kpi/dashboards/{dashboardId}
+```
+
 ## Migration Timeline
 
-- **Phase 1** ✅: Implement unified API alongside legacy APIs
-- **Phase 2** ✅: Test unified API functionality  
-- **Phase 3** ✅: Remove legacy APIs (completed - mirador-core not in production)
+- **Phase 1** ✅: Implement KPI APIs alongside legacy schema APIs
+- **Phase 2** ✅: Test KPI API functionality  
+- **Phase 3** ✅: Remove all legacy schema APIs (completed)
 
-## Benefits of Unified API
+## Benefits of KPI Management APIs
 
-1. **Consistency:** Single API pattern for all schema types
-2. **Extensibility:** Easy to add new schema types
-3. **KPIs as Schema:** All schema definitions are now KPIs with rich metadata
-4. **Unified Management:** Single interface for KPI management
-5. **Better Organization:** Type-based routing with consistent patterns
+1. **Unified Management:** Single interface for KPI definitions, layouts, and dashboards
+2. **Rich Metadata:** KPIs include thresholds, formatting, units, and visualization preferences
+3. **Dashboard Integration:** Direct support for dashboard creation and management
+4. **Layout Control:** Granular control over KPI positioning and chart types
+5. **User Preferences:** Integrated user preference management via `/config/user-preferences`
+6. **Multi-tenancy:** Built-in tenant isolation and access control
 
-## Backward Compatibility
+## Current API Endpoints
 
-The old API endpoints are maintained for backward compatibility. You can migrate at your own pace:
+All KPI management is now handled through the `/api/v1/kpi/*` endpoints:
 
-1. **Phase 1:** Continue using old APIs while testing new unified API
-2. **Phase 2:** Gradually migrate code to use unified API
-3. **Phase 3:** Old APIs can be deprecated after full migration
+### KPI Definitions
+- `GET /api/v1/kpi/defs` - List all KPI definitions
+- `POST /api/v1/kpi/defs` - Create or update a KPI definition
+- `DELETE /api/v1/kpi/defs/:id` - Delete a KPI definition
 
-## Benefits of Unified API
+### KPI Layouts
+- `GET /api/v1/kpi/layouts` - Get KPI layout configurations
+- `POST /api/v1/kpi/layouts/batch` - Batch update KPI layouts
 
-1. **Consistency:** Single API pattern for all schema types
-2. **Extensibility:** Easy to add new schema types
-3. **KPIs as Schema:** All schema definitions are now KPIs with rich metadata
-4. **Unified Management:** Single interface for KPI management
-5. **Better Organization:** Type-based routing with consistent patterns
+### KPI Dashboards
+- `GET /api/v1/kpi/dashboards` - List dashboards
+- `POST /api/v1/kpi/dashboards` - Create a new dashboard
+- `PUT /api/v1/kpi/dashboards/:id` - Update an existing dashboard
+- `DELETE /api/v1/kpi/dashboards/:id` - Delete a dashboard
 
 ## Migration Checklist
 
-- [ ] Review existing schema API usage in your codebase
-- [ ] Test unified API endpoints with your data
-- [ ] Update client code to use new API structure
-- [ ] Update documentation and API specifications
-- [ ] Test with all schema types (labels, metrics, log fields, traces, KPIs)
-- [ ] Verify backward compatibility still works during transition
-- [ ] Update monitoring and alerting for new API patterns
+- [x] Review existing schema API usage in your codebase
+- [x] Test KPI API endpoints with your data
+- [x] Update client code to use new KPI API structure
+- [x] Update documentation and API specifications
+- [x] Remove all legacy schema API endpoints
+- [x] Update monitoring and alerting for new API patterns
+- [x] Verify KPI definitions, layouts, and dashboards are working correctly
