@@ -44,6 +44,12 @@ jobs:
       - name: Download modules
         run: go mod download
 
+      - name: Lint (golangci-lint)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
       - name: Lint (go vet)
         run: go vet ./...
 
@@ -190,3 +196,50 @@ jobs:
           name: docs-build-artifacts
           path: docs/_build/
           retention-days: 7
+
+  # Deployment job - runs on main branch after successful CI
+  deploy:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [ci, security]
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build schemactl
+        run: |
+          go build -o bin/schemactl cmd/schemactl/main.go
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg VERSION=${{ github.sha }} \
+            --build-arg BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+            --build-arg COMMIT_HASH=${{ github.sha }} \
+            -t mirador-core:${{ github.sha }} .
+
+      - name: Deploy to staging
+        run: |
+          echo "🚀 Deploying to staging environment..."
+          # Placeholder deployment steps
+          # In a real setup, this would:
+          # 1. Push Docker image to registry
+          # 2. Update Helm chart values
+          # 3. Run helm upgrade
+          # 4. Run schema migrations with schemactl
+          # 5. Run health checks
+          
+          echo "✅ Deployment simulation completed"
+          echo "Next steps for production deployment:"
+          echo "1. Configure Kubernetes cluster access"
+          echo "2. Set up Helm chart with staging values"
+          echo "3. Add schema migration step: ./bin/schemactl -mode=migrate"
+          echo "4. Add health check validation"

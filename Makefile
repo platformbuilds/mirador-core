@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
 .PHONY: help \
-	localdev localdev-up localdev-down localdev-wait localdev-test localdev-test-all-api localdev-test-api-only localdev-test-code-only localdev-seed-otel \
+	localdev localdev-up localdev-down localdev-wait localdev-test localdev-test-all-api localdev-test-api-only localdev-test-code-only localdev-seed-otel localdev-seed-data \
 	build build-native build-linux-multi build-linux-amd64 build-linux-arm64 build-darwin-arm64 build-windows-amd64 build-all \
 	docker docker-build docker-build-native dockerx-build dockerx-push docker-publish-release docker-publish-canary docker-publish-pr \
 	release test clean proto vendor lint run dev setup tools check-tools dev-stack dev-stack-down fmt version proto-clean clean-build \
@@ -46,10 +46,11 @@ help:
 	"" \
 	"Localdev E2E:" \
 	"  help                      Show this help with all targets." \
-	"  localdev                  Full local E2E: up → wait → seed OTEL → test → down." \
+	"  localdev                  Full local E2E: up → wait → seed OTEL → seed data → test → down." \
 	"  localdev-up               Start localdev compose stack in background." \
 	"  localdev-wait             Wait for readiness at $(BASE_URL)/ready." \
 	"  localdev-seed-otel        Seed synthetic OTEL metrics/logs/traces via telemetrygen." \
+	"  localdev-seed-data        Seed default dashboard and sample KPIs in Weaviate." \
 	"  localdev-test             Run E2E tests against a running localdev server."
 	"  localdev-test-all-api     Run comprehensive E2E pipeline (code quality + API tests)."
 	"  localdev-test-api-only    Run API endpoint tests only (skip code quality checks)."
@@ -74,6 +75,7 @@ help:
 	"  clean-build               Clean then perform a fresh build." \
 	"  openapi-json              Regenerate api/openapi.json from api/openapi.yaml." \
 	"  openapi-validate          Parse YAML → JSON to ensure syntax is valid." \
+	"  swag                      Generate OpenAPI 3.0 spec from code annotations." \
 	"" \
 	"Testing & Quality:" \
 	"  test                      Run unit tests with race detector and coverage." \
@@ -121,7 +123,7 @@ help:
 
 
 
-localdev: localdev-up localdev-wait localdev-seed-otel localdev-test localdev-down
+localdev: localdev-up localdev-wait localdev-seed-otel localdev-seed-data localdev-test localdev-down
 	@echo "Localdev E2E completed. Reports under localdev/."
 
 .PHONY: openapi-json openapi-validate
@@ -130,6 +132,11 @@ openapi-json:
 
 openapi-validate:
 	@python3 tools/validate_openapi.py
+
+.PHONY: swag
+swag:
+	@echo "🔧 Generating OpenAPI 3.0 spec from code annotations..."
+	@swag init -g cmd/server/main.go -o api/
 
 localdev-up:
 	mkdir -p localdev
@@ -194,6 +201,11 @@ localdev-seed-otel:
 	telemetrygen metrics --otlp-endpoint localhost:4317 --otlp-insecure --duration 10s --rate 200 || true
 	telemetrygen logs --otlp-endpoint localhost:4317 --otlp-insecure --duration 10s --rate 20 || true
 	telemetrygen traces --otlp-endpoint localhost:4317 --otlp-insecure --duration 10s --rate 10 || true
+
+localdev-seed-data:
+	@echo "Seeding default dashboard and sample KPIs in Weaviate..."
+	@go build -o bin/schemactl cmd/schemactl/main.go
+	WEAVIATE_HOST=localhost WEAVIATE_PORT=8080 ./bin/schemactl -mode=seed -tenant=default
 
 localdev-down:
 	@docker-compose -f deployments/localdev/docker-compose.yaml down -v

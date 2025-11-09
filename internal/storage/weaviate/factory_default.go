@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 	wv "github.com/weaviate/weaviate-go-client/v5/weaviate"
 )
 
@@ -40,7 +41,7 @@ func (o *officialTransport) DeleteObject(ctx context.Context, id string) error {
 }
 
 // NewTransportFromConfig returns the official transport (non-optional).
-func NewTransportFromConfig(cfg config.WeaviateConfig) (Transport, error) {
+func NewTransportFromConfig(cfg config.WeaviateConfig, logger logger.Logger) (Transport, error) {
 	hostPort := cfg.Host
 	if cfg.Port != 0 {
 		hostPort = fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
@@ -52,6 +53,10 @@ func NewTransportFromConfig(cfg config.WeaviateConfig) (Transport, error) {
 	}
 	// Build an HTTP transport using the same config for raw operations
 	httpT := NewHTTPTransport(New(cfg))
+	// Set logger on the client for health checks
+	if httpClient, ok := httpT.(*httpTransport); ok && httpClient.c != nil {
+		httpClient.c.SetLogger(logger)
+	}
 	return &officialTransport{client: client, httpT: httpT}, nil
 }
 

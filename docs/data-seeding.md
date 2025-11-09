@@ -1,0 +1,156 @@
+# Data Seeding
+
+This document describes the data seeding functionality for MIRADOR-CORE, which populates Weaviate with default dashboards and sample KPIs for demonstration and development purposes.
+
+## Overview
+
+The data seeding system provides:
+
+1. **Default Dashboard**: A pre-configured dashboard that serves as the main landing page
+2. **Sample KPIs**: Example KPI definitions demonstrating different types of metrics (technical and business)
+3. **Default User Preferences**: Sensible defaults for user interface settings
+
+## Usage
+
+### Command Line Tool
+
+Use the `schemactl` tool to seed data:
+
+```bash
+# Build the tool
+go build -o bin/schemactl cmd/schemactl/main.go
+
+# Seed data for default tenant
+./bin/schemactl -mode=seed -tenant=default
+
+# Seed data for a specific tenant
+./bin/schemactl -mode=seed -tenant=my-tenant
+```
+
+### Environment Variables
+
+Configure Weaviate connection:
+
+```bash
+export WEAVIATE_HOST=localhost
+export WEAVIATE_PORT=8080
+export WEAVIATE_SCHEME=http
+export WEAVIATE_API_KEY=your-api-key  # if authentication is enabled
+```
+
+### Makefile Integration
+
+For local development, use the provided Makefile targets:
+
+```bash
+# Seed data in local development environment
+make localdev-seed-data
+
+# Full E2E with data seeding
+make localdev
+```
+
+## Seeded Data
+
+### Default Dashboard
+
+- **ID**: `default`
+- **Name**: `Default Dashboard`
+- **Visibility**: `org` (organization-wide)
+- **Default**: `true`
+- **Owner**: `system`
+
+### Sample KPIs
+
+#### Technical KPIs
+
+1. **HTTP Request Duration**
+   - Measures average HTTP request response times
+   - Includes warning/critical thresholds
+   - Sentiment: Negative (lower is better)
+
+2. **Error Rate**
+   - Tracks percentage of failed HTTP requests
+   - Includes warning/critical thresholds
+   - Sentiment: Negative (lower is better)
+
+3. **System Uptime**
+   - Monitors system availability percentage
+   - Includes SLA-based thresholds
+   - Sentiment: Positive (higher is better)
+
+#### Business KPIs
+
+1. **User Satisfaction Score**
+   - Average user satisfaction from feedback
+   - Includes target thresholds
+   - Sentiment: Positive (higher is better)
+
+2. **Revenue Per User**
+   - Average monthly revenue per active user
+   - Includes target thresholds
+   - Sentiment: Positive (higher is better)
+
+## Data Structure
+
+All seeded data follows the established Weaviate schema:
+
+- **Dashboard**: Stored in `Dashboard` class with properties for metadata
+- **KPIDefinition**: Stored in `KPIDefinition` class with query definitions and thresholds
+- **UserPreferences**: Stored in `UserPreferences` class (planned for future implementation)
+
+## Idempotent Operations
+
+The seeding operations are designed to be idempotent:
+
+- Existing dashboards and KPIs are not overwritten
+- The system checks for existing data before creating new entries
+- Multiple runs of the seeding command are safe
+
+## Integration
+
+The seeded data integrates with:
+
+- **Dashboard API**: Default dashboard appears in dashboard listings
+- **KPI API**: Sample KPIs are available for dashboard configuration
+- **User Interface**: Default dashboard serves as the landing page
+- **Query Engine**: KPIs can be used in unified queries and correlations
+
+## Development
+
+### Adding New Sample Data
+
+To add new sample KPIs or dashboards:
+
+1. Update the `seedSampleKPIs()` function in `cmd/schemactl/main.go`
+2. Follow the existing data structure patterns
+3. Include appropriate thresholds and metadata
+4. Test with `make localdev-seed-data`
+
+### Modifying Existing Data
+
+The seeding system checks for existing data and skips creation if items already exist. To modify seeded data:
+
+1. Delete existing items via API or Weaviate console
+2. Re-run the seeding command
+3. Or manually update the seeding code and re-run
+
+## Troubleshooting
+
+### Weaviate Connection Issues
+
+- Ensure Weaviate is running and accessible
+- Check WEAVIATE_HOST and WEAVIATE_PORT environment variables
+- Verify API key if authentication is enabled
+
+### Schema Mismatches
+
+- Ensure Weaviate schema is up to date
+- Run `go run cmd/server/main.go` first to initialize schema
+- Check Weaviate logs for schema validation errors
+
+### Permission Issues
+
+- Verify tenant permissions for data creation
+- Check RBAC settings if authentication is enabled
+- Ensure system user has appropriate permissions

@@ -37,6 +37,21 @@ func NewKPIHandler(r repo.SchemaStore, cache cache.ValkeyCluster, l logger.Logge
 } // ------------------- KPI Definitions API -------------------
 
 // GetKPIDefinitions retrieves all KPI definitions with optional filtering
+// @Summary Get KPI definitions
+// @Description Retrieve a paginated list of KPI definitions with optional filtering by tags
+// @Tags kpi-definitions
+// @Accept json
+// @Produce json
+// @Param tenant_id query string false "Tenant ID (optional, defaults to request context)"
+// @Param tags query []string false "Filter by tags (comma-separated)" collectionFormat(csv)
+// @Param limit query int false "Maximum number of results (default: 10)" minimum(1) maximum(100)
+// @Param offset query int false "Pagination offset (default: 0)" minimum(0)
+// @Success 200 {object} models.KPIListResponse
+// @Failure 400 {object} map[string]string "error: invalid query parameters"
+// @Failure 500 {object} map[string]string "error: failed to list KPIs"
+// @Router /api/v1/kpi/defs [get]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *KPIHandler) GetKPIDefinitions(c *gin.Context) {
 	var req models.KPIListRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -76,6 +91,18 @@ func (h *KPIHandler) GetKPIDefinitions(c *gin.Context) {
 }
 
 // CreateOrUpdateKPIDefinition creates or updates a KPI definition
+// @Summary Create or update KPI definition
+// @Description Create a new KPI definition or update an existing one. If ID is not provided, a new UUID will be generated.
+// @Tags kpi-definitions
+// @Accept json
+// @Produce json
+// @Param kpi body models.KPIDefinitionRequest true "KPI definition payload"
+// @Success 200 {object} map[string]interface{} "status: ok, id: kpi_id"
+// @Failure 400 {object} map[string]string "error: invalid payload or validation error"
+// @Failure 500 {object} map[string]string "error: failed to upsert KPI"
+// @Router /api/v1/kpi/defs [post]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *KPIHandler) CreateOrUpdateKPIDefinition(c *gin.Context) {
 	var req models.KPIDefinitionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -119,6 +146,19 @@ func (h *KPIHandler) CreateOrUpdateKPIDefinition(c *gin.Context) {
 }
 
 // DeleteKPIDefinition deletes a KPI definition by ID
+// @Summary Delete KPI definition
+// @Description Delete a KPI definition by its ID. Requires confirmation via query parameter.
+// @Tags kpi-definitions
+// @Accept json
+// @Produce json
+// @Param id path string true "KPI definition ID"
+// @Param confirm query string true "Confirmation flag (1, true, or yes)" Enums(1,true,yes)
+// @Success 200 {object} map[string]interface{} "status: deleted"
+// @Failure 400 {object} map[string]string "error: missing id or confirmation required"
+// @Failure 500 {object} map[string]string "error: failed to delete KPI"
+// @Router /api/v1/kpi/defs/{id} [delete]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *KPIHandler) DeleteKPIDefinition(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -147,6 +187,18 @@ func (h *KPIHandler) DeleteKPIDefinition(c *gin.Context) {
 // ------------------- KPI Layouts API -------------------
 
 // GetKPILayouts retrieves layouts for a specific dashboard
+// @Summary Get KPI layouts for dashboard
+// @Description Retrieve the layout configuration for all KPIs in a specific dashboard
+// @Tags kpi-layouts
+// @Accept json
+// @Produce json
+// @Param dashboard query string true "Dashboard ID"
+// @Success 200 {object} map[string]interface{} "layouts: map of kpi_id to layout config"
+// @Failure 400 {object} map[string]string "error: dashboard parameter is required"
+// @Failure 500 {object} map[string]string "error: failed to get KPI layouts"
+// @Router /api/v1/kpi/layouts [get]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *KPIHandler) GetKPILayouts(c *gin.Context) {
 	dashboardID := c.Query("dashboard")
 	if dashboardID == "" {
@@ -167,6 +219,18 @@ func (h *KPIHandler) GetKPILayouts(c *gin.Context) {
 }
 
 // BatchUpdateKPILayouts updates multiple KPI layouts for a dashboard
+// @Summary Batch update KPI layouts
+// @Description Update the layout configuration for multiple KPIs in a dashboard
+// @Tags kpi-layouts
+// @Accept json
+// @Produce json
+// @Param layoutUpdate body map[string]interface{} true "Layout update payload with dashboardId and layouts map"
+// @Success 200 {object} map[string]interface{} "status: ok"
+// @Failure 400 {object} map[string]string "error: invalid payload or missing dashboardId"
+// @Failure 500 {object} map[string]string "error: failed to update KPI layouts"
+// @Router /api/v1/kpi/layouts/batch [post]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *KPIHandler) BatchUpdateKPILayouts(c *gin.Context) {
 	var req struct {
 		DashboardID string                 `json:"dashboardId"`
@@ -198,6 +262,20 @@ func (h *KPIHandler) BatchUpdateKPILayouts(c *gin.Context) {
 // ------------------- Dashboard Management API -------------------
 
 // GetDashboards retrieves all dashboards with optional filtering
+// @Summary Get dashboards
+// @Description Retrieve a paginated list of dashboards
+// @Tags dashboards
+// @Accept json
+// @Produce json
+// @Param tenant_id query string false "Tenant ID (optional, defaults to request context)"
+// @Param limit query int false "Maximum number of results (default: 10)" minimum(1) maximum(100)
+// @Param offset query int false "Pagination offset (default: 0)" minimum(0)
+// @Success 200 {object} models.DashboardListResponse
+// @Failure 400 {object} map[string]string "error: invalid query parameters"
+// @Failure 500 {object} map[string]string "error: failed to list dashboards"
+// @Router /api/v1/kpi/dashboards [get]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *KPIHandler) GetDashboards(c *gin.Context) {
 	var req models.DashboardListRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -235,6 +313,18 @@ func (h *KPIHandler) GetDashboards(c *gin.Context) {
 		NextOffset: nextOffset,
 	})
 } // CreateDashboard creates a new dashboard
+// @Summary Create dashboard
+// @Description Create a new dashboard. If ID is not provided, a new UUID will be generated.
+// @Tags dashboards
+// @Accept json
+// @Produce json
+// @Param dashboard body models.DashboardRequest true "Dashboard creation payload"
+// @Success 201 {object} models.DashboardResponse
+// @Failure 400 {object} map[string]string "error: invalid payload"
+// @Failure 500 {object} map[string]string "error: failed to create dashboard"
+// @Router /api/v1/kpi/dashboards [post]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *KPIHandler) CreateDashboard(c *gin.Context) {
 	var req models.DashboardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -270,6 +360,20 @@ func (h *KPIHandler) CreateDashboard(c *gin.Context) {
 }
 
 // UpdateDashboard updates an existing dashboard
+// @Summary Update dashboard
+// @Description Update an existing dashboard by ID
+// @Tags dashboards
+// @Accept json
+// @Produce json
+// @Param id path string true "Dashboard ID"
+// @Param dashboard body models.DashboardRequest true "Dashboard update payload"
+// @Success 200 {object} models.DashboardResponse
+// @Failure 400 {object} map[string]string "error: invalid payload or missing id"
+// @Failure 404 {object} map[string]string "error: dashboard not found"
+// @Failure 500 {object} map[string]string "error: failed to update dashboard"
+// @Router /api/v1/kpi/dashboards/{id} [put]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *KPIHandler) UpdateDashboard(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -312,6 +416,19 @@ func (h *KPIHandler) UpdateDashboard(c *gin.Context) {
 }
 
 // DeleteDashboard deletes a dashboard by ID
+// @Summary Delete dashboard
+// @Description Delete a dashboard by its ID. Cannot delete the default dashboard. Requires confirmation.
+// @Tags dashboards
+// @Accept json
+// @Produce json
+// @Param id path string true "Dashboard ID"
+// @Param confirm query string true "Confirmation flag (1, true, or yes)" Enums(1,true,yes)
+// @Success 200 {object} map[string]interface{} "status: deleted"
+// @Failure 400 {object} map[string]string "error: missing id, cannot delete default dashboard, or confirmation required"
+// @Failure 500 {object} map[string]string "error: failed to delete dashboard"
+// @Router /api/v1/kpi/dashboards/{id} [delete]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *KPIHandler) DeleteDashboard(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
