@@ -1,0 +1,549 @@
+basePath: /api/v1
+definitions:
+  models.Dashboard:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      isDefault:
+        type: boolean
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      tenantId:
+        type: string
+      updatedAt:
+        type: string
+      visibility:
+        description: '"private", "team", "org"'
+        type: string
+    type: object
+  models.DashboardListResponse:
+    properties:
+      dashboards:
+        items:
+          $ref: '#/definitions/models.Dashboard'
+        type: array
+      nextOffset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  models.DashboardRequest:
+    properties:
+      dashboard:
+        $ref: '#/definitions/models.Dashboard'
+    type: object
+  models.DashboardResponse:
+    properties:
+      dashboard:
+        $ref: '#/definitions/models.Dashboard'
+    type: object
+  models.KPIDefinition:
+    properties:
+      createdAt:
+        type: string
+      definition:
+        description: Definition of what the signal means
+        type: string
+      format:
+        type: string
+      id:
+        type: string
+      kind:
+        description: '"business" or "tech"'
+        type: string
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      query:
+        additionalProperties: true
+        description: JSON query definition
+        type: object
+      sentiment:
+        description: '"NEGATIVE", "POSITIVE", or "NEUTRAL" - increase sentiment'
+        type: string
+      sparkline:
+        additionalProperties: true
+        description: JSON sparkline config
+        type: object
+      tags:
+        items:
+          type: string
+        type: array
+      tenantId:
+        type: string
+      thresholds:
+        description: JSON thresholds array
+        items:
+          $ref: '#/definitions/models.Threshold'
+        type: array
+      unit:
+        type: string
+      updatedAt:
+        type: string
+      visibility:
+        description: '"private", "team", "org"'
+        type: string
+    type: object
+  models.KPIDefinitionRequest:
+    properties:
+      kpiDefinition:
+        $ref: '#/definitions/models.KPIDefinition'
+    type: object
+  models.KPIListResponse:
+    properties:
+      kpiDefinitions:
+        items:
+          $ref: '#/definitions/models.KPIDefinition'
+        type: array
+      nextOffset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  models.Threshold:
+    properties:
+      color:
+        description: Display color
+        type: string
+      description:
+        description: Description of the threshold
+        type: string
+      level:
+        description: e.g., "warning", "critical"
+        type: string
+      operator:
+        description: e.g., "gt", "lt", "eq"
+        type: string
+      value:
+        description: Threshold value
+        type: number
+    type: object
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+host: localhost:8010
+info:
+  contact:
+    email: support@platformbuilds.com
+    name: Platform Builds Team
+    url: https://github.com/platformbuilds/mirador-core
+  description: Mirador Core is a comprehensive observability and analytics platform
+    that provides KPI definitions, layouts, dashboards, and user preferences for monitoring
+    and analyzing system metrics.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Mirador Core API
+  version: 8.0.0
+paths:
+  /api/v1/kpi/dashboards:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a paginated list of dashboards
+      parameters:
+      - description: Tenant ID (optional, defaults to request context)
+        in: query
+        name: tenant_id
+        type: string
+      - description: 'Maximum number of results (default: 10)'
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      - description: 'Pagination offset (default: 0)'
+        in: query
+        minimum: 0
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.DashboardListResponse'
+        "400":
+          description: 'error: invalid query parameters'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to list dashboards'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - ApiKeyAuth: []
+      summary: Get dashboards
+      tags:
+      - dashboards
+    post:
+      consumes:
+      - application/json
+      description: Create a new dashboard. If ID is not provided, a new UUID will
+        be generated.
+      parameters:
+      - description: Dashboard creation payload
+        in: body
+        name: dashboard
+        required: true
+        schema:
+          $ref: '#/definitions/models.DashboardRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.DashboardResponse'
+        "400":
+          description: 'error: invalid payload'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to create dashboard'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - ApiKeyAuth: []
+      summary: Create dashboard
+      tags:
+      - dashboards
+  /api/v1/kpi/dashboards/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a dashboard by its ID. Cannot delete the default dashboard.
+        Requires confirmation.
+      parameters:
+      - description: Dashboard ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Confirmation flag (1, true, or yes)
+        enum:
+        - "1"
+        - "true"
+        - "yes"
+        in: query
+        name: confirm
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: deleted'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'error: missing id, cannot delete default dashboard, or confirmation
+            required'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to delete dashboard'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - ApiKeyAuth: []
+      summary: Delete dashboard
+      tags:
+      - dashboards
+    put:
+      consumes:
+      - application/json
+      description: Update an existing dashboard by ID
+      parameters:
+      - description: Dashboard ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Dashboard update payload
+        in: body
+        name: dashboard
+        required: true
+        schema:
+          $ref: '#/definitions/models.DashboardRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.DashboardResponse'
+        "400":
+          description: 'error: invalid payload or missing id'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: dashboard not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to update dashboard'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - ApiKeyAuth: []
+      summary: Update dashboard
+      tags:
+      - dashboards
+  /api/v1/kpi/defs:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a paginated list of KPI definitions with optional filtering
+        by tags
+      parameters:
+      - description: Tenant ID (optional, defaults to request context)
+        in: query
+        name: tenant_id
+        type: string
+      - collectionFormat: csv
+        description: Filter by tags (comma-separated)
+        in: query
+        items:
+          type: string
+        name: tags
+        type: array
+      - description: 'Maximum number of results (default: 10)'
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      - description: 'Pagination offset (default: 0)'
+        in: query
+        minimum: 0
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.KPIListResponse'
+        "400":
+          description: 'error: invalid query parameters'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to list KPIs'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - ApiKeyAuth: []
+      summary: Get KPI definitions
+      tags:
+      - kpi-definitions
+    post:
+      consumes:
+      - application/json
+      description: Create a new KPI definition or update an existing one. If ID is
+        not provided, a new UUID will be generated.
+      parameters:
+      - description: KPI definition payload
+        in: body
+        name: kpi
+        required: true
+        schema:
+          $ref: '#/definitions/models.KPIDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: ok, id: kpi_id'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'error: invalid payload or validation error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to upsert KPI'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - ApiKeyAuth: []
+      summary: Create or update KPI definition
+      tags:
+      - kpi-definitions
+  /api/v1/kpi/defs/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a KPI definition by its ID. Requires confirmation via query
+        parameter.
+      parameters:
+      - description: KPI definition ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Confirmation flag (1, true, or yes)
+        enum:
+        - "1"
+        - "true"
+        - "yes"
+        in: query
+        name: confirm
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: deleted'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'error: missing id or confirmation required'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to delete KPI'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - ApiKeyAuth: []
+      summary: Delete KPI definition
+      tags:
+      - kpi-definitions
+  /api/v1/kpi/layouts:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the layout configuration for all KPIs in a specific dashboard
+      parameters:
+      - description: Dashboard ID
+        in: query
+        name: dashboard
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'layouts: map of kpi_id to layout config'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'error: dashboard parameter is required'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to get KPI layouts'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - ApiKeyAuth: []
+      summary: Get KPI layouts for dashboard
+      tags:
+      - kpi-layouts
+  /api/v1/kpi/layouts/batch:
+    post:
+      consumes:
+      - application/json
+      description: Update the layout configuration for multiple KPIs in a dashboard
+      parameters:
+      - description: Layout update payload with dashboardId and layouts map
+        in: body
+        name: layoutUpdate
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: ok'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'error: invalid payload or missing dashboardId'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to update KPI layouts'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - ApiKeyAuth: []
+      summary: Batch update KPI layouts
+      tags:
+      - kpi-layouts
+securityDefinitions:
+  ApiKeyAuth:
+    description: API key for authentication
+    in: header
+    name: X-API-Key
+    type: apiKey
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

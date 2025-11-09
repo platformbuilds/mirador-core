@@ -118,6 +118,174 @@ func dump(ctx context.Context, c *client, outPath string) error {
 	return os.WriteFile(outPath, b, 0644)
 }
 
+func seed(ctx context.Context, c *client, tenantID string) error {
+	// Seed default dashboard
+	if err := seedDefaultDashboard(ctx, c, tenantID); err != nil {
+		return fmt.Errorf("failed to seed default dashboard: %w", err)
+	}
+
+	// Seed sample KPIs
+	if err := seedSampleKPIs(ctx, c, tenantID); err != nil {
+		return fmt.Errorf("failed to seed sample KPIs: %w", err)
+	}
+
+	fmt.Printf("Successfully seeded data for tenant %s\n", tenantID)
+	return nil
+}
+
+func seedDefaultDashboard(ctx context.Context, c *client, tenantID string) error {
+	dashboard := map[string]interface{}{
+		"class": "Dashboard",
+		"id":    "default",
+		"properties": map[string]interface{}{
+			"id":          "default",
+			"name":        "Default Dashboard",
+			"ownerUserId": "system",
+			"visibility":  "org",
+			"isDefault":   true,
+			"tenantId":    tenantID,
+			"createdAt":   time.Now().Format(time.RFC3339),
+			"updatedAt":   time.Now().Format(time.RFC3339),
+		},
+	}
+
+	// Check if dashboard already exists
+	var existing struct {
+		Properties map[string]interface{} `json:"properties"`
+	}
+	err := c.do(ctx, http.MethodGet, "/v1/objects/"+dashboard["id"].(string), nil, &existing)
+	if err == nil {
+		fmt.Printf("Default dashboard already exists for tenant %s\n", tenantID)
+		return nil
+	}
+
+	// Create dashboard
+	if err := c.do(ctx, http.MethodPost, "/v1/objects", dashboard, nil); err != nil {
+		return fmt.Errorf("failed to create dashboard: %w", err)
+	}
+
+	fmt.Printf("Created default dashboard for tenant %s\n", tenantID)
+	return nil
+}
+
+func seedSampleKPIs(ctx context.Context, c *client, tenantID string) error {
+	sampleKPIs := []map[string]interface{}{
+		{
+			"class": "KPIDefinition",
+			"id":    "http_request_duration",
+			"properties": map[string]interface{}{
+				"id":     "http_request_duration",
+				"kind":   "tech",
+				"name":   "HTTP Request Duration",
+				"unit":   "seconds",
+				"format": "duration",
+				"query": map[string]interface{}{
+					"metric": "http_request_duration_seconds",
+					"labels": map[string]interface{}{
+						"method": "{{method}}",
+						"status": "{{status}}",
+					},
+				},
+				"thresholds": []map[string]interface{}{
+					{
+						"operator": "gt",
+						"value":    1.0,
+						"severity": "warning",
+						"message":  "Request duration is high",
+					},
+					{
+						"operator": "gt",
+						"value":    5.0,
+						"severity": "critical",
+						"message":  "Request duration is critically high",
+					},
+				},
+				"tags":       []string{"http", "performance", "latency"},
+				"definition": "Average HTTP request duration across all endpoints",
+				"sentiment":  "NEGATIVE",
+				"sparkline": map[string]interface{}{
+					"type": "line",
+					"query": map[string]interface{}{
+						"range": "1h",
+					},
+				},
+				"ownerUserId": "system",
+				"visibility":  "org",
+				"tenantId":    tenantID,
+				"createdAt":   time.Now().Format(time.RFC3339),
+				"updatedAt":   time.Now().Format(time.RFC3339),
+			},
+		},
+		{
+			"class": "KPIDefinition",
+			"id":    "error_rate",
+			"properties": map[string]interface{}{
+				"id":     "error_rate",
+				"kind":   "tech",
+				"name":   "Error Rate",
+				"unit":   "percent",
+				"format": "percentage",
+				"query": map[string]interface{}{
+					"metric": "http_requests_total",
+					"labels": map[string]interface{}{
+						"status": ">=400",
+					},
+					"aggregation": "rate",
+				},
+				"thresholds": []map[string]interface{}{
+					{
+						"operator": "gt",
+						"value":    5.0,
+						"severity": "warning",
+						"message":  "Error rate is elevated",
+					},
+					{
+						"operator": "gt",
+						"value":    10.0,
+						"severity": "critical",
+						"message":  "Error rate is critically high",
+					},
+				},
+				"tags":       []string{"errors", "reliability", "http"},
+				"definition": "Percentage of HTTP requests that result in errors (4xx/5xx)",
+				"sentiment":  "NEGATIVE",
+				"sparkline": map[string]interface{}{
+					"type": "area",
+					"query": map[string]interface{}{
+						"range": "1h",
+					},
+				},
+				"ownerUserId": "system",
+				"visibility":  "org",
+				"tenantId":    tenantID,
+				"createdAt":   time.Now().Format(time.RFC3339),
+				"updatedAt":   time.Now().Format(time.RFC3339),
+			},
+		},
+	}
+
+	for _, kpi := range sampleKPIs {
+		// Check if KPI already exists
+		var existing struct {
+			Properties map[string]interface{} `json:"properties"`
+		}
+		err := c.do(ctx, http.MethodGet, "/v1/objects/"+kpi["id"].(string), nil, &existing)
+		if err == nil {
+			fmt.Printf("KPI %s already exists for tenant %s\n", kpi["id"], tenantID)
+			continue
+		}
+
+		// Create KPI
+		if err := c.do(ctx, http.MethodPost, "/v1/objects", kpi, nil); err != nil {
+			return fmt.Errorf("failed to create KPI %s: %w", kpi["id"], err)
+		}
+
+		fmt.Printf("Created KPI %s for tenant %s\n", kpi["id"], tenantID)
+	}
+
+	return nil
+}
+
 func restore(ctx context.Context, c *client, inPath string) error {
 	b, err := os.ReadFile(inPath)
 	if err != nil {
@@ -140,9 +308,11 @@ func main() {
 	var out string
 	var in string
 	var mode string
-	flag.StringVar(&mode, "mode", "dump", "mode: dump|restore")
+	var tenantID string
+	flag.StringVar(&mode, "mode", "dump", "mode: dump|restore|seed")
 	flag.StringVar(&out, "out", "schema_dump.json", "output file for dump")
 	flag.StringVar(&in, "in", "schema_dump.json", "input file for restore")
+	flag.StringVar(&tenantID, "tenant", "default", "tenant ID for seeding")
 	flag.Parse()
 	c := newClient()
 	ctx := context.Background()
@@ -159,6 +329,11 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("restored from", in)
+	case "seed":
+		if err := seed(ctx, c, tenantID); err != nil {
+			fmt.Fprintln(os.Stderr, "seed failed:", err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Fprintln(os.Stderr, "unknown mode")
 		os.Exit(1)

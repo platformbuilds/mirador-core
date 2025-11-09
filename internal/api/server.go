@@ -121,6 +121,9 @@ func (s *Server) setupMiddleware() {
 	// Recovery middleware
 	s.router.Use(gin.Recovery())
 
+	// Error handling middleware (must be early)
+	s.router.Use(middleware.ErrorHandler(s.logger))
+
 	// CORS for MIRADOR-UI communication
 	s.router.Use(middleware.CORSMiddleware(s.config.CORS))
 
@@ -148,9 +151,9 @@ func (s *Server) setupMiddleware() {
 	s.router.StaticFile("/api/openapi.yaml", "api/openapi.yaml")
 	s.router.GET("/api/openapi.json", handlers.GetOpenAPISpec)
 
-	// Swagger UI via gin-swagger (serves Swagger UI using external openapi.yaml)
+	// Swagger UI via gin-swagger (serves generated OpenAPI spec)
 	// Visit /swagger/index.html
-	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/api/openapi.yaml")))
+	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Prometheus metrics endpoint
 	monitoring.SetupPrometheusMetrics(s.router)

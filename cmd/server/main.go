@@ -19,6 +19,34 @@ import (
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
+// @title Mirador Core API
+// @version 8.0.0
+// @description Mirador Core is a comprehensive observability and analytics platform that provides KPI definitions, layouts, dashboards, and user preferences for monitoring and analyzing system metrics.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name Platform Builds Team
+// @contact.url https://github.com/platformbuilds/mirador-core
+// @contact.email support@platformbuilds.com
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8010
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name X-API-Key
+// @description API key for authentication
+
+// @externalDocs.description OpenAPI
+// @externalDocs.url https://swagger.io/resources/open-api/
+
 // These are set via -ldflags at build time (see Makefile)
 var (
 	version    = "dev"
@@ -95,7 +123,7 @@ func main() {
 	var schemaStore repo.SchemaStore
 	if cfg.Weaviate.Enabled {
 		// Construct transport (HTTP by default; official client when built with tags)
-		t, terr := storage_weaviate.NewTransportFromConfig(cfg.Weaviate)
+		t, terr := storage_weaviate.NewTransportFromConfig(cfg.Weaviate, logger)
 		if terr != nil {
 			logger.Fatal("Failed to init Weaviate transport", "error", terr)
 		}

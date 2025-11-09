@@ -59,6 +59,14 @@ data:
         - "redis-cluster-2.redis-cluster:6379"
       ttl: 300
     
+    # Weaviate vector database configuration
+    weaviate:
+      enabled: true
+      host: weaviate.mirador.svc.cluster.local
+      port: 8080
+      scheme: http
+      grpc_port: 50051
+    
     # Search Engine Configuration for Bleve clustering
     search:
       default_engine: "lucene"
@@ -220,6 +228,116 @@ spec:
     protocol: TCP
   selector:
     app: mirador-core
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weaviate
+  namespace: mirador
+  labels:
+    app: weaviate
+    component: vector-database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: weaviate
+  template:
+    metadata:
+      labels:
+        app: weaviate
+        component: vector-database
+    spec:
+      containers:
+      - name: weaviate
+        image: cr.weaviate.io/semitechnologies/weaviate:1.25.4
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 50051
+          name: grpc
+        env:
+        - name: AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
+          value: "true"
+        - name: DEFAULT_VECTORIZER_MODULE
+          value: "none"
+        - name: PERSISTENCE_DATA_PATH
+          value: "/var/lib/weaviate"
+        - name: QUERY_DEFAULTS_LIMIT
+          value: "25"
+        - name: CLUSTER_GOSSIP_BIND_PORT
+          value: "7100"
+        - name: CLUSTER_DATA_BIND_PORT
+          value: "7101"
+        - name: GOMAXPROCS
+          value: "0"
+        volumeMounts:
+        - name: weaviate-storage
+          mountPath: /var/lib/weaviate
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /v1/meta
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /v1/meta
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: weaviate-storage
+        persistentVolumeClaim:
+          claimName: weaviate-storage
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: weaviate
+  namespace: mirador
+  labels:
+    app: weaviate
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+    protocol: TCP
+  - name: grpc
+    port: 50051
+    targetPort: grpc
+    protocol: TCP
+  selector:
+    app: weaviate
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: weaviate-storage
+  namespace: mirador
+  labels:
+    app: weaviate
+    component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
 
 ---
 apiVersion: v1
