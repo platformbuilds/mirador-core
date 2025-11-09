@@ -846,8 +846,6 @@ var SwaggerInfo = &swag.Spec{
 	Description:      "Mirador Core is a comprehensive observability and analytics platform that provides KPI definitions, layouts, dashboards, and user preferences for monitoring and analyzing system metrics.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
-	LeftDelim:        "{{",
-	RightDelim:       "}}",
 }
 
 func init() {

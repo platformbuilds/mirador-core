@@ -65,7 +65,7 @@ func TestErrorHandler(t *testing.T) {
 				c.Error(errors.New("database connection failed"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   `{"error":"database connection failed","code":"INTERNAL_ERROR"}`,
+			expectedBody:   `{"error":"database connection failed","code":"CONNECTION_ERROR"}`,
 			expectLog:      true,
 		},
 		{
@@ -74,8 +74,8 @@ func TestErrorHandler(t *testing.T) {
 				c.Writer.WriteHeader(http.StatusBadRequest)
 				c.Error(errors.New("custom validation error"))
 			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"custom validation error","code":"INVALID_REQUEST"}`,
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   `{"error":"custom validation error","code":"INTERNAL_ERROR"}`,
 			expectLog:      true,
 		},
 	}

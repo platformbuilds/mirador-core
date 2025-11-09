@@ -12,7 +12,7 @@ import (
 // MockTransport implements Transport interface for testing without Weaviate
 type MockTransport struct {
 	mu      sync.RWMutex
-	classes map[string]map[string]any // class name -> class definition
+	classes map[string]map[string]any            // class name -> class definition
 	objects map[string]map[string]map[string]any // class -> id -> properties
 }
 

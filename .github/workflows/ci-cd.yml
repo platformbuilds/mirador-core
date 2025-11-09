@@ -203,7 +203,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: [ci, security]
-    environment: staging
     steps:
       - name: Checkout
         uses: actions/checkout@v5
