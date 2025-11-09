@@ -1,6 +1,8 @@
 package logger
 
 import (
+	"strings"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -75,4 +77,33 @@ func (l *zapLogger) Debug(msg string, fields ...interface{}) {
 
 func (l *zapLogger) Fatal(msg string, fields ...interface{}) {
 	l.logger.Fatalw(msg, fields...)
+}
+
+// MockLogger is a test logger that captures output to a buffer
+type MockLogger struct {
+	output *strings.Builder
+}
+
+func NewMockLogger(output *strings.Builder) Logger {
+	return &MockLogger{output: output}
+}
+
+func (m *MockLogger) Info(msg string, fields ...interface{}) {
+	m.output.WriteString("[INFO] " + msg + "\n")
+}
+
+func (m *MockLogger) Error(msg string, fields ...interface{}) {
+	m.output.WriteString("[ERROR] " + msg + "\n")
+}
+
+func (m *MockLogger) Warn(msg string, fields ...interface{}) {
+	m.output.WriteString("[WARN] " + msg + "\n")
+}
+
+func (m *MockLogger) Debug(msg string, fields ...interface{}) {
+	m.output.WriteString("[DEBUG] " + msg + "\n")
+}
+
+func (m *MockLogger) Fatal(msg string, fields ...interface{}) {
+	m.output.WriteString("[FATAL] " + msg + "\n")
 }
