@@ -40,6 +40,7 @@ type Server struct {
 	metricsMetadataIndexer      services.MetricsMetadataIndexer
 	metricsMetadataSynchronizer services.MetricsMetadataSynchronizer
 	rbacService                 *rbac.RBACService
+	rbacEnforcer                *middleware.RBACEnforcer
 	tenantIsolationMiddleware   *middleware.TenantIsolationMiddleware
 	router                      *gin.Engine
 	httpServer                  *http.Server
@@ -84,6 +85,9 @@ func NewServer(
 	cacheRepo := rbac.NewNoOpCacheRepository()
 	rbacService := rbac.NewRBACService(rbacRepo, cacheRepo, auditService)
 
+	// Initialize RBAC enforcer
+	rbacEnforcer := middleware.NewRBACEnforcer(rbacService, valkeyCache, log)
+
 	server := &Server{
 		config:         cfg,
 		logger:         log,
@@ -95,6 +99,7 @@ func NewServer(
 		router:         router,
 		tracerProvider: tracerProvider,
 		rbacService:    rbacService,
+		rbacEnforcer:   rbacEnforcer,
 	}
 
 	// Create search router
@@ -211,102 +216,144 @@ func (s *Server) setupRoutes() {
 	} else {
 		metricsHandler = handlers.NewMetricsQLHandler(s.vmServices.Metrics, s.cache, s.logger)
 	}
-	// New metrics endpoints under /metrics/*
-	v1.POST("/metrics/query", metricsHandler.ExecuteQuery)
-	v1.POST("/metrics/query_range", metricsHandler.ExecuteRangeQuery)
-	// Back-compat (deprecated): keep old routes registered
-	v1.POST("/query", metricsHandler.ExecuteQuery)
-	v1.POST("/query_range", metricsHandler.ExecuteRangeQuery)
-	v1.GET("/metrics/names", metricsHandler.GetMetricNames)
-	v1.GET("/metrics/series", metricsHandler.GetSeries)
-	v1.POST("/metrics/labels", metricsHandler.GetLabels)
-	// Back-compat aliases at root so Swagger with base "/" also works
-	// Back-compat aliases at root so Swagger with base "/" also works
-	s.router.POST("/query", metricsHandler.ExecuteQuery)
-	s.router.POST("/query_range", metricsHandler.ExecuteRangeQuery)
-	s.router.GET("/metrics/names", metricsHandler.GetMetricNames)
-	s.router.GET("/metrics/series", metricsHandler.GetSeries)
-	s.router.POST("/metrics/labels", metricsHandler.GetLabels)
-	v1.GET("/label/:name/values", metricsHandler.GetLabelValues)
+	// New metrics endpoints under /metrics/* - require metrics.read permission
+	metricsGroup := v1.Group("/metrics")
+	metricsGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}))
+	{
+		metricsGroup.POST("/query", metricsHandler.ExecuteQuery)
+		metricsGroup.POST("/query_range", metricsHandler.ExecuteRangeQuery)
+		metricsGroup.GET("/names", metricsHandler.GetMetricNames)
+		metricsGroup.GET("/series", metricsHandler.GetSeries)
+		metricsGroup.POST("/labels", metricsHandler.GetLabels)
+		metricsGroup.GET("/label/:name/values", metricsHandler.GetLabelValues)
+	}
+	// Back-compat (deprecated): keep old routes registered with RBAC protection
+	v1.POST("/query", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.ExecuteQuery)
+	v1.POST("/query_range", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.ExecuteRangeQuery)
+	s.router.POST("/query", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.ExecuteQuery)
+	s.router.POST("/query_range", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.ExecuteRangeQuery)
+	s.router.GET("/metrics/names", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.GetMetricNames)
+	s.router.GET("/metrics/series", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.GetSeries)
+	s.router.POST("/metrics/labels", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.GetLabels)
 
 	// MetricsQL function query endpoints (hierarchical by category)
 	queryHandler := handlers.NewMetricsQLQueryHandler(s.vmServices.Query, s.cache, s.logger)
 	validationMiddleware := middleware.NewMetricsQLQueryValidationMiddleware(s.logger)
 
-	// Rollup functions
-	v1.POST("/metrics/query/rollup/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteRollupFunction)
-	v1.POST("/metrics/query/rollup/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteRollupRangeFunction)
-	// Transform functions
-	v1.POST("/metrics/query/transform/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteTransformFunction)
-	v1.POST("/metrics/query/transform/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteTransformRangeFunction)
-	// Label functions
-	v1.POST("/metrics/query/label/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteLabelFunction)
-	v1.POST("/metrics/query/label/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteLabelRangeFunction)
-	// Aggregate functions
-	v1.POST("/metrics/query/aggregate/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteAggregateFunction)
-	v1.POST("/metrics/query/aggregate/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteAggregateRangeFunction)
+	// Rollup functions - require metrics.read permission
+	rollupGroup := v1.Group("/metrics/query/rollup")
+	rollupGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}))
+	{
+		rollupGroup.POST("/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteRollupFunction)
+		rollupGroup.POST("/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteRollupRangeFunction)
+	}
+	// Transform functions - require metrics.read permission
+	transformGroup := v1.Group("/metrics/query/transform")
+	transformGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}))
+	{
+		transformGroup.POST("/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteTransformFunction)
+		transformGroup.POST("/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteTransformRangeFunction)
+	}
+	// Label functions - require metrics.read permission
+	labelGroup := v1.Group("/metrics/query/label")
+	labelGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}))
+	{
+		labelGroup.POST("/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteLabelFunction)
+		labelGroup.POST("/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteLabelRangeFunction)
+	}
+	// Aggregate functions - require metrics.read permission
+	aggregateGroup := v1.Group("/metrics/query/aggregate")
+	aggregateGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}))
+	{
+		aggregateGroup.POST("/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteAggregateFunction)
+		aggregateGroup.POST("/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteAggregateRangeFunction)
+	}
 
 	// LogsQL endpoints (VictoriaLogs integration)
 	logsHandler := handlers.NewLogsQLHandler(s.vmServices.Logs, s.cache, s.logger, s.searchRouter, s.config)
-	v1.POST("/logs/query", s.searchThrottling.ThrottleLogsQuery(), logsHandler.ExecuteQuery)
-	v1.GET("/logs/streams", logsHandler.GetStreams)
-	v1.GET("/logs/fields", logsHandler.GetFields)
-	v1.POST("/logs/export", logsHandler.ExportLogs)
-	v1.POST("/logs/store", logsHandler.StoreEvent) // For AI engines to store JSON events
+	logsGroup := v1.Group("/logs")
+	logsGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"logs.read"}))
+	{
+		logsGroup.POST("/query", s.searchThrottling.ThrottleLogsQuery(), logsHandler.ExecuteQuery)
+		logsGroup.GET("/streams", logsHandler.GetStreams)
+		logsGroup.GET("/fields", logsHandler.GetFields)
+		logsGroup.POST("/export", logsHandler.ExportLogs)
+		logsGroup.POST("/store", logsHandler.StoreEvent) // For AI engines to store JSON events
+	}
 
 	// D3-friendly log endpoints for the upcoming UI (histogram, facets, search, tail)
 	d3Logs := handlers.NewLogsHandler(s.vmServices.Logs, s.logger)
-	v1.GET("/logs/histogram", d3Logs.Histogram)
-	v1.GET("/logs/facets", d3Logs.Facets)
-	v1.POST("/logs/search", d3Logs.Search)
-	v1.GET("/logs/tail", d3Logs.TailWS) // WebSocket upgrade for tailing logs
+	d3LogsGroup := v1.Group("/logs")
+	d3LogsGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"logs.read"}))
+	{
+		d3LogsGroup.GET("/histogram", d3Logs.Histogram)
+		d3LogsGroup.GET("/facets", d3Logs.Facets)
+		d3LogsGroup.POST("/search", d3Logs.Search)
+		d3LogsGroup.GET("/tail", d3Logs.TailWS) // WebSocket upgrade for tailing logs
+	}
 
 	// VictoriaTraces endpoints (Jaeger-compatible HTTP API)
 	tracesHandler := handlers.NewTracesHandler(s.vmServices.Traces, s.cache, s.logger, s.searchRouter, s.config)
-	v1.GET("/traces/services", tracesHandler.GetServices)
-	v1.GET("/traces/services/:service/operations", tracesHandler.GetOperations)
-	v1.GET("/traces/:traceId", tracesHandler.GetTrace)
-	v1.GET("/traces/:traceId/flamegraph", tracesHandler.GetFlameGraph)
-	v1.POST("/traces/search", s.searchThrottling.ThrottleTracesQuery(), tracesHandler.SearchTraces)
-	v1.POST("/traces/flamegraph/search", tracesHandler.SearchFlameGraph)
+	tracesGroup := v1.Group("/traces")
+	tracesGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"traces.read"}))
+	{
+		tracesGroup.GET("/services", tracesHandler.GetServices)
+		tracesGroup.GET("/services/:service/operations", tracesHandler.GetOperations)
+		tracesGroup.GET("/:traceId", tracesHandler.GetTrace)
+		tracesGroup.GET("/:traceId/flamegraph", tracesHandler.GetFlameGraph)
+		tracesGroup.POST("/search", s.searchThrottling.ThrottleTracesQuery(), tracesHandler.SearchTraces)
+		tracesGroup.POST("/flamegraph/search", tracesHandler.SearchFlameGraph)
+	}
 
 	// AI RCA-ENGINE endpoints (correlation with red anchors pattern)
 	rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
 	rcaHandler := handlers.NewRCAHandler(s.grpcClients.RCAEngine, s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger)
-	v1.GET("/rca/correlations", rcaHandler.GetActiveCorrelations)
-	v1.POST("/rca/investigate", rcaHandler.StartInvestigation)
-	v1.GET("/rca/patterns", rcaHandler.GetFailurePatterns)
-	v1.POST("/rca/service-graph", rcaHandler.GetServiceGraph)
-	v1.POST("/rca/store", rcaHandler.StoreCorrelation) // Store correlation back to VictoriaLogs
+	rcaGroup := v1.Group("/rca")
+	rcaGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"rca.read"}))
+	{
+		rcaGroup.GET("/correlations", rcaHandler.GetActiveCorrelations)
+		rcaGroup.POST("/investigate", rcaHandler.StartInvestigation)
+		rcaGroup.GET("/patterns", rcaHandler.GetFailurePatterns)
+		rcaGroup.POST("/service-graph", rcaHandler.GetServiceGraph)
+		rcaGroup.POST("/store", rcaHandler.StoreCorrelation) // Store correlation back to VictoriaLogs
+	}
 
 	// Configuration endpoints (user-driven settings storage)
 	dynamicConfigService := services.NewDynamicConfigService(s.cache, s.logger)
 	configHandler := handlers.NewConfigHandler(s.cache, s.logger, dynamicConfigService, s.grpcClients, s.schemaRepo)
-	v1.GET("/config/datasources", configHandler.GetDataSources)
-	v1.POST("/config/datasources", configHandler.AddDataSource)
-	v1.GET("/config/integrations", configHandler.GetIntegrations)
+	configGroup := v1.Group("/config")
+	configGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"config.read"}))
+	{
+		configGroup.GET("/datasources", configHandler.GetDataSources)
+		configGroup.POST("/datasources", configHandler.AddDataSource)
+		configGroup.GET("/integrations", configHandler.GetIntegrations)
 
-	// User Preferences API (moved from KPI handler)
-	v1.GET("/config/user-preferences", configHandler.GetUserPreferences)
-	v1.POST("/config/user-preferences", configHandler.CreateUserPreferences)
-	v1.PUT("/config/user-preferences", configHandler.UpdateUserPreferences)
-	v1.DELETE("/config/user-preferences", configHandler.DeleteUserPreferences)
+		// User Preferences API (moved from KPI handler)
+		configGroup.GET("/user-preferences", configHandler.GetUserPreferences)
+		configGroup.POST("/user-preferences", configHandler.CreateUserPreferences)
+		configGroup.PUT("/user-preferences", configHandler.UpdateUserPreferences)
+		configGroup.DELETE("/user-preferences", configHandler.DeleteUserPreferences)
 
-	// Runtime feature flag endpoints
-	v1.GET("/config/features", configHandler.GetFeatureFlags)
-	v1.PUT("/config/features", configHandler.UpdateFeatureFlags)
-	v1.POST("/config/features/reset", configHandler.ResetFeatureFlags)
+		// Runtime feature flag endpoints
+		configGroup.GET("/features", configHandler.GetFeatureFlags)
+		configGroup.PUT("/features", configHandler.UpdateFeatureFlags)
+		configGroup.POST("/features/reset", configHandler.ResetFeatureFlags)
 
-	// Dynamic gRPC endpoint configuration
-	v1.GET("/config/grpc/endpoints", configHandler.GetGRPCEndpoints)
-	v1.PUT("/config/grpc/endpoints", configHandler.UpdateGRPCEndpoints)
-	v1.POST("/config/grpc/endpoints/reset", configHandler.ResetGRPCEndpoints)
+		// Dynamic gRPC endpoint configuration
+		configGroup.GET("/grpc/endpoints", configHandler.GetGRPCEndpoints)
+		configGroup.PUT("/grpc/endpoints", configHandler.UpdateGRPCEndpoints)
+		configGroup.POST("/grpc/endpoints/reset", configHandler.ResetGRPCEndpoints)
+	}
 
 	// Session management (Valkey cluster caching)
 	sessionHandler := handlers.NewSessionHandler(s.cache, s.logger)
-	v1.GET("/sessions/active", sessionHandler.GetActiveSessions)
-	v1.POST("/sessions/invalidate", sessionHandler.InvalidateSession)
-	v1.GET("/sessions/user/:userId", sessionHandler.GetUserSessions)
+	sessionGroup := v1.Group("/sessions")
+	sessionGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"session.admin"}))
+	{
+		sessionGroup.GET("/active", sessionHandler.GetActiveSessions)
+		sessionGroup.POST("/invalidate", sessionHandler.InvalidateSession)
+		sessionGroup.GET("/user/:userId", sessionHandler.GetUserSessions)
+	}
 
 	// Authentication endpoints
 	authHandler := handlers.NewAuthHandler(s.config, s.cache, s.rbacRepo, s.logger)
@@ -316,9 +363,13 @@ func (s *Server) setupRoutes() {
 
 	// RBAC endpoints
 	rbacHandler := handlers.NewRBACHandler(s.rbacService, s.cache, s.logger)
-	v1.GET("/rbac/roles", rbacHandler.GetRoles)
-	v1.POST("/rbac/roles", rbacHandler.CreateRole)
-	v1.PUT("/rbac/users/:userId/roles", rbacHandler.AssignUserRoles)
+	rbacGroup := v1.Group("/rbac")
+	rbacGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"rbac.admin"}))
+	{
+		rbacGroup.GET("/roles", rbacHandler.GetRoles)
+		rbacGroup.POST("/roles", rbacHandler.CreateRole)
+		rbacGroup.PUT("/users/:userId/roles", rbacHandler.AssignUserRoles)
+	}
 
 	// Tenant endpoints
 	tenantHandler := handlers.NewTenantHandler(s.rbacService, s.logger)
@@ -365,27 +416,43 @@ func (s *Server) setupRoutes() {
 
 	// WebSocket streams (metrics, alerts)
 	ws := handlers.NewWebSocketHandler(s.logger)
-	v1.GET("/ws/metrics", ws.HandleMetricsStream)
-	v1.GET("/ws/alerts", ws.HandleAlertsStream)
+	wsGroup := v1.Group("/ws")
+	wsGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}))
+	{
+		wsGroup.GET("/metrics", ws.HandleMetricsStream)
+		wsGroup.GET("/alerts", ws.HandleAlertsStream)
+	}
 
 	// KPI APIs (primary interface for schema definitions)
 	if s.schemaRepo != nil {
 		kpiHandler := handlers.NewKPIHandler(s.schemaRepo, s.cache, s.logger)
 		if kpiHandler != nil {
 			// KPI Definitions API
-			v1.GET("/kpi/defs", kpiHandler.GetKPIDefinitions)
-			v1.POST("/kpi/defs", kpiHandler.CreateOrUpdateKPIDefinition)
-			v1.DELETE("/kpi/defs/:id", kpiHandler.DeleteKPIDefinition)
+			kpiDefsGroup := v1.Group("/kpi/defs")
+			kpiDefsGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"kpi.read"}))
+			{
+				kpiDefsGroup.GET("", kpiHandler.GetKPIDefinitions)
+				kpiDefsGroup.POST("", kpiHandler.CreateOrUpdateKPIDefinition)
+				kpiDefsGroup.DELETE("/:id", kpiHandler.DeleteKPIDefinition)
+			}
 
 			// KPI Layouts API
-			v1.GET("/kpi/layouts", kpiHandler.GetKPILayouts)
-			v1.POST("/kpi/layouts/batch", kpiHandler.BatchUpdateKPILayouts)
+			kpiLayoutsGroup := v1.Group("/kpi/layouts")
+			kpiLayoutsGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"kpi.read"}))
+			{
+				kpiLayoutsGroup.GET("", kpiHandler.GetKPILayouts)
+				kpiLayoutsGroup.POST("/batch", kpiHandler.BatchUpdateKPILayouts)
+			}
 
 			// Dashboard API
-			v1.GET("/kpi/dashboards", kpiHandler.GetDashboards)
-			v1.POST("/kpi/dashboards", kpiHandler.CreateDashboard)
-			v1.PUT("/kpi/dashboards/:id", kpiHandler.UpdateDashboard)
-			v1.DELETE("/kpi/dashboards/:id", kpiHandler.DeleteDashboard)
+			dashboardGroup := v1.Group("/kpi/dashboards")
+			dashboardGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"dashboard.read"}))
+			{
+				dashboardGroup.GET("", kpiHandler.GetDashboards)
+				dashboardGroup.POST("", kpiHandler.CreateDashboard)
+				dashboardGroup.PUT("/:id", kpiHandler.UpdateDashboard)
+				dashboardGroup.DELETE("/:id", kpiHandler.DeleteDashboard)
+			}
 
 			// User Preferences API moved to /config/user-preferences
 		}
@@ -399,18 +466,26 @@ func (s *Server) setupRoutes() {
 	// Metrics Metadata Discovery API (Phase 2: Metrics Metadata Integration)
 	if s.metricsMetadataIndexer != nil {
 		metricsSearchHandler := handlers.NewMetricsSearchHandler(s.metricsMetadataIndexer, s.logger)
-		v1.POST("/metrics/search", metricsSearchHandler.HandleMetricsSearch)
-		v1.POST("/metrics/sync", metricsSearchHandler.HandleMetricsSync)
-		v1.GET("/metrics/health", metricsSearchHandler.HandleMetricsHealth)
+		metricsSearchGroup := v1.Group("/metrics")
+		metricsSearchGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"metrics.admin"}))
+		{
+			metricsSearchGroup.POST("/search", metricsSearchHandler.HandleMetricsSearch)
+			metricsSearchGroup.POST("/sync", metricsSearchHandler.HandleMetricsSync)
+			metricsSearchGroup.GET("/health", metricsSearchHandler.HandleMetricsHealth)
+		}
 	}
 
 	// Metrics Metadata Synchronization API (Phase 2: Metrics Metadata Integration)
 	if s.metricsMetadataSynchronizer != nil {
 		syncHandler := handlers.NewMetricsSyncHandler(s.metricsMetadataSynchronizer, s.logger)
-		v1.POST("/metrics/sync/:tenantId", syncHandler.HandleSyncNow)
-		v1.GET("/metrics/sync/:tenantId/state", syncHandler.HandleGetSyncState)
-		v1.GET("/metrics/sync/:tenantId/status", syncHandler.HandleGetSyncStatus)
-		v1.PUT("/metrics/sync/config", syncHandler.HandleUpdateConfig)
+		metricsSyncGroup := v1.Group("/metrics/sync")
+		metricsSyncGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"metrics.admin"}))
+		{
+			metricsSyncGroup.POST("/:tenantId", syncHandler.HandleSyncNow)
+			metricsSyncGroup.GET("/:tenantId/state", syncHandler.HandleGetSyncState)
+			metricsSyncGroup.GET("/:tenantId/status", syncHandler.HandleGetSyncStatus)
+		}
+		v1.PUT("/metrics/sync/config", s.rbacEnforcer.RBACMiddleware([]string{"metrics.admin"}), syncHandler.HandleUpdateConfig)
 	}
 }
 
@@ -440,8 +515,17 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup) {
 	// Create unified query handler
 	unifiedHandler := handlers.NewUnifiedQueryHandler(unifiedEngine, s.logger)
 
-	// Register unified query routes
-	unifiedHandler.RegisterRoutes(router)
+	// Register unified query routes with RBAC protection
+	unifiedGroup := router.Group("/unified")
+	unifiedGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"unified.read"}))
+	{
+		unifiedGroup.POST("/query", unifiedHandler.HandleUnifiedQuery)
+		unifiedGroup.POST("/correlation", unifiedHandler.HandleUnifiedCorrelation)
+		unifiedGroup.GET("/metadata", unifiedHandler.HandleQueryMetadata)
+		unifiedGroup.GET("/health", unifiedHandler.HandleHealthCheck)
+		unifiedGroup.POST("/search", unifiedHandler.HandleUnifiedSearch)
+		unifiedGroup.GET("/stats", unifiedHandler.HandleUnifiedStats)
+	}
 
 	s.logger.Info("Unified query engine initialized and routes registered")
 }

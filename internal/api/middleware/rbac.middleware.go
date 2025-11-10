@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -155,16 +156,16 @@ func (pc *PolicyCache) WarmCache(ctx context.Context, tenantID string, commonPer
 
 // RBACEnforcer handles role-based access control with two-tier evaluation
 type RBACEnforcer struct {
-	cache       cache.ValkeyCluster
+	rbacService *rbac.RBACService
 	policyCache *PolicyCache
 	logger      logger.Logger
 }
 
 // NewRBACEnforcer creates a new RBAC enforcer
-func NewRBACEnforcer(cache cache.ValkeyCluster, logger logger.Logger) *RBACEnforcer {
+func NewRBACEnforcer(rbacService *rbac.RBACService, cache cache.ValkeyCluster, logger logger.Logger) *RBACEnforcer {
 	policyCache := NewPolicyCache(cache, logger, 15*time.Minute) // 15 minute default TTL
 	return &RBACEnforcer{
-		cache:       cache,
+		rbacService: rbacService,
 		policyCache: policyCache,
 		logger:      logger,
 	}
@@ -222,37 +223,65 @@ func (r *RBACEnforcer) evaluateAccess(userID, tenantID, globalRole string, requi
 		return cachedResult.Allowed, cachedResult.Reason
 	}
 
-	// Cache miss - perform actual evaluation
-	r.logger.Debug("Policy cache miss - evaluating", "userId", userID, "tenantId", tenantID, "permissions", requiredPermissions)
+	// Cache miss - perform actual evaluation using RBAC service
+	r.logger.Debug("Policy cache miss - evaluating with RBAC service", "userId", userID, "tenantId", tenantID, "permissions", requiredPermissions)
 
-	// Step 1: Check Global Role (highest precedence)
-	if r.checkGlobalRoleAccess(globalRole, requiredPermissions) {
-		r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, true, "global_role_granted")
-		return true, "global_role_granted"
+	// Check each required permission using the RBAC service
+	for _, perm := range requiredPermissions {
+		resource, action, err := r.parsePermissionString(perm)
+		if err != nil {
+			r.logger.Error("Invalid permission format", "permission", perm, "error", err)
+			r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, false, "invalid_permission_format")
+			return false, "invalid_permission_format"
+		}
+
+		// Create permission context
+		permCtx := &rbac.PermissionContext{
+			UserID:      userID,
+			TenantID:    tenantID,
+			Resource:    resource,
+			Action:      action,
+			RequestTime: time.Now(),
+			IPAddress:   c.ClientIP(),
+		}
+
+		// Check permission using RBAC service
+		allowed, err := r.rbacService.CheckPermissionWithContext(c.Request.Context(), permCtx)
+		if err != nil {
+			r.logger.Error("RBAC service permission check failed", "userId", userID, "tenantId", tenantID, "resource", resource, "action", action, "error", err)
+			r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, false, "rbac_service_error")
+			return false, "rbac_service_error"
+		}
+
+		if !allowed {
+			r.logger.Debug("Permission denied", "userId", userID, "tenantId", tenantID, "resource", resource, "action", action)
+			r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, false, "permission_denied")
+			return false, "permission_denied"
+		}
 	}
 
-	// Step 2: Check Tenant Role permissions
-	tenantRoles, err := r.getUserTenantRoles(userID, tenantID, c)
-	if err != nil {
-		r.logger.Error("Failed to get tenant roles", "userId", userID, "tenantId", tenantID, "error", err)
-		r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, false, "failed_to_get_tenant_roles")
-		return false, "failed_to_get_tenant_roles"
+	// All permissions granted
+	r.logger.Debug("All permissions granted", "userId", userID, "tenantId", tenantID, "permissions", requiredPermissions)
+	r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, true, "all_permissions_granted")
+	return true, "all_permissions_granted"
+}
+
+// parsePermissionString parses a permission string into resource and action
+func (r *RBACEnforcer) parsePermissionString(permission string) (resource, action string, err error) {
+	parts := strings.Split(permission, ".")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("invalid permission format: %s, expected 'resource.action'", permission)
 	}
 
-	if r.checkTenantRoleAccess(tenantRoles, requiredPermissions) {
-		r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, true, "tenant_role_granted")
-		return true, "tenant_role_granted"
+	resource = parts[0]
+	action = parts[1]
+
+	// Validate resource and action are not empty
+	if resource == "" || action == "" {
+		return "", "", fmt.Errorf("invalid permission format: %s, resource and action cannot be empty", permission)
 	}
 
-	// Step 3: Check for wildcard permissions in any role
-	if r.hasWildcardPermission(tenantRoles) {
-		r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, true, "wildcard_permission_granted")
-		return true, "wildcard_permission_granted"
-	}
-
-	// Deny by default
-	r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, false, "insufficient_permissions")
-	return false, "insufficient_permissions"
+	return resource, action, nil
 }
 
 // checkGlobalRoleAccess checks if global role grants access
@@ -345,7 +374,7 @@ func (r *RBACEnforcer) permissionMatches(userPerm, requiredPerm string) bool {
 func (r *RBACEnforcer) getUserTenantRoles(userID, tenantID string, c *gin.Context) ([]string, error) {
 	// Try to get from cache first
 	cacheKey := fmt.Sprintf("rbac:user_roles:%s:%s", tenantID, userID)
-	cachedData, err := r.cache.Get(c.Request.Context(), cacheKey)
+	cachedData, err := r.policyCache.cache.Get(c.Request.Context(), cacheKey)
 	if err == nil && cachedData != nil {
 		var roles []string
 		if err := json.Unmarshal(cachedData, &roles); err == nil {
