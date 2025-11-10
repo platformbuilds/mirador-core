@@ -213,6 +213,7 @@ type Role struct {
 // Permission represents granular permissions
 type Permission struct {
 	ID              string               `json:"id" weaviate:"id"`
+	TenantID        string               `json:"tenantId" weaviate:"tenant"`
 	Resource        string               `json:"resource" weaviate:"resource"` // dashboard, kpi_definition, layout, user_prefs, admin, rbac
 	Action          string               `json:"action" weaviate:"action"`     // create, read, update, delete, list, admin
 	Scope           string               `json:"scope" weaviate:"scope"`       // global, tenant, resource
@@ -374,4 +375,20 @@ type IdentityMapping struct {
 	UpdatedAt            time.Time         `json:"updatedAt" weaviate:"updatedAt"`
 	CreatedBy            string            `json:"createdBy" weaviate:"createdBy"`
 	UpdatedBy            string            `json:"updatedBy" weaviate:"updatedBy"`
+}
+
+// CreateUserRequest represents the request payload for creating a user
+type CreateUserRequest struct {
+	Email string `json:"email"`
+}
+
+// UpdateUserRequest represents the request payload for updating a user
+type UpdateUserRequest struct {
+	Email string `json:"email"`
+}
+
+// TOTPSetup represents TOTP setup information for QR code generation
+type TOTPSetup struct {
+	Secret    string `json:"secret"`
+	QRCodeURL string `json:"qrCodeUrl"`
 }

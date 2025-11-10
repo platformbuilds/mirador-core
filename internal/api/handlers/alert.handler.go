@@ -43,7 +43,7 @@ func (h *AlertHandler) GetAlerts(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
 	severity := c.Query("severity")
 
-	// Try valley cluster cache first for faster fetch
+	// Try valkey cluster cache first for faster fetch
 	cacheKey := fmt.Sprintf("alerts:%s:%s:%d", tenantID, severity, limit)
 	if cached, err := h.cache.Get(c.Request.Context(), cacheKey); err == nil {
 		var cachedAlerts []*models.Alert

@@ -11,7 +11,7 @@ import (
 )
 
 // RateLimiter implements per-tenant rate limiting using Valkey cluster
-func RateLimiter(valleyCache cache.ValkeyCluster) gin.HandlerFunc {
+func RateLimiter(valkeyCache cache.ValkeyCluster) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tenantID := c.GetString("tenant_id")
 		if tenantID == "" {
@@ -23,7 +23,7 @@ func RateLimiter(valleyCache cache.ValkeyCluster) gin.HandlerFunc {
 		key := fmt.Sprintf("rate_limit:%s:%d", tenantID, window)
 
 		// Get current request count
-		countBytes, err := valleyCache.Get(c.Request.Context(), key)
+		countBytes, err := valkeyCache.Get(c.Request.Context(), key)
 		var currentCount int64 = 0
 
 		if err == nil {
@@ -50,7 +50,7 @@ func RateLimiter(valleyCache cache.ValkeyCluster) gin.HandlerFunc {
 
 		// Increment counter
 		newCount := currentCount + 1
-		valleyCache.Set(c.Request.Context(), key, newCount, 2*time.Minute)
+		valkeyCache.Set(c.Request.Context(), key, newCount, 2*time.Minute)
 
 		// Set rate limit headers
 		c.Header("X-Rate-Limit-Limit", strconv.FormatInt(maxRequests, 10))

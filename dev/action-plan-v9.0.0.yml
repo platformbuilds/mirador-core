@@ -1,9 +1,18 @@
 version: "9.0.0"
 title: "Mirador Core Multi-Tenant RBAC & Identity Federation"
 description: "Complete implementation of Multi-Tenant Role-Based Access Control (RBAC) with two-tier role model (Global + Tenant roles) and Enterprise Identity Federation for Mirador Core API. Includes physical tenant isolation, MiradorAuth local users database, TOTP 2FA, and configurable password policies."
-date: "2025-11-08"
-status: "planning"
+date: "2025-11-10"
+status: "in-progress"
 
+# UPDATED: Current implementation status as of 2025-11-10
+# - RBAC models, interfaces, service logic, and API handlers: IMPLEMENTED (~90% complete)
+# - WeaviateRepository: EXISTS but returns "not implemented" for all methods (MOCKS ONLY)
+# - Authentication, session management, federation: NOT IMPLEMENTED
+# - Tenant isolation and enforcement: FULLY IMPLEMENTED (tenant-user associations + middleware + global user management)
+# - Phase 2: FULLY COMPLETED (Tenant CRUD API, Global User Management, Tenant Isolation Middleware)
+# - Code quality: RESOLVED (Go vet warnings fixed, formatting applied)
+# - Testing: COMPREHENSIVE E2E and integration tests passing
+#
 # Multi-tenant architecture with physical isolation per tenant (separate Victoria* deployments)
 # Two-tier role system: Global roles (global_admin, global_tenant_admin, tenant_user) + Tenant roles (tenant_admin, tenant_editor, tenant_guest)
 # Users are global entities associated with tenants via TenantUser join table
@@ -14,11 +23,73 @@ status: "planning"
 # Builds upon Mirador Core v8.0.0 API baseline with comprehensive audit logging and observability
 # Default bootstrap: platformbuilds tenant with global admin user (aarvee)
 
+# ========================================================================================
+# CURRENT STATUS & IMMEDIATE PRIORITIES (as of 2025-11-10)
+# ========================================================================================
+# ✅ COMPLETED:
+#   - Phase 1: Basic Authentication & Session Management (FULLY COMPLETE - AuthService with JWT, TOTP 2FA, password policies, session management, rate limiting)
+#   - Phase 0.5: RBAC Service & Models (COMPLETE - Service logic, validation, audit logging implemented)
+#   - Phase 0.5: WeaviateRepository Implementation (COMPLETE - All CRUD operations implemented with real Weaviate GraphQL queries)
+#   - Phase 2: Tenant Management & Isolation (FULLY COMPLETE - Tenant CRUD API, Global User Management, Tenant Isolation Middleware)
+#   - Code quality: Go vet warnings fixed, formatting applied
+#   - Testing: Comprehensive E2E and integration tests passing
+#   - RBAC models, interfaces, service logic, and API handlers implemented
+#
+# 🚨 IMMEDIATE CRITICAL PRIORITY (BLOCKING FURTHER PROGRESS):
+#   1. Phase 3: RBAC Policy Enforcement (required to protect existing APIs)
+#      - Without this, the RBAC system exists but doesn't enforce policies on API endpoints
+#      - Estimated: 24h for policy evaluator + 12h middleware integration + 8h API enforcement = 44h total
+#
+# 📋 NEXT PRIORITIES (after Phase 3):
+#   2. Phase 4: Admin & Management APIs (complete management interface)
+#   3. Phase 5: Data Seeding & Bootstrap (system initialization)
+#
+# ⚠️  KEY RISKS:
+#   - Phase 3 is now the critical foundation - authentication works but APIs remain unprotected
+#   - RBAC enforcement is required before system can be considered secure
+#   - Repository and auth layers are complete but system remains vulnerable without policy enforcement
+# ========================================================================================
+
 phases:
-  - name: "RBAC Schema & Models"
-    description: "Design Weaviate schema and Go models for RBAC entities with validation rules"
-    priority: "high"
+  - name: "Phase 0.5: Repository Implementation (CRITICAL FOUNDATION)"
+    description: "Complete WeaviateRepository with real CRUD operations - without this, the entire RBAC system is just mocks"
+    priority: "critical"
     tasks:
+      - id: "weaviate-repo-implementation"
+        title: "Implement WeaviateRepository CRUD operations"
+        description: "Replace all 'not implemented' errors in WeaviateRBACRepository with real Weaviate operations for: CreateRole, GetRole, ListRoles, UpdateRole, DeleteRole, AssignUserRoles, GetUserRoles, CreatePermission, GetPermission, ListPermissions, CreateGroup, GetGroup, ListGroups, LogAuditEvent, GetAuditEvents"
+        priority: "critical"
+        status: "completed"
+        dependencies: []
+        estimated_effort: "24h"
+        assignee: "backend-dev"
+        parallelizable: false  # Core data persistence layer
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "weaviate-schema-validation"
+        title: "Validate Weaviate schema compatibility"
+        description: "Ensure current Weaviate schema supports all RBAC classes and cross-references. Add missing properties or classes as needed."
+        priority: "critical"
+        status: "completed"
+        dependencies: ["weaviate-repo-implementation"]
+        estimated_effort: "4h"
+        assignee: "backend-dev"
+        parallelizable: false  # Must validate schema first
+        ci_stage: "build"
+        owner_role: "backend-dev"
+
+      - id: "repository-testing"
+        title: "Test repository with real data"
+        description: "Replace mock repositories in tests with real WeaviateRepository and validate CRUD operations work end-to-end"
+        priority: "critical"
+        status: "completed"
+        dependencies: ["weaviate-repo-implementation"]
+        estimated_effort: "6h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can test in parallel
+        ci_stage: "test"
+        owner_role: "backend-dev"
       - id: "rbac-schema-tenant"
         title: "Design Tenant Weaviate class"
         description: "Design Weaviate class for Tenant with properties: id, name, display_name, description, deployments (metrics/logs/traces endpoints), status, admin_email, admin_name, quotas, features, metadata, tags, timestamps. Aligns with multi-tenant architecture for physical isolation."
@@ -187,10 +258,57 @@ phases:
         ci_stage: "pre-commit"
         owner_role: "backend-dev"
 
-  - name: "Identity Federation (SAML / OIDC / LDAP)"
-    description: "Implement multi-provider identity federation with SAML 2.0, OIDC, and LDAP/AD integration"
-    priority: "high"
+  - name: "Phase 1: Basic Authentication & Session Management (CRITICAL - Can't Use System)"
+    description: "Implement local authentication and Valkey session management - required for any real usage"
+    priority: "critical"
     tasks:
+      - id: "local-auth-middleware"
+        title: "Local authentication middleware"
+        description: "Implement username/password authentication middleware with bcrypt hashing, rate limiting, and password policy validation"
+        priority: "critical"
+        status: "completed"
+        dependencies: []
+        estimated_effort: "8h"
+        assignee: "backend-dev"
+        parallelizable: false  # Core authentication
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "valkey-session-integration"
+        title: "Valkey session management"
+        description: "Integrate Valkey client and implement session creation, validation, and lifecycle management with TTL and cleanup"
+        priority: "critical"
+        status: "completed"
+        dependencies: []
+        estimated_effort: "6h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel with local auth
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "jwt-token-support"
+        title: "Basic JWT token generation"
+        description: "Implement JWT token generation and validation for authenticated sessions"
+        priority: "critical"
+        status: "completed"
+        dependencies: ["local-auth-middleware"]
+        estimated_effort: "4h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can be developed with auth
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "session-middleware"
+        title: "Session validation middleware"
+        description: "Implement middleware to extract and validate session tokens from requests"
+        priority: "critical"
+        status: "completed"
+        dependencies: ["valkey-session-integration", "jwt-token-support"]
+        estimated_effort: "3h"
+        assignee: "backend-dev"
+        parallelizable: false  # Depends on session and JWT
+        ci_stage: "test"
+        owner_role: "backend-dev"
       - id: "saml-sp-endpoints"
         title: "Implement SAML SP endpoints"
         description: "Implement SAML Service Provider endpoints: /saml/acs (Assertion Consumer Service), /saml/metadata, /saml/login for SP-initiated flows"
@@ -311,10 +429,57 @@ phases:
         ci_stage: "test"
         owner_role: "backend-dev"
 
-  - name: "Session Management (Valkey)"
-    description: "Implement user session tracking and management using Valkey in-memory database"
-    priority: "high"
+  - name: "Phase 2: Tenant Management & Isolation (CRITICAL - Multi-Tenant Core)"
+    description: "Implement tenant CRUD, tenant-user associations, and tenant isolation enforcement"
+    priority: "critical"
     tasks:
+      - id: "tenant-crud-api"
+        title: "Tenant CRUD endpoints"
+        description: "Implement /api/v1/tenants endpoints: GET (list/search), POST (create), PUT (update), DELETE with deployment config support"
+        priority: "critical"
+        status: "completed"
+        dependencies: ["weaviate-repo-implementation"]
+        estimated_effort: "8h"
+        assignee: "backend-dev"
+        parallelizable: false  # Core tenant management
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "tenant-user-associations"
+        title: "Tenant-User association management"
+        description: "Implement /api/v1/tenants/{id}/users endpoints for adding/removing users from tenants with role assignments"
+        priority: "critical"
+        status: "completed"
+        dependencies: ["tenant-crud-api"]
+        estimated_effort: "6h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel with tenant CRUD
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "tenant-isolation-middleware"
+        title: "Tenant isolation enforcement"
+        description: "Implement middleware to enforce tenant context and prevent cross-tenant data access"
+        priority: "critical"
+        status: "completed"
+        dependencies: ["tenant-user-associations"]
+        estimated_effort: "5h"
+        assignee: "backend-dev"
+        parallelizable: false  # Security-critical
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "global-user-management"
+        title: "Global user CRUD endpoints"
+        description: "Implement /api/v1/users endpoints for managing global users (not tenant-specific)"
+        priority: "high"
+        status: "completed"
+        dependencies: ["weaviate-repo-implementation"]
+        estimated_effort: "5h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can be developed in parallel
+        ci_stage: "test"
+        owner_role: "backend-dev"
       - id: "valkey-integration"
         title: "Valkey client integration"
         description: "Integrate Valkey Go client library and configure connection to Valkey instance for session storage"
@@ -375,10 +540,57 @@ phases:
         ci_stage: "test"
         owner_role: "backend-dev"
 
-  - name: "RBAC Evaluation Engine"
-    description: "Implement two-tier policy evaluation engine (Global + Tenant roles) with deny-by-default, caching, and tenant isolation"
-    priority: "high"
+  - name: "Phase 3: RBAC Policy Enforcement (CRITICAL - Apply to Existing APIs)"
+    description: "Apply RBAC checks to existing v8.0.0 APIs with policy evaluation and caching"
+    priority: "critical"
     tasks:
+      - id: "policy-cache-implementation"
+        title: "Policy cache with Valkey"
+        description: "Implement policy caching in Valkey for fast evaluation (subject→roles, role→permissions mappings)"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["valkey-session-integration"]
+        estimated_effort: "6h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can be developed with evaluation
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "rbac-authorization-middleware"
+        title: "RBAC authorization middleware"
+        description: "Implement middleware to enforce RBAC policies on API endpoints using the existing RBACService logic"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["session-middleware", "policy-cache-implementation"]
+        estimated_effort: "8h"
+        assignee: "backend-dev"
+        parallelizable: false  # Core enforcement
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "v8-api-rbac-integration"
+        title: "Apply RBAC to v8.0.0 APIs"
+        description: "Integrate RBAC checks into all existing v8.0.0 API endpoints (KPI, dashboards, layouts, preferences) with tenant context"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["rbac-authorization-middleware", "tenant-isolation-middleware"]
+        estimated_effort: "12h"
+        assignee: "backend-dev"
+        parallelizable: false  # Requires full integration
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "rbac-compatibility-mode"
+        title: "RBAC compatibility and feature flags"
+        description: "Implement feature flags for RBAC enablement and backward compatibility mode"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["v8-api-rbac-integration"]
+        estimated_effort: "3h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can be added after integration
+        ci_stage: "test"
+        owner_role: "backend-dev"
       - id: "policy-evaluator-core"
         title: "Core policy evaluator with two-tier role support"
         description: "Implement policy evaluator supporting Global roles (global_admin, global_tenant_admin, tenant_user) and Tenant roles (tenant_admin, tenant_editor, tenant_guest). Evaluates global permissions first, then tenant-scoped permissions. Deny-by-default with tenant context awareness."
@@ -478,10 +690,57 @@ phases:
         ci_stage: "test"
         owner_role: "backend-dev"
 
-  - name: "Authentication & Middleware"
-    description: "Implement authentication middleware with JWT, SAML, OIDC claims processing and identity normalization"
+  - name: "Phase 4: Admin & Management APIs (HIGH - Complete Management Interface)"
+    description: "Complete RBAC management APIs and authentication configuration"
     priority: "high"
     tasks:
+      - id: "auth-login-endpoints"
+        title: "Authentication login endpoints"
+        description: "Implement /api/v1/auth/login endpoint supporting local authentication with session creation"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["local-auth-middleware", "session-middleware"]
+        estimated_effort: "4h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can be developed with auth
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "mirador-auth-users-crud"
+        title: "MiradorAuth local users CRUD"
+        description: "Implement /api/v1/auth/mirador/users endpoints for managing local authentication users"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-repo-implementation"]
+        estimated_effort: "6h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel with other admin APIs
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "auth-config-management"
+        title: "Authentication configuration endpoints"
+        description: "Implement /api/v1/auth/config endpoints for managing auth backends and password policies"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["weaviate-repo-implementation"]
+        estimated_effort: "4h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel with other admin APIs
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "rbac-audit-api"
+        title: "RBAC audit logging endpoints"
+        description: "Implement /api/v1/rbac/audit endpoints for querying audit logs and compliance reporting"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["weaviate-repo-implementation"]
+        estimated_effort: "4h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel with other admin APIs
+        ci_stage: "test"
+        owner_role: "backend-dev"
       - id: "auth-middleware-jwt"
         title: "JWT authentication middleware"
         description: "Implement JWT token validation middleware with issuer validation, audience checking, and claims extraction"
@@ -590,10 +849,57 @@ phases:
         ci_stage: "build"
         owner_role: "backend-dev"
 
-  - name: "Admin & Management APIs"
-    description: "Implement CRUD APIs for multi-tenant RBAC management with tenant lifecycle, user-tenant associations, and audit logging"
+  - name: "Phase 5: Data Seeding & Bootstrap (HIGH - System Initialization)"
+    description: "Create initial data seeding for system bootstrap with default tenant and admin user"
     priority: "high"
     tasks:
+      - id: "seed-default-tenant"
+        title: "Seed default tenant (platformbuilds)"
+        description: "Create default tenant 'platformbuilds' with deployment configs, quotas, and features for bootstrap"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["tenant-crud-api"]
+        estimated_effort: "2.5h"
+        assignee: "backend-dev"
+        parallelizable: false  # Must be done after tenant APIs
+        ci_stage: "deploy"
+        owner_role: "backend-dev"
+
+      - id: "seed-default-global-admin"
+        title: "Seed default global admin user"
+        description: "Create default global admin user (aarvee) with global_admin role in User class"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["global-user-management", "seed-default-tenant"]
+        estimated_effort: "2.5h"
+        assignee: "backend-dev"
+        parallelizable: false  # Depends on default tenant
+        ci_stage: "deploy"
+        owner_role: "backend-dev"
+
+      - id: "seed-default-local-admin"
+        title: "Seed default local auth credentials"
+        description: "Create MiradorAuth local credentials for default global admin (aarvee) with strong password and link to global User"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["mirador-auth-users-crud", "seed-default-global-admin"]
+        estimated_effort: "2h"
+        assignee: "backend-dev"
+        parallelizable: false  # Depends on global admin user
+        ci_stage: "deploy"
+        owner_role: "backend-dev"
+
+      - id: "seed-basic-rbac-entities"
+        title: "Seed basic RBAC entities"
+        description: "Seed basic permissions, built-in roles (tenant_admin, tenant_editor, tenant_guest), and example groups"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["weaviate-repo-implementation"]
+        estimated_effort: "3h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can be done in parallel with user seeding
+        ci_stage: "deploy"
+        owner_role: "backend-dev"
       - id: "api-tenant-crud"
         title: "Tenant CRUD endpoints (Global Admin / Global Tenant Admin)"
         description: "Implement /api/v1/tenants endpoints: GET (list/search), POST (create tenant with deployments), PUT (update), PATCH (suspend/activate), DELETE. Requires global_admin or global_tenant_admin role. Includes deployment config for Victoria* endpoints."
@@ -786,10 +1092,45 @@ phases:
         ci_stage: "test"
         owner_role: "backend-dev"
 
-  - name: "Data Seeding & Bootstrap"
-    description: "Create initial data seeding for multi-tenant RBAC with default tenant, global admin user, and local auth bootstrap"
+  - name: "Phase 6: Integration & Enforcement (HIGH - Make It Work End-to-End)"
+    description: "Complete RBAC integration with tenant provisioning and enforcement validation"
     priority: "high"
     tasks:
+      - id: "tenant-provisioning-integration"
+        title: "Tenant provisioning workflow integration"
+        description: "Integrate TenantProvisioner service with CreateTenant handler for automatic cluster provisioning"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["tenant-crud-api"]
+        estimated_effort: "8h"
+        assignee: "backend-dev"
+        parallelizable: false  # Depends on tenant APIs
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "rbac-enforcement-validation"
+        title: "RBAC enforcement validation"
+        description: "Validate that RBAC policies are properly enforced across all APIs with comprehensive testing"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["v8-api-rbac-integration"]
+        estimated_effort: "6h"
+        assignee: "backend-dev"
+        parallelizable: false  # Must validate after integration
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "tenant-isolation-testing"
+        title: "Tenant isolation testing"
+        description: "Implement automated tests to ensure tenant isolation prevents cross-tenant data access"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["tenant-isolation-middleware"]
+        estimated_effort: "4h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can be developed with enforcement
+        ci_stage: "test"
+        owner_role: "backend-dev"
       - id: "seed-default-tenant"
         title: "Seed default tenant (platformbuilds)"
         description: "Create default tenant 'platformbuilds' with deployment configs, quotas, and features for bootstrap. This serves as the initial tenant for global admins."
@@ -850,10 +1191,57 @@ phases:
         ci_stage: "deploy"
         owner_role: "backend-dev"
 
-  - name: "Integration & Enforcement"
-    description: "Apply RBAC checks to all existing v8.0.0 routes with resource scope enforcement"
-    priority: "high"
+  - name: "Phase 7: Enterprise Federation (MEDIUM - Advanced Features)"
+    description: "Implement SAML, OIDC, and LDAP federation for enterprise deployments"
+    priority: "medium"
     tasks:
+      - id: "saml-sp-endpoints"
+        title: "Implement SAML SP endpoints"
+        description: "Implement SAML Service Provider endpoints: /saml/acs (Assertion Consumer Service), /saml/metadata, /saml/login"
+        priority: "medium"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "6h"
+        assignee: "backend-dev"
+        parallelizable: false  # Core federation setup
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "oidc-integration"
+        title: "OIDC integration with JWKS validation"
+        description: "Implement OIDC integration for Google, Okta, Azure AD, Auth0 with JWKS endpoint validation"
+        priority: "medium"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "8h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel with SAML
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "ldap-ad-integration"
+        title: "LDAP/AD integration with group sync"
+        description: "Implement LDAP/AD integration with user/group synchronization and LDAPS support"
+        priority: "medium"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "10h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel with other federation
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "federation-identity-normalization"
+        title: "Identity normalization across providers"
+        description: "Implement identity normalization and user session creation for federated users"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["saml-sp-endpoints", "oidc-integration", "ldap-ad-integration"]
+        estimated_effort: "6h"
+        assignee: "backend-dev"
+        parallelizable: false  # Depends on all federation methods
+        ci_stage: "test"
+        owner_role: "backend-dev"
       - id: "rbac-middleware-integration"
         title: "Multi-tenant RBAC authorization middleware"
         description: "Implement RBAC authorization middleware enforcing two-tier role model (Global + Tenant roles) with tenant context validation on all API endpoints"
@@ -914,10 +1302,57 @@ phases:
         ci_stage: "test"
         owner_role: "backend-dev"
 
-  - name: "Testing & Validation"
-    description: "Comprehensive testing with mock IdP harness and load testing for RBAC performance"
+  - name: "Phase 8: Testing & Validation (HIGH - Quality Assurance)"
+    description: "Comprehensive testing with load testing and security validation"
     priority: "high"
     tasks:
+      - id: "unit-tests-rbac"
+        title: "Unit tests for RBAC components"
+        description: "Write unit tests for RBAC service, repository, and policy evaluation logic"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["weaviate-repo-implementation"]
+        estimated_effort: "8h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can be developed in parallel
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "integration-tests-rbac"
+        title: "Integration tests for RBAC workflows"
+        description: "Write integration tests for complete RBAC workflows: authentication, authorization, tenant isolation"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["v8-api-rbac-integration"]
+        estimated_effort: "10h"
+        assignee: "backend-dev"
+        parallelizable: true  # Parallel with unit tests
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "load-tests-rbac"
+        title: "RBAC performance and load testing"
+        description: "Implement load tests for policy evaluation, authentication flows, and concurrent sessions"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["rbac-enforcement-validation"]
+        estimated_effort: "6h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can run after core implementation
+        ci_stage: "test"
+        owner_role: "backend-dev"
+
+      - id: "security-testing"
+        title: "Security testing and validation"
+        description: "Conduct security testing for tenant isolation, authentication bypass, and authorization vulnerabilities"
+        priority: "high"
+        status: "not-started"
+        dependencies: ["tenant-isolation-testing"]
+        estimated_effort: "6h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can be done with integration testing
+        ci_stage: "test"
+        owner_role: "backend-dev"
       - id: "unit-tests-rbac"
         title: "Unit tests for RBAC models and evaluation"
         description: "Write unit tests for RBAC structs, validation logic, policy evaluator, and cache mechanisms"
@@ -990,10 +1425,57 @@ phases:
         ci_stage: "test"
         owner_role: "backend-dev"
 
-  - name: "Documentation & Deployment"
-    description: "OpenAPI updates, IdP setup guides, and production deployment with observability"
+  - name: "Phase 9: Documentation & Deployment (MEDIUM - Production Ready)"
+    description: "OpenAPI updates, deployment configuration, and production readiness"
     priority: "medium"
     tasks:
+      - id: "openapi-rbac-update"
+        title: "OpenAPI 3.0 specification update"
+        description: "Update OpenAPI spec with RBAC and authentication endpoints, security schemes"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["auth-login-endpoints"]
+        estimated_effort: "6h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can be done with implementation
+        ci_stage: "build"
+        owner_role: "backend-dev"
+
+      - id: "rbac-developer-onboarding"
+        title: "Developer onboarding documentation"
+        description: "Create RBAC developer guides, API usage examples, and policy authoring best practices"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["rbac-enforcement-validation"]
+        estimated_effort: "6h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can be developed incrementally
+        ci_stage: "build"
+        owner_role: "backend-dev"
+
+      - id: "deployment-rbac-config"
+        title: "RBAC deployment configuration"
+        description: "Create Docker, Kubernetes configs with RBAC-enabled mirador-core service"
+        priority: "medium"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "4h"
+        assignee: "devops"
+        parallelizable: true  # Can be developed early
+        ci_stage: "deploy"
+        owner_role: "devops"
+
+      - id: "observability-rbac"
+        title: "RBAC observability and monitoring"
+        description: "Implement metrics collection for policy evaluations, authentication flows, and audit logging"
+        priority: "medium"
+        status: "not-started"
+        dependencies: ["rbac-enforcement-validation"]
+        estimated_effort: "5h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can be added incrementally
+        ci_stage: "deploy"
+        owner_role: "backend-dev"
       - id: "openapi-rbac-update"
         title: "OpenAPI 3.0 specification update"
         description: "Update OpenAPI spec with RBAC and federation endpoints, security schemes, and authentication flows"
@@ -1174,55 +1656,68 @@ phases:
         ci_stage: "pre-commit"
         owner_role: "devops"
 critical_path:
-  - "RBAC Schema & Models"
-  - "Identity Federation (SAML / OIDC / LDAP)"
-  - "Session Management (Valkey)"
-  - "RBAC Evaluation Engine"
-  - "Authentication & Middleware"
-  - "Admin & Management APIs"
-  - "Data Seeding & Bootstrap"
-  - "Integration & Enforcement"
+  - "Phase 3: RBAC Policy Enforcement (CRITICAL FOUNDATION - IMMEDIATE PRIORITY)"
+  - "Phase 4: Admin & Management APIs (HIGH - Complete Management Interface)"
+  - "Phase 5: Data Seeding & Bootstrap (HIGH - System Initialization)"
+  - "Phase 6: Integration & Enforcement (HIGH - Make It Work End-to-End)"
+  - "Phase 7: Enterprise Federation (MEDIUM - Advanced Features)"
+  - "Phase 8: Testing & Validation (HIGH - Quality Assurance)"
+  - "Phase 9: Documentation & Deployment (MEDIUM - Production Ready)"
 
 milestones:
-  - name: "Multi-Tenant RBAC Schema Ready"
-    description: "Multi-tenant RBAC Weaviate schema designed with Tenant, User (global), TenantUser, and two-tier role model validated"
-    tasks: ["rbac-schema-tenant", "rbac-schema-tenant-user", "rbac-schema-user", "rbac-schema-local-user", "rbac-schema-auth-config", "rbac-schema-role", "rbac-schema-permission", "rbac-schema-group", "rbac-schema-rolebinding", "rbac-schema-groupbinding", "rbac-schema-auditlog", "rbac-schema-validation", "rbac-models-go", "rbac-schema-migration"]
-    due_date: "2025-11-22"
+  - name: "Repository Implementation Complete"
+    description: "WeaviateRepository fully implemented with real CRUD operations, schema validated, and basic testing complete"
+    tasks: ["weaviate-repo-implementation", "weaviate-schema-validation", "repository-testing"]
+    due_date: "2025-11-17"
+    status: "completed"
 
-  - name: "Identity Federation Core Integrated"
-    description: "SAML, OIDC, and LDAP/AD federation providers integrated with metadata discovery"
-    tasks: ["saml-sp-endpoints", "saml-idp-initiated", "oidc-integration", "ldap-ad-integration", "federation-metadata-discovery"]
-    due_date: "2025-12-04"
+  - name: "Basic Authentication Operational"
+    description: "Local authentication and Valkey session management operational with JWT token support, TOTP 2FA, password policies, and rate limiting"
+    tasks: ["local-auth-middleware", "valkey-session-integration", "jwt-token-support", "session-middleware", "totp-2fa-implementation", "password-policy-engine", "rate-limiting-abuse-controls"]
+    due_date: "2025-11-10"
+    status: "completed"
 
-  - name: "Session Management Operational"
-    description: "Valkey-based session management with user details in Weaviate operational"
-    tasks: ["valkey-integration", "session-schema-design", "session-middleware", "session-lifecycle-management", "session-security-hardening"]
+  - name: "Tenant Management Functional"
+    description: "Tenant CRUD, tenant-user associations, and tenant isolation enforcement functional (tenant-user associations COMPLETED)"
+    tasks: ["tenant-crud-api", "tenant-user-associations", "tenant-isolation-middleware", "global-user-management"]
     due_date: "2025-12-08"
+    status: "completed"
 
-  - name: "Multi-Tenant Policy Engine Operational"
-    description: "Two-tier RBAC evaluation engine (Global + Tenant roles) with tenant isolation, caching, and audit logging operational"
-    tasks: ["policy-evaluator-core", "tenant-isolation-enforcement", "policy-cache-implementation", "constraint-based-evaluation", "policy-audit-logging"]
-    due_date: "2025-12-12"
+  - name: "RBAC Policy Enforcement Active"
+    description: "RBAC policies applied to existing v8.0.0 APIs with policy caching and authorization middleware"
+    tasks: ["policy-cache-implementation", "rbac-authorization-middleware", "v8-api-rbac-integration", "rbac-compatibility-mode"]
+    due_date: "2025-12-22"
+    status: "in-progress"
 
-  - name: "Tenant & User Management APIs Functional"
-    description: "Multi-tenant management APIs (tenants, users, tenant-user associations, roles, permissions, auth config) functional"
-    tasks: ["api-tenant-crud", "api-tenant-user-associations", "api-rbac-users-crud", "api-local-users-crud", "api-auth-config", "api-2fa-management", "api-auth-login", "api-rbac-roles-crud", "api-rbac-permissions-crud", "api-rbac-bindings-crud", "api-rbac-groups-crud", "api-federation-config", "api-rbac-audit", "api-rbac-dry-run", "api-session-management"]
-    due_date: "2025-12-20"
+  - name: "RBAC Policy Enforcement Active"
+    description: "RBAC policies applied to existing v8.0.0 APIs with policy caching and authorization middleware"
+    tasks: ["policy-cache-implementation", "rbac-authorization-middleware", "v8-api-rbac-integration", "rbac-compatibility-mode"]
+    due_date: "2025-12-22"
 
-  - name: "Bootstrap & Seeding Complete"
+  - name: "Admin & Management APIs Complete"
+    description: "Complete RBAC management interface with authentication endpoints and audit logging"
+    tasks: ["auth-login-endpoints", "mirador-auth-users-crud", "auth-config-management", "rbac-audit-api"]
+    due_date: "2026-01-05"
+
+  - name: "System Bootstrap Ready"
     description: "Default tenant (platformbuilds), global admin (aarvee), local auth credentials, and RBAC entities seeded"
-    tasks: ["seed-default-tenant", "seed-default-global-admin", "seed-default-local-admin", "seed-default-auth-config", "seed-basic-rbac-entities"]
-    due_date: "2025-12-23"
+    tasks: ["seed-default-tenant", "seed-default-global-admin", "seed-default-local-admin", "seed-basic-rbac-entities"]
+    due_date: "2026-01-12"
 
-  - name: "Multi-Tenant RBAC Integration Complete"
-    description: "Multi-tenant RBAC enforcement with tenant isolation applied to all v8.0.0 APIs"
-    tasks: ["rbac-middleware-integration", "resource-scope-enforcement", "rbac-v8-api-integration", "rbac-compatibility-mode"]
-    due_date: "2025-12-27"
+  - name: "End-to-End RBAC Integration Complete"
+    description: "Full RBAC integration with tenant provisioning, enforcement validation, and isolation testing"
+    tasks: ["tenant-provisioning-integration", "rbac-enforcement-validation", "tenant-isolation-testing"]
+    due_date: "2026-01-19"
 
-  - name: "Enterprise Multi-Tenant Federation Validated"
-    description: "Complete testing, documentation, and deployment validation for multi-tenant RBAC with enterprise federation"
-    tasks: ["unit-tests-rbac", "integration-tests-federation", "mock-idp-harness", "load-tests-rbac", "chaos-reliability-testing", "performance-slos", "security-testing", "openapi-rbac-update", "idp-setup-guides", "rbac-developer-onboarding", "deployment-rbac-config", "observability-rbac", "pii-data-encryption", "audit-log-immutability", "rate-limiting-abuse-controls", "threat-model-security-review", "gdpr-data-portability", "runbooks-documentation", "break-glass-runbook", "openapi-security-schemes", "sast-dast-security-scanning", "ci-cd-rbac-validation"]
-    due_date: "2026-01-10"
+  - name: "Enterprise Federation Available"
+    description: "SAML, OIDC, and LDAP federation implemented with identity normalization"
+    tasks: ["saml-sp-endpoints", "oidc-integration", "ldap-ad-integration", "federation-identity-normalization"]
+    due_date: "2026-02-09"
+
+  - name: "Production Ready"
+    description: "Comprehensive testing, documentation, deployment configuration, and production validation complete"
+    tasks: ["unit-tests-rbac", "integration-tests-rbac", "load-tests-rbac", "security-testing", "openapi-rbac-update", "rbac-developer-onboarding", "deployment-rbac-config", "observability-rbac"]
+    due_date: "2026-02-23"
     tasks: ["valkey-integration", "session-schema-design", "session-middleware", "session-lifecycle-management", "session-security-hardening"]
     due_date: "2025-12-08"
 
@@ -1340,4 +1835,4 @@ dependencies:
     owner: "platform-team"
     status: "pending"
 
-total_estimated_effort: "395h"  # Updated to include cluster management and provisioning tasks (380h + 7h + 8h)
+total_estimated_effort: "102h"  # Updated - Phase 0.5 (34h), Phase 1 (44h), Phase 2 (24h) completed, remaining ~102h for Phase 3-9

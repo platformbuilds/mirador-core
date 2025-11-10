@@ -109,15 +109,15 @@ type QueryPoolManager struct {
 
 // PoolStats contains statistics about pool usage
 type PoolStats struct {
-	UnifiedQueryGets    int64
-	UnifiedQueryPuts    int64
-	CorrelationGets     int64
-	CorrelationPuts     int64
-	ResultGets          int64
-	ResultPuts          int64
-	PoolHits            int64
-	PoolMisses          int64
-	LastReset           time.Time
+	UnifiedQueryGets int64
+	UnifiedQueryPuts int64
+	CorrelationGets  int64
+	CorrelationPuts  int64
+	ResultGets       int64
+	ResultPuts       int64
+	PoolHits         int64
+	PoolMisses       int64
+	LastReset        time.Time
 }
 
 // NewQueryPoolManager creates a new pool manager
