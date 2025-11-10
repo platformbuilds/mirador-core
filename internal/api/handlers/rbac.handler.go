@@ -466,7 +466,7 @@ func (h *RBACHandler) WarmPolicyCache(c *gin.Context) {
 
 	// This would typically be called by an admin or during startup
 	// For now, we'll create a simple enforcer to warm the cache
-	enforcer := middleware.NewRBACEnforcer(h.cache, h.logger)
+	enforcer := middleware.NewRBACEnforcer(h.rbacService, h.cache, h.logger)
 	err := enforcer.WarmCommonPolicies(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to warm policy cache", "error", err)

@@ -733,7 +733,7 @@ func (s *RBACService) validateRole(role *models.Role) error {
 
 	// Validate permissions format
 	for _, perm := range role.Permissions {
-		if !s.isValidPermissionFormat(perm) {
+		if !isValidPermissionFormat(perm) {
 			return RoleValidationError{Field: "permissions", Message: fmt.Sprintf("invalid permission format: %s", perm)}
 		}
 	}
@@ -820,17 +820,58 @@ func (s *RBACService) CheckPermissionWithContext(ctx context.Context, permCtx *P
 
 	correlationID := generateCorrelationID()
 
-	// Get user roles
-	userRoles, err := s.GetUserRoles(ctx, permCtx.TenantID, permCtx.UserID)
+	// Step 1: Check Global Role (highest precedence)
+	user, err := s.repository.GetUser(ctx, permCtx.UserID)
 	if err != nil {
 		if auditErr := s.auditService.LogError(ctx, permCtx.TenantID, permCtx.UserID, "permission.check", permCtx.Resource, err, correlationID); auditErr != nil {
 			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
 		}
-		return false, fmt.Errorf("failed to get user roles: %w", err)
+		return false, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	// Evaluate permissions with constraints
-	allowed, denied := s.evaluatePermissionsWithConstraints(ctx, permCtx, userRoles)
+	if user == nil {
+		if auditErr := s.auditService.LogAccessDenied(ctx, permCtx.TenantID, permCtx.UserID, permCtx.Resource, permCtx.Action, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return false, fmt.Errorf("user not found")
+	}
+
+	// Global admin has all permissions
+	if user.GlobalRole == "global_admin" {
+		if err := s.auditService.LogPermissionCheck(ctx, permCtx.TenantID, permCtx.UserID, permCtx.Resource, permCtx.Action, true, correlationID); err != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return true, nil
+	}
+
+	// Global tenant admin has admin permissions within their managed tenants
+	if user.GlobalRole == "global_tenant_admin" {
+		if isAdminAction(permCtx.Resource, permCtx.Action) {
+			if err := s.auditService.LogPermissionCheck(ctx, permCtx.TenantID, permCtx.UserID, permCtx.Resource, permCtx.Action, true, correlationID); err != nil {
+				monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+			}
+			return true, nil
+		}
+	}
+
+	// Step 2: Check Tenant Role permissions
+	tenantUser, err := s.repository.GetTenantUser(ctx, permCtx.TenantID, permCtx.UserID)
+	if err != nil {
+		if auditErr := s.auditService.LogError(ctx, permCtx.TenantID, permCtx.UserID, "permission.check", permCtx.Resource, err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return false, fmt.Errorf("failed to get tenant user association: %w", err)
+	}
+
+	if tenantUser == nil || tenantUser.Status != "active" {
+		if auditErr := s.auditService.LogAccessDenied(ctx, permCtx.TenantID, permCtx.UserID, permCtx.Resource, permCtx.Action, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return false, nil // User not associated with tenant or not active
+	}
+
+	// Evaluate permissions with constraints based on tenant role
+	allowed, denied := s.evaluatePermissionsWithConstraints(ctx, permCtx, []string{tenantUser.TenantRole})
 
 	// Audit log the check
 	if allowed && !denied {
@@ -1225,10 +1266,34 @@ func (s *RBACService) hasCircularDependency(ctx context.Context, tenantID string
 }
 
 // isValidPermissionFormat validates permission string format
-func (s *RBACService) isValidPermissionFormat(permission string) bool {
+func isValidPermissionFormat(permission string) bool {
 	// Expected format: "resource:action" or "resource:action:scope"
 	parts := strings.Split(permission, ":")
 	return len(parts) >= 2 && len(parts) <= 3
+}
+
+// isAdminAction checks if the requested action is an administrative action
+func isAdminAction(resource, action string) bool {
+	// Admin actions that global_tenant_admin can perform
+	adminActions := map[string][]string{
+		"admin":          {"*"},
+		"rbac":           {"*"},
+		"tenant":         {"admin", "update"},
+		"user":           {"admin", "create", "update", "delete", "list"},
+		"dashboard":      {"admin"},
+		"kpi_definition": {"admin"},
+		"layout":         {"admin"},
+	}
+
+	if actions, exists := adminActions[resource]; exists {
+		for _, adminAction := range actions {
+			if adminAction == "*" || adminAction == action {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // generateCorrelationID generates a unique correlation ID for audit logging
