@@ -592,6 +592,85 @@ test_rbac_endpoints() {
     http_request "GET" "$API_BASE/rbac/roles" "200" "" "Get RBAC Roles"
 }
 
+# Tenant-User Association Tests (Phase 2: Tenant Management & Isolation)
+test_tenant_user_endpoints() {
+    log_info "Testing Tenant-User Association Endpoints..."
+    
+    # Create a test tenant first
+    local test_tenant_id="e2e-test-tenant-$(get_unix_timestamp)"
+    local tenant_data='{
+        "name": "'$test_tenant_id'",
+        "displayName": "E2E Test Tenant",
+        "description": "Tenant created for E2E testing",
+        "adminEmail": "admin@'$test_tenant_id'.com",
+        "adminName": "E2E Admin",
+        "status": "active"
+    }'
+    http_request "POST" "$API_BASE/tenants" "201" "$tenant_data" "Create Test Tenant"
+    
+    # List tenants
+    http_request "GET" "$API_BASE/tenants" "200" "" "List Tenants"
+    
+    # Get specific tenant
+    http_request "GET" "$API_BASE/tenants/$test_tenant_id" "200" "" "Get Test Tenant"
+    
+    # Create tenant-user association
+    local test_user_id="e2e-test-user-$(get_unix_timestamp)"
+    local tenant_user_data='{
+        "userId": "'$test_user_id'",
+        "tenantRole": "tenant_editor",
+        "status": "active"
+    }'
+    http_request "POST" "$API_BASE/tenants/$test_tenant_id/users" "201" "$tenant_user_data" "Create Tenant-User Association"
+    
+    # List tenant users
+    http_request "GET" "$API_BASE/tenants/$test_tenant_id/users" "200" "" "List Tenant Users"
+    
+    # Get specific tenant-user association
+    http_request "GET" "$API_BASE/tenants/$test_tenant_id/users/$test_user_id" "200" "" "Get Tenant-User Association"
+    
+    # Update tenant-user association
+    local update_data='{
+        "tenantRole": "tenant_admin",
+        "status": "active"
+    }'
+    http_request "PUT" "$API_BASE/tenants/$test_tenant_id/users/$test_user_id" "200" "$update_data" "Update Tenant-User Association"
+    
+    # Delete tenant-user association
+    http_request "DELETE" "$API_BASE/tenants/$test_tenant_id/users/$test_user_id" "200" "" "Delete Tenant-User Association"
+    
+    # Update tenant
+    local tenant_update_data='{
+        "displayName": "Updated E2E Test Tenant",
+        "description": "Updated tenant for E2E testing"
+    }'
+    http_request "PUT" "$API_BASE/tenants/$test_tenant_id" "200" "$tenant_update_data" "Update Test Tenant"
+    
+    # Delete tenant (cleanup)
+    http_request "DELETE" "$API_BASE/tenants/$test_tenant_id" "200" "" "Delete Test Tenant"
+    
+    # Test error cases
+    local invalid_tenant_data='{
+        "name": "",
+        "adminEmail": "invalid-email"
+    }'
+    http_request "POST" "$API_BASE/tenants" "400" "$invalid_tenant_data" "Create Invalid Tenant (should fail)"
+    
+    # Test non-existent tenant
+    http_request "GET" "$API_BASE/tenants/non-existent-tenant" "404" "" "Get Non-Existent Tenant (should fail)"
+    
+    # Test duplicate tenant-user association
+    local duplicate_user_data='{
+        "userId": "duplicate-user",
+        "tenantRole": "tenant_guest"
+    }'
+    http_request "POST" "$API_BASE/tenants/$TENANT_ID/users" "201" "$duplicate_user_data" "Create First Tenant-User Association"
+    http_request "POST" "$API_BASE/tenants/$TENANT_ID/users" "400" "$duplicate_user_data" "Create Duplicate Tenant-User Association (should fail)"
+    
+    # Cleanup duplicate association
+    http_request "DELETE" "$API_BASE/tenants/$TENANT_ID/users/duplicate-user" "200" "" "Cleanup Duplicate Association"
+}
+
 # Compatibility Tests (legacy endpoints)
 test_compatibility_endpoints() {
     log_info "Testing Legacy/Compatibility Endpoints..."
@@ -975,6 +1054,7 @@ main() {
     test_schema_endpoints
     test_session_endpoints
     test_rbac_endpoints
+    test_tenant_user_endpoints  # Phase 2: Tenant Management & Isolation
     
     # Compatibility and documentation tests
     test_compatibility_endpoints

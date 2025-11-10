@@ -7,12 +7,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
+	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
@@ -113,6 +115,188 @@ func (m *mockSchemaStore) DeleteSchemaAsKPI(ctx context.Context, tenantID, schem
 	return nil
 }
 
+// mockRBACRepository implements the RBACRepository interface for testing
+type mockRBACRepository struct{}
+
+func (m *mockRBACRepository) CreateRole(ctx context.Context, role *models.Role) error { return nil }
+func (m *mockRBACRepository) GetRole(ctx context.Context, tenantID, roleName string) (*models.Role, error) {
+	if roleName == "viewer" {
+		return &models.Role{
+			Name:        "viewer",
+			TenantID:    tenantID,
+			Description: "Read-only access",
+			Permissions: []string{"metrics:read:tenant"},
+		}, nil
+	}
+	return nil, nil
+}
+func (m *mockRBACRepository) ListRoles(ctx context.Context, tenantID string) ([]*models.Role, error) {
+	return []*models.Role{}, nil
+}
+func (m *mockRBACRepository) UpdateRole(ctx context.Context, role *models.Role) error { return nil }
+func (m *mockRBACRepository) DeleteRole(ctx context.Context, tenantID, roleName string) error {
+	return nil
+}
+func (m *mockRBACRepository) AssignUserRoles(ctx context.Context, tenantID, userID string, roles []string) error {
+	return nil
+}
+func (m *mockRBACRepository) GetUserRoles(ctx context.Context, tenantID, userID string) ([]string, error) {
+	return []string{}, nil
+}
+func (m *mockRBACRepository) RemoveUserRoles(ctx context.Context, tenantID, userID string, roles []string) error {
+	return nil
+}
+func (m *mockRBACRepository) CreatePermission(ctx context.Context, permission *models.Permission) error {
+	return nil
+}
+func (m *mockRBACRepository) GetPermission(ctx context.Context, tenantID, permissionID string) (*models.Permission, error) {
+	return nil, nil
+}
+func (m *mockRBACRepository) ListPermissions(ctx context.Context, tenantID string) ([]*models.Permission, error) {
+	return []*models.Permission{}, nil
+}
+func (m *mockRBACRepository) UpdatePermission(ctx context.Context, permission *models.Permission) error {
+	return nil
+}
+func (m *mockRBACRepository) DeletePermission(ctx context.Context, tenantID, permissionID string) error {
+	return nil
+}
+func (m *mockRBACRepository) CreateRoleBinding(ctx context.Context, binding *models.RoleBinding) error {
+	return nil
+}
+func (m *mockRBACRepository) GetRoleBindings(ctx context.Context, tenantID string, filters rbac.RoleBindingFilters) ([]*models.RoleBinding, error) {
+	return []*models.RoleBinding{}, nil
+}
+func (m *mockRBACRepository) UpdateRoleBinding(ctx context.Context, binding *models.RoleBinding) error {
+	return nil
+}
+func (m *mockRBACRepository) DeleteRoleBinding(ctx context.Context, tenantID, bindingID string) error {
+	return nil
+}
+func (m *mockRBACRepository) CreateGroup(ctx context.Context, group *models.Group) error { return nil }
+func (m *mockRBACRepository) GetGroup(ctx context.Context, tenantID, groupName string) (*models.Group, error) {
+	return nil, nil
+}
+func (m *mockRBACRepository) ListGroups(ctx context.Context, tenantID string) ([]*models.Group, error) {
+	return []*models.Group{}, nil
+}
+func (m *mockRBACRepository) UpdateGroup(ctx context.Context, group *models.Group) error { return nil }
+func (m *mockRBACRepository) DeleteGroup(ctx context.Context, tenantID, groupName string) error {
+	return nil
+}
+func (m *mockRBACRepository) AddUsersToGroup(ctx context.Context, tenantID, groupName string, userIDs []string) error {
+	return nil
+}
+func (m *mockRBACRepository) RemoveUsersFromGroup(ctx context.Context, tenantID, groupName string, userIDs []string) error {
+	return nil
+}
+func (m *mockRBACRepository) GetGroupMembers(ctx context.Context, tenantID, groupName string) ([]string, error) {
+	return []string{}, nil
+}
+func (m *mockRBACRepository) LogAuditEvent(ctx context.Context, event *models.AuditLog) error {
+	return nil
+}
+func (m *mockRBACRepository) GetUserGroups(ctx context.Context, tenantID, userID string) ([]string, error) {
+	return []string{}, nil
+}
+func (m *mockRBACRepository) GetAuditEvents(ctx context.Context, tenantID string, filters rbac.AuditFilters) ([]*models.AuditLog, error) {
+	return []*models.AuditLog{}, nil
+}
+func (m *mockRBACRepository) CreateTenant(ctx context.Context, tenant *models.Tenant) error {
+	return nil
+}
+func (m *mockRBACRepository) GetTenant(ctx context.Context, tenantID string) (*models.Tenant, error) {
+	return nil, nil
+}
+func (m *mockRBACRepository) ListTenants(ctx context.Context, filters rbac.TenantFilters) ([]*models.Tenant, error) {
+	return []*models.Tenant{}, nil
+}
+func (m *mockRBACRepository) UpdateTenant(ctx context.Context, tenant *models.Tenant) error {
+	return nil
+}
+func (m *mockRBACRepository) DeleteTenant(ctx context.Context, tenantID string) error { return nil }
+func (m *mockRBACRepository) CreateUser(ctx context.Context, user *models.User) error { return nil }
+func (m *mockRBACRepository) GetUser(ctx context.Context, userID string) (*models.User, error) {
+	return nil, nil
+}
+func (m *mockRBACRepository) ListUsers(ctx context.Context, filters rbac.UserFilters) ([]*models.User, error) {
+	return []*models.User{}, nil
+}
+func (m *mockRBACRepository) UpdateUser(ctx context.Context, user *models.User) error { return nil }
+func (m *mockRBACRepository) DeleteUser(ctx context.Context, userID string) error     { return nil }
+func (m *mockRBACRepository) CreateTenantUser(ctx context.Context, tenantUser *models.TenantUser) error {
+	return nil
+}
+func (m *mockRBACRepository) GetTenantUser(ctx context.Context, tenantID, userID string) (*models.TenantUser, error) {
+	return nil, nil
+}
+func (m *mockRBACRepository) ListTenantUsers(ctx context.Context, tenantID string, filters rbac.TenantUserFilters) ([]*models.TenantUser, error) {
+	return []*models.TenantUser{}, nil
+}
+func (m *mockRBACRepository) UpdateTenantUser(ctx context.Context, tenantUser *models.TenantUser) error {
+	return nil
+}
+func (m *mockRBACRepository) DeleteTenantUser(ctx context.Context, tenantID, userID string) error {
+	return nil
+}
+func (m *mockRBACRepository) CreateMiradorAuth(ctx context.Context, auth *models.MiradorAuth) error {
+	return nil
+}
+func (m *mockRBACRepository) GetMiradorAuth(ctx context.Context, userID string) (*models.MiradorAuth, error) {
+	return nil, nil
+}
+func (m *mockRBACRepository) UpdateMiradorAuth(ctx context.Context, auth *models.MiradorAuth) error {
+	return nil
+}
+func (m *mockRBACRepository) DeleteMiradorAuth(ctx context.Context, userID string) error { return nil }
+func (m *mockRBACRepository) CreateAuthConfig(ctx context.Context, config *models.AuthConfig) error {
+	return nil
+}
+func (m *mockRBACRepository) GetAuthConfig(ctx context.Context, tenantID string) (*models.AuthConfig, error) {
+	return nil, nil
+}
+func (m *mockRBACRepository) UpdateAuthConfig(ctx context.Context, config *models.AuthConfig) error {
+	return nil
+}
+func (m *mockRBACRepository) DeleteAuthConfig(ctx context.Context, tenantID string) error { return nil }
+
+// mockCacheRepository implements the CacheRepository interface for testing
+type mockCacheRepository struct{}
+
+func (m *mockCacheRepository) SetRole(ctx context.Context, tenantID, roleName string, role *models.Role, ttl time.Duration) error {
+	return nil
+}
+func (m *mockCacheRepository) GetRole(ctx context.Context, tenantID, roleName string) (*models.Role, error) {
+	return nil, nil
+}
+func (m *mockCacheRepository) DeleteRole(ctx context.Context, tenantID, roleName string) error {
+	return nil
+}
+func (m *mockCacheRepository) InvalidateTenantRoles(ctx context.Context, tenantID string) error {
+	return nil
+}
+func (m *mockCacheRepository) SetUserRoles(ctx context.Context, tenantID, userID string, roles []string, ttl time.Duration) error {
+	return nil
+}
+func (m *mockCacheRepository) GetUserRoles(ctx context.Context, tenantID, userID string) ([]string, error) {
+	return nil, nil
+}
+func (m *mockCacheRepository) DeleteUserRoles(ctx context.Context, tenantID, userID string) error {
+	return nil
+}
+func (m *mockCacheRepository) InvalidateUserRoles(ctx context.Context, tenantID, userID string) error {
+	return nil
+}
+func (m *mockCacheRepository) SetPermissions(ctx context.Context, tenantID string, permissions []*models.Permission, ttl time.Duration) error {
+	return nil
+}
+func (m *mockCacheRepository) GetPermissions(ctx context.Context, tenantID string) ([]*models.Permission, error) {
+	return []*models.Permission{}, nil
+}
+func (m *mockCacheRepository) InvalidatePermissions(ctx context.Context, tenantID string) error {
+	return nil
+}
+
 func newTestRouterWithContext(cch cache.ValkeyCluster, mw func(*gin.Context)) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -124,11 +308,17 @@ func newTestRouterWithContext(cch cache.ValkeyCluster, mw func(*gin.Context)) *g
 	dynamicConfig := services.NewDynamicConfigService(cch, log)
 	grpcClients, _ := clients.NewGRPCClients(&config.Config{Environment: "development"}, log, dynamicConfig)
 
+	// Create RBAC service dependencies
+	mockRepo := &mockRBACRepository{}
+	mockCacheRepo := &mockCacheRepository{}
+	auditService := rbac.NewAuditService(mockRepo)
+	rbacService := rbac.NewRBACService(mockRepo, mockCacheRepo, auditService)
+
 	// RBAC
-	rbac := NewRBACHandler(cch, log)
-	v1.GET("/rbac/roles", rbac.GetRoles)
-	v1.POST("/rbac/roles", rbac.CreateRole)
-	v1.PUT("/rbac/users/:userId/roles", rbac.AssignUserRoles)
+	rbacHandler := NewRBACHandler(rbacService, cch, log)
+	v1.GET("/rbac/roles", rbacHandler.GetRoles)
+	v1.POST("/rbac/roles", rbacHandler.CreateRole)
+	v1.PUT("/rbac/users/:userId/roles", rbacHandler.AssignUserRoles)
 
 	// Sessions
 	sess := NewSessionHandler(cch, log)

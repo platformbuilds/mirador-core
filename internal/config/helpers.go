@@ -129,7 +129,7 @@ func (c *Config) ToJSON() string {
 	// Create a copy without sensitive information
 	safeCopy := *c
 	safeCopy.Auth.JWT.Secret = "[REDACTED]"
-	safeCopy.Auth.LDAP.Password = "[REDACTED]"
+	safeCopy.Auth.LDAP.BindPassword = "[REDACTED]"
 	safeCopy.Auth.OAuth.ClientSecret = "[REDACTED]"
 	safeCopy.Cache.Password = "[REDACTED]"
 	safeCopy.Database.VictoriaMetrics.Password = "[REDACTED]"

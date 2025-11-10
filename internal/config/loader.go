@@ -257,10 +257,10 @@ func overrideWithEnvVars(v *viper.Viper) {
 		v.Set("grpc.alert_engine.endpoint", a)
 	}
 
-	// Prefer VALKEY_CACHE_NODES; keep VALLEY_CACHE_NODES for backward compatibility
+	// Prefer VALKEY_CACHE_NODES; keep VALKEY_CACHE_NODES for backward compatibility
 	if nodes := os.Getenv("VALKEY_CACHE_NODES"); nodes != "" {
 		v.Set("cache.nodes", splitCSV(nodes))
-	} else if nodes := os.Getenv("VALLEY_CACHE_NODES"); nodes != "" {
+	} else if nodes := os.Getenv("VALKEY_CACHE_NODES"); nodes != "" {
 		v.Set("cache.nodes", splitCSV(nodes))
 	}
 	if ttl := os.Getenv("CACHE_TTL"); ttl != "" {

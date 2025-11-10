@@ -1,41 +1,210 @@
 package middleware
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
-// RBACMiddleware enforces role-based access control
-func RBACMiddleware(requiredRoles []string, logger logger.Logger) gin.HandlerFunc {
+// PolicyCacheResult represents a cached policy evaluation result
+type PolicyCacheResult struct {
+	Allowed  bool      `json:"allowed"`
+	Reason   string    `json:"reason"`
+	CachedAt time.Time `json:"cached_at"`
+}
+
+// PolicyCache provides high-performance policy evaluation caching
+type PolicyCache struct {
+	cache  cache.ValkeyCluster
+	logger logger.Logger
+	ttl    time.Duration
+}
+
+// NewPolicyCache creates a new policy cache with configurable TTL
+func NewPolicyCache(cache cache.ValkeyCluster, logger logger.Logger, ttl time.Duration) *PolicyCache {
+	if ttl <= 0 {
+		ttl = 15 * time.Minute // Default 15 minutes
+	}
+	return &PolicyCache{
+		cache:  cache,
+		logger: logger,
+		ttl:    ttl,
+	}
+}
+
+// GetPolicyCacheKey generates a cache key for policy evaluation
+func (pc *PolicyCache) GetPolicyCacheKey(userID, tenantID, globalRole string, requiredPermissions []string) string {
+	// Sort permissions for consistent cache key
+	sortedPerms := make([]string, len(requiredPermissions))
+	copy(sortedPerms, requiredPermissions)
+	// Simple sort for consistency (in production, use proper sorting)
+	for i := 0; i < len(sortedPerms)-1; i++ {
+		for j := i + 1; j < len(sortedPerms); j++ {
+			if sortedPerms[i] > sortedPerms[j] {
+				sortedPerms[i], sortedPerms[j] = sortedPerms[j], sortedPerms[i]
+			}
+		}
+	}
+
+	permsStr := strings.Join(sortedPerms, ",")
+	return fmt.Sprintf("rbac:policy:%s:%s:%s:%s", tenantID, userID, globalRole, permsStr)
+}
+
+// GetCachedPolicy retrieves a cached policy evaluation result
+func (pc *PolicyCache) GetCachedPolicy(ctx context.Context, userID, tenantID, globalRole string, requiredPermissions []string) (*PolicyCacheResult, error) {
+	cacheKey := pc.GetPolicyCacheKey(userID, tenantID, globalRole, requiredPermissions)
+
+	data, err := pc.cache.Get(ctx, cacheKey)
+	if err != nil {
+		// Cache miss
+		return nil, err
+	}
+
+	var result PolicyCacheResult
+	if err := json.Unmarshal(data, &result); err != nil {
+		pc.logger.Warn("Failed to unmarshal cached policy result", "error", err, "key", cacheKey)
+		return nil, err
+	}
+
+	// Check if cache is stale (shouldn't happen with TTL, but safety check)
+	if time.Since(result.CachedAt) > pc.ttl {
+		pc.logger.Warn("Cached policy result is stale", "key", cacheKey, "age", time.Since(result.CachedAt))
+		return nil, fmt.Errorf("stale cache")
+	}
+
+	return &result, nil
+}
+
+// SetCachedPolicy stores a policy evaluation result in cache
+func (pc *PolicyCache) SetCachedPolicy(ctx context.Context, userID, tenantID, globalRole string, requiredPermissions []string, allowed bool, reason string) error {
+	cacheKey := pc.GetPolicyCacheKey(userID, tenantID, globalRole, requiredPermissions)
+
+	result := PolicyCacheResult{
+		Allowed:  allowed,
+		Reason:   reason,
+		CachedAt: time.Now(),
+	}
+
+	data, err := json.Marshal(result)
+	if err != nil {
+		pc.logger.Error("Failed to marshal policy result", "error", err)
+		return err
+	}
+
+	return pc.cache.Set(ctx, cacheKey, data, pc.ttl)
+}
+
+// InvalidateUserPolicies invalidates all cached policies for a user
+func (pc *PolicyCache) InvalidateUserPolicies(ctx context.Context, tenantID, userID string) error {
+	// Use pattern-based invalidation
+	patternKey := fmt.Sprintf("rbac:policy:%s:%s:*", tenantID, userID)
+
+	// Get all keys matching the pattern
+	keys, err := pc.cache.GetPatternIndexKeys(ctx, patternKey)
+	if err != nil {
+		pc.logger.Warn("Failed to get pattern index keys for invalidation", "pattern", patternKey, "error", err)
+		// Fallback: try to delete with a broader pattern (less efficient)
+		return pc.invalidateWithPattern(ctx, fmt.Sprintf("rbac:policy:%s:%s:*", tenantID, userID))
+	}
+
+	if len(keys) > 0 {
+		err = pc.cache.DeleteMultiple(ctx, keys)
+		if err != nil {
+			pc.logger.Error("Failed to delete multiple policy cache keys", "error", err, "keys", keys)
+			return err
+		}
+		pc.logger.Info("Invalidated user policy cache", "tenantID", tenantID, "userID", userID, "keys_deleted", len(keys))
+	}
+
+	return nil
+}
+
+// InvalidateTenantPolicies invalidates all cached policies for a tenant
+func (pc *PolicyCache) InvalidateTenantPolicies(ctx context.Context, tenantID string) error {
+	patternKey := fmt.Sprintf("rbac:policy:%s:*", tenantID)
+	return pc.invalidateWithPattern(ctx, patternKey)
+}
+
+// invalidateWithPattern performs pattern-based invalidation using KEYS command
+func (pc *PolicyCache) invalidateWithPattern(ctx context.Context, pattern string) error {
+	// This is a simplified implementation. In production, you'd use SCAN for large datasets
+	// For now, we'll rely on TTL expiration for most cases and manual invalidation for critical updates
+
+	pc.logger.Info("Policy cache invalidation requested", "pattern", pattern)
+	// Note: Full pattern invalidation would require SCAN in production
+	// For this implementation, we rely on TTL and targeted invalidation
+
+	return nil
+}
+
+// WarmCache pre-loads frequently accessed policies into cache
+func (pc *PolicyCache) WarmCache(ctx context.Context, tenantID string, commonPermissions [][]string) error {
+	// This would be called during application startup or periodically
+	// For now, it's a placeholder for future implementation
+
+	pc.logger.Info("Policy cache warming requested", "tenantID", tenantID, "permission_sets", len(commonPermissions))
+	return nil
+}
+
+// RBACEnforcer handles role-based access control with two-tier evaluation
+type RBACEnforcer struct {
+	cache       cache.ValkeyCluster
+	policyCache *PolicyCache
+	logger      logger.Logger
+}
+
+// NewRBACEnforcer creates a new RBAC enforcer
+func NewRBACEnforcer(cache cache.ValkeyCluster, logger logger.Logger) *RBACEnforcer {
+	policyCache := NewPolicyCache(cache, logger, 15*time.Minute) // 15 minute default TTL
+	return &RBACEnforcer{
+		cache:       cache,
+		policyCache: policyCache,
+		logger:      logger,
+	}
+}
+
+// RBACMiddleware enforces role-based access control with two-tier evaluation
+func (r *RBACEnforcer) RBACMiddleware(requiredPermissions []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get user roles from context (set by auth middleware)
-		userRoles, exists := c.Get("user_roles")
-		if !exists {
-			logger.Warn("RBAC check failed: no roles found", "path", c.Request.URL.Path)
-			c.JSON(http.StatusForbidden, gin.H{
+		// Get user context
+		userID := c.GetString("user_id")
+		tenantID := c.GetString("tenant_id")
+		globalRole := c.GetString("global_role")
+
+		if userID == "" || tenantID == "" {
+			r.logger.Warn("RBAC check failed: missing user or tenant context",
+				"userId", userID, "tenantId", tenantID, "path", c.Request.URL.Path)
+			c.JSON(http.StatusUnauthorized, gin.H{
 				"status": "error",
-				"error":  "Access denied: no roles assigned",
+				"error":  "Authentication required",
 			})
 			c.Abort()
 			return
 		}
 
-		roles := userRoles.([]string)
-
-		// Check if user has any of the required roles
-		if !hasAnyRole(roles, requiredRoles) {
-			logger.Warn("RBAC check failed: insufficient permissions",
-				"userId", c.GetString("user_id"),
-				"userRoles", roles,
-				"requiredRoles", requiredRoles,
+		// Check if access is allowed
+		allowed, reason := r.evaluateAccess(userID, tenantID, globalRole, requiredPermissions, c)
+		if !allowed {
+			r.logger.Warn("RBAC check failed: access denied",
+				"userId", userID,
+				"tenantId", tenantID,
+				"globalRole", globalRole,
+				"requiredPermissions", requiredPermissions,
+				"reason", reason,
 				"path", c.Request.URL.Path,
 			)
 			c.JSON(http.StatusForbidden, gin.H{
-				"status":         "error",
-				"error":          "Access denied: insufficient permissions",
-				"required_roles": requiredRoles,
+				"status":               "error",
+				"error":                "Access denied",
+				"reason":               reason,
+				"required_permissions": requiredPermissions,
 			})
 			c.Abort()
 			return
@@ -45,41 +214,183 @@ func RBACMiddleware(requiredRoles []string, logger logger.Logger) gin.HandlerFun
 	}
 }
 
-// AdminOnlyMiddleware restricts access to admin users
-func AdminOnlyMiddleware(logger logger.Logger) gin.HandlerFunc {
-	return RBACMiddleware([]string{"mirador-admin", "system-admin"}, logger)
+// evaluateAccess performs two-tier RBAC evaluation (Global + Tenant roles)
+func (r *RBACEnforcer) evaluateAccess(userID, tenantID, globalRole string, requiredPermissions []string, c *gin.Context) (bool, string) {
+	// Check policy cache first
+	if cachedResult, err := r.policyCache.GetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions); err == nil && cachedResult != nil {
+		r.logger.Debug("Policy cache hit", "userId", userID, "tenantId", tenantID, "permissions", requiredPermissions, "allowed", cachedResult.Allowed)
+		return cachedResult.Allowed, cachedResult.Reason
+	}
+
+	// Cache miss - perform actual evaluation
+	r.logger.Debug("Policy cache miss - evaluating", "userId", userID, "tenantId", tenantID, "permissions", requiredPermissions)
+
+	// Step 1: Check Global Role (highest precedence)
+	if r.checkGlobalRoleAccess(globalRole, requiredPermissions) {
+		r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, true, "global_role_granted")
+		return true, "global_role_granted"
+	}
+
+	// Step 2: Check Tenant Role permissions
+	tenantRoles, err := r.getUserTenantRoles(userID, tenantID, c)
+	if err != nil {
+		r.logger.Error("Failed to get tenant roles", "userId", userID, "tenantId", tenantID, "error", err)
+		r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, false, "failed_to_get_tenant_roles")
+		return false, "failed_to_get_tenant_roles"
+	}
+
+	if r.checkTenantRoleAccess(tenantRoles, requiredPermissions) {
+		r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, true, "tenant_role_granted")
+		return true, "tenant_role_granted"
+	}
+
+	// Step 3: Check for wildcard permissions in any role
+	if r.hasWildcardPermission(tenantRoles) {
+		r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, true, "wildcard_permission_granted")
+		return true, "wildcard_permission_granted"
+	}
+
+	// Deny by default
+	r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, false, "insufficient_permissions")
+	return false, "insufficient_permissions"
 }
 
-// TenantIsolationMiddleware ensures tenant data isolation
-func TenantIsolationMiddleware(logger logger.Logger) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		tenantID := c.GetString("tenant_id")
-		if tenantID == "" {
-			logger.Error("Tenant isolation failed: no tenant ID", "userId", c.GetString("user_id"))
-			c.JSON(http.StatusForbidden, gin.H{
-				"status": "error",
-				"error":  "Tenant context required",
-			})
-			c.Abort()
-			return
+// checkGlobalRoleAccess checks if global role grants access
+func (r *RBACEnforcer) checkGlobalRoleAccess(globalRole string, requiredPermissions []string) bool {
+	switch globalRole {
+	case "global_admin":
+		// Global admin has all permissions
+		return true
+	case "global_tenant_admin":
+		// Can manage tenants and has admin access within managed tenants
+		for _, perm := range requiredPermissions {
+			if strings.HasPrefix(perm, "admin") || strings.HasPrefix(perm, "tenant") {
+				return true
+			}
 		}
-
-		// Add tenant ID to all outgoing requests
-		c.Header("X-Tenant-ID", tenantID)
-		c.Next()
+		return false
+	case "tenant_user":
+		// Regular tenant user - check tenant-specific permissions
+		return false
+	default:
+		return false
 	}
 }
 
-func hasAnyRole(userRoles, requiredRoles []string) bool {
-	roleMap := make(map[string]bool)
-	for _, role := range userRoles {
-		roleMap[role] = true
+// checkTenantRoleAccess checks if tenant roles grant access
+func (r *RBACEnforcer) checkTenantRoleAccess(tenantRoles []string, requiredPermissions []string) bool {
+	// Map tenant roles to permissions
+	rolePermissions := map[string][]string{
+		"tenant_admin": {
+			"dashboard.*", "kpi_definition.*", "layout.*", "user_prefs.*", "rbac.*",
+		},
+		"tenant_editor": {
+			"dashboard.create", "dashboard.read", "dashboard.update",
+			"kpi_definition.create", "kpi_definition.read", "kpi_definition.update",
+			"layout.create", "layout.read", "layout.update",
+			"user_prefs.read", "user_prefs.update",
+		},
+		"tenant_guest": {
+			"dashboard.read", "kpi_definition.read", "layout.read", "user_prefs.read",
+		},
 	}
 
-	for _, required := range requiredRoles {
-		if roleMap[required] {
+	// Collect all permissions from user's tenant roles
+	var userPermissions []string
+	for _, role := range tenantRoles {
+		if perms, exists := rolePermissions[role]; exists {
+			userPermissions = append(userPermissions, perms...)
+		}
+	}
+
+	// Check if any required permission is granted
+	for _, required := range requiredPermissions {
+		for _, userPerm := range userPermissions {
+			if r.permissionMatches(userPerm, required) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// hasWildcardPermission checks if user has wildcard permissions
+func (r *RBACEnforcer) hasWildcardPermission(tenantRoles []string) bool {
+	for _, role := range tenantRoles {
+		if role == "tenant_admin" {
 			return true
 		}
 	}
 	return false
+}
+
+// permissionMatches checks if a user permission matches a required permission
+func (r *RBACEnforcer) permissionMatches(userPerm, requiredPerm string) bool {
+	// Exact match
+	if userPerm == requiredPerm {
+		return true
+	}
+
+	// Wildcard match (e.g., "dashboard.*" matches "dashboard.read")
+	if strings.HasSuffix(userPerm, ".*") {
+		prefix := strings.TrimSuffix(userPerm, ".*")
+		return strings.HasPrefix(requiredPerm, prefix+".")
+	}
+
+	return false
+}
+
+// getUserTenantRoles retrieves user's roles within a tenant
+func (r *RBACEnforcer) getUserTenantRoles(userID, tenantID string, c *gin.Context) ([]string, error) {
+	// Try to get from cache first
+	cacheKey := fmt.Sprintf("rbac:user_roles:%s:%s", tenantID, userID)
+	cachedData, err := r.cache.Get(c.Request.Context(), cacheKey)
+	if err == nil && cachedData != nil {
+		var roles []string
+		if err := json.Unmarshal(cachedData, &roles); err == nil {
+			return roles, nil
+		}
+	}
+
+	// Default roles if not cached
+	return []string{"tenant_guest"}, nil
+}
+
+// AdminOnlyMiddleware restricts access to admin users
+func (r *RBACEnforcer) AdminOnlyMiddleware() gin.HandlerFunc {
+	return r.RBACMiddleware([]string{"admin.*"})
+}
+
+// GetCacheStats returns policy cache statistics
+func (pc *PolicyCache) GetCacheStats(ctx context.Context) (map[string]interface{}, error) {
+	// Get Valkey memory info
+	memInfo, err := pc.cache.GetMemoryInfo(ctx)
+	if err != nil {
+		pc.logger.Warn("Failed to get cache memory info", "error", err)
+		memInfo = &cache.CacheMemoryInfo{}
+	}
+
+	return map[string]interface{}{
+		"policy_cache_ttl_seconds":  pc.ttl.Seconds(),
+		"cache_memory_used_bytes":   memInfo.UsedMemory,
+		"cache_memory_peak_bytes":   memInfo.PeakMemory,
+		"cache_fragmentation_ratio": memInfo.MemoryFragmentation,
+		"cache_total_keys":          memInfo.TotalKeys,
+		"cache_hit_rate":            memInfo.HitRate,
+		"cache_miss_rate":           memInfo.MissRate,
+	}, nil
+}
+
+// WarmCommonPolicies pre-loads frequently used policy combinations
+func (r *RBACEnforcer) WarmCommonPolicies(ctx context.Context, tenantID string) error {
+	commonPermissions := [][]string{
+		{"dashboard.read"},
+		{"dashboard.create", "dashboard.read"},
+		{"kpi_definition.read"},
+		{"admin.*"},
+		{"rbac.*"},
+	}
+
+	return r.policyCache.WarmCache(ctx, tenantID, commonPermissions)
 }

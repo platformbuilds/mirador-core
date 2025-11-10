@@ -1,8 +1,8 @@
 package middleware
 
 import (
+	"context"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"net/http"
@@ -14,23 +14,24 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/internal/repo"
+	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 	"github.com/pquerna/otp/totp"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // AuthService handles authentication operations
 type AuthService struct {
 	config     *config.Config
 	cache      cache.ValkeyCluster
-	repo       repo.SchemaStore
+	repo       rbac.RBACRepository
 	logger     logger.Logger
 	sessionMgr *SessionManager
 }
 
 // NewAuthService creates a new authentication service
-func NewAuthService(cfg *config.Config, cache cache.ValkeyCluster, repo repo.SchemaStore, logger logger.Logger) *AuthService {
+func NewAuthService(cfg *config.Config, cache cache.ValkeyCluster, repo rbac.RBACRepository, logger logger.Logger) *AuthService {
 	return &AuthService{
 		config:     cfg,
 		cache:      cache,
@@ -324,6 +325,21 @@ func (as *AuthService) EnhancedCORSMiddleware() gin.HandlerFunc {
 	}
 }
 
+// AuthenticateLocalUser is a public wrapper for authenticateLocalUser
+func (as *AuthService) AuthenticateLocalUser(username, password, totpCode string, c *gin.Context) (*models.UserSession, error) {
+	return as.authenticateLocalUser(username, password, totpCode, c)
+}
+
+// GenerateJWTToken is a public wrapper for generateJWTToken
+func (as *AuthService) GenerateJWTToken(session *models.UserSession) (string, error) {
+	return as.generateJWTToken(session)
+}
+
+// ValidateJWTToken is a public wrapper for validateJWTToken
+func (as *AuthService) ValidateJWTToken(tokenString string, c *gin.Context) (*models.UserSession, error) {
+	return as.validateJWTToken(tokenString, c)
+}
+
 // validateJWTToken validates JWT tokens with RBAC claims
 func (as *AuthService) validateJWTToken(tokenString string, c *gin.Context) (*models.UserSession, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
@@ -429,18 +445,80 @@ func (as *AuthService) validateTOTPCode(userID, code string) error {
 		return fmt.Errorf("TOTP not configured")
 	}
 
-	// Decode base64 secret
-	secret, err := base64.StdEncoding.DecodeString(auth.TOTPSecret)
-	if err != nil {
-		return fmt.Errorf("invalid TOTP secret")
-	}
-
-	// Validate TOTP code
-	if !totp.Validate(code, string(secret)) {
+	// Validate TOTP code directly (TOTPSecret is stored as base64 encoded)
+	if !totp.Validate(code, auth.TOTPSecret) {
 		return fmt.Errorf("invalid TOTP code")
 	}
 
 	return nil
+}
+
+// GenerateTOTPSetup generates TOTP setup information for a user
+func (as *AuthService) GenerateTOTPSetup(userID string) (*models.TOTPSetup, error) {
+	ctx := context.Background()
+
+	// Get user information
+	user, err := as.repo.GetUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	// Generate TOTP secret
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      "Mirador Core",
+		AccountName: user.Email,
+		SecretSize:  32,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate TOTP secret: %w", err)
+	}
+
+	setup := &models.TOTPSetup{
+		Secret:    key.Secret(),
+		QRCodeURL: key.URL(),
+	}
+
+	return setup, nil
+}
+
+// EnableTOTP enables TOTP for a user after validating the setup code
+func (as *AuthService) EnableTOTP(userID, setupCode string) error {
+	ctx := context.Background()
+
+	auth, err := as.repo.GetMiradorAuth(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("user auth record not found: %w", err)
+	}
+
+	// Validate the setup code
+	if !totp.Validate(setupCode, auth.TOTPSecret) {
+		return fmt.Errorf("invalid TOTP setup code")
+	}
+
+	// Enable TOTP
+	auth.TOTPEnabled = true
+	auth.BackupCodes = as.generateBackupCodes()
+
+	if err := as.repo.UpdateMiradorAuth(ctx, auth); err != nil {
+		return fmt.Errorf("failed to enable TOTP: %w", err)
+	}
+
+	return nil
+}
+
+// generateBackupCodes generates backup codes for TOTP recovery
+func (as *AuthService) generateBackupCodes() []string {
+	codes := make([]string, 10)
+	for i := range codes {
+		bytes := make([]byte, 4)
+		if _, err := rand.Read(bytes); err != nil {
+			// Fallback
+			codes[i] = fmt.Sprintf("%08d", time.Now().UnixNano()%100000000)
+		} else {
+			codes[i] = hex.EncodeToString(bytes)
+		}
+	}
+	return codes
 }
 
 // validatePasswordPolicy validates password against policy
@@ -533,40 +611,137 @@ func (as *AuthService) isOriginAllowed(origin string) bool {
 	return false
 }
 
-// Helper methods (would be implemented with actual database calls)
-func (as *AuthService) findUserByUsername(username string) (*models.User, error) {
-	// Placeholder - would query Weaviate
-	return &models.User{ID: "user-123", Email: username + "@example.com"}, nil
-}
-
-func (as *AuthService) findMiradorAuthByUserID(userID string) (*models.MiradorAuth, error) {
-	// Placeholder - would query Weaviate
-	return &models.MiradorAuth{
-		UserID:      userID,
-		IsActive:    true,
-		TOTPEnabled: false,
-	}, nil
-}
-
-func (as *AuthService) validatePassword(password string, auth *models.MiradorAuth) error {
-	// Placeholder - would use bcrypt comparison
-	if password == "password" { // Demo only
-		return nil
+// generateJWTToken generates a JWT token for authenticated sessions
+func (as *AuthService) generateJWTToken(session *models.UserSession) (string, error) {
+	// Create JWT claims
+	claims := jwt.MapClaims{
+		"sub":    session.UserID,
+		"tenant": session.TenantID,
+		"roles":  session.Roles,
+		"iat":    session.CreatedAt.Unix(),
+		"exp":    session.CreatedAt.Add(time.Duration(as.config.Auth.JWT.ExpiryMin) * time.Minute).Unix(),
+		"iss":    "mirador-core",
+		"aud":    []string{"mirador-core"},
 	}
-	return fmt.Errorf("invalid password")
+
+	// Add additional claims from session settings
+	if email, exists := session.Settings["email"]; exists {
+		claims["email"] = email
+	}
+	if name, exists := session.Settings["full_name"]; exists {
+		claims["name"] = name
+	}
+
+	// Create token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Sign token
+	tokenString, err := token.SignedString([]byte(as.config.Auth.JWT.Secret))
+	if err != nil {
+		return "", fmt.Errorf("failed to sign JWT token: %w", err)
+	}
+
+	return tokenString, nil
 }
 
+// findUserByUsername finds a user by username (email or username)
+func (as *AuthService) findUserByUsername(username string) (*models.User, error) {
+	ctx := context.Background()
+
+	// Try to find by email first
+	users, err := as.repo.ListUsers(ctx, rbac.UserFilters{
+		Email: &username,
+		Limit: 1,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query users by email: %w", err)
+	}
+
+	if len(users) > 0 {
+		return users[0], nil
+	}
+
+	// Try to find by username
+	users, err = as.repo.ListUsers(ctx, rbac.UserFilters{
+		Username: &username,
+		Limit:    1,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query users by username: %w", err)
+	}
+
+	if len(users) == 0 {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	return users[0], nil
+}
+
+// findMiradorAuthByUserID finds MiradorAuth record by user ID
+func (as *AuthService) findMiradorAuthByUserID(userID string) (*models.MiradorAuth, error) {
+	ctx := context.Background()
+	return as.repo.GetMiradorAuth(ctx, userID)
+}
+
+// validatePassword validates password using bcrypt
+func (as *AuthService) validatePassword(password string, auth *models.MiradorAuth) error {
+	return bcrypt.CompareHashAndPassword([]byte(auth.PasswordHash), []byte(password))
+}
+
+// incrementFailedLogin increments failed login count and locks account if needed
 func (as *AuthService) incrementFailedLogin(auth *models.MiradorAuth) {
-	// Placeholder - would update Weaviate record
+	ctx := context.Background()
+
+	auth.FailedLoginCount++
+	now := time.Now()
+
+	// Lock account after 5 failed attempts for 15 minutes
+	if auth.FailedLoginCount >= 5 {
+		lockUntil := now.Add(15 * time.Minute)
+		auth.LockedUntil = &lockUntil
+		as.logger.Warn("Account locked due to failed login attempts",
+			"user_id", auth.UserID,
+			"attempts", auth.FailedLoginCount)
+	}
+
+	auth.LastLoginAt = &now
+
+	// Update the record
+	if err := as.repo.UpdateMiradorAuth(ctx, auth); err != nil {
+		as.logger.Error("Failed to update auth record after failed login", "error", err)
+	}
 }
 
+// resetFailedLogin resets failed login count after successful login
 func (as *AuthService) resetFailedLogin(auth *models.MiradorAuth) {
-	// Placeholder - would update Weaviate record
+	ctx := context.Background()
+
+	auth.FailedLoginCount = 0
+	now := time.Now()
+	auth.LastLoginAt = &now
+
+	// Update the record
+	if err := as.repo.UpdateMiradorAuth(ctx, auth); err != nil {
+		as.logger.Error("Failed to update auth record after successful login", "error", err)
+	}
 }
 
+// getUserRoles gets user roles from RBAC system
 func (as *AuthService) getUserRoles(userID, tenantID string) ([]string, error) {
-	// Placeholder - would query RBAC system
-	return []string{"tenant_user"}, nil
+	ctx := context.Background()
+
+	// Get user roles from RBAC repository
+	roles, err := as.repo.GetUserRoles(ctx, tenantID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user roles: %w", err)
+	}
+
+	// If no roles assigned, return default role
+	if len(roles) == 0 {
+		return []string{"tenant_guest"}, nil
+	}
+
+	return roles, nil
 }
 
 func (as *AuthService) setContextFromSession(c *gin.Context, session *models.UserSession) {

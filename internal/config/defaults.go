@@ -42,7 +42,29 @@ func GetDefaultConfig() *Config {
 
 		Auth: AuthConfig{
 			LDAP: LDAPConfig{
-				Enabled: false,
+				Enabled:           false,
+				UserSearchFilter:  "(&(objectClass=user)(sAMAccountName=%s))",
+				GroupSearchFilter: "(&(objectClass=group)(member=%s))",
+				Attributes: LDAPAttributes{
+					Username:     "sAMAccountName",
+					Email:        "mail",
+					FullName:     "displayName",
+					MemberOf:     "memberOf",
+					GroupName:    "cn",
+					GroupMembers: "member",
+					UserID:       "objectGUID",
+				},
+				Sync: LDAPSyncConfig{
+					Enabled:          false,
+					Interval:         15 * time.Minute,
+					UserSyncEnabled:  true,
+					GroupSyncEnabled: true,
+					PageSize:         1000,
+					MaxRetries:       3,
+					RetryDelay:       30 * time.Second,
+				},
+				StartTLS:      true,
+				TLSSkipVerify: false,
 			},
 			OAuth: OAuthConfig{
 				Enabled: false,

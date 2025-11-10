@@ -29,13 +29,13 @@ func LoadSecrets(config *Config) error {
 
 	// Load LDAP password
 	if ldapPassword := os.Getenv("LDAP_PASSWORD"); ldapPassword != "" {
-		config.Auth.LDAP.Password = ldapPassword
+		config.Auth.LDAP.BindPassword = ldapPassword
 	} else if passwordFile := os.Getenv("LDAP_PASSWORD_FILE"); passwordFile != "" {
 		password, err := os.ReadFile(passwordFile)
 		if err != nil {
 			return fmt.Errorf("failed to read LDAP password file: %w", err)
 		}
-		config.Auth.LDAP.Password = strings.TrimSpace(string(password))
+		config.Auth.LDAP.BindPassword = strings.TrimSpace(string(password))
 	}
 
 	// Load OAuth client secret

@@ -13,12 +13,170 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
+	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// mockRBACRepositoryForContractValidation implements RBACRepository for testing
+type mockRBACRepositoryForContractValidation struct{}
+
+func (m *mockRBACRepositoryForContractValidation) CreateRole(ctx context.Context, role *models.Role) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetRole(ctx context.Context, tenantID, roleName string) (*models.Role, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) ListRoles(ctx context.Context, tenantID string) ([]*models.Role, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) UpdateRole(ctx context.Context, role *models.Role) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) DeleteRole(ctx context.Context, tenantID, roleName string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) AssignUserRoles(ctx context.Context, tenantID, userID string, roles []string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetUserRoles(ctx context.Context, tenantID, userID string) ([]string, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) RemoveUserRoles(ctx context.Context, tenantID, userID string, roles []string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetUserGroups(ctx context.Context, tenantID, userID string) ([]string, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) CreatePermission(ctx context.Context, permission *models.Permission) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetPermission(ctx context.Context, tenantID, permissionID string) (*models.Permission, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) ListPermissions(ctx context.Context, tenantID string) ([]*models.Permission, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) UpdatePermission(ctx context.Context, permission *models.Permission) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) DeletePermission(ctx context.Context, tenantID, permissionID string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) CreateRoleBinding(ctx context.Context, binding *models.RoleBinding) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetRoleBindings(ctx context.Context, tenantID string, filters rbac.RoleBindingFilters) ([]*models.RoleBinding, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) UpdateRoleBinding(ctx context.Context, binding *models.RoleBinding) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) DeleteRoleBinding(ctx context.Context, tenantID, bindingID string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) CreateGroup(ctx context.Context, group *models.Group) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetGroup(ctx context.Context, tenantID, groupName string) (*models.Group, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) ListGroups(ctx context.Context, tenantID string) ([]*models.Group, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) UpdateGroup(ctx context.Context, group *models.Group) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) DeleteGroup(ctx context.Context, tenantID, groupName string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) AddUsersToGroup(ctx context.Context, tenantID, groupName string, userIDs []string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) RemoveUsersFromGroup(ctx context.Context, tenantID, groupName string, userIDs []string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetGroupMembers(ctx context.Context, tenantID, groupName string) ([]string, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) LogAuditEvent(ctx context.Context, event *models.AuditLog) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetAuditEvents(ctx context.Context, tenantID string, filters rbac.AuditFilters) ([]*models.AuditLog, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) CreateTenant(ctx context.Context, tenant *models.Tenant) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetTenant(ctx context.Context, tenantID string) (*models.Tenant, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) ListTenants(ctx context.Context, filters rbac.TenantFilters) ([]*models.Tenant, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) UpdateTenant(ctx context.Context, tenant *models.Tenant) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) DeleteTenant(ctx context.Context, tenantID string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) CreateUser(ctx context.Context, user *models.User) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetUser(ctx context.Context, userID string) (*models.User, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) ListUsers(ctx context.Context, filters rbac.UserFilters) ([]*models.User, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) UpdateUser(ctx context.Context, user *models.User) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) DeleteUser(ctx context.Context, userID string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) CreateTenantUser(ctx context.Context, tenantUser *models.TenantUser) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetTenantUser(ctx context.Context, tenantID, userID string) (*models.TenantUser, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) ListTenantUsers(ctx context.Context, tenantID string, filters rbac.TenantUserFilters) ([]*models.TenantUser, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) UpdateTenantUser(ctx context.Context, tenantUser *models.TenantUser) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) DeleteTenantUser(ctx context.Context, tenantID, userID string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) CreateMiradorAuth(ctx context.Context, auth *models.MiradorAuth) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetMiradorAuth(ctx context.Context, userID string) (*models.MiradorAuth, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) UpdateMiradorAuth(ctx context.Context, auth *models.MiradorAuth) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) DeleteMiradorAuth(ctx context.Context, userID string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) CreateAuthConfig(ctx context.Context, config *models.AuthConfig) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetAuthConfig(ctx context.Context, tenantID string) (*models.AuthConfig, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) UpdateAuthConfig(ctx context.Context, config *models.AuthConfig) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) DeleteAuthConfig(ctx context.Context, tenantID string) error {
+	return nil
+}
 
 // Contract validation test structures matching the API contract
 
@@ -351,7 +509,9 @@ func TestContractValidation_KPIDefs_Get(t *testing.T) {
 	grpc := &clients.GRPCClients{}
 	cch := cache.NewNoopValkeyCache(log)
 
-	s := NewServer(cfg, log, cch, grpc, vms, mockRepo)
+	mockRBACRepo := &mockRBACRepositoryForContractValidation{}
+
+	s := NewServer(cfg, log, cch, grpc, vms, mockRepo, mockRBACRepo)
 	ts := httptest.NewServer(s.router)
 	defer ts.Close()
 
@@ -389,7 +549,9 @@ func TestContractValidation_Layouts_Get(t *testing.T) {
 	grpc := &clients.GRPCClients{}
 	cch := cache.NewNoopValkeyCache(log)
 
-	s := NewServer(cfg, log, cch, grpc, vms, mockRepo)
+	mockRBACRepo := &mockRBACRepositoryForContractValidation{}
+
+	s := NewServer(cfg, log, cch, grpc, vms, mockRepo, mockRBACRepo)
 	ts := httptest.NewServer(s.router)
 	defer ts.Close()
 
@@ -419,7 +581,9 @@ func TestContractValidation_Dashboards_Get(t *testing.T) {
 	grpc := &clients.GRPCClients{}
 	cch := cache.NewNoopValkeyCache(log)
 
-	s := NewServer(cfg, log, cch, grpc, vms, mockRepo)
+	mockRBACRepo := &mockRBACRepositoryForContractValidation{}
+
+	s := NewServer(cfg, log, cch, grpc, vms, mockRepo, mockRBACRepo)
 	ts := httptest.NewServer(s.router)
 	defer ts.Close()
 
@@ -454,7 +618,9 @@ func TestContractValidation_UserPreferences_Get(t *testing.T) {
 	grpc := &clients.GRPCClients{}
 	cch := cache.NewNoopValkeyCache(log)
 
-	s := NewServer(cfg, log, cch, grpc, vms, mockRepo)
+	mockRBACRepo := &mockRBACRepositoryForContractValidation{}
+
+	s := NewServer(cfg, log, cch, grpc, vms, mockRepo, mockRBACRepo)
 	ts := httptest.NewServer(s.router)
 	defer ts.Close()
 
@@ -482,7 +648,9 @@ func TestContractValidation_KPIDefs_Post(t *testing.T) {
 	grpc := &clients.GRPCClients{}
 	cch := cache.NewNoopValkeyCache(log)
 
-	s := NewServer(cfg, log, cch, grpc, vms, mockRepo)
+	mockRBACRepo := &mockRBACRepositoryForContractValidation{}
+
+	s := NewServer(cfg, log, cch, grpc, vms, mockRepo, mockRBACRepo)
 	ts := httptest.NewServer(s.router)
 	defer ts.Close()
 

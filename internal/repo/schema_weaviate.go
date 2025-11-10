@@ -1594,3 +1594,8 @@ func (r *WeaviateRepo) DeleteSchemaAsKPI(ctx context.Context, tenantID, schemaTy
 		return fmt.Errorf("unsupported schema type for KPI deletion: %s", schemaType)
 	}
 }
+
+// Transport returns the underlying Weaviate transport
+func (r *WeaviateRepo) Transport() storageweaviate.Transport {
+	return r.t
+}

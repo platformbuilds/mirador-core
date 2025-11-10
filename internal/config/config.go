@@ -106,11 +106,41 @@ type AuthConfig struct {
 }
 
 type LDAPConfig struct {
-	URL      string `mapstructure:"url" yaml:"url"`
-	BaseDN   string `mapstructure:"base_dn" yaml:"base_dn"`
-	Username string `mapstructure:"username" yaml:"username"`
-	Password string `mapstructure:"password" yaml:"password"`
-	Enabled  bool   `mapstructure:"enabled" yaml:"enabled"`
+	URL               string         `mapstructure:"url" yaml:"url"`
+	BaseDN            string         `mapstructure:"base_dn" yaml:"base_dn"`
+	BindDN            string         `mapstructure:"bind_dn" yaml:"bind_dn"`
+	BindPassword      string         `mapstructure:"bind_password" yaml:"bind_password"`
+	UserSearchFilter  string         `mapstructure:"user_search_filter" yaml:"user_search_filter"`
+	UserSearchBase    string         `mapstructure:"user_search_base" yaml:"user_search_base"`
+	GroupSearchFilter string         `mapstructure:"group_search_filter" yaml:"group_search_filter"`
+	GroupSearchBase   string         `mapstructure:"group_search_base" yaml:"group_search_base"`
+	UserDN            string         `mapstructure:"user_dn" yaml:"user_dn"`
+	GroupDN           string         `mapstructure:"group_dn" yaml:"group_dn"`
+	Attributes        LDAPAttributes `mapstructure:"attributes" yaml:"attributes"`
+	Sync              LDAPSyncConfig `mapstructure:"sync" yaml:"sync"`
+	StartTLS          bool           `mapstructure:"start_tls" yaml:"start_tls"`
+	TLSSkipVerify     bool           `mapstructure:"tls_skip_verify" yaml:"tls_skip_verify"`
+	Enabled           bool           `mapstructure:"enabled" yaml:"enabled"`
+}
+
+type LDAPAttributes struct {
+	Username     string `mapstructure:"username" yaml:"username"`
+	Email        string `mapstructure:"email" yaml:"email"`
+	FullName     string `mapstructure:"full_name" yaml:"full_name"`
+	MemberOf     string `mapstructure:"member_of" yaml:"member_of"`
+	GroupName    string `mapstructure:"group_name" yaml:"group_name"`
+	GroupMembers string `mapstructure:"group_members" yaml:"group_members"`
+	UserID       string `mapstructure:"user_id" yaml:"user_id"`
+}
+
+type LDAPSyncConfig struct {
+	Enabled          bool          `mapstructure:"enabled" yaml:"enabled"`
+	Interval         time.Duration `mapstructure:"interval" yaml:"interval"`
+	UserSyncEnabled  bool          `mapstructure:"user_sync_enabled" yaml:"user_sync_enabled"`
+	GroupSyncEnabled bool          `mapstructure:"group_sync_enabled" yaml:"group_sync_enabled"`
+	PageSize         int           `mapstructure:"page_size" yaml:"page_size"`
+	MaxRetries       int           `mapstructure:"max_retries" yaml:"max_retries"`
+	RetryDelay       time.Duration `mapstructure:"retry_delay" yaml:"retry_delay"`
 }
 
 type OAuthConfig struct {

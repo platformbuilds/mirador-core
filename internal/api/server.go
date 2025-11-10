@@ -14,6 +14,7 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/internal/repo"
+	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/internal/tracing"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve"
@@ -33,10 +34,13 @@ type Server struct {
 	grpcClients                 *clients.GRPCClients
 	vmServices                  *services.VictoriaMetricsServices
 	schemaRepo                  repo.SchemaStore
+	rbacRepo                    rbac.RBACRepository
 	searchRouter                *search.SearchRouter
 	searchThrottling            *middleware.SearchQueryThrottlingMiddleware
 	metricsMetadataIndexer      services.MetricsMetadataIndexer
 	metricsMetadataSynchronizer services.MetricsMetadataSynchronizer
+	rbacService                 *rbac.RBACService
+	tenantIsolationMiddleware   *middleware.TenantIsolationMiddleware
 	router                      *gin.Engine
 	httpServer                  *http.Server
 	tracerProvider              *tracing.TracerProvider
@@ -45,10 +49,11 @@ type Server struct {
 func NewServer(
 	cfg *config.Config,
 	log logger.Logger,
-	valleyCache cache.ValkeyCluster,
+	valkeyCache cache.ValkeyCluster,
 	grpcClients *clients.GRPCClients,
 	vmServices *services.VictoriaMetricsServices,
 	schemaRepo repo.SchemaStore,
+	rbacRepo rbac.RBACRepository,
 ) *Server {
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -74,15 +79,22 @@ func NewServer(
 		}
 	}
 
+	// Initialize RBAC components
+	auditService := rbac.NewAuditService(rbacRepo)
+	cacheRepo := rbac.NewNoOpCacheRepository()
+	rbacService := rbac.NewRBACService(rbacRepo, cacheRepo, auditService)
+
 	server := &Server{
 		config:         cfg,
 		logger:         log,
-		cache:          valleyCache,
+		cache:          valkeyCache,
 		grpcClients:    grpcClients,
 		vmServices:     vmServices,
 		schemaRepo:     schemaRepo,
+		rbacRepo:       rbacRepo,
 		router:         router,
 		tracerProvider: tracerProvider,
+		rbacService:    rbacService,
 	}
 
 	// Create search router
@@ -146,6 +158,14 @@ func (s *Server) setupMiddleware() {
 		s.router.Use(middleware.NoAuthMiddleware())
 		s.logger.Warn("Authentication is DISABLED by configuration; requests will use anonymous/default context")
 	}
+
+	// Tenant isolation middleware (enforces multi-tenant access control)
+	s.tenantIsolationMiddleware = middleware.NewTenantIsolationMiddleware(
+		middleware.DefaultTenantIsolationConfig(),
+		s.rbacService,
+		s.logger,
+	)
+	s.router.Use(s.tenantIsolationMiddleware.TenantIsolation())
 
 	// OpenAPI specification endpoints
 	s.router.StaticFile("/api/openapi.yaml", "api/openapi.yaml")
@@ -288,11 +308,60 @@ func (s *Server) setupRoutes() {
 	v1.POST("/sessions/invalidate", sessionHandler.InvalidateSession)
 	v1.GET("/sessions/user/:userId", sessionHandler.GetUserSessions)
 
+	// Authentication endpoints
+	authHandler := handlers.NewAuthHandler(s.config, s.cache, s.rbacRepo, s.logger)
+	v1.POST("/auth/login", authHandler.Login)
+	v1.POST("/auth/logout", authHandler.Logout)
+	v1.POST("/auth/validate", authHandler.ValidateToken)
+
 	// RBAC endpoints
-	rbacHandler := handlers.NewRBACHandler(s.cache, s.logger)
+	rbacHandler := handlers.NewRBACHandler(s.rbacService, s.cache, s.logger)
 	v1.GET("/rbac/roles", rbacHandler.GetRoles)
 	v1.POST("/rbac/roles", rbacHandler.CreateRole)
 	v1.PUT("/rbac/users/:userId/roles", rbacHandler.AssignUserRoles)
+
+	// Tenant endpoints
+	tenantHandler := handlers.NewTenantHandler(s.rbacService, s.logger)
+
+	// Global admin only routes
+	tenantGlobalAdmin := v1.Group("/tenants")
+	tenantGlobalAdmin.Use(s.tenantIsolationMiddleware.GlobalAdminOnly())
+	{
+		tenantGlobalAdmin.GET("", tenantHandler.ListTenants)
+		tenantGlobalAdmin.POST("", tenantHandler.CreateTenant)
+		tenantGlobalAdmin.DELETE("/:tenantId", tenantHandler.DeleteTenant)
+	}
+
+	// Tenant admin routes (can manage their own tenant)
+	tenantAdmin := v1.Group("/tenants")
+	tenantAdmin.Use(s.tenantIsolationMiddleware.TenantAdminOnly())
+	{
+		tenantAdmin.GET("/:tenantId", tenantHandler.GetTenant)
+		tenantAdmin.PUT("/:tenantId", tenantHandler.UpdateTenant)
+	}
+
+	// Tenant-user association endpoints (tenant admins can manage)
+	tenantUserAdmin := v1.Group("/tenants/:tenantId/users")
+	tenantUserAdmin.Use(s.tenantIsolationMiddleware.TenantAdminOnly())
+	{
+		tenantUserAdmin.POST("", tenantHandler.CreateTenantUser)
+		tenantUserAdmin.GET("", tenantHandler.ListTenantUsers)
+		tenantUserAdmin.GET("/:userId", tenantHandler.GetTenantUser)
+		tenantUserAdmin.PUT("/:userId", tenantHandler.UpdateTenantUser)
+		tenantUserAdmin.DELETE("/:userId", tenantHandler.DeleteTenantUser)
+	}
+
+	// User endpoints (global admin only for global user management)
+	userHandler := handlers.NewUserHandler(s.rbacService, s.logger)
+	userGlobalAdmin := v1.Group("/users")
+	userGlobalAdmin.Use(s.tenantIsolationMiddleware.GlobalAdminOnly())
+	{
+		userGlobalAdmin.GET("", userHandler.ListUsers)
+		userGlobalAdmin.POST("", userHandler.CreateUser)
+		userGlobalAdmin.GET("/:id", userHandler.GetUser)
+		userGlobalAdmin.PUT("/:id", userHandler.UpdateUser)
+		userGlobalAdmin.DELETE("/:id", userHandler.DeleteUser)
+	}
 
 	// WebSocket streams (metrics, alerts)
 	ws := handlers.NewWebSocketHandler(s.logger)
