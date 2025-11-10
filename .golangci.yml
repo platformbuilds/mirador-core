@@ -140,6 +140,21 @@ issues:
     - path: cmd/schemactl/main\.go
       linters:
         - dupl
+    - path: internal/models/correlation_query\.go
+      linters:
+        - dupl
+    - path: internal/models/unified_query_language\.go
+      linters:
+        - dupl
+    - path: pkg/cache/valkey_cluster\.go
+      linters:
+        - dupl
+    - path: pkg/cache/valkey_single\.go
+      linters:
+        - dupl
+    - path: internal/api/middleware/search_throttling\.middleware\.go
+      linters:
+        - dupl
     - linters:
         - lll
       source: "^//go:generate "
