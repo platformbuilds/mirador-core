@@ -168,7 +168,7 @@ func extractTraceFiltersLucene(e *expr.Expression, out *TraceFilters) {
 				max = fmt.Sprintf("%v", rangeBoundary.Max)
 			}
 
-			if field == "_time" || field == "time" {
+			if field == defaultTimeField || field == "time" {
 				out.StartExpr = min
 				out.EndExpr = max
 			} else if field == "duration" {
@@ -230,7 +230,7 @@ func setTraceFilter(field, val string, out *TraceFilters) {
 		}
 		return
 	}
-	if key == "_time" || key == "time" {
+	if key == defaultTimeField || key == "time" {
 		// Check if it's a date range in the format [start TO end]
 		if strings.HasPrefix(val, "[") && strings.HasSuffix(val, "]") && strings.Contains(val, " TO ") {
 			// Parse date range
@@ -280,29 +280,49 @@ func translateToLogsQL(luceneQuery string) (string, bool) {
 func buildLogsQLFromLuceneAST(e *expr.Expression) (string, error) {
 	// Handle boolean operations (AND/OR/NOT)
 	if e.Op == expr.And {
-		left, err := buildLogsQLFromLuceneAST(e.Left.(*expr.Expression))
+		leftExpr, ok := e.Left.(*expr.Expression)
+		if !ok {
+			return "", fmt.Errorf("expected expression for left operand")
+		}
+		left, err := buildLogsQLFromLuceneAST(leftExpr)
 		if err != nil {
 			return "", err
 		}
-		right, err := buildLogsQLFromLuceneAST(e.Right.(*expr.Expression))
+		rightExpr, ok := e.Right.(*expr.Expression)
+		if !ok {
+			return "", fmt.Errorf("expected expression for right operand")
+		}
+		right, err := buildLogsQLFromLuceneAST(rightExpr)
 		if err != nil {
 			return "", err
 		}
 		return fmt.Sprintf("%s AND %s", left, right), nil
 	}
 	if e.Op == expr.Or {
-		left, err := buildLogsQLFromLuceneAST(e.Left.(*expr.Expression))
+		leftExpr, ok := e.Left.(*expr.Expression)
+		if !ok {
+			return "", fmt.Errorf("expected expression for left operand")
+		}
+		left, err := buildLogsQLFromLuceneAST(leftExpr)
 		if err != nil {
 			return "", err
 		}
-		right, err := buildLogsQLFromLuceneAST(e.Right.(*expr.Expression))
+		rightExpr, ok := e.Right.(*expr.Expression)
+		if !ok {
+			return "", fmt.Errorf("expected expression for right operand")
+		}
+		right, err := buildLogsQLFromLuceneAST(rightExpr)
 		if err != nil {
 			return "", err
 		}
 		return fmt.Sprintf("%s OR %s", left, right), nil
 	}
 	if e.Op == expr.Not {
-		right, err := buildLogsQLFromLuceneAST(e.Right.(*expr.Expression))
+		rightExpr, ok := e.Right.(*expr.Expression)
+		if !ok {
+			return "", fmt.Errorf("expected expression for right operand")
+		}
+		right, err := buildLogsQLFromLuceneAST(rightExpr)
 		if err != nil {
 			return "", err
 		}
@@ -390,7 +410,7 @@ func buildLogsQLFromLuceneAST(e *expr.Expression) (string, error) {
 		if pattern, ok := e.Left.(string); ok {
 			// Convert wildcard to regex
 			regex := wildcardToRegex(pattern)
-			return fmt.Sprintf(`_msg~"%s"`, regex), nil
+			return fmt.Sprintf(`%s~"%s"`, defaultMessageField, regex), nil
 		}
 	}
 
@@ -405,10 +425,10 @@ func buildLogsQLFromLuceneAST(e *expr.Expression) (string, error) {
 			// Check if this is a quoted phrase
 			if strings.HasPrefix(str, `"`) && strings.HasSuffix(str, `"`) {
 				phrase := strings.Trim(str, `"`)
-				return fmt.Sprintf(`_msg:"%s"`, phrase), nil
+				return fmt.Sprintf(`%s:"%s"`, defaultMessageField, phrase), nil
 			}
 			// Single term
-			return fmt.Sprintf(`_msg:"%s"`, str), nil
+			return fmt.Sprintf(`%s:"%s"`, defaultMessageField, str), nil
 		}
 	}
 
@@ -419,21 +439,21 @@ func buildLogsQL(q query.Query) (string, error) {
 	if tq, ok := q.(*query.TermQuery); ok {
 		field := tq.Field()
 		if field == "" {
-			field = "_msg"
+			field = defaultMessageField
 		}
 		return fmt.Sprintf(`%s:"%s"`, field, tq.Term), nil
 	}
 	if mq, ok := q.(*query.MatchQuery); ok {
 		field := mq.Field()
 		if field == "" {
-			field = "_msg"
+			field = defaultMessageField
 		}
 		return fmt.Sprintf(`%s:"%s"`, field, mq.Match), nil
 	}
 	if pq, ok := q.(*query.PhraseQuery); ok {
 		field := pq.Field()
 		if field == "" {
-			field = "_msg"
+			field = defaultMessageField
 		}
 		phrase := strings.Join(pq.Terms, " ")
 		return fmt.Sprintf(`%s:"%s"`, field, phrase), nil
@@ -441,14 +461,14 @@ func buildLogsQL(q query.Query) (string, error) {
 	if mpq, ok := q.(*query.MatchPhraseQuery); ok {
 		field := mpq.Field()
 		if field == "" {
-			field = "_msg"
+			field = defaultMessageField
 		}
 		return fmt.Sprintf(`%s:"%s"`, field, mpq.MatchPhrase), nil
 	}
 	if wq, ok := q.(*query.WildcardQuery); ok {
 		field := wq.Field()
 		if field == "" {
-			field = "_msg"
+			field = defaultMessageField
 		}
 		regex := wildcardToRegex(wq.Wildcard)
 		return fmt.Sprintf(`%s~"%s"`, field, regex), nil
@@ -504,7 +524,11 @@ func buildBooleanLogsQL(bq *query.BooleanQuery) (string, error) {
 	// If only Should clause exists and it's a disjunction with one element
 	if bq.Should != nil && bq.Must == nil && bq.MustNot == nil {
 		if disj, ok := bq.Should.(*query.DisjunctionQuery); ok && len(disj.Disjuncts) == 1 {
-			return buildLogsQL(disj.Disjuncts[0])
+			result, err := buildLogsQL(disj.Disjuncts[0])
+			if err != nil {
+				return "", err
+			}
+			return result, nil
 		}
 		// Handle disjunction with multiple elements
 		if disj, ok := bq.Should.(*query.DisjunctionQuery); ok && len(disj.Disjuncts) > 1 {
@@ -523,7 +547,11 @@ func buildBooleanLogsQL(bq *query.BooleanQuery) (string, error) {
 	// If only Must clause exists
 	if bq.Must != nil && bq.Should == nil && bq.MustNot == nil {
 		if conj, ok := bq.Must.(*query.ConjunctionQuery); ok && len(conj.Conjuncts) == 1 {
-			return buildLogsQL(conj.Conjuncts[0])
+			result, err := buildLogsQL(conj.Conjuncts[0])
+			if err != nil {
+				return "", err
+			}
+			return result, nil
 		}
 		// Handle conjunction with multiple elements
 		if conj, ok := bq.Must.(*query.ConjunctionQuery); ok && len(conj.Conjuncts) > 1 {
@@ -538,7 +566,11 @@ func buildBooleanLogsQL(bq *query.BooleanQuery) (string, error) {
 			return strings.Join(parts, " AND "), nil
 		}
 		// If Must is not a conjunction, try to build directly
-		return buildLogsQL(bq.Must)
+		result, err := buildLogsQL(bq.Must)
+		if err != nil {
+			return "", err
+		}
+		return result, nil
 	}
 
 	// Handle complex boolean queries with both Must and Should
@@ -589,7 +621,7 @@ func toMetricsQL(q string) (string, bool) {
 				continue
 			}
 			// ignore time directives for metrics
-			if name == "_time" || name == "time" {
+			if name == defaultTimeField || name == "time" {
 				continue
 			}
 			if t.quoted || hasWildcard(t.val) || looksRegex(t.val) {
@@ -635,7 +667,11 @@ func toMetricsQL(q string) (string, bool) {
 	return b.String(), true
 }
 
-// ---------------- helpers ----------------
+// Constants for common field names
+const (
+	defaultMessageField = "_msg"
+	defaultTimeField    = "_time"
+)
 
 type scanner struct {
 	src string
