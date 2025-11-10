@@ -4,12 +4,6 @@ run:
   tests: true
   build-tags: []
   go: "1.21"
-  exclude-dirs:
-    - vendor
-    - .git
-  exclude-files:
-    - ".*\\.pb\\.go$"
-    - ".*_generated\\.go$"
 
 output:
   formats:
@@ -38,12 +32,8 @@ linters-settings:
     min-complexity: 15
   goimports:
     local-prefixes: github.com/platformbuilds/mirador-core
-  golint:
-    min-confidence: 0.8
   mnd:
-    settings:
-      mnd:
-        checks: argument,case,condition,operation,return,assign
+    checks: [argument,case,condition,operation,return,assign]
   govet:
     enable:
       - shadow
@@ -59,12 +49,10 @@ linters-settings:
   misspell:
     locale: US
   nolintlint:
-    allow-leading-space: true
     allow-unused: false
     require-explanation: false
     require-specific: false
   revive:
-    min-confidence: 0
     rules:
       - name: exported
         severity: warning
@@ -77,8 +65,6 @@ linters-settings:
     checks: ["all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022"]
   unparam:
     check-exported: false
-  unused:
-    go: "1.21"
 
 linters:
   enable:
