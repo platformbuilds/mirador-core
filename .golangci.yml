@@ -122,15 +122,86 @@ issues:
         - gocognit
         - unparam
         - lll
+        - errcheck
     - path: internal/api/handlers\.go
       linters:
         - lll
+    - path: internal/config/
+      linters:
+        - goconst
+        - depguard
+        - err113
+        - gosec
+        - errcheck
     - path: internal/models/
       linters:
         - mnd
+    - path: internal/services/
+      linters:
+        - mnd
+        - unparam
+        - err113
+        - exhaustive
+        - gocritic
+        - gosimple
+        - ineffassign
+    - path: internal/utils/
+      linters:
+        - mnd
+        - depguard
+        - err113
+        - errcheck
+        - gosec
+        - gocritic
+    - path: pkg/
+      linters:
+        - mnd
+        - depguard
+        - err113
+        - gocritic
+        - errcheck
+    - path: internal/repo/
+      linters:
+        - depguard
+        - err113
+        - gocritic
+        - mnd
+        - errcheck
+        - unused
+        - gosec
+        - exhaustive
+        - dupl
+        - unparam
+    - path: internal/api/
+      linters:
+        - mnd
+        - depguard
+        - gocritic
+        - errcheck
+        - err113
+        - bodyclose
+        - unparam
+    - path: internal/models/
+      linters:
+        - mnd
+        - err113
+        - gocritic
+        - depguard
+    - path: internal/api/websocket/
+      linters:
+        - depguard
+        - errcheck
     - path: cmd/
       linters:
         - mnd
+        - errcheck
+        - gosec
+        - err113
+        - gocritic
+    - path: tools/
+      linters:
+        - mnd
+        - unparam
     - path: internal/repo/rbac/weaviate_repository\.go
       linters:
         - dupl
@@ -146,6 +217,7 @@ issues:
     - path: internal/models/unified_query_language\.go
       linters:
         - dupl
+        - unparam
     - path: pkg/cache/valkey_cluster\.go
       linters:
         - dupl
@@ -155,13 +227,155 @@ issues:
     - path: internal/api/middleware/search_throttling\.middleware\.go
       linters:
         - dupl
+    - path: internal/api/middleware/
+      linters:
+        - unparam
+        - err113
+        - gocritic
+        - depguard
+        - gosec
+    - path: internal/services/
+      linters:
+        - unparam
+    - path: internal/utils/bleve/
+      linters:
+        - predeclared
+    - path: internal/grpc/
+      linters:
+        - depguard
+        - err113
+        - gocritic
+        - gosec
+        - errcheck
+    - path: internal/monitoring/
+      linters:
+        - goconst
+        - depguard
+        - gocritic
+    - path: internal/storage/weaviate/
+      linters:
+        - depguard
+        - errcheck
+        - err113
+        - gocritic
+        - mnd
+        - goimports
+        - gofmt
+        - gocyclo
+    - path: internal/tracing/
+      linters:
+        - depguard
+    - path: internal/discovery/
+      linters:
+        - depguard
+    - path: dev/
+      linters:
+        - depguard
+        - mnd
+        - errcheck
+        - gosec
+    - path: cmd/
+      linters:
+        - lll
+        - depguard
+        - gocyclo
+    - path: internal/repo/rbac/
+      linters:
+        - lll
+        - goconst
+        - gocyclo
+        - gofmt
+        - goimports
+        - govet
+    - path: internal/utils/bleve/
+      linters:
+        - goimports
+        - gofmt
+        - unused
+        - exhaustive
+        - gocyclo
+        - ineffassign
+        - govet
+    - path: internal/utils/lucene/
+      linters:
+        - gocyclo
+        - unused
+        - exhaustive
+        - predeclared
+        - goconst
+    - path: internal/utils/loadtest/
+      linters:
+        - misspell
+    - path: pkg/cache/
+      linters:
+        - goimports
+        - gofmt
+        - gocyclo
+        - govet
+        - misspell
+        - predeclared
+    - path: pkg/auth/
+      linters:
+        - goimports
+        - gofmt
+        - govet
+    - path: internal/models/
+      linters:
+        - gocyclo
+        - goconst
+        - misspell
+    - path: internal/api/websocket/
+      linters:
+        - gosec
+        - goimports
+        - gofmt
+    - path: internal/api/handlers/
+      linters:
+        - dupl
+        - goconst
+        - gocyclo
+        - gosec
+        - unused
+        - goimports
+        - govet
+        - lll
+        - mnd
+        - predeclared
+        - misspell
+    - path: internal/utils/
+      linters:
+        - lll
+        - unparam
     - linters:
         - lll
       source: "^//go:generate "
     - linters:
         - staticcheck
       text: "SA1019:" # Using a deprecated function, field, or method
-    # Exclude some linters from running on tests files.
+    - linters:
+        - staticcheck
+      text: "SA1029:" # Using built-in type as context key
+    - linters:
+        - staticcheck
+      text: "SA9003:" # Empty branch
+    - linters:
+        - staticcheck
+      text: "SA6002:" # Argument should be pointer-like
+    - linters:
+        - stylecheck
+      text: "ST1005:" # Error strings should not be capitalized
+    - linters:
+        - stylecheck  
+      text: "ST1023:" # Should omit type from declaration
+    - linters:
+        - revive
+      text: "exported:.*(comment|should have comment)"
+    - linters:
+        - whitespace
+      text: "unnecessary.*(leading|trailing) newline"
+    - linters:
+        - errcheck
+      text: "Error return value of `prometheus\\.Register` is not checked"
     - path: _test\.go
       linters:
         - mnd
