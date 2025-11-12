@@ -8,9 +8,10 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/platformbuilds/mirador-core/internal/models"
 )
 
 // TestServer represents the test server with dependencies
@@ -103,7 +104,7 @@ func TestKPIEndpoints(t *testing.T) {
 	ts := setupTestServer(t)
 
 	t.Run("GET /api/v1/kpi/defs - success", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/api/v1/kpi/defs", nil)
+		req, _ := http.NewRequest(http.MethodGet, "/api/v1/kpi/defs", http.NoBody)
 		w := httptest.NewRecorder()
 
 		ts.router.ServeHTTP(w, req)
@@ -153,7 +154,7 @@ func TestDashboardEndpoints(t *testing.T) {
 	ts := setupTestServer(t)
 
 	t.Run("GET /api/v1/dashboards - success", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/api/v1/dashboards", nil)
+		req, _ := http.NewRequest(http.MethodGet, "/api/v1/dashboards", http.NoBody)
 		w := httptest.NewRecorder()
 
 		ts.router.ServeHTTP(w, req)
@@ -173,7 +174,7 @@ func TestUserPreferencesEndpoints(t *testing.T) {
 	ts := setupTestServer(t)
 
 	t.Run("GET /api/v1/user/preferences - success", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/api/v1/user/preferences", nil)
+		req, _ := http.NewRequest(http.MethodGet, "/api/v1/user/preferences", http.NoBody)
 		w := httptest.NewRecorder()
 
 		ts.router.ServeHTTP(w, req)

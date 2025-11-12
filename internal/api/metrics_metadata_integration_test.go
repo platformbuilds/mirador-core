@@ -221,7 +221,7 @@ func TestMetricsMetadataIntegration(t *testing.T) {
 	}
 
 	// Create a test HTTP request to check if routes are registered
-	req := httptest.NewRequest("GET", "/api/v1/metrics/health", nil)
+	req := httptest.NewRequest("GET", "/api/v1/metrics/health", http.NoBody)
 	w := httptest.NewRecorder()
 
 	server.router.ServeHTTP(w, req)

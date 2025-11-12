@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/models"
@@ -351,7 +352,7 @@ func TestRBAC_Session_Config(t *testing.T) {
 
 	// RBAC list
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/rbac/roles", nil))
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/rbac/roles", http.NoBody))
 	if w.Code != http.StatusOK {
 		t.Fatalf("rbac roles status=%d", w.Code)
 	}
@@ -375,14 +376,14 @@ func TestRBAC_Session_Config(t *testing.T) {
 
 	// Sessions active
 	w = httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/sessions/active", nil))
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/sessions/active", http.NoBody))
 	if w.Code != http.StatusOK {
 		t.Fatalf("sessions active=%d", w.Code)
 	}
 
 	// Sessions user
 	w = httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/sessions/user/u1", nil))
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/sessions/user/u1", http.NoBody))
 	if w.Code != http.StatusOK {
 		t.Fatalf("sessions user=%d", w.Code)
 	}
@@ -404,7 +405,7 @@ func TestRBAC_Session_Config(t *testing.T) {
 
 	// Config list datasources
 	w = httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/config/datasources", nil))
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/config/datasources", http.NoBody))
 	if w.Code != http.StatusOK {
 		t.Fatalf("datasources=%d", w.Code)
 	}
@@ -421,7 +422,7 @@ func TestRBAC_Session_Config(t *testing.T) {
 
 	// Config integrations
 	w = httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/config/integrations", nil))
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/config/integrations", http.NoBody))
 	if w.Code != http.StatusOK {
 		t.Fatalf("integrations=%d", w.Code)
 	}

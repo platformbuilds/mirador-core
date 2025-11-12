@@ -11,11 +11,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // mockKPIRepo is a mock implementation for testing KPI operations
@@ -298,7 +299,7 @@ func TestKPIHandler_GetKPIDefinitions(t *testing.T) {
 	mockRepo.kpis["test-tenant|kpi-1"] = kpi1
 	mockRepo.kpis["test-tenant|kpi-2"] = kpi2
 
-	httpReq, _ := http.NewRequest("GET", "/api/v1/kpi/defs?limit=10&offset=0", nil)
+	httpReq, _ := http.NewRequest("GET", "/api/v1/kpi/defs?limit=10&offset=0", http.NoBody)
 	httpReq.Header.Set("tenant_id", "test-tenant")
 
 	w := httptest.NewRecorder()
@@ -469,7 +470,7 @@ func TestKPIHandler_DeleteKPIDefinition(t *testing.T) {
 	}
 	mockRepo.kpis["test-tenant|test-kpi"] = kpi
 
-	httpReq, _ := http.NewRequest("DELETE", "/api/v1/kpi/defs/test-kpi?confirm=1", nil)
+	httpReq, _ := http.NewRequest("DELETE", "/api/v1/kpi/defs/test-kpi?confirm=1", http.NoBody)
 	httpReq.Header.Set("tenant_id", "test-tenant")
 
 	w := httptest.NewRecorder()
@@ -500,7 +501,7 @@ func TestKPIHandler_GetKPILayouts(t *testing.T) {
 	}
 	mockRepo.layouts["dashboard-1"] = layouts
 
-	httpReq, _ := http.NewRequest("GET", "/api/v1/kpi/layouts/batch?dashboard=dashboard-1", nil)
+	httpReq, _ := http.NewRequest("GET", "/api/v1/kpi/layouts/batch?dashboard=dashboard-1", http.NoBody)
 	httpReq.Header.Set("tenant_id", "test-tenant")
 
 	w := httptest.NewRecorder()
@@ -582,7 +583,7 @@ func TestKPIHandler_GetDashboards(t *testing.T) {
 	mockRepo.dashboards["test-tenant|dashboard-1"] = dashboard1
 	mockRepo.dashboards["test-tenant|dashboard-2"] = dashboard2
 
-	httpReq, _ := http.NewRequest("GET", "/api/v1/dashboards?limit=10&offset=0", nil)
+	httpReq, _ := http.NewRequest("GET", "/api/v1/dashboards?limit=10&offset=0", http.NoBody)
 	httpReq.Header.Set("tenant_id", "test-tenant")
 
 	w := httptest.NewRecorder()
@@ -703,7 +704,7 @@ func TestKPIHandler_DeleteDashboard(t *testing.T) {
 	}
 	mockRepo.dashboards["test-tenant|test-dashboard"] = dashboard
 
-	httpReq, _ := http.NewRequest("DELETE", "/api/v1/dashboards/test-dashboard?confirm=1", nil)
+	httpReq, _ := http.NewRequest("DELETE", "/api/v1/dashboards/test-dashboard?confirm=1", http.NoBody)
 	httpReq.Header.Set("tenant_id", "test-tenant")
 
 	w := httptest.NewRecorder()

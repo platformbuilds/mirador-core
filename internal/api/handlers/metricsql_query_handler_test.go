@@ -101,7 +101,7 @@ func TestMetricsQLQueryHandler_Routing(t *testing.T) {
 				url += "?query=" + tt.query
 			}
 
-			req := httptest.NewRequest(http.MethodGet, url, nil)
+			req := httptest.NewRequest(http.MethodGet, url, http.NoBody)
 			r.ServeHTTP(w, req)
 
 			if w.Code != tt.expectedStatus {
@@ -184,7 +184,7 @@ func TestMetricsQLQueryHandler_ParameterValidation(t *testing.T) {
 				url += "&" + key + "=" + value
 			}
 
-			req := httptest.NewRequest(http.MethodGet, url, nil)
+			req := httptest.NewRequest(http.MethodGet, url, http.NoBody)
 			r.ServeHTTP(w, req)
 
 			if w.Code != tt.expectedStatus {

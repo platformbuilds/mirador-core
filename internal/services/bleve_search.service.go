@@ -10,6 +10,7 @@ import (
 
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/search/query"
+
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve/mapping"
 	"github.com/platformbuilds/mirador-core/pkg/cache"

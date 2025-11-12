@@ -11,6 +11,7 @@ import (
 
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/search"
+
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve/mapping"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve/storage"

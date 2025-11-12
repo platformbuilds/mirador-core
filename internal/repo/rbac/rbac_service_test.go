@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/platformbuilds/mirador-core/internal/models"
 )
 
 // Mock implementations for testing
@@ -563,7 +564,22 @@ func TestRBACService_CheckPermission_Allowed(t *testing.T) {
 		Scope:    "tenant",
 	}
 
+	user := &models.User{
+		ID:        userID,
+		Email:     "test@example.com",
+		GlobalRole: "", // No global role
+	}
+
+	tenantUser := &models.TenantUser{
+		TenantID:   tenantID,
+		UserID:     userID,
+		TenantRole: "viewer",
+		Status:     "active",
+	}
+
 	// Setup expectations
+	mockRepo.On("GetUser", ctx, userID).Return(user, nil)
+	mockRepo.On("GetTenantUser", ctx, tenantID, userID).Return(tenantUser, nil)
 	mockCache.On("GetUserRoles", ctx, tenantID, userID).Return(userRoles, nil)
 	mockCache.On("GetRole", ctx, tenantID, "viewer").Return(nil, nil) // Cache miss
 	mockRepo.On("GetRole", ctx, tenantID, "viewer").Return(viewerRole, nil)
@@ -611,7 +627,22 @@ func TestRBACService_CheckPermission_Denied(t *testing.T) {
 		Scope:    "tenant",
 	}
 
+	user := &models.User{
+		ID:        userID,
+		Email:     "test@example.com",
+		GlobalRole: "", // No global role
+	}
+
+	tenantUser := &models.TenantUser{
+		TenantID:   tenantID,
+		UserID:     userID,
+		TenantRole: "viewer",
+		Status:     "active",
+	}
+
 	// Setup expectations
+	mockRepo.On("GetUser", ctx, userID).Return(user, nil)
+	mockRepo.On("GetTenantUser", ctx, tenantID, userID).Return(tenantUser, nil)
 	mockCache.On("GetUserRoles", ctx, tenantID, userID).Return(userRoles, nil)
 	mockCache.On("GetRole", ctx, tenantID, "viewer").Return(nil, nil) // Cache miss
 	mockRepo.On("GetRole", ctx, tenantID, "viewer").Return(viewerRole, nil)

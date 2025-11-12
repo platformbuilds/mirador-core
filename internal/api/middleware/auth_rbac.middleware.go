@@ -12,13 +12,21 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/pquerna/otp/totp"
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
-	"github.com/pquerna/otp/totp"
-	"golang.org/x/crypto/bcrypt"
+)
+
+// Auth backend types
+const (
+	AuthBackendJWT   = "jwt"
+	AuthBackendSAML  = "saml"
+	AuthBackendLocal = "local"
 )
 
 // AuthService handles authentication operations
@@ -225,11 +233,11 @@ func (as *AuthService) BackendSelectionMiddleware() gin.HandlerFunc {
 		backend := as.determineAuthBackend(c)
 
 		switch backend {
-		case "jwt":
+		case AuthBackendJWT:
 			as.JWTMiddleware()(c)
-		case "saml":
+		case AuthBackendSAML:
 			as.SAMLMiddleware()(c)
-		case "local":
+		case AuthBackendLocal:
 			as.LocalAuthMiddleware()(c)
 		default:
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -561,16 +569,16 @@ func (as *AuthService) validatePasswordPolicy(password string) error {
 func (as *AuthService) determineAuthBackend(c *gin.Context) string {
 	// Check for JWT token
 	if authHeader := c.GetHeader("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
-		return "jwt"
+		return AuthBackendJWT
 	}
 
 	// Check for SAML assertion
 	if c.Query("SAMLResponse") != "" {
-		return "saml"
+		return AuthBackendSAML
 	}
 
 	// Default to local auth
-	return "local"
+	return AuthBackendLocal
 }
 
 // normalizeAndPersistIdentity normalizes and persists user identity

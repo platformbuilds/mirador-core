@@ -3,9 +3,10 @@ package services
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestUQLQueryFlowIntegration(t *testing.T) {

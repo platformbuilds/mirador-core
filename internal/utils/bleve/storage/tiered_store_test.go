@@ -5,9 +5,10 @@ import (
 	"time"
 
 	store "github.com/blevesearch/upsidedown_store_api"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // MockDiskStore is a simple in-memory mock for testing

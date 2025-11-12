@@ -412,7 +412,7 @@ func SetupPrometheusMetrics(router gin.IRoutes) {
 	// Use the default Prometheus registry to combine with existing metrics
 
 	// Register build info (ignore if already registered)
-	_ = prometheus.Register(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+	_ = prometheus.Register(prometheus.NewGaugeFunc(prometheus.GaugeOpts{ //nolint:errcheck
 		Name: "mirador_core_build_info",
 		Help: "Build information for MIRADOR-CORE",
 		ConstLabels: prometheus.Labels{
@@ -423,50 +423,50 @@ func SetupPrometheusMetrics(router gin.IRoutes) {
 	}, func() float64 { return 1 }))
 
 	// Register HTTP metrics (these might conflict with existing ones, so ignore errors)
-	_ = prometheus.Register(httpRequestsTotal)
-	_ = prometheus.Register(httpRequestDuration)
+	_ = prometheus.Register(httpRequestsTotal)   //nolint:errcheck
+	_ = prometheus.Register(httpRequestDuration) //nolint:errcheck
 
 	// Register additional metrics (ignore if already registered)
-	_ = prometheus.Register(dbOperationsTotal)
-	_ = prometheus.Register(dbOperationDuration)
-	_ = prometheus.Register(cacheOperationsTotal)
-	_ = prometheus.Register(authAttemptsTotal)
-	_ = prometheus.Register(apiOperationsTotal)
-	_ = prometheus.Register(apiOperationDuration)
-	_ = prometheus.Register(victoriaMetricsQueriesTotal)
-	_ = prometheus.Register(victoriaMetricsQueryDuration)
-	_ = prometheus.Register(weaviateOperationsTotal)
-	_ = prometheus.Register(weaviateOperationDuration)
-	_ = prometheus.Register(activeConnections)
-	_ = prometheus.Register(errorsTotal)
+	_ = prometheus.Register(dbOperationsTotal)            //nolint:errcheck
+	_ = prometheus.Register(dbOperationDuration)          //nolint:errcheck
+	_ = prometheus.Register(cacheOperationsTotal)         //nolint:errcheck
+	_ = prometheus.Register(authAttemptsTotal)            //nolint:errcheck
+	_ = prometheus.Register(apiOperationsTotal)           //nolint:errcheck
+	_ = prometheus.Register(apiOperationDuration)         //nolint:errcheck
+	_ = prometheus.Register(victoriaMetricsQueriesTotal)  //nolint:errcheck
+	_ = prometheus.Register(victoriaMetricsQueryDuration) //nolint:errcheck
+	_ = prometheus.Register(weaviateOperationsTotal)      //nolint:errcheck
+	_ = prometheus.Register(weaviateOperationDuration)    //nolint:errcheck
+	_ = prometheus.Register(activeConnections)            //nolint:errcheck
+	_ = prometheus.Register(errorsTotal)                  //nolint:errcheck
 
 	// Register Bleve metrics
-	_ = prometheus.Register(bleveIndexOperationsTotal)
-	_ = prometheus.Register(bleveIndexOperationDuration)
-	_ = prometheus.Register(bleveSearchOperationsTotal)
-	_ = prometheus.Register(bleveSearchOperationDuration)
-	_ = prometheus.Register(bleveSearchResultsTotal)
-	_ = prometheus.Register(bleveIndexDocumentCount)
-	_ = prometheus.Register(bleveIndexShardCount)
-	_ = prometheus.Register(bleveStorageMemoryUsage)
-	_ = prometheus.Register(bleveStorageDiskUsage)
-	_ = prometheus.Register(bleveClusterNodesTotal)
-	_ = prometheus.Register(bleveClusterLeadershipChanges)
-	_ = prometheus.Register(bleveRebalancingOperations)
-	_ = prometheus.Register(bleveCacheOperations)
+	_ = prometheus.Register(bleveIndexOperationsTotal)     //nolint:errcheck
+	_ = prometheus.Register(bleveIndexOperationDuration)   //nolint:errcheck
+	_ = prometheus.Register(bleveSearchOperationsTotal)    //nolint:errcheck
+	_ = prometheus.Register(bleveSearchOperationDuration)  //nolint:errcheck
+	_ = prometheus.Register(bleveSearchResultsTotal)       //nolint:errcheck
+	_ = prometheus.Register(bleveIndexDocumentCount)       //nolint:errcheck
+	_ = prometheus.Register(bleveIndexShardCount)          //nolint:errcheck
+	_ = prometheus.Register(bleveStorageMemoryUsage)       //nolint:errcheck
+	_ = prometheus.Register(bleveStorageDiskUsage)         //nolint:errcheck
+	_ = prometheus.Register(bleveClusterNodesTotal)        //nolint:errcheck
+	_ = prometheus.Register(bleveClusterLeadershipChanges) //nolint:errcheck
+	_ = prometheus.Register(bleveRebalancingOperations)    //nolint:errcheck
+	_ = prometheus.Register(bleveCacheOperations)          //nolint:errcheck
 
 	// Register Unified Query metrics
-	_ = prometheus.Register(unifiedQueryOperationsTotal)
-	_ = prometheus.Register(unifiedQueryOperationDuration)
-	_ = prometheus.Register(unifiedQueryCacheOperations)
-	_ = prometheus.Register(unifiedQueryCorrelationOperations)
-	_ = prometheus.Register(unifiedQueryCorrelationDuration)
+	_ = prometheus.Register(unifiedQueryOperationsTotal)       //nolint:errcheck
+	_ = prometheus.Register(unifiedQueryOperationDuration)     //nolint:errcheck
+	_ = prometheus.Register(unifiedQueryCacheOperations)       //nolint:errcheck
+	_ = prometheus.Register(unifiedQueryCorrelationOperations) //nolint:errcheck
+	_ = prometheus.Register(unifiedQueryCorrelationDuration)   //nolint:errcheck
 
 	// Register additional correlation performance metrics
-	_ = prometheus.Register(correlationEngineQueryDuration)
-	_ = prometheus.Register(correlationResultMergingDuration)
-	_ = prometheus.Register(correlationParallelExecutionDuration)
-	_ = prometheus.Register(correlationCacheOperations)
+	_ = prometheus.Register(correlationEngineQueryDuration)       //nolint:errcheck
+	_ = prometheus.Register(correlationResultMergingDuration)     //nolint:errcheck
+	_ = prometheus.Register(correlationParallelExecutionDuration) //nolint:errcheck
+	_ = prometheus.Register(correlationCacheOperations)           //nolint:errcheck
 
 	// Expose metrics endpoint using default registry
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))

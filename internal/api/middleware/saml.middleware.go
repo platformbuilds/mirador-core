@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
@@ -394,7 +395,7 @@ func (ss *SAMLService) determineTenantFromSAMLGroups(groups []string) string {
 	}
 
 	// Default tenant
-	return "default"
+	return DefaultTenantID
 }
 
 // mapSAMLGroupsToRoles maps SAML groups to RBAC roles

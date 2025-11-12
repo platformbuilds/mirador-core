@@ -9,9 +9,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
+)
+
+const (
+	// DefaultTenantID is the fallback tenant ID when none is specified
+	DefaultTenantID = "default"
+	// UnknownTenantID represents an unknown/unset tenant
+	UnknownTenantID = "unknown"
 )
 
 // AuthMiddleware handles LDAP/AD + SSO authentication for MIRADOR-CORE
@@ -79,7 +87,7 @@ func extractToken(c *gin.Context) string {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader != "" {
 		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+		if len(parts) == 2 && strings.EqualFold(parts[0], "bearer") {
 			return parts[1]
 		}
 	}
@@ -168,7 +176,7 @@ func validateJWTToken(tokenString string, authConfig config.AuthConfig) (*models
 
 	tenantID, ok := claims["tenant"].(string)
 	if !ok {
-		tenantID = "default" // Fallback tenant
+		tenantID = DefaultTenantID // Fallback tenant
 	}
 
 	// Extract roles
@@ -257,7 +265,7 @@ func RequireAuth(authConfig config.AuthConfig, cache cache.ValkeyCluster) gin.Ha
 func RequireTenant() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tenantID := c.GetString("tenant_id")
-		if tenantID == "" || tenantID == "unknown" {
+		if tenantID == "" || tenantID == UnknownTenantID {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"status": "error",
 				"error":  "Tenant context required",

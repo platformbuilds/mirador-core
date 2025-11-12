@@ -137,6 +137,6 @@ func (c *Config) ToJSON() string {
 	safeCopy.Database.VictoriaTraces.Password = "[REDACTED]"
 	safeCopy.Integrations.Email.Password = "[REDACTED]"
 
-	jsonBytes, _ := json.MarshalIndent(safeCopy, "", "  ")
+	jsonBytes, _ := json.MarshalIndent(safeCopy, "", "  ") //nolint:errcheck
 	return string(jsonBytes)
 }

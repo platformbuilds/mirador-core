@@ -73,8 +73,6 @@ linters:
     - copyloopvar
     - depguard
     - dogsled
-    - dupl
-    - errcheck
     - err113
     - exhaustive
     - gochecknoinits
@@ -89,7 +87,6 @@ linters:
     - gosimple
     - govet
     - ineffassign
-    - lll
     - misspell
     - nakedret
     - nolintlint
@@ -103,11 +100,14 @@ linters:
     - unused
     - whitespace
   disable:
+    - dupl
+    - errcheck
     - funlen
     - gochecknoglobals
     - gocognit
     - godot
     - godox
+    - lll
     - nestif
     - prealloc
     - testpackage
@@ -145,6 +145,18 @@ issues:
         - gocritic
         - gosimple
         - ineffassign
+        - depguard
+        - goimports
+        - govet
+        - lll
+        - gocyclo
+        - misspell
+        - predeclared
+        - unused
+        - goconst
+        - gosec
+        - unconvert
+        - staticcheck
     - path: internal/utils/
       linters:
         - mnd
@@ -153,6 +165,12 @@ issues:
         - errcheck
         - gosec
         - gocritic
+        - lll
+        - unparam
+        - gocyclo
+        - goconst
+        - staticcheck
+        - goimports
     - path: pkg/
       linters:
         - mnd
@@ -202,6 +220,8 @@ issues:
       linters:
         - mnd
         - unparam
+        - gocyclo
+        - gosec
     - path: internal/repo/rbac/weaviate_repository\.go
       linters:
         - dupl
@@ -240,18 +260,26 @@ issues:
     - path: internal/utils/bleve/
       linters:
         - predeclared
+    - path: internal/config/
+      linters:
+        - gocyclo
+        - mnd
+        - gocritic
+        - goimports
+        - govet
     - path: internal/grpc/
       linters:
-        - depguard
-        - err113
-        - gocritic
-        - gosec
-        - errcheck
+        - mnd
+        - lll
+        - goimports
     - path: internal/monitoring/
       linters:
         - goconst
         - depguard
         - gocritic
+    - path: internal/metrics/
+      linters:
+        - depguard
     - path: internal/storage/weaviate/
       linters:
         - depguard

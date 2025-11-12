@@ -1,13 +1,15 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/platformbuilds/mirador-core/internal/models"
 )
 
 // IntegrationTestFramework provides a comprehensive testing framework for unified query engine
@@ -237,7 +239,7 @@ func (f *IntegrationTestFramework) AssertQueryError(t mock.TestingT, err error, 
 	}
 	// Simple substring check
 	errMsg := err.Error()
-	if len(errMsg) == 0 {
+	if errMsg == "" {
 		t.Errorf("Expected error with message, got empty error")
 	}
 }
@@ -328,7 +330,7 @@ func GenerateTracesResult(traceID string) []models.Trace {
 // Helper Functions
 
 // WaitForCondition waits for a condition to be true with timeout
-func WaitForCondition(condition func() bool, timeout time.Duration, interval time.Duration) bool {
+func WaitForCondition(condition func() bool, timeout, interval time.Duration) bool {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		if condition() {
@@ -355,7 +357,7 @@ func CompareQueryResults(result1, result2 *models.UnifiedResult) bool {
 	// Compare data (simplified comparison)
 	data1, _ := json.Marshal(result1.Data)
 	data2, _ := json.Marshal(result2.Data)
-	return string(data1) == string(data2)
+	return bytes.Equal(data1, data2)
 }
 
 // CreateTestUnifiedQuery creates a unified query for testing

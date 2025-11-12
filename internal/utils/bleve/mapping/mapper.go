@@ -153,7 +153,7 @@ func (m *BleveDocumentMapper) mapLogEntry(logEntry map[string]any, tenantID stri
 	sb.WriteString("log_")
 	sb.WriteString(tenantID)
 	sb.WriteByte('_')
-	sb.WriteString(fmt.Sprintf("%d_%d", timestamp.UnixNano(), index))
+	fmt.Fprintf(sb, "%d_%d", timestamp.UnixNano(), index)
 	id := sb.String()
 
 	// Get pooled map for fields

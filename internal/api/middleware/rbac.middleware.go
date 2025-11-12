@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
@@ -311,16 +312,16 @@ func (r *RBACEnforcer) checkTenantRoleAccess(tenantRoles []string, requiredPermi
 	// Map tenant roles to permissions
 	rolePermissions := map[string][]string{
 		"tenant_admin": {
-			"dashboard.*", "kpi_definition.*", "layout.*", "user_prefs.*", "rbac.*",
+			"dashboard.*", "kpi.*", "layout.*", "config.*", "rbac.*",
 		},
 		"tenant_editor": {
 			"dashboard.create", "dashboard.read", "dashboard.update",
-			"kpi_definition.create", "kpi_definition.read", "kpi_definition.update",
+			"kpi.create", "kpi.read", "kpi.update",
 			"layout.create", "layout.read", "layout.update",
-			"user_prefs.read", "user_prefs.update",
+			"config.read", "config.update",
 		},
 		"tenant_guest": {
-			"dashboard.read", "kpi_definition.read", "layout.read", "user_prefs.read",
+			"dashboard.read", "kpi.read", "layout.read", "config.read",
 		},
 	}
 

@@ -560,7 +560,7 @@ func (ce *CorrelationEngineImpl) createCorrelationSummary(
 	return models.CorrelationSummary{
 		TotalCorrelations: len(correlations),
 		AverageConfidence: avgConfidence,
-		TimeRange:         fmt.Sprintf("%v", executionTime),
+		TimeRange:         executionTime.String(),
 		EnginesInvolved:   enginesInvolved,
 	}
 }

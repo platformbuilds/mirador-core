@@ -282,22 +282,16 @@ func (a *edgeAggregator) build(start, end time.Time) *models.ServiceGraphData {
 func buildLabelSelector(req *models.ServiceGraphRequest) string {
 	var parts []string
 	if req.Client != "" {
-		parts = append(parts, fmt.Sprintf("client=\"%s\"", escapeLabelValue(req.Client)))
+		parts = append(parts, fmt.Sprintf("client=%q", req.Client))
 	}
 	if req.Server != "" {
-		parts = append(parts, fmt.Sprintf("server=\"%s\"", escapeLabelValue(req.Server)))
+		parts = append(parts, fmt.Sprintf("server=%q", req.Server))
 	}
 	if req.ConnectionType != "" {
-		parts = append(parts, fmt.Sprintf("connection_type=\"%s\"", escapeLabelValue(req.ConnectionType)))
+		parts = append(parts, fmt.Sprintf("connection_type=%q", req.ConnectionType))
 	}
 	if len(parts) == 0 {
 		return ""
 	}
 	return "{" + strings.Join(parts, ",") + "}"
-}
-
-func escapeLabelValue(value string) string {
-	value = strings.ReplaceAll(value, "\\", "\\\\")
-	value = strings.ReplaceAll(value, "\"", "\\\"")
-	return value
 }

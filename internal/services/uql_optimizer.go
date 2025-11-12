@@ -1328,7 +1328,7 @@ func (o *UQLOptimizerImpl) formatCondition(condition *models.UQLCondition) strin
 // formatConditionRecursive recursively formats condition tree
 func (o *UQLOptimizerImpl) formatConditionRecursive(condition *models.UQLCondition, result *strings.Builder) {
 	if condition.Field != "" {
-		result.WriteString(fmt.Sprintf("%s %s %v", condition.Field, condition.Operator, condition.Value))
+		fmt.Fprintf(result, "%s %s %v", condition.Field, condition.Operator, condition.Value)
 	}
 
 	if condition.And != nil {

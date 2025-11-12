@@ -759,7 +759,7 @@ func (s *VictoriaLogsService) healthCheckMultiEndpoint(ctx context.Context) erro
 
 func (s *VictoriaLogsService) healthCheckSelf(ctx context.Context) error {
 	endpoint := s.selectEndpoint()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"/health", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"/health", http.NoBody)
 	if err != nil {
 		return err
 	}
@@ -1138,7 +1138,7 @@ func (s *VictoriaLogsService) ExportLogs(ctx context.Context, request *models.Lo
 	// There is no /export for VictoriaLogs HTTP API.
 	// https://docs.victoriametrics.com/victorialogs/querying/#http-api
 	queryURL := fmt.Sprintf("%s/select/logsql/query?%s", endpoint, params.Encode())
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, queryURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, queryURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}

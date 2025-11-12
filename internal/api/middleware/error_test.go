@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -95,7 +96,7 @@ func TestErrorHandler(t *testing.T) {
 			})
 
 			// Create request
-			req := httptest.NewRequest(http.MethodGet, "/test", nil)
+			req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 			w := httptest.NewRecorder()
 
 			// Serve request

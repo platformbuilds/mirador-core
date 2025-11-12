@@ -681,10 +681,10 @@ func (p *UQLParser) parseValue(valueStr string) (interface{}, error) {
 	}
 
 	// Booleans
-	if strings.ToLower(valueStr) == "true" {
+	if strings.EqualFold(valueStr, "true") {
 		return true, nil
 	}
-	if strings.ToLower(valueStr) == "false" {
+	if strings.EqualFold(valueStr, "false") {
 		return false, nil
 	}
 

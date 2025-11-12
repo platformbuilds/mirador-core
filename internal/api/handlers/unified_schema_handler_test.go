@@ -11,10 +11,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/repo"
 )
 
 // mockLogger implements the Logger interface for testing
@@ -348,7 +349,7 @@ func TestUnifiedSchemaHandler_GetSchemaDefinition_Label(t *testing.T) {
 
 	handler := NewUnifiedSchemaHandler(mockRepo, nil, nil, nil, &mockLogger{}, 1024*1024)
 
-	httpReq, _ := http.NewRequest("GET", "/schema/label/test-label", nil)
+	httpReq, _ := http.NewRequest("GET", "/schema/label/test-label", http.NoBody)
 	httpReq.Header.Set("tenant_id", "test-tenant")
 
 	w := httptest.NewRecorder()
@@ -459,7 +460,7 @@ func TestUnifiedSchemaHandler_GetSchemaDefinition_NotFound(t *testing.T) {
 	mockRepo := newMockUnifiedSchemaRepo()
 	handler := NewUnifiedSchemaHandler(mockRepo, nil, nil, nil, &mockLogger{}, 1024*1024)
 
-	httpReq, _ := http.NewRequest("GET", "/schema/label/nonexistent", nil)
+	httpReq, _ := http.NewRequest("GET", "/schema/label/nonexistent", http.NoBody)
 	httpReq.Header.Set("tenant_id", "test-tenant")
 
 	w := httptest.NewRecorder()
@@ -573,7 +574,7 @@ func TestUnifiedSchemaHandler_ListSchemaDefinitions(t *testing.T) {
 	mockRepo := newMockUnifiedSchemaRepo()
 	handler := NewUnifiedSchemaHandler(mockRepo, nil, nil, nil, &mockLogger{}, 1024*1024)
 
-	httpReq, _ := http.NewRequest("GET", "/schema/label?limit=10&offset=0", nil)
+	httpReq, _ := http.NewRequest("GET", "/schema/label?limit=10&offset=0", http.NoBody)
 	httpReq.Header.Set("tenant_id", "test-tenant")
 
 	w := httptest.NewRecorder()
@@ -601,7 +602,7 @@ func TestUnifiedSchemaHandler_DeleteSchemaDefinition(t *testing.T) {
 	mockRepo := newMockUnifiedSchemaRepo()
 	handler := NewUnifiedSchemaHandler(mockRepo, nil, nil, nil, &mockLogger{}, 1024*1024)
 
-	httpReq, _ := http.NewRequest("DELETE", "/schema/label/test-label?confirm=1", nil)
+	httpReq, _ := http.NewRequest("DELETE", "/schema/label/test-label?confirm=1", http.NoBody)
 	httpReq.Header.Set("tenant_id", "test-tenant")
 
 	w := httptest.NewRecorder()

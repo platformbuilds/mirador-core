@@ -4,9 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
-	"github.com/stretchr/testify/require"
 )
 
 // PerformanceRegressionTestSuite contains performance regression tests for the unified query engine
