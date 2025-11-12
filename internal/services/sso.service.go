@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-ldap/ldap/v3"
+
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"

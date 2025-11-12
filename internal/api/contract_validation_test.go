@@ -6,8 +6,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
@@ -17,8 +21,6 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // mockRBACRepositoryForContractValidation implements RBACRepository for testing
@@ -28,6 +30,16 @@ func (m *mockRBACRepositoryForContractValidation) CreateRole(ctx context.Context
 	return nil
 }
 func (m *mockRBACRepositoryForContractValidation) GetRole(ctx context.Context, tenantID, roleName string) (*models.Role, error) {
+	if roleName == "tenant_guest" {
+		return &models.Role{
+			Name:        "tenant_guest",
+			TenantID:    tenantID,
+			Permissions: []string{"kpi.read", "config.read", "dashboard.read"},
+			ParentRoles: []string{},
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		}, nil
+	}
 	return nil, nil
 }
 func (m *mockRBACRepositoryForContractValidation) ListRoles(ctx context.Context, tenantID string) ([]*models.Role, error) {
@@ -43,6 +55,9 @@ func (m *mockRBACRepositoryForContractValidation) AssignUserRoles(ctx context.Co
 	return nil
 }
 func (m *mockRBACRepositoryForContractValidation) GetUserRoles(ctx context.Context, tenantID, userID string) ([]string, error) {
+	if tenantID == "default" && userID == "anonymous" {
+		return []string{"tenant_guest"}, nil
+	}
 	return nil, nil
 }
 func (m *mockRBACRepositoryForContractValidation) RemoveUserRoles(ctx context.Context, tenantID, userID string, roles []string) error {
@@ -55,7 +70,17 @@ func (m *mockRBACRepositoryForContractValidation) CreatePermission(ctx context.C
 	return nil
 }
 func (m *mockRBACRepositoryForContractValidation) GetPermission(ctx context.Context, tenantID, permissionID string) (*models.Permission, error) {
-	return nil, nil
+	// For simplicity, return a permission object that matches the permissionID
+	return &models.Permission{
+		ID:          permissionID,
+		TenantID:    tenantID,
+		Resource:    strings.Split(permissionID, ".")[0], // e.g., "kpi" from "kpi.read"
+		Action:      strings.Split(permissionID, ".")[1], // e.g., "read" from "kpi.read"
+		Scope:       "tenant",
+		Conditions:  models.PermissionConditions{},
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}, nil
 }
 func (m *mockRBACRepositoryForContractValidation) ListPermissions(ctx context.Context, tenantID string) ([]*models.Permission, error) {
 	return nil, nil
@@ -127,6 +152,15 @@ func (m *mockRBACRepositoryForContractValidation) CreateUser(ctx context.Context
 	return nil
 }
 func (m *mockRBACRepositoryForContractValidation) GetUser(ctx context.Context, userID string) (*models.User, error) {
+	if userID == "anonymous" {
+		return &models.User{
+			ID:       "anonymous",
+			Email:    "anonymous@example.com",
+			GlobalRole: "tenant_user", // Regular user, not admin
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}, nil
+	}
 	return nil, nil
 }
 func (m *mockRBACRepositoryForContractValidation) ListUsers(ctx context.Context, filters rbac.UserFilters) ([]*models.User, error) {
@@ -142,6 +176,16 @@ func (m *mockRBACRepositoryForContractValidation) CreateTenantUser(ctx context.C
 	return nil
 }
 func (m *mockRBACRepositoryForContractValidation) GetTenantUser(ctx context.Context, tenantID, userID string) (*models.TenantUser, error) {
+	if tenantID == "default" && userID == "anonymous" {
+		return &models.TenantUser{
+			TenantID:   "default",
+			UserID:     "anonymous",
+			TenantRole: "tenant_guest", // Give basic read permissions
+			Status:     "active",
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+		}, nil
+	}
 	return nil, nil
 }
 func (m *mockRBACRepositoryForContractValidation) ListTenantUsers(ctx context.Context, tenantID string, filters rbac.TenantUserFilters) ([]*models.TenantUser, error) {

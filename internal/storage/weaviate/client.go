@@ -97,7 +97,7 @@ func (c *Client) Ready(ctx context.Context) error {
 
 // checkHealth performs the actual health check
 func (c *Client) checkHealth(ctx context.Context) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/v1/.well-known/ready", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/v1/.well-known/ready", http.NoBody)
 	if err != nil {
 		return fmt.Errorf("failed to create health check request: %w", err)
 	}
@@ -120,7 +120,7 @@ func (c *Client) checkHealth(ctx context.Context) error {
 
 // Health returns detailed health information
 func (c *Client) Health(ctx context.Context) (*HealthStatus, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/v1/meta", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/v1/meta", http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create meta request: %w", err)
 	}

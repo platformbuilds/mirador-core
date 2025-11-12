@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/platformbuilds/mirador-core/internal/models"
 )
 
@@ -14,7 +15,7 @@ func NoAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tenant := c.GetHeader("X-Tenant-ID")
 		if strings.TrimSpace(tenant) == "" {
-			tenant = "default"
+			tenant = DefaultTenantID
 		}
 
 		// Create a dummy session for consistency with AuthMiddleware

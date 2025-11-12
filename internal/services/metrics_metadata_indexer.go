@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/blevesearch/bleve/v2"
+
 	"github.com/platformbuilds/mirador-core/internal/models"
 	bleveUtils "github.com/platformbuilds/mirador-core/internal/utils/bleve"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve/mapping"

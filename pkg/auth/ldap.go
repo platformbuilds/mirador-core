@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/go-ldap/ldap/v3"
+
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -30,7 +31,7 @@ func (l *LDAPAuthenticator) Authenticate(username, password string) (*UserInfo, 
 
 	// Bind with user credentials
 	userDN := fmt.Sprintf("uid=%s,%s", username, l.config.BaseDN)
-	if err := conn.Bind(userDN, password); err != nil {
+	if bindErr := conn.Bind(userDN, password); bindErr != nil {
 		l.logger.Warn("LDAP authentication failed", "username", username)
 		return nil, fmt.Errorf("authentication failed")
 	}

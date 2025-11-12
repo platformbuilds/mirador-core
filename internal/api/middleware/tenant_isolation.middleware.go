@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -308,6 +309,7 @@ func (m *TenantIsolationMiddleware) validateTenantAdminAccess(c *gin.Context, us
 // isPublicEndpoint checks if endpoint should skip tenant isolation
 func (m *TenantIsolationMiddleware) isPublicEndpoint(path string) bool {
 	publicPaths := []string{
+		"/",
 		"/health",
 		"/ready",
 		"/metrics",

@@ -7,15 +7,19 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 )
+
+// Anonymous tenant ID for unauthenticated requests
+const AnonymousTenantID = "anonymous"
 
 // RateLimiter implements per-tenant rate limiting using Valkey cluster
 func RateLimiter(valkeyCache cache.ValkeyCluster) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tenantID := c.GetString("tenant_id")
 		if tenantID == "" {
-			tenantID = "anonymous"
+			tenantID = AnonymousTenantID
 		}
 
 		// Rate limiting key

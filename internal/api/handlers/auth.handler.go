@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/platformbuilds/mirador-core/internal/api/middleware"
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
@@ -58,8 +59,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// Store session in cache
-	if err := h.cache.SetSession(c.Request.Context(), session); err != nil {
-		h.logger.Error("Failed to store session", "error", err)
+	if setErr := h.cache.SetSession(c.Request.Context(), session); setErr != nil {
+		h.logger.Error("Failed to store session", "error", setErr)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
 			"error":  "Session creation failed",

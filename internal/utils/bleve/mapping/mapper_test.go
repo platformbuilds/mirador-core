@@ -4,9 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 func TestBleveDocumentMapper_MapLogs(t *testing.T) {

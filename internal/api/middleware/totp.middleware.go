@@ -8,12 +8,13 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pquerna/otp/totp"
+
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
-	"github.com/pquerna/otp/totp"
 )
 
 // TOTPService handles TOTP (Time-based One-Time Password) operations

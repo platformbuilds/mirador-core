@@ -8,16 +8,23 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/platformbuilds/mirador-core/pkg/logger"
+)
+
+// Unknown identifiers for logging when context is not available
+const (
+	UnknownUserID    = "unknown"
+	UnknownSessionID = "unknown"
 )
 
 // RequestLogger logs HTTP requests for MIRADOR-CORE observability
 func RequestLogger(log logger.Logger) gin.HandlerFunc {
 	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		// Extract additional context
-		tenantID := "unknown"
-		userID := "unknown"
-		sessionID := "unknown"
+		tenantID := UnknownTenantID
+		userID := UnknownUserID
+		sessionID := UnknownSessionID
 
 		// Try to get context from Gin context if available
 		if param.Keys != nil {
@@ -107,17 +114,17 @@ func RequestLoggerWithBody(log logger.Logger) gin.HandlerFunc {
 		// Extract context information
 		tenantID := c.GetString("tenant_id")
 		if tenantID == "" {
-			tenantID = "unknown"
+			tenantID = UnknownTenantID
 		}
 
 		userID := c.GetString("user_id")
 		if userID == "" {
-			userID = "unknown"
+			userID = UnknownUserID
 		}
 
 		sessionID := c.GetString("session_id")
 		if sessionID == "" {
-			sessionID = "unknown"
+			sessionID = UnknownSessionID
 		}
 
 		// Prepare log fields

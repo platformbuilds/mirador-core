@@ -26,7 +26,7 @@ func newClient() *client {
 	return &client{base: fmt.Sprintf("%s://%s:%s", scheme, host, port), apiKey: key, http: &http.Client{Timeout: 20 * time.Second}}
 }
 
-func (c *client) do(ctx context.Context, method, path string, body any, out any) error {
+func (c *client) do(ctx context.Context, method, path string, body, out any) error {
 	var rdr io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)

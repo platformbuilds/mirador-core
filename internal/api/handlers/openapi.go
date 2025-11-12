@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/platformbuilds/mirador-core/internal/version"
 	"gopkg.in/yaml.v3"
+
+	"github.com/platformbuilds/mirador-core/internal/version"
 )
 
 // resolveOpenAPIPath returns a readable path to openapi.yaml by checking common

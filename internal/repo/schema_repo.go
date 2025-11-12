@@ -542,9 +542,9 @@ func (r *SchemaRepo) ListKPIs(tenantID string, tags []string, limit, offset int)
 		if queryRaw.Valid {
 			_ = json.Unmarshal([]byte(queryRaw.String), &query)
 		}
-		var tags []string
+		var kpiTags []string
 		if tagsRaw.Valid {
-			_ = json.Unmarshal([]byte(tagsRaw.String), &tags)
+			_ = json.Unmarshal([]byte(tagsRaw.String), &kpiTags)
 		}
 		kpis = append(kpis, &models.KPIDefinition{
 			ID:         id,
@@ -554,7 +554,7 @@ func (r *SchemaRepo) ListKPIs(tenantID string, tags []string, limit, offset int)
 			Query:      query,
 			Kind:       kind,
 			Sentiment:  sentiment,
-			Tags:       tags,
+			Tags:       kpiTags,
 			CreatedAt:  createdAt,
 			UpdatedAt:  updatedAt,
 		})

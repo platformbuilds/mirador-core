@@ -1106,7 +1106,7 @@ func (s *RBACService) evaluateTimeConditions(requestTime time.Time, timeCond mod
 		dayName := strings.ToLower(requestTime.Weekday().String())
 		allowed := false
 		for _, allowedDay := range timeCond.AllowedDays {
-			if strings.ToLower(allowedDay) == dayName {
+			if strings.EqualFold(allowedDay, dayName) {
 				allowed = true
 				break
 			}

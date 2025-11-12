@@ -13,7 +13,7 @@ func TestGetOpenAPISpec_OK(t *testing.T) {
 	r := gin.New()
 	r.GET("/api/openapi.json", GetOpenAPISpec)
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/openapi.json", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/openapi.json", http.NoBody)
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())

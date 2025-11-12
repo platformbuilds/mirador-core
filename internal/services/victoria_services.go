@@ -124,7 +124,7 @@ func (s *VictoriaTracesService) GetOperations(ctx context.Context, serviceName, 
 	endpoint := s.selectEndpoint()
 	fullURL := fmt.Sprintf("%s/select/jaeger/api/services/%s/operations", endpoint, serviceName)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +217,7 @@ func (s *VictoriaTracesService) getOperationsSingleEndpoint(ctx context.Context,
 	endpoint := s.selectEndpoint()
 	fullURL := fmt.Sprintf("%s/select/jaeger/api/services/%s/operations", endpoint, serviceName)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +298,7 @@ func (s *VictoriaTracesService) GetServices(ctx context.Context, tenantID string
 	endpoint := s.selectEndpoint()
 	fullURL := fmt.Sprintf("%s/select/jaeger/api/services", endpoint)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -391,7 +391,7 @@ func (s *VictoriaTracesService) getServicesSingleEndpoint(ctx context.Context, t
 	endpoint := s.selectEndpoint()
 	fullURL := fmt.Sprintf("%s/select/jaeger/api/services", endpoint)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -463,7 +463,7 @@ func (s *VictoriaTracesService) GetTrace(ctx context.Context, traceID, tenantID 
 	endpoint := s.selectEndpoint()
 	fullURL := fmt.Sprintf("%s/select/jaeger/api/traces/%s", endpoint, traceID)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -574,7 +574,7 @@ func (s *VictoriaTracesService) SearchTraces(ctx context.Context, request *model
 	}
 
 	fullURL := fmt.Sprintf("%s/select/jaeger/api/traces?%s", endpoint, params.Encode())
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -697,7 +697,7 @@ func (s *VictoriaTracesService) searchTracesSingleEndpoint(ctx context.Context, 
 	}
 
 	fullURL := fmt.Sprintf("%s/select/jaeger/api/traces?%s", endpoint, params.Encode())
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -792,7 +792,7 @@ func (s *VictoriaTracesService) healthCheckMultiEndpoint(ctx context.Context) er
 
 func (s *VictoriaTracesService) healthCheckSelf(ctx context.Context) error {
 	endpoint := s.selectEndpoint()
-	req, err := http.NewRequestWithContext(ctx, "GET", endpoint+"/health", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", endpoint+"/health", http.NoBody)
 	if err != nil {
 		return err
 	}

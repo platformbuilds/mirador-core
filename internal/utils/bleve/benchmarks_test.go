@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/blevesearch/bleve/v2"
+
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve/mapping"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve/storage"
 	"github.com/platformbuilds/mirador-core/pkg/logger"

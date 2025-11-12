@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	wv "github.com/weaviate/weaviate-go-client/v5/weaviate"
+
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
-	wv "github.com/weaviate/weaviate-go-client/v5/weaviate"
 )
 
 type officialTransport struct {

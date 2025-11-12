@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/platformbuilds/mirador-core/internal/metrics"
 )
 
@@ -25,7 +26,7 @@ func MetricsMiddleware() gin.HandlerFunc {
 		statusCode := strconv.Itoa(c.Writer.Status())
 		tenantID := c.GetString("tenant_id")
 		if tenantID == "" {
-			tenantID = "unknown"
+			tenantID = UnknownTenantID
 		}
 
 		// Update Prometheus metrics

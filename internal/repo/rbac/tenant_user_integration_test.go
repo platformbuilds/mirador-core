@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/platformbuilds/mirador-core/internal/models"
 )
 
 // TestTenantUserBasicOperations tests basic tenant-user operations with mocks

@@ -7,24 +7,25 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/platformbuilds/mirador-core/internal/config"
 )
 
 func TestExtractToken_Sources(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Request = httptest.NewRequest(http.MethodGet, "/x?token=qt", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/x?token=qt", http.NoBody)
 	if got := extractToken(c); got != "qt" {
 		t.Fatalf("query token got %q", got)
 	}
 
-	c.Request = httptest.NewRequest(http.MethodGet, "/x", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/x", http.NoBody)
 	c.Request.Header.Set("X-Session-Token", "xs")
 	if got := extractToken(c); got != "xs" {
 		t.Fatalf("x-session got %q", got)
 	}
 
-	c.Request = httptest.NewRequest(http.MethodGet, "/x", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/x", http.NoBody)
 	c.Request.Header.Set("Authorization", "Bearer abcd")
 	if got := extractToken(c); got != "abcd" {
 		t.Fatalf("auth got %q", got)
@@ -37,7 +38,7 @@ func TestRequireTenant_Enforces(t *testing.T) {
 	r.Use(RequireTenant())
 	r.GET("/t", func(c *gin.Context) { c.String(200, "ok") })
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/t", nil))
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/t", http.NoBody))
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
 	}
