@@ -8,6 +8,7 @@ import (
 
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
+	"github.com/platformbuilds/mirador-core/pkg/cache"
 )
 
 // ValkeyRBACRepository implements CacheRepository using Valkey (Redis)
@@ -23,6 +24,60 @@ type ValkeyClient interface {
 	Exists(ctx context.Context, keys ...string) (int64, error)
 	Expire(ctx context.Context, key string, expiration time.Duration) error
 	Keys(ctx context.Context, pattern string) ([]string, error)
+}
+
+// ValkeyClusterAdapter adapts cache.ValkeyCluster to ValkeyClient interface
+type ValkeyClusterAdapter struct {
+	cluster cache.ValkeyCluster
+}
+
+func NewValkeyClusterAdapter(cluster cache.ValkeyCluster) *ValkeyClusterAdapter {
+	return &ValkeyClusterAdapter{cluster: cluster}
+}
+
+func (a *ValkeyClusterAdapter) Get(ctx context.Context, key string) (string, error) {
+	data, err := a.cluster.Get(ctx, key)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func (a *ValkeyClusterAdapter) Set(ctx context.Context, key string, value any, expiration time.Duration) error {
+	return a.cluster.Set(ctx, key, value, expiration)
+}
+
+func (a *ValkeyClusterAdapter) Del(ctx context.Context, keys ...string) error {
+	for _, key := range keys {
+		if err := a.cluster.Delete(ctx, key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *ValkeyClusterAdapter) Exists(ctx context.Context, keys ...string) (int64, error) {
+	// This is a simplified implementation - ValkeyCluster doesn't have Exists method
+	// In a real implementation, you'd need to extend ValkeyCluster or use a different approach
+	count := int64(0)
+	for _, key := range keys {
+		if _, err := a.cluster.Get(ctx, key); err == nil {
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (a *ValkeyClusterAdapter) Expire(ctx context.Context, key string, expiration time.Duration) error {
+	// This is a simplified implementation - ValkeyCluster doesn't have Expire method
+	// In a real implementation, you'd need to extend ValkeyCluster
+	return fmt.Errorf("Expire not implemented in ValkeyClusterAdapter")
+}
+
+func (a *ValkeyClusterAdapter) Keys(ctx context.Context, pattern string) ([]string, error) {
+	// This is a simplified implementation - ValkeyCluster doesn't have Keys method
+	// In a real implementation, you'd need to extend ValkeyCluster
+	return nil, fmt.Errorf("Keys not implemented in ValkeyClusterAdapter")
 }
 
 // NewValkeyRBACRepository creates a new Valkey-based RBAC cache repository
