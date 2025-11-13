@@ -301,14 +301,26 @@ func (s *RBACBootstrapService) BootstrapGlobalAdmin(ctx context.Context, default
 }
 
 // BootstrapAdminAuth creates MiradorAuth credentials for the admin user
-func (s *RBACBootstrapService) BootstrapAdminAuth(ctx context.Context, adminUserID string) error {
+func (s *RBACBootstrapService) BootstrapAdminAuth(ctx context.Context, adminUserID, tenantID string) error {
 	s.logger.Info("Checking for admin auth credentials", "user_id", adminUserID)
 
 	// Check if auth already exists
 	existingAuth, err := s.repository.GetMiradorAuth(ctx, adminUserID)
 	if err == nil && existingAuth != nil {
-		s.logger.Info("Admin auth credentials already exist, skipping creation", "user_id", adminUserID)
-		return nil
+		// Check if the existing auth record has the correct tenant ID
+		if existingAuth.TenantID == tenantID {
+			s.logger.Info("Admin auth credentials already exist with correct tenant, skipping creation", "user_id", adminUserID, "tenant_id", tenantID)
+			return nil
+		} else {
+			// Update the existing auth record with the correct tenant ID
+			s.logger.Info("Updating existing admin auth credentials with correct tenant", "user_id", adminUserID, "old_tenant", existingAuth.TenantID, "new_tenant", tenantID)
+			existingAuth.TenantID = tenantID
+			existingAuth.UpdatedAt = time.Now()
+			if err := s.repository.UpdateMiradorAuth(ctx, existingAuth); err != nil {
+				return fmt.Errorf("failed to update admin auth credentials: %w", err)
+			}
+			return nil
+		}
 	}
 
 	// If error is not "not found", it's a real error
@@ -329,10 +341,17 @@ func (s *RBACBootstrapService) BootstrapAdminAuth(ctx context.Context, adminUser
 		return fmt.Errorf("failed to generate TOTP secret: %w", err)
 	}
 
+	// Get user to retrieve username
+	user, err := s.repository.GetUser(ctx, adminUserID)
+	if err != nil {
+		return fmt.Errorf("failed to get user for auth creation: %w", err)
+	}
+
 	// Create MiradorAuth record
 	auth := &models.MiradorAuth{
 		UserID:       adminUserID,
-		Username:     adminUserID,
+		Username:     user.Username,
+		TenantID:     tenantID,
 		PasswordHash: string(hashedPassword),
 		TOTPSecret:   totpSecret,
 		IsActive:     true,
@@ -451,7 +470,7 @@ func (s *RBACBootstrapService) RunBootstrap(ctx context.Context) error {
 
 	// Bootstrap admin auth credentials
 	s.logger.Info("Running bootstrap step", "step", "admin auth credentials")
-	if err := s.BootstrapAdminAuth(ctx, adminUserID); err != nil {
+	if err := s.BootstrapAdminAuth(ctx, adminUserID, defaultTenantID); err != nil {
 		return fmt.Errorf("bootstrap step admin auth credentials failed: %w", err)
 	}
 

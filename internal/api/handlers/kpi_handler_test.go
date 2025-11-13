@@ -35,12 +35,12 @@ func newMockKPIRepo() *mockKPIRepo {
 }
 
 // KPI operations
-func (m *mockKPIRepo) UpsertKPI(kpi *models.KPIDefinition) error {
+func (m *mockKPIRepo) UpsertKPI(ctx context.Context, kpi *models.KPIDefinition) error {
 	m.kpis[kpi.TenantID+"|"+kpi.ID] = kpi
 	return nil
 }
 
-func (m *mockKPIRepo) GetKPI(tenantID, id string) (*models.KPIDefinition, error) {
+func (m *mockKPIRepo) GetKPI(ctx context.Context, tenantID, id string) (*models.KPIDefinition, error) {
 	key := tenantID + "|" + id
 	if kpi, exists := m.kpis[key]; exists {
 		return kpi, nil
@@ -48,7 +48,7 @@ func (m *mockKPIRepo) GetKPI(tenantID, id string) (*models.KPIDefinition, error)
 	return nil, fmt.Errorf("not found")
 }
 
-func (m *mockKPIRepo) ListKPIs(tenantID string, tags []string, limit, offset int) ([]*models.KPIDefinition, int, error) {
+func (m *mockKPIRepo) ListKPIs(ctx context.Context, tenantID string, tags []string, limit, offset int) ([]*models.KPIDefinition, int, error) {
 	var kpis []*models.KPIDefinition
 	total := 0
 
@@ -67,7 +67,7 @@ func (m *mockKPIRepo) ListKPIs(tenantID string, tags []string, limit, offset int
 	return kpis, total, nil
 }
 
-func (m *mockKPIRepo) DeleteKPI(tenantID, id string) error {
+func (m *mockKPIRepo) DeleteKPI(ctx context.Context, tenantID, id string) error {
 	key := tenantID + "|" + id
 	if _, exists := m.kpis[key]; exists {
 		delete(m.kpis, key)
@@ -77,25 +77,25 @@ func (m *mockKPIRepo) DeleteKPI(tenantID, id string) error {
 }
 
 // Layout operations
-func (m *mockKPIRepo) GetKPILayoutsForDashboard(tenantID, dashboardID string) (map[string]interface{}, error) {
+func (m *mockKPIRepo) GetKPILayoutsForDashboard(ctx context.Context, tenantID, dashboardID string) (map[string]interface{}, error) {
 	if layouts, exists := m.layouts[dashboardID]; exists {
 		return layouts, nil
 	}
 	return make(map[string]interface{}), nil
 }
 
-func (m *mockKPIRepo) BatchUpsertKPILayouts(tenantID, dashboardID string, layouts map[string]interface{}) error {
+func (m *mockKPIRepo) BatchUpsertKPILayouts(ctx context.Context, tenantID, dashboardID string, layouts map[string]interface{}) error {
 	m.layouts[dashboardID] = layouts
 	return nil
 }
 
 // Dashboard operations
-func (m *mockKPIRepo) UpsertDashboard(dashboard *models.Dashboard) error {
+func (m *mockKPIRepo) UpsertDashboard(ctx context.Context, dashboard *models.Dashboard) error {
 	m.dashboards[dashboard.TenantID+"|"+dashboard.ID] = dashboard
 	return nil
 }
 
-func (m *mockKPIRepo) GetDashboard(tenantID, id string) (*models.Dashboard, error) {
+func (m *mockKPIRepo) GetDashboard(ctx context.Context, tenantID, id string) (*models.Dashboard, error) {
 	key := tenantID + "|" + id
 	if dashboard, exists := m.dashboards[key]; exists {
 		return dashboard, nil
@@ -103,7 +103,7 @@ func (m *mockKPIRepo) GetDashboard(tenantID, id string) (*models.Dashboard, erro
 	return nil, fmt.Errorf("not found")
 }
 
-func (m *mockKPIRepo) ListDashboards(tenantID string, limit, offset int) ([]*models.Dashboard, int, error) {
+func (m *mockKPIRepo) ListDashboards(ctx context.Context, tenantID string, limit, offset int) ([]*models.Dashboard, int, error) {
 	var dashboards []*models.Dashboard
 	total := 0
 
@@ -119,7 +119,7 @@ func (m *mockKPIRepo) ListDashboards(tenantID string, limit, offset int) ([]*mod
 	return dashboards, total, nil
 }
 
-func (m *mockKPIRepo) DeleteDashboard(tenantID, id string) error {
+func (m *mockKPIRepo) DeleteDashboard(ctx context.Context, tenantID, id string) error {
 	key := tenantID + "|" + id
 	if _, exists := m.dashboards[key]; exists {
 		delete(m.dashboards, key)
@@ -277,7 +277,9 @@ func (m *mockCache) CleanupExpiredEntries(ctx context.Context, keyPattern string
 func TestKPIHandler_GetKPIDefinitions(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	mockRepo := newMockKPIRepo()
+	// Cast to repo.KPIRepo so NewKPIHandler type assertion succeeds
 	handler := NewKPIHandler(mockRepo, &mockCache{}, &mockLogger{})
+	require.NotNil(t, handler, "KPIHandler should not be nil")
 
 	// Pre-populate with test KPIs
 	kpi1 := &models.KPIDefinition{

@@ -692,7 +692,7 @@ func (r *WeaviateRBACRepository) CreatePermission(ctx context.Context, permissio
 func (r *WeaviateRBACRepository) GetPermission(ctx context.Context, tenantID, permissionID string) (*models.Permission, error) {
 	query := fmt.Sprintf(`{
 		Get {
-			RBACPermission(where: { path: ["_additional", "id"], operator: Equal, valueString: "%s" }) {
+			RBACPermission(where: { path: ["id"], operator: Equal, valueString: "%s" }) {
 				tenantId resource action scope description resourcePattern conditions
 				isSystem metadata createdAt updatedAt createdBy updatedBy
 				_additional { id }
@@ -1908,7 +1908,7 @@ func (r *WeaviateRBACRepository) CreateTenant(ctx context.Context, tenant *model
 func (r *WeaviateRBACRepository) GetTenant(ctx context.Context, tenantID string) (*models.Tenant, error) {
 	query := fmt.Sprintf(`{
 		Get {
-			RBACTenant(where: { path: ["_additional", "id"], operator: Equal, valueString: "%s" }) {
+			RBACTenant(where: { path: ["id"], operator: Equal, valueString: "%s" }) {
 				name displayName description deployments status adminEmail adminName
 				quotas features metadata tags isSystem createdAt updatedAt createdBy updatedBy
 				_additional { id }
@@ -2331,10 +2331,10 @@ func (r *WeaviateRBACRepository) CreateUser(ctx context.Context, user *models.Us
 func (r *WeaviateRBACRepository) GetUser(ctx context.Context, userID string) (*models.User, error) {
 	query := fmt.Sprintf(`{
 		Get {
-			RBACUser(where: { path: ["_additional", "id"], operator: Equal, valueString: "%s" }) {
+			RBACUser(where: { path: ["id"], operator: Equal, valueString: "%s" }) {
 				email username fullName globalRole mfaEnabled status emailVerified
 				avatar phone timezone language lastLoginAt loginCount failedLoginCount
-				lockedUntil metadata tags createdAt updatedAt createdBy updatedBy
+				lockedUntil tags createdAt updatedAt createdBy updatedBy
 				_additional { id }
 			}
 		}
@@ -2392,42 +2392,39 @@ func (r *WeaviateRBACRepository) ListUsers(ctx context.Context, filters UserFilt
 		})
 	}
 
-	whereClause := map[string]any{}
-	if len(operands) > 0 {
-		whereClause = map[string]any{
-			"operator": "And",
-			"operands": operands,
-		}
-	}
-
 	limit := 100
 	if filters.Limit > 0 && filters.Limit <= 1000 {
 		limit = filters.Limit
 	}
 
-	query := map[string]any{
-		"query": fmt.Sprintf(`{
-			Get {
-				RBACUser(limit: %d, offset: %d%s) {
-					email username fullName globalRole mfaEnabled status emailVerified
-					avatar phone timezone language lastLoginAt loginCount failedLoginCount
-					lockedUntil metadata tags createdAt updatedAt createdBy updatedBy
-					_additional { id }
-				}
-			}
-		}`, limit, filters.Offset, func() string {
-			if len(whereClause) > 0 {
-				return ", where: $where"
-			}
-			return ""
-		}()),
-		"variables": func() map[string]any {
-			if len(whereClause) > 0 {
-				return map[string]any{"where": whereClause}
-			}
-			return nil
-		}(),
+	// Build where clause as GraphQL syntax (unquoted keys, valueString for strings)
+	whereStr := ""
+	if len(operands) == 1 {
+		// Single operand - use it directly
+		op := operands[0]
+		whereStr = fmt.Sprintf(`, where: { path: ["%s"], operator: Equal, valueString: "%s" }`,
+			op["path"].([]string)[0], op["valueString"])
+	} else if len(operands) > 1 {
+		// Multiple operands - use And operator
+		operandStrs := make([]string, len(operands))
+		for i, op := range operands {
+			operandStrs[i] = fmt.Sprintf(`{ path: ["%s"], operator: Equal, valueString: "%s" }`,
+				op["path"].([]string)[0], op["valueString"])
+		}
+		whereStr = fmt.Sprintf(`, where: { operator: And, operands: [%s] }`,
+			strings.Join(operandStrs, ", "))
 	}
+
+	query := fmt.Sprintf(`{
+		Get {
+			RBACUser(limit: %d, offset: %d%s) {
+				email username fullName globalRole mfaEnabled status emailVerified
+				avatar phone timezone language lastLoginAt loginCount failedLoginCount
+				lockedUntil tags createdAt updatedAt createdBy updatedBy
+				_additional { id }
+			}
+		}
+	}`, limit, filters.Offset, whereStr)
 
 	var resp struct {
 		Data struct {
@@ -2438,7 +2435,7 @@ func (r *WeaviateRBACRepository) ListUsers(ctx context.Context, filters UserFilt
 	}
 
 	start := time.Now()
-	err := r.transport.GraphQL(ctx, query["query"].(string), query["variables"].(map[string]any), &resp)
+	err := r.transport.GraphQL(ctx, query, nil, &resp)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -2900,7 +2897,7 @@ func (r *WeaviateRBACRepository) GetMiradorAuth(ctx context.Context, userID stri
 				userId username email passwordHash salt totpSecret totpEnabled
 				backupCodes tenantId roles groups isActive passwordChangedAt
 				passwordExpiresAt lastLoginAt failedLoginCount lockedUntil
-				requirePasswordChange metadata createdAt updatedAt createdBy updatedBy
+				requirePasswordChange createdAt updatedAt createdBy updatedBy
 				_additional { id }
 			}
 		}

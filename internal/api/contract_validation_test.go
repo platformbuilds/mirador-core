@@ -315,6 +315,10 @@ type mockRepo struct {
 	layouts    map[string]map[string]interface{} // dashboardID -> map[kpiId] -> layout
 }
 
+// Ensure mockRepo implements both interfaces
+var _ repo.SchemaStore = (*mockRepo)(nil)
+var _ repo.KPIRepo = (*mockRepo)(nil)
+
 func newMockRepo() *mockRepo {
 	repo := &mockRepo{
 		kpis:       make(map[string]*models.KPIDefinition),
@@ -476,12 +480,12 @@ func (m *mockRepo) ListSchemasAsKPIs(ctx context.Context, tenantID, schemaType s
 }
 
 // Implement KPIRepo interface methods
-func (m *mockRepo) UpsertKPI(kpi *models.KPIDefinition) error {
+func (m *mockRepo) UpsertKPI(ctx context.Context, kpi *models.KPIDefinition) error {
 	m.kpis[kpi.TenantID+"|"+kpi.ID] = kpi
 	return nil
 }
 
-func (m *mockRepo) GetKPI(tenantID, id string) (*models.KPIDefinition, error) {
+func (m *mockRepo) GetKPI(ctx context.Context, tenantID, id string) (*models.KPIDefinition, error) {
 	key := tenantID + "|" + id
 	if kpi, exists := m.kpis[key]; exists {
 		return kpi, nil
@@ -489,7 +493,7 @@ func (m *mockRepo) GetKPI(tenantID, id string) (*models.KPIDefinition, error) {
 	return nil, nil
 }
 
-func (m *mockRepo) ListKPIs(tenantID string, tags []string, limit, offset int) ([]*models.KPIDefinition, int, error) {
+func (m *mockRepo) ListKPIs(ctx context.Context, tenantID string, tags []string, limit, offset int) ([]*models.KPIDefinition, int, error) {
 	var kpis []*models.KPIDefinition
 	for _, kpi := range m.kpis {
 		if kpi.TenantID == tenantID {
@@ -499,30 +503,30 @@ func (m *mockRepo) ListKPIs(tenantID string, tags []string, limit, offset int) (
 	return kpis, len(kpis), nil
 }
 
-func (m *mockRepo) DeleteKPI(tenantID, id string) error {
+func (m *mockRepo) DeleteKPI(ctx context.Context, tenantID, id string) error {
 	key := tenantID + "|" + id
 	delete(m.kpis, key)
 	return nil
 }
 
-func (m *mockRepo) GetKPILayoutsForDashboard(tenantID, dashboardID string) (map[string]interface{}, error) {
+func (m *mockRepo) GetKPILayoutsForDashboard(ctx context.Context, tenantID, dashboardID string) (map[string]interface{}, error) {
 	if layouts, exists := m.layouts[dashboardID]; exists {
 		return layouts, nil
 	}
 	return map[string]interface{}{}, nil
 }
 
-func (m *mockRepo) BatchUpsertKPILayouts(tenantID, dashboardID string, layouts map[string]interface{}) error {
+func (m *mockRepo) BatchUpsertKPILayouts(ctx context.Context, tenantID, dashboardID string, layouts map[string]interface{}) error {
 	m.layouts[dashboardID] = layouts
 	return nil
 }
 
-func (m *mockRepo) UpsertDashboard(dashboard *models.Dashboard) error {
+func (m *mockRepo) UpsertDashboard(ctx context.Context, dashboard *models.Dashboard) error {
 	m.dashboards[dashboard.TenantID+"|"+dashboard.ID] = dashboard
 	return nil
 }
 
-func (m *mockRepo) GetDashboard(tenantID, id string) (*models.Dashboard, error) {
+func (m *mockRepo) GetDashboard(ctx context.Context, tenantID, id string) (*models.Dashboard, error) {
 	key := tenantID + "|" + id
 	if dashboard, exists := m.dashboards[key]; exists {
 		return dashboard, nil
@@ -530,7 +534,7 @@ func (m *mockRepo) GetDashboard(tenantID, id string) (*models.Dashboard, error) 
 	return nil, nil
 }
 
-func (m *mockRepo) ListDashboards(tenantID string, limit, offset int) ([]*models.Dashboard, int, error) {
+func (m *mockRepo) ListDashboards(ctx context.Context, tenantID string, limit, offset int) ([]*models.Dashboard, int, error) {
 	var dashboards []*models.Dashboard
 	for _, dashboard := range m.dashboards {
 		if dashboard.TenantID == tenantID {
@@ -540,7 +544,7 @@ func (m *mockRepo) ListDashboards(tenantID string, limit, offset int) ([]*models
 	return dashboards, len(dashboards), nil
 }
 
-func (m *mockRepo) DeleteDashboard(tenantID, id string) error {
+func (m *mockRepo) DeleteDashboard(ctx context.Context, tenantID, id string) error {
 	key := tenantID + "|" + id
 	delete(m.dashboards, key)
 	return nil
