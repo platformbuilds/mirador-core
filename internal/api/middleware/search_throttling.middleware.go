@@ -177,12 +177,13 @@ func (m *SearchQueryThrottlingMiddleware) calculateLogsQueryComplexity(req *mode
 
 	// Large time ranges increase complexity
 	if req.End > req.Start {
-		timeRangeHours := (req.End - req.Start) / (1000 * 60 * 60) // milliseconds to hours
-		if timeRangeHours > 24*30 {                                // More than 30 days
+		// milliseconds to hours
+		hours := float64(req.End-req.Start) / 1000 / 60 / 60
+		if hours > 24*30 {
 			complexity += 30
-		} else if timeRangeHours > 24*7 { // More than 7 days
+		} else if hours > 24*7 {
 			complexity += 15
-		} else if timeRangeHours > 24 { // More than 1 day
+		} else if hours > 24 {
 			complexity += 5
 		}
 	}
@@ -240,13 +241,13 @@ func (m *SearchQueryThrottlingMiddleware) calculateTracesQueryComplexity(req *mo
 
 	// Large time ranges
 	if !req.End.IsZero() && !req.Start.IsZero() {
-		timeRange := req.End.Time.Sub(req.Start.Time)
+		timeRange := req.End.AsTime().Sub(req.Start.AsTime())
 		hours := timeRange.Hours()
-		if hours > 24*30 { // More than 30 days
+		if hours > 24*30 {
 			complexity += 30
-		} else if hours > 24*7 { // More than 7 days
+		} else if hours > 24*7 {
 			complexity += 15
-		} else if hours > 24 { // More than 1 day
+		} else if hours > 24 {
 			complexity += 5
 		}
 	}
