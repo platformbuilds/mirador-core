@@ -1362,6 +1362,21 @@ func (s *RBACService) validateTenantUserUpdates(existing, updates *models.Tenant
 	return s.validateTenantUser(updates)
 }
 
+// CountGlobalAdmins returns the number of active global admin users
+func (s *RBACService) CountGlobalAdmins(ctx context.Context) (int, error) {
+	start := time.Now()
+	defer func() { monitoring.RecordAPIOperation("count_global_admins", "rbac.user", time.Since(start), true) }()
+
+	globalAdminRole := "global_admin"
+	activeStatus := "active"
+	users, err := s.repository.ListUsers(ctx, UserFilters{GlobalRole: &globalAdminRole, Status: &activeStatus})
+	if err != nil {
+		return 0, fmt.Errorf("failed to count global admins: %w", err)
+	}
+
+	return len(users), nil
+}
+
 // CreateUser creates a new global user
 func (s *RBACService) CreateUser(ctx context.Context, userID string, user *models.User) error {
 	start := time.Now()
@@ -1441,6 +1456,30 @@ func (s *RBACService) UpdateUser(ctx context.Context, userID string, user *model
 
 	correlationID := generateCorrelationID()
 
+	// Get existing user to check current global role
+	existingUser, err := s.GetUser(ctx, user.ID)
+	if err != nil {
+		if auditErr := s.auditService.LogError(ctx, "", userID, "user.update", "rbac.user", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return fmt.Errorf("failed to get existing user: %w", err)
+	}
+
+	// Prevent demoting the last global admin
+	if existingUser.GlobalRole == "global_admin" && user.GlobalRole != "global_admin" {
+		globalAdminCount, err := s.CountGlobalAdmins(ctx)
+		if err != nil {
+			if auditErr := s.auditService.LogError(ctx, "", userID, "user.update", "rbac.user", err, correlationID); auditErr != nil {
+				monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+			}
+			return fmt.Errorf("failed to count global admins: %w", err)
+		}
+
+		if globalAdminCount <= 1 {
+			return UserValidationError{Field: "globalRole", Message: "cannot demote the last global admin user"}
+		}
+	}
+
 	// Validate user
 	if err := s.validateUser(user); err != nil {
 		if auditErr := s.auditService.LogError(ctx, "", userID, "user.update", "rbac.user", err, correlationID); auditErr != nil {
@@ -1478,6 +1517,30 @@ func (s *RBACService) DeleteUser(ctx context.Context, userID, targetUserID strin
 	defer func() { monitoring.RecordAPIOperation("delete_user", "rbac.user", time.Since(start), true) }()
 
 	correlationID := generateCorrelationID()
+
+	// Get the target user to check if they are a global admin
+	targetUser, err := s.GetUser(ctx, targetUserID)
+	if err != nil {
+		if auditErr := s.auditService.LogError(ctx, "", userID, "user.delete", "rbac.user", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return fmt.Errorf("failed to get target user: %w", err)
+	}
+
+	// Prevent deleting the last global admin
+	if targetUser.GlobalRole == "global_admin" {
+		globalAdminCount, err := s.CountGlobalAdmins(ctx)
+		if err != nil {
+			if auditErr := s.auditService.LogError(ctx, "", userID, "user.delete", "rbac.user", err, correlationID); auditErr != nil {
+				monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+			}
+			return fmt.Errorf("failed to count global admins: %w", err)
+		}
+
+		if globalAdminCount <= 1 {
+			return UserValidationError{Field: "globalRole", Message: "cannot delete the last global admin user"}
+		}
+	}
 
 	// Delete user from repository
 	if err := s.repository.DeleteUser(ctx, targetUserID); err != nil {

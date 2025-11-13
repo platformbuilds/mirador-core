@@ -43,6 +43,7 @@ type Server struct {
 	rbacService                 *rbac.RBACService
 	rbacEnforcer                *middleware.RBACEnforcer
 	tenantIsolationMiddleware   *middleware.TenantIsolationMiddleware
+	rbacBootstrap               *services.RBACBootstrapService
 	router                      *gin.Engine
 	httpServer                  *http.Server
 	tracerProvider              *tracing.TracerProvider
@@ -83,8 +84,15 @@ func NewServer(
 
 	// Initialize RBAC components
 	auditService := rbac.NewAuditService(rbacRepo)
-	cacheRepo := rbac.NewNoOpCacheRepository()
+
+	// Initialize RBAC cache repository using Valkey
+	valkeyAdapter := rbac.NewValkeyClusterAdapter(valkeyCache)
+	cacheRepo := rbac.NewValkeyRBACRepository(valkeyAdapter)
+
 	rbacService := rbac.NewRBACService(rbacRepo, cacheRepo, auditService)
+
+	// Initialize RBAC bootstrap service
+	rbacBootstrap := services.NewRBACBootstrapService(rbacService, rbacRepo, log)
 
 	// Initialize RBAC enforcer
 	rbacEnforcer := middleware.NewRBACEnforcer(rbacService, valkeyCache, log)
@@ -101,6 +109,7 @@ func NewServer(
 		tracerProvider: tracerProvider,
 		rbacService:    rbacService,
 		rbacEnforcer:   rbacEnforcer,
+		rbacBootstrap:  rbacBootstrap,
 	}
 
 	// Create search router
@@ -372,6 +381,39 @@ func (s *Server) setupRoutes() {
 		rbacGroup.PUT("/users/:userId/roles", rbacHandler.AssignUserRoles)
 	}
 
+	// MiradorAuth endpoints (global admin only for local user management)
+	miradorAuthHandler := handlers.NewMiradorAuthHandler(s.rbacRepo, s.logger)
+	miradorAuthGroup := v1.Group("/auth/users")
+	miradorAuthGroup.Use(s.tenantIsolationMiddleware.GlobalAdminOnly())
+	{
+		miradorAuthGroup.POST("", miradorAuthHandler.CreateMiradorAuth)
+		miradorAuthGroup.GET("/:userId", miradorAuthHandler.GetMiradorAuth)
+		miradorAuthGroup.PUT("/:userId", miradorAuthHandler.UpdateMiradorAuth)
+		miradorAuthGroup.DELETE("/:userId", miradorAuthHandler.DeleteMiradorAuth)
+	}
+
+	// AuthConfig endpoints (tenant admin only for per-tenant auth configuration)
+	authConfigHandler := handlers.NewAuthConfigHandler(s.rbacRepo, s.logger)
+	authConfigGroup := v1.Group("/auth/config")
+	authConfigGroup.Use(s.tenantIsolationMiddleware.TenantAdminOnly())
+	{
+		authConfigGroup.POST("", authConfigHandler.CreateAuthConfig)
+		authConfigGroup.GET("/:tenantId", authConfigHandler.GetAuthConfig)
+		authConfigGroup.PUT("/:tenantId", authConfigHandler.UpdateAuthConfig)
+		authConfigGroup.DELETE("/:tenantId", authConfigHandler.DeleteAuthConfig)
+	}
+
+	// RBAC Audit endpoints (tenant admin only for security audit logs)
+	rbacAuditHandler := handlers.NewRBACAuditHandler(s.rbacRepo, s.logger)
+	rbacAuditGroup := v1.Group("/rbac/audit")
+	rbacAuditGroup.Use(s.tenantIsolationMiddleware.TenantAdminOnly())
+	{
+		rbacAuditGroup.GET("", rbacAuditHandler.GetAuditEvents)
+		rbacAuditGroup.GET("/:eventId", rbacAuditHandler.GetAuditEvent)
+		rbacAuditGroup.GET("/summary", rbacAuditHandler.GetAuditSummary)
+		rbacAuditGroup.GET("/subject/:subjectId", rbacAuditHandler.GetAuditEventsBySubject)
+	}
+
 	// Tenant endpoints
 	tenantHandler := handlers.NewTenantHandler(s.rbacService, s.logger)
 
@@ -532,6 +574,13 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup) {
 }
 
 func (s *Server) Start(ctx context.Context) error {
+	// Run RBAC bootstrap on startup
+	s.logger.Info("Running RBAC bootstrap on server startup")
+	if err := s.rbacBootstrap.RunBootstrap(ctx); err != nil {
+		s.logger.Error("RBAC bootstrap failed", "error", err)
+		// Don't fail server startup for bootstrap errors - log and continue
+	}
+
 	// Start metrics metadata synchronizer
 	if s.metricsMetadataSynchronizer != nil {
 		s.logger.Info("Starting metrics metadata synchronizer")
