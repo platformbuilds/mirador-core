@@ -738,10 +738,23 @@ func (as *AuthService) resetFailedLogin(auth *models.MiradorAuth) {
 func (as *AuthService) getUserRoles(userID, tenantID string) ([]string, error) {
 	ctx := context.Background()
 
-	// Get user roles from RBAC repository
-	roles, err := as.repo.GetUserRoles(ctx, tenantID, userID)
+	var roles []string
+
+	// First, get the user's global role from the User object
+	user, err := as.repo.GetUser(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user roles: %w", err)
+		as.logger.Warn("Failed to get user for role retrieval", "user_id", userID, "error", err)
+	} else if user.GlobalRole != "" {
+		roles = append(roles, user.GlobalRole)
+	}
+
+	// Then get tenant-specific roles from RBAC repository
+	tenantRoles, err := as.repo.GetUserRoles(ctx, tenantID, userID)
+	if err != nil {
+		as.logger.Warn("Failed to get tenant-specific user roles", "user_id", userID, "tenant_id", tenantID, "error", err)
+		// Don't return error, just log it and continue
+	} else {
+		roles = append(roles, tenantRoles...)
 	}
 
 	// If no roles assigned, return default role

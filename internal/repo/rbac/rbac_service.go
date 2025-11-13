@@ -1434,6 +1434,54 @@ func (s *RBACService) CreateUser(ctx context.Context, userID string, user *model
 		monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
 	}
 
+	// Automatically associate new user with default tenant as guest
+	// Skip for system-created users (bootstrap process handles this explicitly)
+	if userID != "system" {
+		defaultTenantName := "PLATFORMBUILDS"
+		tenants, err := s.repository.ListTenants(ctx, TenantFilters{Name: &defaultTenantName})
+		if err == nil && len(tenants) > 0 {
+			defaultTenantID := tenants[0].ID
+
+			// Create tenant-user association with guest role
+			tenantUserID := fmt.Sprintf("tenant_user_%s_%s", defaultTenantID, user.ID)
+			tenantUser := &models.TenantUser{
+				ID:         tenantUserID,
+				TenantID:   defaultTenantID,
+				UserID:     user.ID,
+				TenantRole: "tenant_guest",
+				Status:     "active",
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+				CreatedBy:  userID,
+				UpdatedBy:  userID,
+			}
+
+			// Use repository directly to avoid service validation during user creation
+			if err := s.repository.CreateTenantUser(ctx, tenantUser); err != nil {
+				// Log error but don't fail user creation
+				if auditErr := s.auditService.LogError(ctx, defaultTenantID, userID, "tenant_user.create", "rbac.tenant_user", err, correlationID); auditErr != nil {
+					monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+				}
+				// Continue - user creation succeeded even if tenant association failed
+			} else {
+				// Audit log the tenant-user association creation
+				if err := s.auditService.LogSystemEvent(ctx, defaultTenantID, "create", "tenant_user", map[string]interface{}{
+					"tenant_id":   defaultTenantID,
+					"user_id":     user.ID,
+					"tenant_role": "tenant_guest",
+					"status":      "active",
+				}, correlationID); err != nil {
+					monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+				}
+			}
+		} else {
+			// Log warning if default tenant not found, but don't fail user creation
+			if auditErr := s.auditService.LogError(ctx, "", userID, "default_tenant.not_found", "rbac.tenant", fmt.Errorf("default tenant PLATFORMBUILDS not found"), correlationID); auditErr != nil {
+				monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+			}
+		}
+	}
+
 	return nil
 }
 

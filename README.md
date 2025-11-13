@@ -146,6 +146,33 @@ make test
 make dev
 ```
 
+### First-Time Setup: RBAC Bootstrap
+
+After setting up the development environment, you need to bootstrap the RBAC system to create the default tenant, admin user, and roles:
+
+```bash
+# Build the bootstrap tool
+make bootstrap
+
+# Run RBAC bootstrap (requires Weaviate and Valkey running)
+./bin/bootstrap
+```
+
+**Default Credentials:**
+- **Username:** `aarvee`
+- **Password:** `ChangeMe123!`
+- **Tenant:** `PLATFORMBUILDS`
+
+⚠️ **IMPORTANT:** Change the default password immediately after first login!
+
+The bootstrap process creates:
+- Default system tenant (`PLATFORMBUILDS`)
+- Global admin user (`aarvee`)
+- Default roles: `global_admin`, `tenant_admin`, `tenant_editor`, `tenant_guest`
+- Authentication credentials with TOTP support
+
+The bootstrap is **idempotent** - running it multiple times will not create duplicates.
+
 ### Docker Deployment
 ```bash
 # Build Docker image

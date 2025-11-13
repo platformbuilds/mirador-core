@@ -267,6 +267,11 @@ dev: proto
 	@echo "Run 'docker-compose up -d' to start dependencies."
 	go run cmd/server/main.go
 
+# Build bootstrap tool for RBAC initialization
+bootstrap: proto
+	@echo "🔨 Building RBAC bootstrap tool..."
+	go build -o bin/bootstrap cmd/bootstrap/main.go
+
 # Alias to dev
 run: dev
 	@true
