@@ -55,14 +55,14 @@ type GRPCClients struct {
 }
 
 // NewGRPCClients creates and initializes all gRPC clients
-func NewGRPCClients(cfg *config.Config, logger logger.Logger, dynamicConfig *services.DynamicConfigService) (*GRPCClients, error) {
-	g := &GRPCClients{logger: logger, dynamicConfig: dynamicConfig}
+func NewGRPCClients(cfg *config.Config, log logger.Logger, dynamicConfig *services.DynamicConfigService) (*GRPCClients, error) {
+	g := &GRPCClients{logger: log, dynamicConfig: dynamicConfig}
 
 	// Initialize RCA-ENGINE client (now REST)
-	if c, err := NewRCAEngineClient(cfg.GRPC.RCAEngine.Endpoint, logger); err != nil {
+	if c, err := NewRCAEngineClient(cfg.GRPC.RCAEngine.Endpoint, log); err != nil {
 		if cfg.IsDevelopment() {
-			logger.Warn("RCA-ENGINE unavailable; using no-op client (development)")
-			g.RCAEngine = &noopRCAClient{logger: logger}
+			log.Warn("RCA-ENGINE unavailable; using no-op client (development)")
+			g.RCAEngine = &noopRCAClient{logger: log}
 			g.RCAEnabled = false
 		} else {
 			return nil, fmt.Errorf("failed to create RCA-ENGINE client: %w", err)
@@ -73,9 +73,9 @@ func NewGRPCClients(cfg *config.Config, logger logger.Logger, dynamicConfig *ser
 	}
 
 	// Initialize ALERT-ENGINE client
-	if c, err := NewAlertEngineClient(cfg.GRPC.AlertEngine.Endpoint, logger); err != nil {
+	if c, err := NewAlertEngineClient(cfg.GRPC.AlertEngine.Endpoint, log); err != nil {
 		if cfg.IsDevelopment() {
-			logger.Warn("ALERT-ENGINE unavailable; disabling client (development)")
+			log.Warn("ALERT-ENGINE unavailable; disabling client (development)")
 			g.AlertEngine = nil
 			g.AlertEnabled = false
 		} else {

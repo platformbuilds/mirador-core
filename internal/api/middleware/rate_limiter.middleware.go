@@ -8,18 +8,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/platformbuilds/mirador-core/internal/api/constants"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 )
-
-// Anonymous tenant ID for unauthenticated requests
-const AnonymousTenantID = "anonymous"
 
 // RateLimiter implements per-tenant rate limiting using Valkey cluster
 func RateLimiter(valkeyCache cache.ValkeyCluster) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tenantID := c.GetString("tenant_id")
 		if tenantID == "" {
-			tenantID = AnonymousTenantID
+			tenantID = constants.AnonymousTenantID
 		}
 
 		// Rate limiting key
@@ -41,26 +39,21 @@ func RateLimiter(valkeyCache cache.ValkeyCluster) gin.HandlerFunc {
 		if currentCount >= maxRequests {
 			c.Header("X-Rate-Limit-Limit", strconv.FormatInt(maxRequests, 10))
 			c.Header("X-Rate-Limit-Remaining", "0")
-			c.Header("X-Rate-Limit-Reset", strconv.FormatInt((window+1)*60, 10))
-
 			c.JSON(http.StatusTooManyRequests, gin.H{
-				"status":      "error",
-				"error":       "Rate limit exceeded",
-				"retry_after": 60,
+				"status":  "error",
+				"error":   "Rate limit exceeded",
+				"message": "Too many requests",
 			})
 			c.Abort()
 			return
 		}
 
-		// Increment counter
-		newCount := currentCount + 1
-		valkeyCache.Set(c.Request.Context(), key, newCount, 2*time.Minute)
+		// Increment request count
+		currentCount++
+		valkeyCache.Set(c.Request.Context(), key, []byte(strconv.FormatInt(currentCount, 10)), time.Minute)
 
-		// Set rate limit headers
 		c.Header("X-Rate-Limit-Limit", strconv.FormatInt(maxRequests, 10))
-		c.Header("X-Rate-Limit-Remaining", strconv.FormatInt(maxRequests-newCount, 10))
-		c.Header("X-Rate-Limit-Reset", strconv.FormatInt((window+1)*60, 10))
-
+		c.Header("X-Rate-Limit-Remaining", strconv.FormatInt(maxRequests-currentCount, 10))
 		c.Next()
 	}
 }

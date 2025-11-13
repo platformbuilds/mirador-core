@@ -23,13 +23,13 @@ type RCAEngineClient struct {
 }
 
 // NewRCAEngineClient creates a new RCA-ENGINE REST client
-func NewRCAEngineClient(endpoint string, logger logger.Logger) (*RCAEngineClient, error) {
+func NewRCAEngineClient(endpoint string, log logger.Logger) (*RCAEngineClient, error) {
 	return &RCAEngineClient{
 		baseURL: endpoint,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		logger: logger,
+		logger: log,
 	}, nil
 }
 
@@ -42,8 +42,8 @@ func (c *RCAEngineClient) InvestigateIncident(ctx context.Context, req *models.R
 	}
 
 	// Create HTTP request
-	url := fmt.Sprintf("%s/api/v1/investigate", c.baseURL)
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(requestBody))
+	endpointURL := fmt.Sprintf("%s/api/v1/investigate", c.baseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", endpointURL, bytes.NewBuffer(requestBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
@@ -96,8 +96,8 @@ func (c *RCAEngineClient) ListCorrelations(ctx context.Context, req *models.List
 	}
 
 	// Create HTTP request
-	url := fmt.Sprintf("%s/api/v1/correlations?%s", c.baseURL, params.Encode())
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+	endpointURL := fmt.Sprintf("%s/api/v1/correlations?%s", c.baseURL, params.Encode())
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", endpointURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
@@ -137,8 +137,8 @@ func (c *RCAEngineClient) GetPatterns(ctx context.Context, req *models.GetPatter
 	}
 
 	// Create HTTP request
-	url := fmt.Sprintf("%s/api/v1/patterns?%s", c.baseURL, params.Encode())
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+	endpointURL := fmt.Sprintf("%s/api/v1/patterns?%s", c.baseURL, params.Encode())
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", endpointURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
@@ -185,8 +185,8 @@ func (c *RCAEngineClient) SubmitFeedback(ctx context.Context, req *models.Feedba
 	}
 
 	// Create HTTP request
-	url := fmt.Sprintf("%s/api/v1/feedback", c.baseURL)
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(requestBody))
+	endpointURL := fmt.Sprintf("%s/api/v1/feedback", c.baseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", endpointURL, bytes.NewBuffer(requestBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
@@ -224,8 +224,8 @@ func (c *RCAEngineClient) HealthCheck() error {
 	defer cancel()
 
 	// Create HTTP request
-	url := fmt.Sprintf("%s/health", c.baseURL)
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+	endpointURL := fmt.Sprintf("%s/health", c.baseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", endpointURL, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("failed to create health check request: %w", err)
 	}

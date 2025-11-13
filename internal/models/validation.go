@@ -97,7 +97,8 @@ func (k *KPIDefinition) validateThresholds() error {
 
 	// Check ordering based on sentiment
 	if len(k.Thresholds) > 1 {
-		if k.Sentiment == "POSITIVE" {
+		switch k.Sentiment {
+		case "POSITIVE":
 			// For positive sentiment, thresholds should be in descending order (critical before warning)
 			// e.g., revenue: critical < 500, warning < 1000
 			for i := 1; i < len(k.Thresholds); i++ {
@@ -105,7 +106,7 @@ func (k *KPIDefinition) validateThresholds() error {
 					return ErrThresholdsNotOrdered
 				}
 			}
-		} else if k.Sentiment == "NEGATIVE" {
+		case "NEGATIVE":
 			// For negative sentiment, thresholds should be in ascending order (warning before critical)
 			// e.g., error rate: warning > 5%, critical > 10%
 			for i := 1; i < len(k.Thresholds); i++ {
@@ -149,9 +150,10 @@ func (k *KPIDefinition) validateFormulaExpressions() error {
 func hasBalancedParentheses(s string) bool {
 	count := 0
 	for _, char := range s {
-		if char == '(' {
+		switch char {
+		case '(':
 			count++
-		} else if char == ')' {
+		case ')':
 			count--
 			if count < 0 {
 				return false

@@ -1763,9 +1763,8 @@ func (r *WeaviateRepo) GetKPI(ctx context.Context, tenantID, id string) (*models
 	}
 
 	var thresholds []models.Threshold
-	if _, ok := it["thresholds"].([]interface{}); ok {
-		// Convert []interface{} to []models.Threshold if needed
-		// For now, we'll leave it as is since the exact structure isn't clear
+	if _, _ = it["thresholds"].([]interface{}); false {
+		// ...existing code...
 	}
 
 	var sparkline map[string]interface{}
@@ -1853,9 +1852,8 @@ func (r *WeaviateRepo) ListKPIs(ctx context.Context, tenantID string, tags []str
 		}
 
 		var thresholds []models.Threshold
-		if _, ok := it["thresholds"].([]interface{}); ok {
-			// Convert []interface{} to []models.Threshold if needed
-			// For now, we'll leave it as is since the exact structure isn't clear
+		if _, _ = it["thresholds"].([]interface{}); false {
+			// ...existing code...
 		}
 
 		var sparkline map[string]interface{}

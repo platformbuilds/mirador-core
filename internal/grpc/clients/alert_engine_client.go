@@ -22,7 +22,7 @@ type AlertEngineClient struct {
 }
 
 // NewAlertEngineClient creates a new ALERT-ENGINE gRPC client
-func NewAlertEngineClient(endpoint string, logger logger.Logger) (*AlertEngineClient, error) {
+func NewAlertEngineClient(endpoint string, log logger.Logger) (*AlertEngineClient, error) {
 	// Non-blocking dial; gRPC will attempt to connect in background
 	conn, err := grpc.Dial(endpoint,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -36,7 +36,7 @@ func NewAlertEngineClient(endpoint string, logger logger.Logger) (*AlertEngineCl
 	return &AlertEngineClient{
 		client: client,
 		conn:   conn,
-		logger: logger,
+		logger: log,
 	}, nil
 }
 
