@@ -1,71 +1,12 @@
+version: "2"
 run:
-  timeout: 5m
+  go: "1.21"
   issues-exit-code: 1
   tests: true
-  build-tags: []
-  go: "1.21"
-
 output:
   formats:
-    colored-line-number: true
-  print-issued-lines: true
-  print-linter-name: true
-
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-    disabled-checks:
-      - dupImport # https://github.com/go-critic/go-critic/issues/845
-      - ifElseChain
-      - octalLiteral
-      - whyNoLint
-      - wrapperFunc
-  gocyclo:
-    min-complexity: 15
-  goimports:
-    local-prefixes: github.com/platformbuilds/mirador-core
-  mnd:
-    checks: [argument,case,condition,operation,return,assign]
-  govet:
-    enable:
-      - shadow
-    settings:
-      printf:
-        funcs:
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
-  lll:
-    line-length: 140
-  misspell:
-    locale: US
-  nolintlint:
-    allow-unused: false
-    require-explanation: false
-    require-specific: false
-  revive:
-    rules:
-      - name: exported
-        severity: warning
-        disabled: false
-        arguments:
-          - "disableStutteringCheck"
-  staticcheck:
-    checks: ["all"]
-  stylecheck:
-    checks: ["all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022"]
-  unparam:
-    check-exported: false
-
+    text:
+      path: stdout
 linters:
   enable:
     - asciicheck
@@ -79,25 +20,17 @@ linters:
     - goconst
     - gocritic
     - gocyclo
-    - gofmt
-    - goimports
-    - mnd
     - goprintffuncname
     - gosec
-    - gosimple
-    - govet
-    - ineffassign
     - misspell
+    - mnd
     - nakedret
     - nolintlint
     - predeclared
     - revive
     - staticcheck
-    - stylecheck
-    - typecheck
     - unconvert
     - unparam
-    - unused
     - whitespace
   disable:
     - dupl
@@ -112,307 +45,381 @@ linters:
     - prealloc
     - testpackage
     - wsl
-
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    gocritic:
+      disabled-checks:
+        - dupImport
+        - ifElseChain
+        - octalLiteral
+        - whyNoLint
+        - wrapperFunc
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+    gocyclo:
+      min-complexity: 15
+    govet:
+      enable:
+        - shadow
+      settings:
+        printf:
+          funcs:
+            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
+            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
+            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
+            - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
+    lll:
+      line-length: 140
+    misspell:
+      locale: US
+    mnd:
+      checks:
+        - argument
+        - case
+        - condition
+        - operation
+        - return
+        - assign
+    nolintlint:
+      require-explanation: false
+      require-specific: false
+      allow-unused: false
+    revive:
+      rules:
+        - name: exported
+          arguments:
+            - disableStutteringCheck
+          severity: warning
+          disabled: false
+    staticcheck:
+      checks:
+        - all
+        - -ST1000
+        - -ST1003
+        - -ST1016
+        - -ST1020
+        - -ST1021
+        - -ST1022
+    unparam:
+      check-exported: false
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - errcheck
+          - funlen
+          - gocognit
+          - lll
+          - mnd
+          - unparam
+        path: _test\.go
+      - linters:
+          - lll
+        path: internal/api/handlers\.go
+      - linters:
+          - depguard
+          - err113
+          - errcheck
+          - goconst
+          - gosec
+        path: internal/config/
+      - linters:
+          - mnd
+        path: internal/models/
+      - linters:
+          - depguard
+          - err113
+          - exhaustive
+          - goconst
+          - gocritic
+          - gocyclo
+          - gosec
+          - govet
+          - ineffassign
+          - lll
+          - misspell
+          - mnd
+          - predeclared
+          - staticcheck
+          - unconvert
+          - unparam
+          - unused
+        path: internal/services/
+      - linters:
+          - depguard
+          - err113
+          - errcheck
+          - goconst
+          - gocritic
+          - gocyclo
+          - gosec
+          - lll
+          - mnd
+          - staticcheck
+          - unparam
+        path: internal/utils/
+      - linters:
+          - depguard
+          - err113
+          - errcheck
+          - gocritic
+          - mnd
+        path: pkg/
+      - linters:
+          - depguard
+          - dupl
+          - err113
+          - errcheck
+          - exhaustive
+          - gocritic
+          - gosec
+          - mnd
+          - unparam
+          - unused
+        path: internal/repo/
+      - linters:
+          - bodyclose
+          - depguard
+          - err113
+          - errcheck
+          - gocritic
+          - mnd
+          - unparam
+        path: internal/api/
+      - linters:
+          - depguard
+          - err113
+          - gocritic
+          - mnd
+        path: internal/models/
+      - linters:
+          - depguard
+          - errcheck
+        path: internal/api/websocket/
+      - linters:
+          - err113
+          - errcheck
+          - gocritic
+          - gosec
+          - mnd
+        path: cmd/
+      - linters:
+          - gocyclo
+          - gosec
+          - mnd
+          - unparam
+        path: tools/
+      - linters:
+          - dupl
+        path: internal/repo/rbac/weaviate_repository\.go
+      - linters:
+          - dupl
+        path: internal/api/handlers/unified_query\.go
+      - linters:
+          - dupl
+        path: cmd/schemactl/main\.go
+      - linters:
+          - dupl
+        path: internal/models/correlation_query\.go
+      - linters:
+          - dupl
+          - unparam
+        path: internal/models/unified_query_language\.go
+      - linters:
+          - dupl
+        path: pkg/cache/valkey_cluster\.go
+      - linters:
+          - dupl
+        path: pkg/cache/valkey_single\.go
+      - linters:
+          - dupl
+        path: internal/api/middleware/search_throttling\.middleware\.go
+      - linters:
+          - depguard
+          - err113
+          - gocritic
+          - gocyclo
+          - gosec
+          - unparam
+        path: internal/api/middleware/
+      - linters:
+          - unparam
+        path: internal/services/
+      - linters:
+          - predeclared
+        path: internal/utils/bleve/
+      - linters:
+          - gocritic
+          - gocyclo
+          - govet
+          - mnd
+        path: internal/config/
+      - linters:
+          - lll
+          - mnd
+        path: internal/grpc/
+      - linters:
+          - depguard
+          - goconst
+          - gocritic
+        path: internal/monitoring/
+      - linters:
+          - depguard
+        path: internal/metrics/
+      - linters:
+          - depguard
+          - err113
+          - errcheck
+          - gocritic
+          - gocyclo
+          - mnd
+        path: internal/storage/weaviate/
+      - linters:
+          - depguard
+        path: internal/tracing/
+      - linters:
+          - depguard
+        path: internal/discovery/
+      - linters:
+          - depguard
+          - errcheck
+          - gosec
+          - mnd
+        path: dev/
+      - linters:
+          - depguard
+          - gocyclo
+          - lll
+        path: cmd/
+      - linters:
+          - goconst
+          - gocyclo
+          - govet
+          - lll
+        path: internal/repo/rbac/
+      - linters:
+          - exhaustive
+          - gocyclo
+          - govet
+          - ineffassign
+          - unused
+        path: internal/utils/bleve/
+      - linters:
+          - exhaustive
+          - goconst
+          - gocyclo
+          - predeclared
+          - unused
+        path: internal/utils/lucene/
+      - linters:
+          - misspell
+        path: internal/utils/loadtest/
+      - linters:
+          - gocyclo
+          - govet
+          - misspell
+          - predeclared
+        path: pkg/cache/
+      - linters:
+          - govet
+        path: pkg/auth/
+      - linters:
+          - goconst
+          - gocyclo
+          - misspell
+        path: internal/models/
+      - linters:
+          - gosec
+        path: internal/api/websocket/
+      - linters:
+          - dupl
+          - goconst
+          - gocyclo
+          - gosec
+          - govet
+          - lll
+          - misspell
+          - mnd
+          - predeclared
+          - unused
+        path: internal/api/handlers/
+      - linters:
+          - depguard
+          - err113
+        path: internal/grpc/clients/
+      - linters:
+          - depguard
+          - gocritic
+        path: tools/
+      - linters:
+          - lll
+        source: '^//go:generate '
+      - linters:
+          - staticcheck
+        text: 'SA1019:'
+      - linters:
+          - staticcheck
+        text: 'SA1029:'
+      - linters:
+          - staticcheck
+        text: 'SA9003:'
+      - linters:
+          - staticcheck
+        text: 'SA6002:'
+      - linters:
+          - staticcheck
+        text: 'ST1005:'
+      - linters:
+          - staticcheck
+        text: 'ST1023:'
+      - linters:
+          - revive
+        text: exported:.*(comment|should have comment)
+      - linters:
+          - whitespace
+        text: unnecessary.*(leading|trailing) newline
+      - linters:
+          - errcheck
+        text: Error return value of `prometheus\.Register` is not checked
+      - linters:
+          - mnd
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - mnd
-        - funlen
-        - gocognit
-        - unparam
-        - lll
-        - errcheck
-    - path: internal/api/handlers\.go
-      linters:
-        - lll
-    - path: internal/config/
-      linters:
-        - goconst
-        - depguard
-        - err113
-        - gosec
-        - errcheck
-    - path: internal/models/
-      linters:
-        - mnd
-    - path: internal/services/
-      linters:
-        - mnd
-        - unparam
-        - err113
-        - exhaustive
-        - gocritic
-        - gosimple
-        - ineffassign
-        - depguard
-        - goimports
-        - govet
-        - lll
-        - gocyclo
-        - misspell
-        - predeclared
-        - unused
-        - goconst
-        - gosec
-        - unconvert
-        - staticcheck
-    - path: internal/utils/
-      linters:
-        - mnd
-        - depguard
-        - err113
-        - errcheck
-        - gosec
-        - gocritic
-        - lll
-        - unparam
-        - gocyclo
-        - goconst
-        - staticcheck
-        - goimports
-    - path: pkg/
-      linters:
-        - mnd
-        - depguard
-        - err113
-        - gocritic
-        - errcheck
-    - path: internal/repo/
-      linters:
-        - depguard
-        - err113
-        - gocritic
-        - mnd
-        - errcheck
-        - unused
-        - gosec
-        - exhaustive
-        - dupl
-        - unparam
-    - path: internal/api/
-      linters:
-        - mnd
-        - depguard
-        - gocritic
-        - errcheck
-        - err113
-        - bodyclose
-        - unparam
-    - path: internal/models/
-      linters:
-        - mnd
-        - err113
-        - gocritic
-        - depguard
-    - path: internal/api/websocket/
-      linters:
-        - depguard
-        - errcheck
-    - path: cmd/
-      linters:
-        - mnd
-        - errcheck
-        - gosec
-        - err113
-        - gocritic
-    - path: tools/
-      linters:
-        - mnd
-        - unparam
-        - gocyclo
-        - gosec
-    - path: internal/repo/rbac/weaviate_repository\.go
-      linters:
-        - dupl
-    - path: internal/api/handlers/unified_query\.go
-      linters:
-        - dupl
-    - path: cmd/schemactl/main\.go
-      linters:
-        - dupl
-    - path: internal/models/correlation_query\.go
-      linters:
-        - dupl
-    - path: internal/models/unified_query_language\.go
-      linters:
-        - dupl
-        - unparam
-    - path: pkg/cache/valkey_cluster\.go
-      linters:
-        - dupl
-    - path: pkg/cache/valkey_single\.go
-      linters:
-        - dupl
-    - path: internal/api/middleware/search_throttling\.middleware\.go
-      linters:
-        - dupl
-    - path: internal/api/middleware/
-      linters:
-        - unparam
-        - err113
-        - gocritic
-        - depguard
-        - gosec
-        - gocyclo
-    - path: internal/services/
-      linters:
-        - unparam
-    - path: internal/utils/bleve/
-      linters:
-        - predeclared
-    - path: internal/config/
-      linters:
-        - gocyclo
-        - mnd
-        - gocritic
-        - goimports
-        - govet
-    - path: internal/grpc/
-      linters:
-        - mnd
-        - lll
-        - goimports
-    - path: internal/monitoring/
-      linters:
-        - goconst
-        - depguard
-        - gocritic
-    - path: internal/metrics/
-      linters:
-        - depguard
-    - path: internal/storage/weaviate/
-      linters:
-        - depguard
-        - errcheck
-        - err113
-        - gocritic
-        - mnd
-        - goimports
-        - gofmt
-        - gocyclo
-    - path: internal/tracing/
-      linters:
-        - depguard
-    - path: internal/discovery/
-      linters:
-        - depguard
-    - path: dev/
-      linters:
-        - depguard
-        - mnd
-        - errcheck
-        - gosec
-    - path: cmd/
-      linters:
-        - lll
-        - depguard
-        - gocyclo
-    - path: internal/repo/rbac/
-      linters:
-        - lll
-        - goconst
-        - gocyclo
-        - gofmt
-        - goimports
-        - govet
-    - path: internal/utils/bleve/
-      linters:
-        - goimports
-        - gofmt
-        - unused
-        - exhaustive
-        - gocyclo
-        - ineffassign
-        - govet
-    - path: internal/utils/lucene/
-      linters:
-        - gocyclo
-        - unused
-        - exhaustive
-        - predeclared
-        - goconst
-    - path: internal/utils/loadtest/
-      linters:
-        - misspell
-    - path: pkg/cache/
-      linters:
-        - goimports
-        - gofmt
-        - gocyclo
-        - govet
-        - misspell
-        - predeclared
-    - path: pkg/auth/
-      linters:
-        - goimports
-        - gofmt
-        - govet
-    - path: internal/models/
-      linters:
-        - gocyclo
-        - goconst
-        - misspell
-    - path: internal/api/websocket/
-      linters:
-        - gosec
-        - goimports
-        - gofmt
-    - path: internal/api/handlers/
-      linters:
-        - dupl
-        - goconst
-        - gocyclo
-        - gosec
-        - unused
-        - goimports
-        - govet
-        - lll
-        - mnd
-        - predeclared
-        - misspell
-    - path: internal/grpc/clients/
-      linters:
-        - depguard
-        - err113
-    - path: tools/
-      linters:
-        - depguard
-        - gocritic
-    - linters:
-        - lll
-      source: "^//go:generate "
-    - linters:
-        - staticcheck
-      text: "SA1019:" # Using a deprecated function, field, or method
-    - linters:
-        - staticcheck
-      text: "SA1029:" # Using built-in type as context key
-    - linters:
-        - staticcheck
-      text: "SA9003:" # Empty branch
-    - linters:
-        - staticcheck
-      text: "SA6002:" # Argument should be pointer-like
-    - linters:
-        - stylecheck
-      text: "ST1005:" # Error strings should not be capitalized
-    - linters:
-        - stylecheck  
-      text: "ST1023:" # Should omit type from declaration
-    - linters:
-        - revive
-      text: "exported:.*(comment|should have comment)"
-    - linters:
-        - whitespace
-      text: "unnecessary.*(leading|trailing) newline"
-    - linters:
-        - errcheck
-      text: "Error return value of `prometheus\\.Register` is not checked"
-    - path: _test\.go
-      linters:
-        - mnd
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
   new: false
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/platformbuilds/mirador-core
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - internal/services/
+      - internal/utils/
+      - internal/config/
+      - internal/grpc/
+      - internal/storage/weaviate/
+      - internal/repo/rbac/
+      - internal/utils/bleve/
+      - pkg/cache/
+      - pkg/auth/
+      - internal/api/websocket/
+      - internal/api/handlers/
