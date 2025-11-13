@@ -5,7 +5,7 @@ replicaCount: 3
 image:
   repository: platformbuilds/mirador-core
   # Use a multi-arch tag (linux/amd64 + linux/arm64) so nodes pull the correct architecture automatically
-  tag: v8.0.0
+  tag: v9.0.0
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []

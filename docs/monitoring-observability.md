@@ -94,7 +94,7 @@ unified-query-{query_type}
 
 All spans include the following attributes:
 - `service.name`: "mirador-core"
-- `service.version`: "v7.0.0"
+- `service.version`: "v9.0.0"
 - `operation.name`: Specific operation being traced
 - `query.id`: Unique query identifier
 - `user.id`: User identifier (if available)
@@ -229,7 +229,7 @@ scrape_configs:
 tracing:
   enabled: true
   service_name: "mirador-core"
-  service_version: "v7.0.0"
+  service_version: "v9.0.0"
   sampling_ratio: 0.1
   jaeger_endpoint: "http://jaeger:14268/api/traces"
   otlp_endpoint: "http://otel-collector:4318"
@@ -237,7 +237,7 @@ tracing:
   # Resource attributes
   resource_attributes:
     service.name: "mirador-core"
-    service.version: "v7.0.0"
+    service.version: "v9.0.0"
     service.instance.id: "${HOSTNAME}"
     deployment.environment: "${ENVIRONMENT}"
 ```
