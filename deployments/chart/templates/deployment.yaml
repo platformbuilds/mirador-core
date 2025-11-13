@@ -111,9 +111,11 @@ spec:
                   name: {{ default (printf "%s-valkey" .Release.Name) .Values.valkey.auth.secretName }}
                   key: {{ default "valkey-password" .Values.valkey.auth.passwordKey }}
             {{- end }}
-          {{- if .Values.envFrom }}
+          {{- if or .Values.envFrom .Values.secrets.create .Values.secrets.name }}
           envFrom:
+            {{- if .Values.envFrom }}
             {{- toYaml .Values.envFrom | nindent 12 }}
+            {{- end }}
             {{- /* Auto-attach our generated Secret if enabled */}}
             {{- if .Values.secrets.create }}
             - secretRef:

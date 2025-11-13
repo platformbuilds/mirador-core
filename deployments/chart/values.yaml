@@ -5,7 +5,7 @@ replicaCount: 3
 image:
   repository: platformbuilds/mirador-core
   # Use a multi-arch tag (linux/amd64 + linux/arm64) so nodes pull the correct architecture automatically
-  tag: v3.0.0
+  tag: v8.0.0
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
@@ -118,16 +118,22 @@ envFrom: [] # e.g., [{ secretRef: { name: my-secrets } }]
 # expects as environment variables. If you already manage secrets, keep create=false
 # and reference them via `envFrom` above.
 secrets:
-  create: false
+  create: true  # Enable secrets creation for RBAC bootstrap
   name: "" # defaults to <release>-mirador-env when create=true
   data:
     # Keys consumed by MIRADOR-CORE (see internal/config/secrets.go):
-    # JWT_SECRET, LDAP_PASSWORD, SMTP_PASSWORD, REDIS_PASSWORD, VM_PASSWORD
+    # JWT_SECRET: Secret key for signing JWT tokens (auto-generated if empty)
     JWT_SECRET: ""
+    # LDAP_PASSWORD: Password for LDAP bind DN
     LDAP_PASSWORD: ""
+    # SMTP_PASSWORD: Password for SMTP authentication
     SMTP_PASSWORD: ""
+    # REDIS_PASSWORD: Password for Redis/Valkey authentication
     REDIS_PASSWORD: ""
+    # VM_PASSWORD: Password for VictoriaMetrics authentication
     VM_PASSWORD: ""
+    # ADMIN_PASSWORD: Default admin user password (overrides auth.rbac.bootstrap.admin_user.password)
+    ADMIN_PASSWORD: ""
 
 config:
   enabled: true
@@ -192,12 +198,77 @@ mirador:
 
   auth:
     enabled: true
+    # JWT authentication settings
+    jwt:
+      secret: ""  # Set via secrets.data.JWT_SECRET or environment variable
+      expiry_min: 1440  # Token expiration in minutes (24 hours)
+    # LDAP/AD authentication settings
     ldap:
+      enabled: false
       url: "ldap://ldap.company.com"
       base_dn: "dc=company,dc=com"
+      bind_dn: "cn=admin,dc=company,dc=com"
+      bind_password: ""  # Set via secrets.data.LDAP_PASSWORD
+      user_search_filter: "(uid={0})"
+      group_search_filter: "(memberUid={0})"
+    # OAuth 2.0 / OIDC settings
+    oauth:
+      enabled: false
+      provider: ""  # e.g., "okta", "auth0", "keycloak"
+      client_id: ""
+      client_secret: ""
+      issuer_url: ""
+      redirect_url: ""
+    # SAML settings
+    saml:
+      enabled: false
+      idp_metadata_url: ""
+      sp_entity_id: ""
+      sp_acs_url: ""
+    # RBAC (Role-Based Access Control)
     rbac:
       enabled: true
-      admin_role: "mirador-admin"
+      # Bootstrap configuration - creates default admin user and roles on first startup
+      bootstrap:
+        enabled: true
+        # Default admin user credentials (change immediately after first login)
+        admin_user:
+          user_id: "admin"
+          username: "admin"
+          email: "admin@mirador.local"
+          password: "ChangeMe123!"  # Override via secrets.data.ADMIN_PASSWORD
+          global_role: "global_admin"
+        # Default tenant configuration
+        default_tenant:
+          tenant_id: "default"
+          name: "Default Tenant"
+          description: "Default tenant for initial setup"
+      # Default roles created on bootstrap
+      default_roles:
+        - name: "global_admin"
+          description: "Global administrator with full system access"
+          permissions:
+            - "*"  # All permissions
+        - name: "tenant_admin"
+          description: "Tenant administrator with full tenant access"
+          permissions:
+            - "tenant.*"
+            - "rbac.*"
+            - "users.*"
+        - name: "viewer"
+          description: "Read-only access to metrics, logs, and traces"
+          permissions:
+            - "metrics.read"
+            - "logs.read"
+            - "traces.read"
+        - name: "analyst"
+          description: "Analyst with read and query access"
+          permissions:
+            - "metrics.*"
+            - "logs.*"
+            - "traces.*"
+            - "rca.read"
+            - "predict.read"
 
   cache:
     # Cache nodes for Valkey/Redis. Leave empty when using the embedded Bitnami
@@ -238,14 +309,18 @@ mirador:
         disk_cache_ratio: 0.5    # Disk cache ratio (0.0-1.0)
         max_concurrent_queries: 50  # Maximum concurrent queries
 
-  # Weaviate connection for schema/semantic features (migration target)
+  # Weaviate connection for schema/semantic features and RBAC storage
   weaviate:
-    enabled: false
+    enabled: true  # Required for RBAC feature
     scheme: http
     host: weaviate.mirador.svc.cluster.local
     port: 8080
     api_key: ""
     use_official: false
+    # RBAC schema initialization
+    rbac_schema:
+      enabled: true
+      auto_migrate: true  # Automatically create RBAC schema classes on startup
 
 # Bleve storage configuration
 bleveStorage:
