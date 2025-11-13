@@ -499,6 +499,20 @@ func (s *RBACService) DeleteTenant(ctx context.Context, userID, tenantID string)
 
 	correlationID := generateCorrelationID()
 
+	// Check if tenant exists and is a system tenant
+	tenant, err := s.repository.GetTenant(ctx, tenantID)
+	if err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "tenant.delete", "rbac.tenant", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return fmt.Errorf("failed to get tenant: %w", err)
+	}
+
+	// Prevent deletion of system tenants (e.g., default PLATFORMBUILDS tenant)
+	if tenant.IsSystem {
+		return TenantValidationError{Field: "isSystem", Message: "system tenants cannot be deleted, only renamed"}
+	}
+
 	// Delete tenant from repository
 	if err := s.repository.DeleteTenant(ctx, tenantID); err != nil {
 		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "tenant.delete", "rbac.tenant", err, correlationID); auditErr != nil {
@@ -779,10 +793,10 @@ func (s *RBACService) validateTenant(tenant *models.Tenant) error {
 		return TenantValidationError{Field: "name", Message: "tenant name must be between 3 and 50 characters"}
 	}
 
-	// Validate name format (alphanumeric, hyphens, underscores)
-	validName := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+	// Validate name format (alphanumeric, spaces, hyphens, underscores)
+	validName := regexp.MustCompile(`^[a-zA-Z0-9 _-]+$`)
 	if !validName.MatchString(tenant.Name) {
-		return TenantValidationError{Field: "name", Message: "tenant name can only contain letters, numbers, hyphens, and underscores"}
+		return TenantValidationError{Field: "name", Message: "tenant name can only contain letters, numbers, spaces, hyphens, and underscores"}
 	}
 
 	if tenant.AdminEmail == "" {
@@ -1601,4 +1615,740 @@ func (s *RBACService) validateUser(user *models.User) error {
 	}
 
 	return nil
+}
+
+// CreatePermission creates a new permission with validation
+func (s *RBACService) CreatePermission(ctx context.Context, tenantID, userID string, permission *models.Permission) error {
+	start := time.Now()
+	defer func() { monitoring.RecordAPIOperation("create_permission", "rbac.permission", time.Since(start), true) }()
+
+	correlationID := generateCorrelationID()
+
+	// Validate permission
+	if err := s.validatePermission(permission); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "permission.create", "rbac.permission", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return err
+	}
+
+	// Set metadata
+	permission.TenantID = tenantID
+	permission.CreatedBy = userID
+	permission.UpdatedBy = userID
+	permission.CreatedAt = time.Now()
+	permission.UpdatedAt = time.Now()
+
+	// Check for duplicate permission ID
+	existingPermission, err := s.repository.GetPermission(ctx, tenantID, permission.ID)
+	if err == nil && existingPermission != nil {
+		return PermissionValidationError{Field: "id", Message: "permission with this ID already exists"}
+	}
+
+	// Create permission in repository
+	if err := s.repository.CreatePermission(ctx, permission); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "permission.create", "rbac.permission", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return fmt.Errorf("failed to create permission: %w", err)
+	}
+
+	// Invalidate permissions cache
+	if err := s.cache.InvalidatePermissions(ctx, tenantID); err != nil {
+		monitoring.RecordCacheOperation("invalidate_permissions_cache_failure", "error")
+	}
+
+	// Audit log the creation
+	details := map[string]interface{}{
+		"permission_id": permission.ID,
+		"resource":      permission.Resource,
+		"action":        permission.Action,
+	}
+	if err := s.auditService.LogSystemEvent(ctx, tenantID, "create", "permission", details, correlationID); err != nil {
+		monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+	}
+
+	return nil
+}
+
+// GetPermission retrieves a permission with caching
+func (s *RBACService) GetPermission(ctx context.Context, tenantID, permissionID string) (*models.Permission, error) {
+	start := time.Now()
+	defer func() { monitoring.RecordAPIOperation("get_permission", "rbac.permission", time.Since(start), true) }()
+
+	// Try cache first
+	cachedPermissions, err := s.cache.GetPermissions(ctx, tenantID)
+	if err == nil && cachedPermissions != nil {
+		monitoring.RecordCacheOperation("get_permissions", "hit")
+		for _, perm := range cachedPermissions {
+			if perm.ID == permissionID {
+				return perm, nil
+			}
+		}
+	}
+
+	monitoring.RecordCacheOperation("get_permissions", "miss")
+
+	// Get from repository
+	permission, err := s.repository.GetPermission(ctx, tenantID, permissionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get permission: %w", err)
+	}
+	if permission == nil {
+		return nil, fmt.Errorf("permission not found: %s", permissionID)
+	}
+
+	return permission, nil
+}
+
+// ListPermissions retrieves all permissions for a tenant with caching
+func (s *RBACService) ListPermissions(ctx context.Context, tenantID string) ([]*models.Permission, error) {
+	start := time.Now()
+	defer func() { monitoring.RecordAPIOperation("list_permissions", "rbac.permission", time.Since(start), true) }()
+
+	// Try cache first
+	cachedPermissions, err := s.cache.GetPermissions(ctx, tenantID)
+	if err == nil && cachedPermissions != nil {
+		monitoring.RecordCacheOperation("list_permissions", "hit")
+		return cachedPermissions, nil
+	}
+
+	monitoring.RecordCacheOperation("list_permissions", "miss")
+
+	// Get from repository
+	permissions, err := s.repository.ListPermissions(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list permissions: %w", err)
+	}
+
+	// Cache for future requests
+	cacheTTL := 30 * time.Minute
+	if cacheErr := s.cache.SetPermissions(ctx, tenantID, permissions, cacheTTL); cacheErr != nil {
+		monitoring.RecordCacheOperation("cache_permissions_failure", "error")
+	}
+
+	return permissions, nil
+}
+
+// UpdatePermission updates an existing permission with validation
+func (s *RBACService) UpdatePermission(ctx context.Context, tenantID, userID, permissionID string, updates *models.Permission) error {
+	start := time.Now()
+	defer func() { monitoring.RecordAPIOperation("update_permission", "rbac.permission", time.Since(start), true) }()
+
+	correlationID := generateCorrelationID()
+
+	// Get existing permission
+	existingPermission, err := s.GetPermission(ctx, tenantID, permissionID)
+	if err != nil {
+		return fmt.Errorf("failed to get existing permission: %w", err)
+	}
+
+	// Validate updates
+	if err := s.validatePermissionUpdates(existingPermission, updates); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "permission.update", "rbac.permission", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return err
+	}
+
+	// Apply updates
+	existingPermission.Resource = updates.Resource
+	existingPermission.Action = updates.Action
+	existingPermission.ResourcePattern = updates.ResourcePattern
+	existingPermission.Scope = updates.Scope
+	existingPermission.Conditions = updates.Conditions
+	existingPermission.Description = updates.Description
+	existingPermission.Metadata = updates.Metadata
+	existingPermission.UpdatedBy = userID
+	existingPermission.UpdatedAt = time.Now()
+
+	// Update in repository
+	if err := s.repository.UpdatePermission(ctx, existingPermission); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "permission.update", "rbac.permission", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return fmt.Errorf("failed to update permission: %w", err)
+	}
+
+	// Invalidate permissions cache
+	if err := s.cache.InvalidatePermissions(ctx, tenantID); err != nil {
+		monitoring.RecordCacheOperation("invalidate_permissions_cache_failure", "error")
+	}
+
+	// Audit log the update
+	details := map[string]interface{}{
+		"permission_id": existingPermission.ID,
+		"resource":      existingPermission.Resource,
+		"action":        existingPermission.Action,
+	}
+	if err := s.auditService.LogSystemEvent(ctx, tenantID, "update", "permission", details, correlationID); err != nil {
+		monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+	}
+
+	return nil
+}
+
+// DeletePermission deletes a permission with safety checks
+func (s *RBACService) DeletePermission(ctx context.Context, tenantID, userID, permissionID string) error {
+	start := time.Now()
+	defer func() { monitoring.RecordAPIOperation("delete_permission", "rbac.permission", time.Since(start), true) }()
+
+	correlationID := generateCorrelationID()
+
+	// Get existing permission
+	_, err := s.GetPermission(ctx, tenantID, permissionID)
+	if err != nil {
+		return fmt.Errorf("failed to get permission: %w", err)
+	}
+
+	// Check if permission is assigned to any roles
+	// This is a simplified check - in production, you'd want to check all roles
+	roles, err := s.repository.ListRoles(ctx, tenantID)
+	if err == nil {
+		for _, role := range roles {
+			for _, permID := range role.Permissions {
+				if permID == permissionID {
+					return PermissionValidationError{Field: "assignments", Message: "cannot delete permission that is assigned to roles"}
+				}
+			}
+		}
+	}
+
+	// Delete from repository
+	if err := s.repository.DeletePermission(ctx, tenantID, permissionID); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "permission.delete", "rbac.permission", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return fmt.Errorf("failed to delete permission: %w", err)
+	}
+
+	// Invalidate permissions cache
+	if err := s.cache.InvalidatePermissions(ctx, tenantID); err != nil {
+		monitoring.RecordCacheOperation("invalidate_permissions_cache_failure", "error")
+	}
+
+	// Audit log the deletion
+	details := map[string]interface{}{
+		"permission_id": permissionID,
+	}
+	if err := s.auditService.LogSystemEvent(ctx, tenantID, "delete", "permission", details, correlationID); err != nil {
+		monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+	}
+
+	return nil
+}
+
+// CreateGroup creates a new group with validation
+func (s *RBACService) CreateGroup(ctx context.Context, tenantID, userID string, group *models.Group) error {
+	start := time.Now()
+	defer func() { monitoring.RecordAPIOperation("create_group", "rbac.group", time.Since(start), true) }()
+
+	correlationID := generateCorrelationID()
+
+	// Validate group
+	if err := s.validateGroup(group); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "group.create", "rbac.group", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return err
+	}
+
+	// Set metadata
+	group.TenantID = tenantID
+	group.CreatedBy = userID
+	group.UpdatedBy = userID
+	group.CreatedAt = time.Now()
+	group.UpdatedAt = time.Now()
+
+	// Check for duplicate group name
+	existingGroup, err := s.repository.GetGroup(ctx, tenantID, group.Name)
+	if err == nil && existingGroup != nil {
+		return GroupValidationError{Field: "name", Message: "group with this name already exists"}
+	}
+
+	// Create group in repository
+	if err := s.repository.CreateGroup(ctx, group); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "group.create", "rbac.group", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return fmt.Errorf("failed to create group: %w", err)
+	}
+
+	// Audit log the creation
+	details := map[string]interface{}{
+		"group_name": group.Name,
+	}
+	if err := s.auditService.LogSystemEvent(ctx, tenantID, "create", "group", details, correlationID); err != nil {
+		monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+	}
+
+	return nil
+}
+
+// GetGroup retrieves a group with caching
+func (s *RBACService) GetGroup(ctx context.Context, tenantID, groupName string) (*models.Group, error) {
+	start := time.Now()
+	defer func() { monitoring.RecordAPIOperation("get_group", "rbac.group", time.Since(start), true) }()
+
+	// Get from repository
+	group, err := s.repository.GetGroup(ctx, tenantID, groupName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get group: %w", err)
+	}
+	if group == nil {
+		return nil, fmt.Errorf("group not found: %s", groupName)
+	}
+
+	return group, nil
+}
+
+// ListGroups retrieves all groups for a tenant
+func (s *RBACService) ListGroups(ctx context.Context, tenantID string) ([]*models.Group, error) {
+	start := time.Now()
+	defer func() { monitoring.RecordAPIOperation("list_groups", "rbac.group", time.Since(start), true) }()
+
+	// Get from repository
+	groups, err := s.repository.ListGroups(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list groups: %w", err)
+	}
+
+	return groups, nil
+}
+
+// UpdateGroup updates an existing group with validation
+func (s *RBACService) UpdateGroup(ctx context.Context, tenantID, userID, groupName string, updates *models.Group) error {
+	start := time.Now()
+	defer func() { monitoring.RecordAPIOperation("update_group", "rbac.group", time.Since(start), true) }()
+
+	correlationID := generateCorrelationID()
+
+	// Get existing group
+	existingGroup, err := s.GetGroup(ctx, tenantID, groupName)
+	if err != nil {
+		return fmt.Errorf("failed to get existing group: %w", err)
+	}
+
+	// Validate updates
+	if err := s.validateGroupUpdates(existingGroup, updates); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "group.update", "rbac.group", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return err
+	}
+
+	// Apply updates
+	existingGroup.Description = updates.Description
+	existingGroup.Roles = updates.Roles
+	existingGroup.ParentGroups = updates.ParentGroups
+	existingGroup.Metadata = updates.Metadata
+	existingGroup.UpdatedBy = userID
+	existingGroup.UpdatedAt = time.Now()
+
+	// Update in repository
+	if err := s.repository.UpdateGroup(ctx, existingGroup); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "group.update", "rbac.group", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return fmt.Errorf("failed to update group: %w", err)
+	}
+
+	// Audit log the update
+	details := map[string]interface{}{
+		"group_name": existingGroup.Name,
+	}
+	if err := s.auditService.LogSystemEvent(ctx, tenantID, "update", "group", details, correlationID); err != nil {
+		monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+	}
+
+	return nil
+}
+
+// DeleteGroup deletes a group with safety checks
+func (s *RBACService) DeleteGroup(ctx context.Context, tenantID, userID, groupName string) error {
+	start := time.Now()
+	defer func() { monitoring.RecordAPIOperation("delete_group", "rbac.group", time.Since(start), true) }()
+
+	correlationID := generateCorrelationID()
+
+	// Get existing group
+	_, err := s.GetGroup(ctx, tenantID, groupName)
+	if err != nil {
+		return fmt.Errorf("failed to get group: %w", err)
+	}
+
+	// Check if group has members
+	members, err := s.repository.GetGroupMembers(ctx, tenantID, groupName)
+	if err == nil && len(members) > 0 {
+		return GroupValidationError{Field: "members", Message: "cannot delete group that has members"}
+	}
+
+	// Delete from repository
+	if err := s.repository.DeleteGroup(ctx, tenantID, groupName); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "group.delete", "rbac.group", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return fmt.Errorf("failed to delete group: %w", err)
+	}
+
+	// Audit log the deletion
+	details := map[string]interface{}{
+		"group_name": groupName,
+	}
+	if err := s.auditService.LogSystemEvent(ctx, tenantID, "delete", "group", details, correlationID); err != nil {
+		monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+	}
+
+	return nil
+}
+
+// AddUsersToGroup adds users to a group
+func (s *RBACService) AddUsersToGroup(ctx context.Context, tenantID, userID, groupName string, userIDs []string) error {
+	start := time.Now()
+	defer func() { monitoring.RecordAPIOperation("add_users_to_group", "rbac.group", time.Since(start), true) }()
+
+	correlationID := generateCorrelationID()
+
+	// Validate group exists
+	_, err := s.GetGroup(ctx, tenantID, groupName)
+	if err != nil {
+		return fmt.Errorf("failed to get group: %w", err)
+	}
+
+	// Add users to group
+	if err := s.repository.AddUsersToGroup(ctx, tenantID, groupName, userIDs); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "group.add_users", "rbac.group", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return fmt.Errorf("failed to add users to group: %w", err)
+	}
+
+	// Audit log the addition
+	details := map[string]interface{}{
+		"group_name": groupName,
+		"user_ids":   userIDs,
+	}
+	if err := s.auditService.LogSystemEvent(ctx, tenantID, "add_users", "group", details, correlationID); err != nil {
+		monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+	}
+
+	return nil
+}
+
+// RemoveUsersFromGroup removes users from a group
+func (s *RBACService) RemoveUsersFromGroup(ctx context.Context, tenantID, userID, groupName string, userIDs []string) error {
+	start := time.Now()
+	defer func() {
+		monitoring.RecordAPIOperation("remove_users_from_group", "rbac.group", time.Since(start), true)
+	}()
+
+	correlationID := generateCorrelationID()
+
+	// Remove users from group
+	if err := s.repository.RemoveUsersFromGroup(ctx, tenantID, groupName, userIDs); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "group.remove_users", "rbac.group", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return fmt.Errorf("failed to remove users from group: %w", err)
+	}
+
+	// Audit log the removal
+	details := map[string]interface{}{
+		"group_name": groupName,
+		"user_ids":   userIDs,
+	}
+	if err := s.auditService.LogSystemEvent(ctx, tenantID, "remove_users", "group", details, correlationID); err != nil {
+		monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+	}
+
+	return nil
+}
+
+// GetGroupMembers retrieves members of a group
+func (s *RBACService) GetGroupMembers(ctx context.Context, tenantID, groupName string) ([]string, error) {
+	start := time.Now()
+	defer func() { monitoring.RecordAPIOperation("get_group_members", "rbac.group", time.Since(start), true) }()
+
+	members, err := s.repository.GetGroupMembers(ctx, tenantID, groupName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get group members: %w", err)
+	}
+
+	return members, nil
+}
+
+// CreateRoleBinding creates a new role binding with validation
+func (s *RBACService) CreateRoleBinding(ctx context.Context, tenantID, userID string, binding *models.RoleBinding) error {
+	start := time.Now()
+	defer func() {
+		monitoring.RecordAPIOperation("create_role_binding", "rbac.role_binding", time.Since(start), true)
+	}()
+
+	correlationID := generateCorrelationID()
+
+	// Validate role binding
+	if err := s.validateRoleBinding(binding); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "role_binding.create", "rbac.role_binding", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return err
+	}
+
+	// Set metadata
+	binding.CreatedBy = userID
+	binding.UpdatedBy = userID
+	binding.CreatedAt = time.Now()
+	binding.UpdatedAt = time.Now()
+
+	// Create role binding in repository
+	if err := s.repository.CreateRoleBinding(ctx, binding); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "role_binding.create", "rbac.role_binding", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return fmt.Errorf("failed to create role binding: %w", err)
+	}
+
+	// Audit log the creation
+	details := map[string]interface{}{
+		"binding_id":   binding.ID,
+		"subject_type": binding.SubjectType,
+		"subject_id":   binding.SubjectID,
+		"role_id":      binding.RoleID,
+	}
+	if err := s.auditService.LogSystemEvent(ctx, tenantID, "create", "role_binding", details, correlationID); err != nil {
+		monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+	}
+
+	return nil
+}
+
+// GetRoleBindings retrieves role bindings with filters
+func (s *RBACService) GetRoleBindings(ctx context.Context, tenantID string, filters RoleBindingFilters) ([]*models.RoleBinding, error) {
+	start := time.Now()
+	defer func() {
+		monitoring.RecordAPIOperation("get_role_bindings", "rbac.role_binding", time.Since(start), true)
+	}()
+
+	bindings, err := s.repository.GetRoleBindings(ctx, tenantID, filters)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get role bindings: %w", err)
+	}
+
+	return bindings, nil
+}
+
+// UpdateRoleBinding updates an existing role binding with validation
+func (s *RBACService) UpdateRoleBinding(ctx context.Context, tenantID, userID, bindingID string, updates *models.RoleBinding) error {
+	start := time.Now()
+	defer func() {
+		monitoring.RecordAPIOperation("update_role_binding", "rbac.role_binding", time.Since(start), true)
+	}()
+
+	correlationID := generateCorrelationID()
+
+	// Get existing binding
+	existingBindings, err := s.repository.GetRoleBindings(ctx, tenantID, RoleBindingFilters{})
+	if err != nil {
+		return fmt.Errorf("failed to get existing role bindings: %w", err)
+	}
+
+	var existingBinding *models.RoleBinding
+	for _, binding := range existingBindings {
+		if binding.ID == bindingID {
+			existingBinding = binding
+			break
+		}
+	}
+
+	if existingBinding == nil {
+		return fmt.Errorf("role binding not found: %s", bindingID)
+	}
+
+	// Validate updates
+	if err := s.validateRoleBindingUpdates(existingBinding, updates); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "role_binding.update", "rbac.role_binding", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return err
+	}
+
+	// Apply updates
+	existingBinding.SubjectType = updates.SubjectType
+	existingBinding.SubjectID = updates.SubjectID
+	existingBinding.RoleID = updates.RoleID
+	existingBinding.Scope = updates.Scope
+	existingBinding.ResourceID = updates.ResourceID
+	existingBinding.Precedence = updates.Precedence
+	existingBinding.Conditions = updates.Conditions
+	existingBinding.ExpiresAt = updates.ExpiresAt
+	existingBinding.Metadata = updates.Metadata
+	existingBinding.UpdatedBy = userID
+	existingBinding.UpdatedAt = time.Now()
+
+	// Update in repository
+	if err := s.repository.UpdateRoleBinding(ctx, existingBinding); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "role_binding.update", "rbac.role_binding", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return fmt.Errorf("failed to update role binding: %w", err)
+	}
+
+	// Audit log the update
+	details := map[string]interface{}{
+		"binding_id":   existingBinding.ID,
+		"subject_type": existingBinding.SubjectType,
+		"subject_id":   existingBinding.SubjectID,
+		"role_id":      existingBinding.RoleID,
+	}
+	if err := s.auditService.LogSystemEvent(ctx, tenantID, "update", "role_binding", details, correlationID); err != nil {
+		monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+	}
+
+	return nil
+}
+
+// DeleteRoleBinding deletes a role binding
+func (s *RBACService) DeleteRoleBinding(ctx context.Context, tenantID, userID, bindingID string) error {
+	start := time.Now()
+	defer func() {
+		monitoring.RecordAPIOperation("delete_role_binding", "rbac.role_binding", time.Since(start), true)
+	}()
+
+	correlationID := generateCorrelationID()
+
+	// Delete from repository
+	if err := s.repository.DeleteRoleBinding(ctx, tenantID, bindingID); err != nil {
+		if auditErr := s.auditService.LogError(ctx, tenantID, userID, "role_binding.delete", "rbac.role_binding", err, correlationID); auditErr != nil {
+			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+		}
+		return fmt.Errorf("failed to delete role binding: %w", err)
+	}
+
+	// Audit log the deletion
+	details := map[string]interface{}{
+		"binding_id": bindingID,
+	}
+	if err := s.auditService.LogSystemEvent(ctx, tenantID, "delete", "role_binding", details, correlationID); err != nil {
+		monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
+	}
+
+	return nil
+}
+
+// validatePermission validates permission data
+func (s *RBACService) validatePermission(permission *models.Permission) error {
+	if strings.TrimSpace(permission.ID) == "" {
+		return PermissionValidationError{Field: "id", Message: "permission ID cannot be empty"}
+	}
+
+	if strings.TrimSpace(permission.Resource) == "" {
+		return PermissionValidationError{Field: "resource", Message: "resource cannot be empty"}
+	}
+
+	if strings.TrimSpace(permission.Action) == "" {
+		return PermissionValidationError{Field: "action", Message: "action cannot be empty"}
+	}
+
+	if len(permission.Description) > 500 {
+		return PermissionValidationError{Field: "description", Message: "description cannot exceed 500 characters"}
+	}
+
+	return nil
+}
+
+// validatePermissionUpdates validates permission update data
+func (s *RBACService) validatePermissionUpdates(existing, updates *models.Permission) error {
+	// ID cannot be changed
+	if updates.ID != existing.ID {
+		return PermissionValidationError{Field: "id", Message: "permission ID cannot be changed"}
+	}
+
+	return s.validatePermission(updates)
+}
+
+// validateGroup validates group data
+func (s *RBACService) validateGroup(group *models.Group) error {
+	if strings.TrimSpace(group.Name) == "" {
+		return GroupValidationError{Field: "name", Message: "group name cannot be empty"}
+	}
+
+	if len(group.Name) > 100 {
+		return GroupValidationError{Field: "name", Message: "group name cannot exceed 100 characters"}
+	}
+
+	if len(group.Description) > 500 {
+		return GroupValidationError{Field: "description", Message: "group description cannot exceed 500 characters"}
+	}
+
+	return nil
+}
+
+// validateGroupUpdates validates group update data
+func (s *RBACService) validateGroupUpdates(existing, updates *models.Group) error {
+	// Name cannot be changed
+	if updates.Name != existing.Name {
+		return GroupValidationError{Field: "name", Message: "group name cannot be changed"}
+	}
+
+	return s.validateGroup(updates)
+}
+
+// validateRoleBinding validates role binding data
+func (s *RBACService) validateRoleBinding(binding *models.RoleBinding) error {
+	if strings.TrimSpace(binding.SubjectType) == "" {
+		return RoleBindingValidationError{Field: "subjectType", Message: "subject type cannot be empty"}
+	}
+
+	if strings.TrimSpace(binding.SubjectID) == "" {
+		return RoleBindingValidationError{Field: "subjectId", Message: "subject ID cannot be empty"}
+	}
+
+	if strings.TrimSpace(binding.RoleID) == "" {
+		return RoleBindingValidationError{Field: "roleId", Message: "role ID cannot be empty"}
+	}
+
+	// Validate subject type
+	validSubjectTypes := []string{"user", "group", "service"}
+	validSubjectType := false
+	for _, st := range validSubjectTypes {
+		if binding.SubjectType == st {
+			validSubjectType = true
+			break
+		}
+	}
+	if !validSubjectType {
+		return RoleBindingValidationError{Field: "subjectType", Message: "subject type must be one of: user, group, service"}
+	}
+
+	return nil
+}
+
+// validateRoleBindingUpdates validates role binding update data
+func (s *RBACService) validateRoleBindingUpdates(existing, updates *models.RoleBinding) error {
+	// ID cannot be changed
+	if updates.ID != existing.ID {
+		return RoleBindingValidationError{Field: "id", Message: "role binding ID cannot be changed"}
+	}
+
+	return s.validateRoleBinding(updates)
+}
+
+// GroupValidationError represents validation errors for groups
+type GroupValidationError struct {
+	Field   string
+	Message string
+}
+
+func (e GroupValidationError) Error() string {
+	return fmt.Sprintf("group validation error [%s]: %s", e.Field, e.Message)
+}
+
+// RoleBindingValidationError represents validation errors for role bindings
+type RoleBindingValidationError struct {
+	Field   string
+	Message string
+}
+
+func (e RoleBindingValidationError) Error() string {
+	return fmt.Sprintf("role binding validation error [%s]: %s", e.Field, e.Message)
 }

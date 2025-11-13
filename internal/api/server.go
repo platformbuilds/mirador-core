@@ -186,9 +186,9 @@ func (s *Server) setupMiddleware() {
 	s.router.StaticFile("/api/openapi.yaml", "api/openapi.yaml")
 	s.router.GET("/api/openapi.json", handlers.GetOpenAPISpec)
 
-	// Swagger UI via gin-swagger (serves generated OpenAPI spec)
+	// Swagger UI via gin-swagger (configured to use our comprehensive OpenAPI spec)
 	// Visit /swagger/index.html
-	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/api/openapi.json")))
 
 	// Prometheus metrics endpoint
 	monitoring.SetupPrometheusMetrics(s.router)
@@ -376,9 +376,31 @@ func (s *Server) setupRoutes() {
 	rbacGroup := v1.Group("/rbac")
 	rbacGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"rbac.admin"}))
 	{
+		// Role management
 		rbacGroup.GET("/roles", rbacHandler.GetRoles)
 		rbacGroup.POST("/roles", rbacHandler.CreateRole)
-		rbacGroup.PUT("/users/:userId/roles", rbacHandler.AssignUserRoles)
+		rbacGroup.GET("/users/:userId/roles", rbacHandler.GetUserRoles)
+
+		// Permission management
+		rbacGroup.GET("/permissions", rbacHandler.GetPermissions)
+		rbacGroup.POST("/permissions", rbacHandler.CreatePermission)
+		rbacGroup.PUT("/permissions/:permissionId", rbacHandler.UpdatePermission)
+		rbacGroup.DELETE("/permissions/:permissionId", rbacHandler.DeletePermission)
+
+		// Group management
+		rbacGroup.GET("/groups", rbacHandler.GetGroups)
+		rbacGroup.POST("/groups", rbacHandler.CreateGroup)
+		rbacGroup.PUT("/groups/:groupName", rbacHandler.UpdateGroup)
+		rbacGroup.DELETE("/groups/:groupName", rbacHandler.DeleteGroup)
+		rbacGroup.PUT("/groups/:groupName/users", rbacHandler.AddUsersToGroup)
+		rbacGroup.DELETE("/groups/:groupName/users", rbacHandler.RemoveUsersFromGroup)
+		rbacGroup.GET("/groups/:groupName/members", rbacHandler.GetGroupMembers)
+
+		// Role binding management
+		rbacGroup.GET("/role-bindings", rbacHandler.GetRoleBindings)
+		rbacGroup.POST("/role-bindings", rbacHandler.CreateRoleBinding)
+		rbacGroup.PUT("/role-bindings/:bindingId", rbacHandler.UpdateRoleBinding)
+		rbacGroup.DELETE("/role-bindings/:bindingId", rbacHandler.DeleteRoleBinding)
 	}
 
 	// MiradorAuth endpoints (global admin only for local user management)

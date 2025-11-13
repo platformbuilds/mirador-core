@@ -11,7 +11,7 @@ const docTemplate = `{
         "title": "{{.Title}}",
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
-            "name": "Platform Builds Team",
+            "name": "PLATFORMBUILDS Team",
             "url": "https://github.com/platformbuilds/mirador-core",
             "email": "support@platformbuilds.com"
         },

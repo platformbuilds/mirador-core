@@ -29,7 +29,7 @@ func (ds *DataSeeder) SeedDefaultDashboard(ctx context.Context, tenantID string)
 	ds.logger.Info("Seeding default dashboard", "tenant_id", tenantID)
 
 	// Check if default dashboard already exists
-	existing, err := ds.repo.GetDashboard(tenantID, "default")
+	existing, err := ds.repo.GetDashboard(ctx, tenantID, "default")
 	if err == nil && existing != nil {
 		ds.logger.Info("Default dashboard already exists", "tenant_id", tenantID, "dashboard_id", existing.ID)
 		return nil
@@ -48,7 +48,7 @@ func (ds *DataSeeder) SeedDefaultDashboard(ctx context.Context, tenantID string)
 		UpdatedAt:   now,
 	}
 
-	if err := ds.repo.UpsertDashboard(dashboard); err != nil {
+	if err := ds.repo.UpsertDashboard(ctx, dashboard); err != nil {
 		return fmt.Errorf("failed to create default dashboard: %w", err)
 	}
 
@@ -64,13 +64,13 @@ func (ds *DataSeeder) SeedSampleKPIs(ctx context.Context, tenantID string) error
 
 	for _, kpi := range sampleKPIs {
 		// Check if KPI already exists
-		existing, err := ds.repo.GetKPI(tenantID, kpi.ID)
+		existing, err := ds.repo.GetKPI(ctx, tenantID, kpi.ID)
 		if err == nil && existing != nil {
 			ds.logger.Info("KPI already exists, skipping", "tenant_id", tenantID, "kpi_id", kpi.ID)
 			continue
 		}
 
-		if err := ds.repo.UpsertKPI(kpi); err != nil {
+		if err := ds.repo.UpsertKPI(ctx, kpi); err != nil {
 			return fmt.Errorf("failed to create KPI %s: %w", kpi.ID, err)
 		}
 

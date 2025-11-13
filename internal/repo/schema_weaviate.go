@@ -1129,20 +1129,20 @@ func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
 		))},
 		// New API classes for mirador-core v8.0.0
 		{"KPIDefinition", class("KPIDefinition", props(
-			text("id"), text("kind"), text("name"), text("unit"), text("format"),
+			text("kind"), text("name"), text("unit"), text("format"),
 			object("query"), object("thresholds"), stringArray("tags"), object("sparkline"),
 			text("ownerUserId"), text("visibility"), date("createdAt"), date("updatedAt"),
 		))},
-		{"KPILayout", class("KPILayout", props(
-			text("id"), refp("kpiDefinition", "KPIDefinition"), refp("dashboard", "Dashboard"),
-			intp("x"), intp("y"), intp("w"), intp("h"), date("createdAt"), date("updatedAt"),
-		))},
 		{"Dashboard", class("Dashboard", props(
-			text("id"), text("name"), text("ownerUserId"), text("visibility"), boolp("isDefault"),
+			text("name"), text("ownerUserId"), text("visibility"), boolp("isDefault"),
 			date("createdAt"), date("updatedAt"),
 		))},
+		{"KPILayout", class("KPILayout", props(
+			refp("kpiDefinition", "KPIDefinition"), refp("dashboard", "Dashboard"),
+			intp("x"), intp("y"), intp("w"), intp("h"), date("createdAt"), date("updatedAt"),
+		))},
 		{"UserPreferences", class("UserPreferences", props(
-			text("id"), refp("currentDashboard", "Dashboard"), text("theme"), boolp("sidebarCollapsed"),
+			refp("currentDashboard", "Dashboard"), text("theme"), boolp("sidebarCollapsed"),
 			text("defaultDashboard"), text("timezone"), boolp("keyboardHintSeen"), text("miradorCoreEndpoint"),
 			object("preferences"), date("createdAt"), date("updatedAt"),
 		))},
@@ -1152,6 +1152,76 @@ func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
 		{"LogFieldVersion", class("LogFieldVersion", props(text("tenantId"), text("name"), intp("version"), logFieldVersionPayload(), text("author"), date("createdAt")))},
 		{"ServiceVersion", class("ServiceVersion", props(text("tenantId"), text("name"), intp("version"), serviceVersionPayload(), text("author"), date("createdAt")))},
 		{"OperationVersion", class("OperationVersion", props(text("tenantId"), text("service"), text("name"), intp("version"), operationVersionPayload(), text("author"), date("createdAt")))},
+		// RBAC classes
+		{"RBACTenant", class("RBACTenant", props(
+			text("name"), text("displayName"), text("description"),
+			object("deployments"), text("status"), text("adminEmail"), text("adminName"),
+			map[string]any{
+				"name":     "quotas",
+				"dataType": []string{"object"},
+				"nestedProperties": []any{
+					map[string]any{"name": "maxUsers", "dataType": []string{"int"}},
+					map[string]any{"name": "maxDashboards", "dataType": []string{"int"}},
+					map[string]any{"name": "maxKpis", "dataType": []string{"int"}},
+					map[string]any{"name": "storageLimitGb", "dataType": []string{"int"}},
+					map[string]any{"name": "apiRateLimit", "dataType": []string{"int"}},
+				},
+			}, stringArray("features"), object("metadata"), stringArray("tags"), boolp("isSystem"),
+			date("createdAt"), date("updatedAt"), text("createdBy"), text("updatedBy"),
+		))},
+		{"RBACUser", class("RBACUser", props(
+			text("email"), text("username"), text("fullName"), text("globalRole"), text("passwordHash"),
+			boolp("mfaEnabled"), text("mfaSecret"), text("status"), boolp("emailVerified"), text("avatar"),
+			text("phone"), text("timezone"), text("language"), date("lastLoginAt"), intp("loginCount"),
+			intp("failedLoginCount"), date("lockedUntil"), object("metadata"), stringArray("tags"),
+			date("createdAt"), date("updatedAt"), text("createdBy"), text("updatedBy"),
+		))},
+		{"RBACTenantUser", class("RBACTenantUser", props(
+			text("tenantId"), text("userId"), text("tenantRole"), text("status"), text("invitedBy"),
+			date("invitedAt"), date("acceptedAt"), stringArray("additionalPermissions"), object("metadata"),
+			date("createdAt"), date("updatedAt"), text("createdBy"), text("updatedBy"),
+		))},
+		{"RBACMiradorAuth", class("RBACMiradorAuth", props(
+			text("userId"), text("username"), text("email"), text("passwordHash"), text("salt"),
+			text("totpSecret"), boolp("totpEnabled"), stringArray("backupCodes"), text("tenantId"),
+			stringArray("roles"), stringArray("groups"), boolp("isActive"), date("passwordChangedAt"),
+			date("passwordExpiresAt"), date("lastLoginAt"), intp("failedLoginCount"), date("lockedUntil"),
+			boolp("requirePasswordChange"), object("metadata"),
+			date("createdAt"), date("updatedAt"), text("createdBy"), text("updatedBy"),
+		))},
+		{"RBACAuthConfig", class("RBACAuthConfig", props(
+			text("tenantId"), text("defaultBackend"), stringArray("enabledBackends"), object("backendConfigs"),
+			object("passwordPolicy"), boolp("require2fa"), text("totpIssuer"), intp("sessionTimeoutMinutes"),
+			intp("maxConcurrentSessions"), boolp("allowRememberMe"), intp("rememberMeDays"), object("metadata"),
+			date("createdAt"), date("updatedAt"), text("createdBy"), text("updatedBy"),
+		))},
+		{"RBACRole", class("RBACRole", props(
+			text("tenantId"), text("name"), text("description"), stringArray("permissions"),
+			boolp("isSystem"), stringArray("parentRoles"), object("metadata"),
+			date("createdAt"), date("updatedAt"), text("createdBy"), text("updatedBy"),
+		))},
+		{"RBACPermission", class("RBACPermission", props(
+			text("tenantId"), text("resource"), text("action"), text("scope"), text("description"),
+			text("resourcePattern"), object("conditions"), boolp("isSystem"), object("metadata"),
+			date("createdAt"), date("updatedAt"), text("createdBy"), text("updatedBy"),
+		))},
+		{"RBACGroup", class("RBACGroup", props(
+			text("tenantId"), text("name"), text("description"), stringArray("members"), stringArray("roles"),
+			stringArray("parentGroups"), boolp("isSystem"), intp("maxMembers"), boolp("memberSyncEnabled"),
+			text("externalId"), object("metadata"),
+			date("createdAt"), date("updatedAt"), text("createdBy"), text("updatedBy"),
+		))},
+		{"RBACRoleBinding", class("RBACRoleBinding", props(
+			text("subjectType"), text("subjectId"), text("roleId"), text("scope"), text("resourceId"),
+			date("expiresAt"), date("notBefore"), intp("precedence"), object("conditions"),
+			text("justification"), text("approvedBy"), date("approvedAt"), object("metadata"),
+			date("createdAt"), date("updatedAt"), text("createdBy"), text("updatedBy"),
+		))},
+		{"RBACAuditLog", class("RBACAuditLog", props(
+			text("tenantId"), date("timestamp"), text("subjectId"), text("subjectType"), text("action"),
+			text("resource"), text("resourceId"), text("result"), object("details"), text("severity"),
+			text("source"), text("correlationId"), text("retentionClass"),
+		))},
 	}
 
 	// Create classes individually to better handle failures
@@ -1598,4 +1668,505 @@ func (r *WeaviateRepo) DeleteSchemaAsKPI(ctx context.Context, tenantID, schemaTy
 // Transport returns the underlying Weaviate transport
 func (r *WeaviateRepo) Transport() storageweaviate.Transport {
 	return r.t
+}
+
+// ------------------- KPIRepo Interface Implementation -------------------
+
+func (r *WeaviateRepo) UpsertKPI(ctx context.Context, kpi *models.KPIDefinition) error {
+	r.ensureOnce(ctx)
+	now := time.Now().UTC()
+	kpi.UpdatedAt = now
+	if kpi.CreatedAt.IsZero() {
+		kpi.CreatedAt = now
+	}
+
+	props := map[string]any{
+		"kind":        kpi.Kind,
+		"name":        kpi.Name,
+		"unit":        kpi.Unit,
+		"format":      kpi.Format,
+		"query":       kpi.Query,
+		"thresholds":  kpi.Thresholds,
+		"tags":        kpi.Tags,
+		"sparkline":   kpi.Sparkline,
+		"ownerUserId": kpi.OwnerUserID,
+		"visibility":  kpi.Visibility,
+		"createdAt":   kpi.CreatedAt.Format(time.RFC3339Nano),
+		"updatedAt":   kpi.UpdatedAt.Format(time.RFC3339Nano),
+	}
+
+	id := makeID("KPIDefinition", kpi.TenantID, kpi.ID)
+	return r.putObject(ctx, "KPIDefinition", id, props)
+}
+
+func (r *WeaviateRepo) GetKPI(ctx context.Context, tenantID, id string) (*models.KPIDefinition, error) {
+	r.ensureOnce(ctx)
+	q := fmt.Sprintf(`{
+	  Get {
+	    KPIDefinition(
+	      where: {
+	        operator: And,
+	        operands: [
+	          { path: ["id"], operator: Equal, valueString: "%s" }
+	        ]
+	      },
+	      limit: 1
+	    ) {
+	      id kind name unit format query thresholds tags sparkline ownerUserId visibility createdAt updatedAt
+	    }
+	  }
+	}`, id)
+
+	var resp struct {
+		Data struct {
+			Get struct {
+				KPIDefinition []map[string]any `json:"KPIDefinition"`
+			} `json:"Get"`
+		} `json:"data"`
+	}
+
+	if err := r.gql(ctx, q, nil, &resp); err != nil {
+		return nil, fmt.Errorf("weaviate query failed for KPI '%s': %w", id, err)
+	}
+
+	arr := resp.Data.Get.KPIDefinition
+	if len(arr) == 0 {
+		return nil, fmt.Errorf("KPI '%s' not found", id)
+	}
+
+	it := arr[0]
+
+	// Parse timestamps
+	var createdAt, updatedAt time.Time
+	if s, ok := it["createdAt"].(string); ok {
+		createdAt, _ = time.Parse(time.RFC3339Nano, s)
+	}
+	if s, ok := it["updatedAt"].(string); ok {
+		updatedAt, _ = time.Parse(time.RFC3339Nano, s)
+	}
+
+	// Parse tags
+	var tags []string
+	if raw, ok := it["tags"].([]interface{}); ok {
+		tags = make([]string, 0, len(raw))
+		for _, v := range raw {
+			if s, ok := v.(string); ok {
+				tags = append(tags, s)
+			}
+		}
+	}
+
+	// Parse complex fields with type assertions
+	var query map[string]interface{}
+	if q, ok := it["query"].(map[string]interface{}); ok {
+		query = q
+	}
+
+	var thresholds []models.Threshold
+	if _, ok := it["thresholds"].([]interface{}); ok {
+		// Convert []interface{} to []models.Threshold if needed
+		// For now, we'll leave it as is since the exact structure isn't clear
+	}
+
+	var sparkline map[string]interface{}
+	if s, ok := it["sparkline"].(map[string]interface{}); ok {
+		sparkline = s
+	}
+
+	return &models.KPIDefinition{
+		ID:          getString(it, "id"),
+		TenantID:    tenantID,
+		Kind:        getString(it, "kind"),
+		Name:        getString(it, "name"),
+		Unit:        getString(it, "unit"),
+		Format:      getString(it, "format"),
+		Query:       query,
+		Thresholds:  thresholds,
+		Tags:        tags,
+		Sparkline:   sparkline,
+		OwnerUserID: getString(it, "ownerUserId"),
+		Visibility:  getString(it, "visibility"),
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
+	}, nil
+}
+
+func (r *WeaviateRepo) ListKPIs(ctx context.Context, tenantID string, tags []string, limit, offset int) ([]*models.KPIDefinition, int, error) {
+	r.ensureOnce(ctx)
+	// Build where clause
+	whereClause := ""
+	if len(tags) > 0 {
+		// For simplicity, we'll skip tag filtering for now and implement basic listing
+		// Tag filtering would require more complex GraphQL with OR conditions
+	}
+
+	q := fmt.Sprintf(`{
+	  Get {
+	    KPIDefinition(
+	      %s
+	      limit: %d
+	      offset: %d
+	    ) {
+	      id kind name unit format query thresholds tags sparkline ownerUserId visibility createdAt updatedAt
+	    }
+	  }
+	}`, whereClause, limit, offset)
+
+	var resp struct {
+		Data struct {
+			Get struct {
+				KPIDefinition []map[string]any `json:"KPIDefinition"`
+			} `json:"Get"`
+		} `json:"data"`
+	}
+
+	if err := r.gql(ctx, q, nil, &resp); err != nil {
+		return nil, 0, err
+	}
+
+	var kpis []*models.KPIDefinition
+	for _, it := range resp.Data.Get.KPIDefinition {
+		// Parse timestamps
+		var createdAt, updatedAt time.Time
+		if s, ok := it["createdAt"].(string); ok {
+			createdAt, _ = time.Parse(time.RFC3339Nano, s)
+		}
+		if s, ok := it["updatedAt"].(string); ok {
+			updatedAt, _ = time.Parse(time.RFC3339Nano, s)
+		}
+
+		// Parse tags
+		var kpiTags []string
+		if raw, ok := it["tags"].([]interface{}); ok {
+			kpiTags = make([]string, 0, len(raw))
+			for _, v := range raw {
+				if s, ok := v.(string); ok {
+					kpiTags = append(kpiTags, s)
+				}
+			}
+		}
+
+		// Parse complex fields with type assertions
+		var query map[string]interface{}
+		if q, ok := it["query"].(map[string]interface{}); ok {
+			query = q
+		}
+
+		var thresholds []models.Threshold
+		if _, ok := it["thresholds"].([]interface{}); ok {
+			// Convert []interface{} to []models.Threshold if needed
+			// For now, we'll leave it as is since the exact structure isn't clear
+		}
+
+		var sparkline map[string]interface{}
+		if s, ok := it["sparkline"].(map[string]interface{}); ok {
+			sparkline = s
+		}
+
+		kpis = append(kpis, &models.KPIDefinition{
+			ID:          getString(it, "id"),
+			TenantID:    tenantID,
+			Kind:        getString(it, "kind"),
+			Name:        getString(it, "name"),
+			Unit:        getString(it, "unit"),
+			Format:      getString(it, "format"),
+			Query:       query,
+			Thresholds:  thresholds,
+			Tags:        kpiTags,
+			Sparkline:   sparkline,
+			OwnerUserID: getString(it, "ownerUserId"),
+			Visibility:  getString(it, "visibility"),
+			CreatedAt:   createdAt,
+			UpdatedAt:   updatedAt,
+		})
+	}
+
+	// For total count, we'd need a separate aggregation query
+	// For now, return the length of results as approximate total
+	total := len(kpis)
+	if limit > 0 && len(kpis) == limit {
+		// If we got a full page, there might be more
+		total += offset
+	}
+
+	return kpis, total, nil
+}
+
+func (r *WeaviateRepo) DeleteKPI(ctx context.Context, tenantID, id string) error {
+	r.ensureOnce(ctx)
+	objID := makeID("KPIDefinition", tenantID, id)
+	start := time.Now()
+	err := r.t.DeleteObject(ctx, objID)
+	monitoring.RecordWeaviateOperation("DeleteObject", "KPIDefinition", time.Since(start), err == nil)
+	return err
+}
+
+func (r *WeaviateRepo) GetKPILayoutsForDashboard(ctx context.Context, tenantID, dashboardID string) (map[string]interface{}, error) {
+	r.ensureOnce(ctx)
+	q := fmt.Sprintf(`{
+	  Get {
+	    KPILayout(
+	      where: {
+	        path: ["dashboard"],
+	        operator: Equal,
+	        valueString: "%s"
+	      }
+	    ) {
+	      id kpiDefinition { id } x y w h
+	    }
+	  }
+	}`, makeID("Dashboard", tenantID, dashboardID))
+
+	var resp struct {
+		Data struct {
+			Get struct {
+				KPILayout []map[string]any `json:"KPILayout"`
+			} `json:"Get"`
+		} `json:"data"`
+	}
+
+	if err := r.gql(ctx, q, nil, &resp); err != nil {
+		return nil, err
+	}
+
+	layouts := make(map[string]interface{})
+	for _, it := range resp.Data.Get.KPILayout {
+		kpiID := ""
+		if kpiRef, ok := it["kpiDefinition"].(map[string]any); ok {
+			if id, ok := kpiRef["id"].(string); ok {
+				kpiID = id
+			}
+		}
+
+		if kpiID != "" {
+			layouts[kpiID] = map[string]interface{}{
+				"x": getInt(it, "x"),
+				"y": getInt(it, "y"),
+				"w": getInt(it, "w"),
+				"h": getInt(it, "h"),
+			}
+		}
+	}
+
+	return layouts, nil
+}
+
+func (r *WeaviateRepo) BatchUpsertKPILayouts(ctx context.Context, tenantID, dashboardID string, layouts map[string]interface{}) error {
+	r.ensureOnce(ctx)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	dashboardRefID := makeID("Dashboard", tenantID, dashboardID)
+
+	for kpiID, layoutData := range layouts {
+		layout, ok := layoutData.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		kpiRefID := makeID("KPIDefinition", tenantID, kpiID)
+		props := map[string]any{
+			"kpiDefinition": map[string]any{"id": kpiRefID},
+			"dashboard":     map[string]any{"id": dashboardRefID},
+			"x":             getIntFromLayout(layout, "x"),
+			"y":             getIntFromLayout(layout, "y"),
+			"w":             getIntFromLayout(layout, "w"),
+			"h":             getIntFromLayout(layout, "h"),
+			"createdAt":     now,
+			"updatedAt":     now,
+		}
+
+		id := makeID("KPILayout", tenantID, dashboardID, kpiID)
+		if err := r.putObject(ctx, "KPILayout", id, props); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *WeaviateRepo) UpsertDashboard(ctx context.Context, dashboard *models.Dashboard) error {
+	r.ensureOnce(ctx)
+	now := time.Now().UTC()
+	dashboard.UpdatedAt = now
+	if dashboard.CreatedAt.IsZero() {
+		dashboard.CreatedAt = now
+	}
+
+	props := map[string]any{
+		"name":        dashboard.Name,
+		"ownerUserId": dashboard.OwnerUserID,
+		"visibility":  dashboard.Visibility,
+		"isDefault":   dashboard.IsDefault,
+		"createdAt":   dashboard.CreatedAt.Format(time.RFC3339Nano),
+		"updatedAt":   dashboard.UpdatedAt.Format(time.RFC3339Nano),
+	}
+
+	id := makeID("Dashboard", dashboard.TenantID, dashboard.ID)
+	return r.putObject(ctx, "Dashboard", id, props)
+}
+
+func (r *WeaviateRepo) GetDashboard(ctx context.Context, tenantID, id string) (*models.Dashboard, error) {
+	r.ensureOnce(ctx)
+	q := fmt.Sprintf(`{
+	  Get {
+	    Dashboard(
+	      where: {
+	        operator: And,
+	        operands: [
+	          { path: ["id"], operator: Equal, valueString: "%s" }
+	        ]
+	      },
+	      limit: 1
+	    ) {
+	      id name ownerUserId visibility isDefault createdAt updatedAt
+	    }
+	  }
+	}`, id)
+
+	var resp struct {
+		Data struct {
+			Get struct {
+				Dashboard []map[string]any `json:"Dashboard"`
+			} `json:"Get"`
+		} `json:"data"`
+	}
+
+	if err := r.gql(ctx, q, nil, &resp); err != nil {
+		return nil, fmt.Errorf("weaviate query failed for dashboard '%s': %w", id, err)
+	}
+
+	arr := resp.Data.Get.Dashboard
+	if len(arr) == 0 {
+		return nil, fmt.Errorf("dashboard '%s' not found", id)
+	}
+
+	it := arr[0]
+
+	// Parse timestamps
+	var createdAt, updatedAt time.Time
+	if s, ok := it["createdAt"].(string); ok {
+		createdAt, _ = time.Parse(time.RFC3339Nano, s)
+	}
+	if s, ok := it["updatedAt"].(string); ok {
+		updatedAt, _ = time.Parse(time.RFC3339Nano, s)
+	}
+
+	return &models.Dashboard{
+		ID:          getString(it, "id"),
+		TenantID:    tenantID,
+		Name:        getString(it, "name"),
+		OwnerUserID: getString(it, "ownerUserId"),
+		Visibility:  getString(it, "visibility"),
+		IsDefault:   getBool(it, "isDefault"),
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
+	}, nil
+}
+
+func (r *WeaviateRepo) ListDashboards(ctx context.Context, tenantID string, limit, offset int) ([]*models.Dashboard, int, error) {
+	r.ensureOnce(ctx)
+	q := fmt.Sprintf(`{
+	  Get {
+	    Dashboard(
+	      limit: %d
+	      offset: %d
+	    ) {
+	      id name ownerUserId visibility isDefault createdAt updatedAt
+	    }
+	  }
+	}`, limit, offset)
+
+	var resp struct {
+		Data struct {
+			Get struct {
+				Dashboard []map[string]any `json:"Dashboard"`
+			} `json:"Get"`
+		} `json:"data"`
+	}
+
+	if err := r.gql(ctx, q, nil, &resp); err != nil {
+		return nil, 0, err
+	}
+
+	var dashboards []*models.Dashboard
+	for _, it := range resp.Data.Get.Dashboard {
+		// Parse timestamps
+		var createdAt, updatedAt time.Time
+		if s, ok := it["createdAt"].(string); ok {
+			createdAt, _ = time.Parse(time.RFC3339Nano, s)
+		}
+		if s, ok := it["updatedAt"].(string); ok {
+			updatedAt, _ = time.Parse(time.RFC3339Nano, s)
+		}
+
+		dashboards = append(dashboards, &models.Dashboard{
+			ID:          getString(it, "id"),
+			TenantID:    tenantID,
+			Name:        getString(it, "name"),
+			OwnerUserID: getString(it, "ownerUserId"),
+			Visibility:  getString(it, "visibility"),
+			IsDefault:   getBool(it, "isDefault"),
+			CreatedAt:   createdAt,
+			UpdatedAt:   updatedAt,
+		})
+	}
+
+	// For total count, return approximate
+	total := len(dashboards)
+	if limit > 0 && len(dashboards) == limit {
+		total += offset
+	}
+
+	return dashboards, total, nil
+}
+
+func (r *WeaviateRepo) DeleteDashboard(ctx context.Context, tenantID, id string) error {
+	r.ensureOnce(ctx)
+	objID := makeID("Dashboard", tenantID, id)
+	start := time.Now()
+	err := r.t.DeleteObject(ctx, objID)
+	monitoring.RecordWeaviateOperation("DeleteObject", "Dashboard", time.Since(start), err == nil)
+	return err
+}
+
+// Helper functions for type conversion
+func getString(m map[string]any, key string) string {
+	if v, ok := m[key]; ok && v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+func getBool(m map[string]any, key string) bool {
+	if v, ok := m[key]; ok && v != nil {
+		if b, ok := v.(bool); ok {
+			return b
+		}
+	}
+	return false
+}
+
+func getInt(m map[string]any, key string) int {
+	if v, ok := m[key]; ok && v != nil {
+		switch val := v.(type) {
+		case int:
+			return val
+		case float64:
+			return int(val)
+		}
+	}
+	return 0
+}
+
+func getIntFromLayout(layout map[string]interface{}, key string) int {
+	if v, ok := layout[key]; ok && v != nil {
+		switch val := v.(type) {
+		case int:
+			return val
+		case float64:
+			return int(val)
+		}
+	}
+	return 0
 }

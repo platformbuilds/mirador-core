@@ -20,6 +20,7 @@ type Tenant struct {
 	Features    []string           `json:"features" weaviate:"features"`
 	Metadata    map[string]string  `json:"metadata" weaviate:"metadata"`
 	Tags        []string           `json:"tags" weaviate:"tags"`
+	IsSystem    bool               `json:"isSystem" weaviate:"isSystem"` // System tenants cannot be deleted, only renamed
 	CreatedAt   time.Time          `json:"createdAt" weaviate:"createdAt"`
 	UpdatedAt   time.Time          `json:"updatedAt" weaviate:"updatedAt"`
 	CreatedBy   string             `json:"createdBy" weaviate:"createdBy"`
