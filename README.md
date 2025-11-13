@@ -16,7 +16,7 @@
 
 **Advanced Observability Platform Backend** - Unified REST API Service for Metrics, Logs, and Traces
 
-[![Version](https://img.shields.io/badge/version-v7.0.0-blue.svg)](https://github.com/platformbuilds/mirador-core/releases/tag/v7.0.0)
+[![Version](https://img.shields.io/badge/version-v9.0.0-blue.svg)](https://github.com/platformbuilds/mirador-core/releases/tag/v9.0.0)
 [![Go Version](https://img.shields.io/badge/go-1.21+-00ADD8.svg)](https://golang.org)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 
@@ -24,7 +24,7 @@
 
 MIRADOR-CORE serves as the central orchestration layer for the MIRADOR observability platform, providing a unified REST API that intelligently routes queries across VictoriaMetrics, VictoriaLogs, and VictoriaTraces engines. Built with Go and designed for high performance, it enables seamless correlation between metrics, logs, and traces through a single endpoint.
 
-## Current Version: v7.0.0 - Unified Observability Platform 🆕
+## Current Version: v9.0.0 - Multi-Tenant RBAC & Identity Federation 🆕
 
 ### 🚀 Major Improvements
 

@@ -109,8 +109,8 @@ Week 9+:   Cleanup and optimization
 
 ### Version Requirements
 
-- **Minimum Version**: Mirador Core v7.0.0
-- **Recommended Version**: Mirador Core v7.0.0+
+- **Minimum Version**: Mirador Core v9.0.0
+- **Recommended Version**: Mirador Core v9.0.0+
 - **VictoriaMetrics**: v1.93.0+
 - **VictoriaLogs**: v0.5.0+
 - **VictoriaTraces**: v0.3.0+

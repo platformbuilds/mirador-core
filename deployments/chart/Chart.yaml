@@ -3,7 +3,7 @@ name: mirador-core
 description: Helm chart for MIRADOR-CORE (Advanced Observability Platform - Backend REST API Service)
 type: application
 version: 0.2.0
-appVersion: "v8.0.0"
+appVersion: "v9.0.0"
 
 dependencies:
   - name: valkey
