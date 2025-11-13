@@ -3,6 +3,7 @@ package clients
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"google.golang.org/grpc"
@@ -134,9 +135,17 @@ func (c *AlertEngineClient) CreateAlertRule(ctx context.Context, rule *models.Al
 
 // GetActiveAlerts retrieves active alerts for a tenant
 func (c *AlertEngineClient) GetActiveAlerts(ctx context.Context, query *models.AlertQuery) ([]*models.Alert, error) {
+	// Safely convert limit to int32, capping at MaxInt32
+	var limit int32
+	if int64(query.Limit) > int64(math.MaxInt32) {
+		limit = math.MaxInt32
+	} else {
+		limit = int32(query.Limit) //nolint:gosec // Safe conversion due to bounds check above
+	}
+
 	grpcRequest := &alert.GetActiveAlertsRequest{
 		TenantId: query.TenantID,
-		Limit:    int32(query.Limit),
+		Limit:    limit,
 		Severity: query.Severity,
 	}
 

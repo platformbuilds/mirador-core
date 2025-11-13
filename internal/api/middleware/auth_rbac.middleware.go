@@ -409,7 +409,7 @@ func (as *AuthService) authenticateLocalUser(username, password, totpCode string
 	}
 
 	// Validate password
-	if err := as.validatePassword(password, auth); err != nil {
+	if passwordErr := as.validatePassword(password, auth); passwordErr != nil {
 		as.incrementFailedLogin(auth)
 		return nil, fmt.Errorf("invalid password")
 	}
@@ -419,7 +419,7 @@ func (as *AuthService) authenticateLocalUser(username, password, totpCode string
 		if totpCode == "" {
 			return nil, fmt.Errorf("TOTP code required")
 		}
-		if err := as.validateTOTPCode(user.ID, totpCode); err != nil {
+		if totpErr := as.validateTOTPCode(user.ID, totpCode); totpErr != nil {
 			return nil, fmt.Errorf("invalid TOTP code")
 		}
 	}

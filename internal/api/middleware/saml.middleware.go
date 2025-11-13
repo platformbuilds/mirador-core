@@ -161,7 +161,7 @@ func (ss *SAMLService) handleSAMLResponse(c *gin.Context) {
 
 	// Parse SAML response
 	var samlResp SAMLResponse
-	if err := xml.Unmarshal(responseXML, &samlResp); err != nil {
+	if err = xml.Unmarshal(responseXML, &samlResp); err != nil {
 		ss.logger.Error("Failed to parse SAML response", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status": "error",
@@ -171,7 +171,7 @@ func (ss *SAMLService) handleSAMLResponse(c *gin.Context) {
 	}
 
 	// Validate SAML response (placeholder)
-	if err := ss.validateSAMLResponse(&samlResp, c); err != nil {
+	if err = ss.validateSAMLResponse(&samlResp, c); err != nil {
 		ss.logger.Error("SAML response validation failed", "error", err)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"status": "error",
@@ -182,7 +182,8 @@ func (ss *SAMLService) handleSAMLResponse(c *gin.Context) {
 	}
 
 	// Extract user information from assertion
-	userInfo, err := ss.extractUserInfoFromAssertion(&samlResp.Assertion)
+	var userInfo *SAMLUserInfo
+	userInfo, err = ss.extractUserInfoFromAssertion(&samlResp.Assertion)
 	if err != nil {
 		ss.logger.Error("Failed to extract user info from SAML assertion", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -193,7 +194,8 @@ func (ss *SAMLService) handleSAMLResponse(c *gin.Context) {
 	}
 
 	// Create or update user in system
-	session, err := ss.createSAMLUserSession(userInfo, c)
+	var session *models.UserSession
+	session, err = ss.createSAMLUserSession(userInfo, c)
 	if err != nil {
 		ss.logger.Error("Failed to create SAML user session", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -204,7 +206,7 @@ func (ss *SAMLService) handleSAMLResponse(c *gin.Context) {
 	}
 
 	// Store session
-	if err := ss.cache.SetSession(c.Request.Context(), session); err != nil {
+	if err = ss.cache.SetSession(c.Request.Context(), session); err != nil {
 		ss.logger.Error("Failed to store SAML session", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",

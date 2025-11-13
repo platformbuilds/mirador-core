@@ -254,6 +254,7 @@ issues:
         - gocritic
         - depguard
         - gosec
+        - gocyclo
     - path: internal/services/
       linters:
         - unparam
@@ -370,10 +371,14 @@ issues:
         - mnd
         - predeclared
         - misspell
-    - path: internal/utils/
+    - path: internal/grpc/clients/
       linters:
-        - lll
-        - unparam
+        - depguard
+        - err113
+    - path: tools/
+      linters:
+        - depguard
+        - gocritic
     - linters:
         - lll
       source: "^//go:generate "

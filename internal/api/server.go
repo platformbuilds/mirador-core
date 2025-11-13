@@ -572,7 +572,9 @@ func (s *Server) Start(ctx context.Context) error {
 	// Stop metrics metadata synchronizer
 	if s.metricsMetadataSynchronizer != nil {
 		s.logger.Info("Stopping metrics metadata synchronizer")
-		s.metricsMetadataSynchronizer.Stop()
+		if err := s.metricsMetadataSynchronizer.Stop(); err != nil {
+			s.logger.Error("Failed to stop metrics metadata synchronizer", "error", err)
+		}
 	}
 
 	// Shutdown tracer provider

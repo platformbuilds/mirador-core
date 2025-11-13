@@ -565,8 +565,8 @@ func TestRBACService_CheckPermission_Allowed(t *testing.T) {
 	}
 
 	user := &models.User{
-		ID:        userID,
-		Email:     "test@example.com",
+		ID:         userID,
+		Email:      "test@example.com",
 		GlobalRole: "", // No global role
 	}
 
@@ -628,8 +628,8 @@ func TestRBACService_CheckPermission_Denied(t *testing.T) {
 	}
 
 	user := &models.User{
-		ID:        userID,
-		Email:     "test@example.com",
+		ID:         userID,
+		Email:      "test@example.com",
 		GlobalRole: "", // No global role
 	}
 
