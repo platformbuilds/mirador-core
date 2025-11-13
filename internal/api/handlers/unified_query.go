@@ -129,9 +129,10 @@ func (h *UnifiedQueryHandler) HandleHealthCheck(c *gin.Context) {
 	}
 
 	statusCode := http.StatusOK
-	if health.OverallHealth == "unhealthy" {
+	switch health.OverallHealth {
+	case "unhealthy":
 		statusCode = http.StatusServiceUnavailable
-	} else if health.OverallHealth == "partial" {
+	case "partial":
 		statusCode = http.StatusPartialContent
 	}
 

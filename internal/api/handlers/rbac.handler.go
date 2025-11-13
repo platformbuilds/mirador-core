@@ -1359,9 +1359,10 @@ func (h *RBACHandler) GetRoleBindings(c *gin.Context) {
 		filters.Precedence = &precedence
 	}
 	if expired := c.Query("expired"); expired != "" {
-		if expired == "true" {
+		switch expired {
+		case "true":
 			filters.Expired = &[]bool{true}[0]
-		} else if expired == "false" {
+		case "false":
 			filters.Expired = &[]bool{false}[0]
 		}
 	}

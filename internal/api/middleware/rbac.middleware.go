@@ -10,11 +10,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/platformbuilds/mirador-core/internal/api/constants"
 	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
+// Use AnonymousTenantID from rate_limiter.middleware
+// import "github.com/platformbuilds/mirador-core/internal/api/middleware"
+// ...existing code...
+// ...existing code...
 // PolicyCacheResult represents a cached policy evaluation result
 type PolicyCacheResult struct {
 	Allowed  bool      `json:"allowed"`
@@ -181,7 +186,7 @@ func (r *RBACEnforcer) RBACMiddleware(requiredPermissions []string) gin.HandlerF
 		globalRole := c.GetString("global_role")
 
 		// Skip RBAC enforcement when auth is disabled (anonymous user from NoAuthMiddleware)
-		if userID == "anonymous" {
+		if userID == constants.AnonymousTenantID {
 			r.logger.Debug("RBAC check skipped: auth disabled (anonymous user)", "path", c.Request.URL.Path)
 			c.Next()
 			return

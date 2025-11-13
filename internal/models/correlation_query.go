@@ -112,7 +112,7 @@ func (p *CorrelationQueryParser) Parse(query string) (*CorrelationQuery, error) 
 // parseExpressions parses multiple expressions connected by AND/OR
 func (p *CorrelationQueryParser) parseExpressions(query string) ([]CorrelationExpression, CorrelationOperator, error) {
 	var expressions []CorrelationExpression
-	var operator CorrelationOperator = CorrelationOpAND
+	var operator = CorrelationOpAND
 
 	// Check for OR operator first (higher precedence)
 	if orIndex := strings.Index(strings.ToUpper(query), " OR "); orIndex != -1 {
