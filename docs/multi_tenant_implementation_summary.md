@@ -106,7 +106,7 @@ Each router:
 ```go
 tenant := &models.Tenant{
     Name: "platformbuilds",
-    DisplayName: "Platform Builds",
+    DisplayName: "PLATFORMBUILDS",
     AdminEmail: "aarvee@platformbuilds.io",
     Deployments: models.TenantDeployments{
         Metrics: models.DeploymentConfig{

@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -15,6 +16,81 @@ import (
 // WeaviateRBACRepository implements RBACRepository using Weaviate
 type WeaviateRBACRepository struct {
 	transport storageweaviate.Transport
+}
+
+// UUID v5 (SHA-1) namespace for deterministic IDs
+var nsMirador = mustParseUUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8") // URL namespace (stable)
+
+func makeID(parts ...string) string {
+	name := strings.Join(parts, "|")
+	return uuidV5(nsMirador, name)
+}
+
+func mustParseUUID(s string) [16]byte {
+	b, ok := parseUUID(s)
+	if !ok {
+		panic("invalid UUID namespace: " + s)
+	}
+	return b
+}
+
+func parseUUID(s string) ([16]byte, bool) {
+	var out [16]byte
+	// remove hyphens
+	hex := make([]byte, 0, 32)
+	for i := 0; i < len(s); i++ {
+		if s[i] == '-' {
+			continue
+		}
+		hex = append(hex, s[i])
+	}
+	if len(hex) != 32 {
+		return out, false
+	}
+	// convert hex to bytes
+	for i := 0; i < 16; i++ {
+		hi := fromHex(hex[2*i])
+		lo := fromHex(hex[2*i+1])
+		if hi < 0 || lo < 0 {
+			return out, false
+		}
+		out[i] = byte(hi<<4 | lo)
+	}
+	return out, true
+}
+
+func fromHex(b byte) int {
+	switch {
+	case '0' <= b && b <= '9':
+		return int(b - '0')
+	case 'a' <= b && b <= 'f':
+		return int(b - 'a' + 10)
+	case 'A' <= b && b <= 'F':
+		return int(b - 'A' + 10)
+	default:
+		return -1
+	}
+}
+
+func uuidV5(ns [16]byte, name string) string {
+	// RFC 4122, version 5: SHA-1 of namespace + name
+	h := sha1.New()
+	h.Write(ns[:])
+	h.Write([]byte(name))
+	sum := h.Sum(nil) // 20 bytes
+	var u [16]byte
+	copy(u[:], sum[:16])
+	// Set version (5) in high nibble of byte 6
+	u[6] = (u[6] & 0x0f) | (5 << 4)
+	// Set variant (RFC4122) in the two most significant bits of byte 8
+	u[8] = (u[8] & 0x3f) | 0x80
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		uint32(u[0])<<24|uint32(u[1])<<16|uint32(u[2])<<8|uint32(u[3]),
+		uint16(u[4])<<8|uint16(u[5]),
+		uint16(u[6])<<8|uint16(u[7]),
+		uint16(u[8])<<8|uint16(u[9]),
+		(uint64(u[10])<<40)|(uint64(u[11])<<32)|(uint64(u[12])<<24)|(uint64(u[13])<<16)|(uint64(u[14])<<8)|uint64(u[15]),
+	)
 }
 
 // NewWeaviateRBACRepository creates a new Weaviate-based RBAC repository
@@ -188,6 +264,7 @@ func (r *WeaviateRBACRepository) ensureRBACSchema(ctx context.Context) error {
 						{"name": "note", "dataType": []string{"text"}},
 					}},
 				{"name": "tags", "dataType": []string{"text[]"}},
+				{"name": "isSystem", "dataType": []string{"boolean"}},
 				{"name": "createdAt", "dataType": []string{"date"}},
 				{"name": "updatedAt", "dataType": []string{"date"}},
 				{"name": "createdBy", "dataType": []string{"text"}},
@@ -333,7 +410,7 @@ func (r *WeaviateRBACRepository) ensureRBACSchema(ctx context.Context) error {
 // makeRBACID generates deterministic IDs for RBAC objects
 func makeRBACID(class, tenantID string, parts ...string) string {
 	allParts := append([]string{class, tenantID}, parts...)
-	return strings.Join(allParts, "|")
+	return makeID(allParts...)
 }
 
 // CreateRole creates a new role
@@ -1792,6 +1869,7 @@ func (r *WeaviateRBACRepository) CreateTenant(ctx context.Context, tenant *model
 		return err
 	}
 
+	// Always generate a UUID for the tenant ID (required by Weaviate)
 	tenant.ID = makeRBACID("Tenant", "", tenant.Name)
 	now := time.Now()
 
@@ -1807,6 +1885,7 @@ func (r *WeaviateRBACRepository) CreateTenant(ctx context.Context, tenant *model
 		"features":    tenant.Features,
 		"metadata":    tenant.Metadata,
 		"tags":        tenant.Tags,
+		"isSystem":    tenant.IsSystem,
 		"createdAt":   now.Format(time.RFC3339),
 		"updatedAt":   now.Format(time.RFC3339),
 		"createdBy":   tenant.CreatedBy,
@@ -1831,7 +1910,7 @@ func (r *WeaviateRBACRepository) GetTenant(ctx context.Context, tenantID string)
 		Get {
 			RBACTenant(where: { path: ["_additional", "id"], operator: Equal, valueString: "%s" }) {
 				name displayName description deployments status adminEmail adminName
-				quotas features metadata tags createdAt updatedAt createdBy updatedBy
+				quotas features metadata tags isSystem createdAt updatedAt createdBy updatedBy
 				_additional { id }
 			}
 		}
@@ -1884,13 +1963,12 @@ func (r *WeaviateRBACRepository) ListTenants(ctx context.Context, filters Tenant
 		})
 	}
 
-	whereClause := ""
+	whereClause := map[string]any{}
 	if len(operands) > 0 {
-		whereJSON, _ := json.Marshal(map[string]any{
+		whereClause = map[string]any{
 			"operator": "And",
 			"operands": operands,
-		})
-		whereClause = fmt.Sprintf(`, where: %s`, string(whereJSON))
+		}
 	}
 
 	limit := 100
@@ -1898,15 +1976,28 @@ func (r *WeaviateRBACRepository) ListTenants(ctx context.Context, filters Tenant
 		limit = filters.Limit
 	}
 
-	query := fmt.Sprintf(`{
-		Get {
-			RBACTenant(limit: %d, offset: %d%s) {
-				name displayName description deployments status adminEmail adminName
-				quotas features metadata tags createdAt updatedAt createdBy updatedBy
-				_additional { id }
+	query := map[string]any{
+		"query": fmt.Sprintf(`{
+			Get {
+				RBACTenant(limit: %d, offset: %d%s) {
+					name displayName description deployments status adminEmail adminName
+					quotas features metadata tags isSystem createdAt updatedAt createdBy updatedBy
+					_additional { id }
+				}
 			}
-		}
-	}`, limit, filters.Offset, whereClause)
+		}`, limit, filters.Offset, func() string {
+			if len(whereClause) > 0 {
+				return ", where: $where"
+			}
+			return ""
+		}()),
+		"variables": func() map[string]any {
+			if len(whereClause) > 0 {
+				return map[string]any{"where": whereClause}
+			}
+			return nil
+		}(),
+	}
 
 	var resp struct {
 		Data struct {
@@ -1917,7 +2008,7 @@ func (r *WeaviateRBACRepository) ListTenants(ctx context.Context, filters Tenant
 	}
 
 	start := time.Now()
-	err := r.transport.GraphQL(ctx, query, nil, &resp)
+	err := r.transport.GraphQL(ctx, query["query"].(string), query["variables"].(map[string]any), &resp)
 	duration := time.Since(start)
 
 	if err != nil {
@@ -1954,6 +2045,7 @@ func (r *WeaviateRBACRepository) UpdateTenant(ctx context.Context, tenant *model
 		"features":    tenant.Features,
 		"metadata":    tenant.Metadata,
 		"tags":        tenant.Tags,
+		"isSystem":    tenant.IsSystem,
 		"updatedAt":   tenant.UpdatedAt.Format(time.RFC3339),
 		"updatedBy":   tenant.UpdatedBy,
 	}
@@ -2085,6 +2177,9 @@ func (r *WeaviateRBACRepository) mapToTenant(data map[string]any) (*models.Tenan
 			}
 		}
 	}
+	if v, ok := data["isSystem"].(bool); ok {
+		tenant.IsSystem = v
+	}
 	if v, ok := data["createdBy"].(string); ok {
 		tenant.CreatedBy = v
 	}
@@ -2182,7 +2277,10 @@ func (r *WeaviateRBACRepository) CreateUser(ctx context.Context, user *models.Us
 		return err
 	}
 
-	user.ID = makeRBACID("User", "", user.Email)
+	// Only generate ID if not already set
+	if user.ID == "" {
+		user.ID = makeRBACID("User", "", user.Email)
+	}
 	now := time.Now()
 
 	props := map[string]any{
@@ -2294,13 +2392,12 @@ func (r *WeaviateRBACRepository) ListUsers(ctx context.Context, filters UserFilt
 		})
 	}
 
-	whereClause := ""
+	whereClause := map[string]any{}
 	if len(operands) > 0 {
-		whereJSON, _ := json.Marshal(map[string]any{
+		whereClause = map[string]any{
 			"operator": "And",
 			"operands": operands,
-		})
-		whereClause = fmt.Sprintf(`, where: %s`, string(whereJSON))
+		}
 	}
 
 	limit := 100
@@ -2308,16 +2405,29 @@ func (r *WeaviateRBACRepository) ListUsers(ctx context.Context, filters UserFilt
 		limit = filters.Limit
 	}
 
-	query := fmt.Sprintf(`{
-		Get {
-			RBACUser(limit: %d, offset: %d%s) {
-				email username fullName globalRole mfaEnabled status emailVerified
-				avatar phone timezone language lastLoginAt loginCount failedLoginCount
-				lockedUntil metadata tags createdAt updatedAt createdBy updatedBy
-				_additional { id }
+	query := map[string]any{
+		"query": fmt.Sprintf(`{
+			Get {
+				RBACUser(limit: %d, offset: %d%s) {
+					email username fullName globalRole mfaEnabled status emailVerified
+					avatar phone timezone language lastLoginAt loginCount failedLoginCount
+					lockedUntil metadata tags createdAt updatedAt createdBy updatedBy
+					_additional { id }
+				}
 			}
-		}
-	}`, limit, filters.Offset, whereClause)
+		}`, limit, filters.Offset, func() string {
+			if len(whereClause) > 0 {
+				return ", where: $where"
+			}
+			return ""
+		}()),
+		"variables": func() map[string]any {
+			if len(whereClause) > 0 {
+				return map[string]any{"where": whereClause}
+			}
+			return nil
+		}(),
+	}
 
 	var resp struct {
 		Data struct {
@@ -2328,7 +2438,7 @@ func (r *WeaviateRBACRepository) ListUsers(ctx context.Context, filters UserFilt
 	}
 
 	start := time.Now()
-	err := r.transport.GraphQL(ctx, query, nil, &resp)
+	err := r.transport.GraphQL(ctx, query["query"].(string), query["variables"].(map[string]any), &resp)
 	duration := time.Since(start)
 
 	if err != nil {

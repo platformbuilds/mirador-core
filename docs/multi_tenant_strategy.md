@@ -3359,7 +3359,7 @@ curl -X POST http://localhost:8080/api/v1/tenants \
   -H "Authorization: Bearer <aarvee_token>" \
   -d '{
     "name": "platformbuilds",
-    "display_name": "Platform Builds",
+    "display_name": "PLATFORMBUILDS",
     "admin_email": "aarvee@platformbuilds.com",
     "deployments": {
       "metrics": {
@@ -3415,7 +3415,7 @@ curl -X POST http://localhost:8080/api/v1/tenants \
   "tenant": {
     "id": "platformbuilds",
     "name": "platformbuilds",
-    "display_name": "Platform Builds",
+    "display_name": "PLATFORMBUILDS",
     "status": "active",
     "deployments": {
       "metrics": {
@@ -3598,7 +3598,7 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
   "accessible_tenants": [
     {
       "tenant_id": "platformbuilds",
-      "tenant_name": "Platform Builds",
+      "tenant_name": "PLATFORMBUILDS",
       "tenant_role": "tenant_guest",
       "is_default": true,
       "status": "active"
@@ -3704,7 +3704,7 @@ curl -X GET http://localhost:8080/api/v1/users/user_10003/tenants \
     {
       "id": "tu_67890",
       "tenant_id": "platformbuilds",
-      "tenant_name": "Platform Builds",
+      "tenant_name": "PLATFORMBUILDS",
       "user_id": "user_10003",
       "tenant_role": "tenant_guest",
       "status": "active",

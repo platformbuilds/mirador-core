@@ -178,7 +178,7 @@ if err != nil {
 ### Update Tenant
 
 ```go
-tenant.DisplayName = "Platform Builds Inc."
+tenant.DisplayName = "PLATFORMBUILDS Inc."
 err := tenantRepo.UpdateTenant(ctx, tenant)
 ```
 

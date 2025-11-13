@@ -171,6 +171,8 @@ func (m *MetricsMetadataIndexerImpl) extractMetricsMetadata(ctx context.Context,
 	seriesRequest := &models.SeriesRequest{
 		Start: request.TimeRange.Start.Format(time.RFC3339),
 		End:   request.TimeRange.End.Format(time.RFC3339),
+		// Use a match that selects all metrics for metadata extraction
+		Match: []string{"{__name__=~\".+\"}"},
 	}
 
 	series, err := m.victoriaMetricsSvc.GetSeries(ctx, seriesRequest)

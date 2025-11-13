@@ -130,7 +130,7 @@ host: localhost:8010
 info:
   contact:
     email: support@platformbuilds.com
-    name: Platform Builds Team
+    name: PLATFORMBUILDS Team
     url: https://github.com/platformbuilds/mirador-core
   description: Mirador Core is a comprehensive observability and analytics platform
     that provides KPI definitions, layouts, dashboards, and user preferences for monitoring

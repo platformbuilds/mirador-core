@@ -180,6 +180,13 @@ func (r *RBACEnforcer) RBACMiddleware(requiredPermissions []string) gin.HandlerF
 		tenantID := c.GetString("tenant_id")
 		globalRole := c.GetString("global_role")
 
+		// Skip RBAC enforcement when auth is disabled (anonymous user from NoAuthMiddleware)
+		if userID == "anonymous" {
+			r.logger.Debug("RBAC check skipped: auth disabled (anonymous user)", "path", c.Request.URL.Path)
+			c.Next()
+			return
+		}
+
 		if userID == "" || tenantID == "" {
 			r.logger.Warn("RBAC check failed: missing user or tenant context",
 				"userId", userID, "tenantId", tenantID, "path", c.Request.URL.Path)

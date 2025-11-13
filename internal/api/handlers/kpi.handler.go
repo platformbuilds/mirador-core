@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -72,7 +73,7 @@ func (h *KPIHandler) GetKPIDefinitions(c *gin.Context) {
 		req.Offset = 0
 	}
 
-	kpis, total, err := h.listKPIs(req.TenantID, req.Tags, req.Limit, req.Offset)
+	kpis, total, err := h.listKPIs(c.Request.Context(), req.TenantID, req.Tags, req.Limit, req.Offset)
 	if err != nil {
 		h.logger.Error("KPI list failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list KPIs"})
@@ -136,7 +137,7 @@ func (h *KPIHandler) CreateOrUpdateKPIDefinition(c *gin.Context) {
 		kpi.CreatedAt = kpi.UpdatedAt
 	}
 
-	err := h.upsertKPI(kpi)
+	err := h.upsertKPI(c.Request.Context(), kpi)
 	if err != nil {
 		h.logger.Error("KPI upsert failed", "error", err, "id", kpi.ID)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upsert KPI"})
@@ -175,7 +176,7 @@ func (h *KPIHandler) DeleteKPIDefinition(c *gin.Context) {
 		return
 	}
 
-	err := h.deleteKPI(tenantID, id)
+	err := h.deleteKPI(c.Request.Context(), tenantID, id)
 	if err != nil {
 		h.logger.Error("KPI delete failed", "error", err, "id", id)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete KPI"})
@@ -209,7 +210,7 @@ func (h *KPIHandler) GetKPILayouts(c *gin.Context) {
 
 	tenantID := c.GetString("tenant_id")
 
-	layouts, err := h.getKPILayoutsForDashboard(tenantID, dashboardID)
+	layouts, err := h.getKPILayoutsForDashboard(c.Request.Context(), tenantID, dashboardID)
 	if err != nil {
 		h.logger.Error("KPI layouts get failed", "error", err, "dashboard", dashboardID)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get KPI layouts"})
@@ -250,7 +251,7 @@ func (h *KPIHandler) BatchUpdateKPILayouts(c *gin.Context) {
 
 	tenantID := c.GetString("tenant_id")
 
-	err := h.batchUpsertKPILayouts(tenantID, req.DashboardID, req.Layouts)
+	err := h.batchUpsertKPILayouts(c.Request.Context(), tenantID, req.DashboardID, req.Layouts)
 	if err != nil {
 		h.logger.Error("KPI layouts batch update failed", "error", err, "dashboard", req.DashboardID)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update KPI layouts"})
@@ -296,7 +297,7 @@ func (h *KPIHandler) GetDashboards(c *gin.Context) {
 		req.Offset = 0
 	}
 
-	dashboards, total, err := h.listDashboards(req.TenantID, req.Limit, req.Offset)
+	dashboards, total, err := h.listDashboards(c.Request.Context(), req.TenantID, req.Limit, req.Offset)
 	if err != nil {
 		h.logger.Error("dashboard list failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list dashboards"})
@@ -350,7 +351,7 @@ func (h *KPIHandler) CreateDashboard(c *gin.Context) {
 	dashboard.CreatedAt = time.Now()
 	dashboard.UpdatedAt = dashboard.CreatedAt
 
-	err := h.upsertDashboard(dashboard)
+	err := h.upsertDashboard(c.Request.Context(), dashboard)
 	if err != nil {
 		h.logger.Error("dashboard create failed", "error", err, "id", dashboard.ID)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create dashboard"})
@@ -395,7 +396,7 @@ func (h *KPIHandler) UpdateDashboard(c *gin.Context) {
 
 	// Get existing dashboard
 	tenantID := c.GetString("tenant_id")
-	existing, err := h.getDashboard(tenantID, id)
+	existing, err := h.getDashboard(c.Request.Context(), tenantID, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "dashboard not found"})
 		return
@@ -406,7 +407,7 @@ func (h *KPIHandler) UpdateDashboard(c *gin.Context) {
 	existing.Visibility = req.Dashboard.Visibility
 	existing.UpdatedAt = time.Now()
 
-	err = h.upsertDashboard(existing)
+	err = h.upsertDashboard(c.Request.Context(), existing)
 	if err != nil {
 		h.logger.Error("dashboard update failed", "error", err, "id", id)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update dashboard"})
@@ -451,7 +452,7 @@ func (h *KPIHandler) DeleteDashboard(c *gin.Context) {
 		return
 	}
 
-	err := h.deleteDashboard(tenantID, id)
+	err := h.deleteDashboard(c.Request.Context(), tenantID, id)
 	if err != nil {
 		h.logger.Error("dashboard delete failed", "error", err, "id", id)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete dashboard"})
@@ -463,42 +464,42 @@ func (h *KPIHandler) DeleteDashboard(c *gin.Context) {
 
 // ------------------- Implementation methods (extracted from unified handler) -------------------
 
-func (h *KPIHandler) upsertKPI(kpi *models.KPIDefinition) error {
-	return h.repo.UpsertKPI(kpi)
+func (h *KPIHandler) upsertKPI(ctx context.Context, kpi *models.KPIDefinition) error {
+	return h.repo.UpsertKPI(ctx, kpi)
 }
 
-func (h *KPIHandler) getKPI(tenantID, id string) (*models.KPIDefinition, error) {
-	return h.repo.GetKPI(tenantID, id)
+func (h *KPIHandler) getKPI(ctx context.Context, tenantID, id string) (*models.KPIDefinition, error) {
+	return h.repo.GetKPI(ctx, tenantID, id)
 }
 
-func (h *KPIHandler) listKPIs(tenantID string, tags []string, limit, offset int) ([]*models.KPIDefinition, int, error) {
-	return h.repo.ListKPIs(tenantID, tags, limit, offset)
+func (h *KPIHandler) listKPIs(ctx context.Context, tenantID string, tags []string, limit, offset int) ([]*models.KPIDefinition, int, error) {
+	return h.repo.ListKPIs(ctx, tenantID, tags, limit, offset)
 }
 
-func (h *KPIHandler) deleteKPI(tenantID, id string) error {
-	return h.repo.DeleteKPI(tenantID, id)
+func (h *KPIHandler) deleteKPI(ctx context.Context, tenantID, id string) error {
+	return h.repo.DeleteKPI(ctx, tenantID, id)
 }
 
-func (h *KPIHandler) getKPILayoutsForDashboard(tenantID, dashboardID string) (map[string]interface{}, error) {
-	return h.repo.GetKPILayoutsForDashboard(tenantID, dashboardID)
+func (h *KPIHandler) getKPILayoutsForDashboard(ctx context.Context, tenantID, dashboardID string) (map[string]interface{}, error) {
+	return h.repo.GetKPILayoutsForDashboard(ctx, tenantID, dashboardID)
 }
 
-func (h *KPIHandler) batchUpsertKPILayouts(tenantID, dashboardID string, layouts map[string]interface{}) error {
-	return h.repo.BatchUpsertKPILayouts(tenantID, dashboardID, layouts)
+func (h *KPIHandler) batchUpsertKPILayouts(ctx context.Context, tenantID, dashboardID string, layouts map[string]interface{}) error {
+	return h.repo.BatchUpsertKPILayouts(ctx, tenantID, dashboardID, layouts)
 }
 
-func (h *KPIHandler) upsertDashboard(dashboard *models.Dashboard) error {
-	return h.repo.UpsertDashboard(dashboard)
+func (h *KPIHandler) upsertDashboard(ctx context.Context, dashboard *models.Dashboard) error {
+	return h.repo.UpsertDashboard(ctx, dashboard)
 }
 
-func (h *KPIHandler) getDashboard(tenantID, id string) (*models.Dashboard, error) {
-	return h.repo.GetDashboard(tenantID, id)
+func (h *KPIHandler) getDashboard(ctx context.Context, tenantID, id string) (*models.Dashboard, error) {
+	return h.repo.GetDashboard(ctx, tenantID, id)
 }
 
-func (h *KPIHandler) listDashboards(tenantID string, limit, offset int) ([]*models.Dashboard, int, error) {
-	return h.repo.ListDashboards(tenantID, limit, offset)
+func (h *KPIHandler) listDashboards(ctx context.Context, tenantID string, limit, offset int) ([]*models.Dashboard, int, error) {
+	return h.repo.ListDashboards(ctx, tenantID, limit, offset)
 }
 
-func (h *KPIHandler) deleteDashboard(tenantID, id string) error {
-	return h.repo.DeleteDashboard(tenantID, id)
+func (h *KPIHandler) deleteDashboard(ctx context.Context, tenantID, id string) error {
+	return h.repo.DeleteDashboard(ctx, tenantID, id)
 }

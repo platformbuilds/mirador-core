@@ -359,6 +359,117 @@ func (h *RBACHandler) GetUserRoles(c *gin.Context) {
 	})
 }
 
+// POST /api/v1/rbac/permissions
+// Create a new permission for the current tenant
+func (h *RBACHandler) CreatePermission(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
+	rbacMode, err := h.checkRBACMode(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to check RBAC mode",
+		})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Tenant context required",
+		})
+		return
+	}
+
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "User context required",
+		})
+		return
+	}
+
+	var req struct {
+		ID              string `json:"id" binding:"required"`
+		Resource        string `json:"resource" binding:"required"`
+		Action          string `json:"action" binding:"required"`
+		ResourcePattern string `json:"resourcePattern"`
+		Scope           string `json:"scope"`
+		Description     string `json:"description"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid request format",
+		})
+		return
+	}
+
+	// Create permission using service
+	permission := &models.Permission{
+		ID:              req.ID,
+		Resource:        req.Resource,
+		Action:          req.Action,
+		ResourcePattern: req.ResourcePattern,
+		Scope:           req.Scope,
+		Description:     req.Description,
+	}
+
+	err = h.rbacService.CreatePermission(c.Request.Context(), tenantID, userID, permission)
+	if err != nil {
+		h.logger.Error("Failed to create permission", "tenantID", tenantID, "permissionID", req.ID, "error", err)
+
+		// In audit-only mode, log the error but don't fail the operation
+		if rbacMode == services.RBACModeAuditOnly {
+			h.logger.Info("RBAC audit-only mode: permission creation failed but operation allowed", "tenantID", tenantID, "permissionID", req.ID)
+			c.JSON(http.StatusCreated, gin.H{
+				"status":  "success",
+				"data":    gin.H{"permission": permission, "createdAt": permission.CreatedAt.Format(time.RFC3339)},
+				"warning": "RBAC validation failed but operation allowed in audit-only mode",
+			})
+			return
+		}
+
+		// Handle specific validation errors
+		if strings.Contains(err.Error(), "validation error") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to create permission",
+		})
+		return
+	}
+
+	// Invalidate policy cache for this tenant (permission changes affect all users)
+	h.policyCache.InvalidateTenantPolicies(c.Request.Context(), tenantID)
+
+	h.logger.Info("Permission created", "tenantID", tenantID, "permissionID", req.ID)
+
+	c.JSON(http.StatusCreated, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"permission": permission,
+			"createdAt":  permission.CreatedAt.Format(time.RFC3339),
+		},
+	})
+}
+
 // GET /api/v1/rbac/permissions
 // Get all permissions for the current tenant
 func (h *RBACHandler) GetPermissions(c *gin.Context) {
@@ -380,24 +491,15 @@ func (h *RBACHandler) GetPermissions(c *gin.Context) {
 		return
 	}
 
-	// Return standard permissions
-	permissions := []gin.H{
-		{"resource": "dashboard", "action": "create", "scope": "tenant", "description": "Create dashboards"},
-		{"resource": "dashboard", "action": "read", "scope": "tenant", "description": "Read dashboards"},
-		{"resource": "dashboard", "action": "update", "scope": "tenant", "description": "Update dashboards"},
-		{"resource": "dashboard", "action": "delete", "scope": "tenant", "description": "Delete dashboards"},
-		{"resource": "kpi_definition", "action": "create", "scope": "tenant", "description": "Create KPI definitions"},
-		{"resource": "kpi_definition", "action": "read", "scope": "tenant", "description": "Read KPI definitions"},
-		{"resource": "kpi_definition", "action": "update", "scope": "tenant", "description": "Update KPI definitions"},
-		{"resource": "kpi_definition", "action": "delete", "scope": "tenant", "description": "Delete KPI definitions"},
-		{"resource": "layout", "action": "create", "scope": "tenant", "description": "Create layouts"},
-		{"resource": "layout", "action": "read", "scope": "tenant", "description": "Read layouts"},
-		{"resource": "layout", "action": "update", "scope": "tenant", "description": "Update layouts"},
-		{"resource": "layout", "action": "delete", "scope": "tenant", "description": "Delete layouts"},
-		{"resource": "user_prefs", "action": "read", "scope": "user", "description": "Read user preferences"},
-		{"resource": "user_prefs", "action": "update", "scope": "user", "description": "Update user preferences"},
-		{"resource": "admin", "action": "admin", "scope": "global", "description": "Global admin access"},
-		{"resource": "rbac", "action": "admin", "scope": "tenant", "description": "RBAC administration"},
+	// Get permissions using service
+	permissions, err := h.rbacService.ListPermissions(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to list permissions", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve permissions",
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -406,9 +508,9 @@ func (h *RBACHandler) GetPermissions(c *gin.Context) {
 	})
 }
 
-// GET /api/v1/rbac/cache/stats
-// Get policy cache statistics for monitoring
-func (h *RBACHandler) GetCacheStats(c *gin.Context) {
+// PUT /api/v1/rbac/permissions/:permissionId
+// Update an existing permission
+func (h *RBACHandler) UpdatePermission(c *gin.Context) {
 	// Check if RBAC feature is enabled
 	if !h.checkFeatureEnabled(c) {
 		c.JSON(http.StatusForbidden, gin.H{
@@ -427,26 +529,302 @@ func (h *RBACHandler) GetCacheStats(c *gin.Context) {
 		return
 	}
 
-	// Get cache statistics
-	stats, err := h.policyCache.GetCacheStats(c.Request.Context())
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "User context required",
+		})
+		return
+	}
+
+	permissionID := c.Param("permissionId")
+	if permissionID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Permission ID is required",
+		})
+		return
+	}
+
+	var req struct {
+		Resource        string `json:"resource"`
+		Action          string `json:"action"`
+		ResourcePattern string `json:"resourcePattern"`
+		Scope           string `json:"scope"`
+		Description     string `json:"description"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid request format",
+		})
+		return
+	}
+
+	// Update permission using service
+	updates := &models.Permission{
+		Resource:        req.Resource,
+		Action:          req.Action,
+		ResourcePattern: req.ResourcePattern,
+		Scope:           req.Scope,
+		Description:     req.Description,
+	}
+
+	err := h.rbacService.UpdatePermission(c.Request.Context(), tenantID, userID, permissionID, updates)
 	if err != nil {
-		h.logger.Error("Failed to get cache stats", "error", err)
+		h.logger.Error("Failed to update permission", "tenantID", tenantID, "permissionID", permissionID, "error", err)
+
+		// Handle specific validation errors
+		if strings.Contains(err.Error(), "validation error") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  err.Error(),
+			})
+			return
+		}
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
-			"error":  "Failed to retrieve cache statistics",
+			"error":  "Failed to update permission",
+		})
+		return
+	}
+
+	// Invalidate policy cache for this tenant (permission changes affect all users)
+	h.policyCache.InvalidateTenantPolicies(c.Request.Context(), tenantID)
+
+	h.logger.Info("Permission updated", "tenantID", tenantID, "permissionID", permissionID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"permissionId": permissionID,
+			"updatedAt":    time.Now().Format(time.RFC3339),
+		},
+	})
+}
+
+// DELETE /api/v1/rbac/permissions/:permissionId
+// Delete a permission
+func (h *RBACHandler) DeletePermission(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Tenant context required",
+		})
+		return
+	}
+
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "User context required",
+		})
+		return
+	}
+
+	permissionID := c.Param("permissionId")
+	if permissionID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Permission ID is required",
+		})
+		return
+	}
+
+	// Delete permission using service
+	err := h.rbacService.DeletePermission(c.Request.Context(), tenantID, userID, permissionID)
+	if err != nil {
+		h.logger.Error("Failed to delete permission", "tenantID", tenantID, "permissionID", permissionID, "error", err)
+
+		// Handle specific validation errors
+		if strings.Contains(err.Error(), "validation error") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to delete permission",
+		})
+		return
+	}
+
+	// Invalidate policy cache for this tenant (permission changes affect all users)
+	h.policyCache.InvalidateTenantPolicies(c.Request.Context(), tenantID)
+
+	h.logger.Info("Permission deleted", "tenantID", tenantID, "permissionID", permissionID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"permissionId": permissionID,
+			"deletedAt":    time.Now().Format(time.RFC3339),
+		},
+	})
+}
+
+// POST /api/v1/rbac/groups
+// Create a new group for the current tenant
+func (h *RBACHandler) CreateGroup(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
+	rbacMode, err := h.checkRBACMode(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to check RBAC mode",
+		})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Tenant context required",
+		})
+		return
+	}
+
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "User context required",
+		})
+		return
+	}
+
+	var req struct {
+		Name         string   `json:"name" binding:"required"`
+		Description  string   `json:"description"`
+		Roles        []string `json:"roles"`
+		ParentGroups []string `json:"parentGroups"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid request format",
+		})
+		return
+	}
+
+	// Create group using service
+	group := &models.Group{
+		Name:         req.Name,
+		Description:  req.Description,
+		Roles:        req.Roles,
+		ParentGroups: req.ParentGroups,
+	}
+
+	err = h.rbacService.CreateGroup(c.Request.Context(), tenantID, userID, group)
+	if err != nil {
+		h.logger.Error("Failed to create group", "tenantID", tenantID, "groupName", req.Name, "error", err)
+
+		// In audit-only mode, log the error but don't fail the operation
+		if rbacMode == services.RBACModeAuditOnly {
+			h.logger.Info("RBAC audit-only mode: group creation failed but operation allowed", "tenantID", tenantID, "groupName", req.Name)
+			c.JSON(http.StatusCreated, gin.H{
+				"status":  "success",
+				"data":    gin.H{"group": group, "createdAt": group.CreatedAt.Format(time.RFC3339)},
+				"warning": "RBAC validation failed but operation allowed in audit-only mode",
+			})
+			return
+		}
+
+		// Handle specific validation errors
+		if strings.Contains(err.Error(), "validation error") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to create group",
+		})
+		return
+	}
+
+	h.logger.Info("Group created", "tenantID", tenantID, "groupName", req.Name)
+
+	c.JSON(http.StatusCreated, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"group":     group,
+			"createdAt": group.CreatedAt.Format(time.RFC3339),
+		},
+	})
+}
+
+// GET /api/v1/rbac/groups
+// Get all groups for the current tenant
+func (h *RBACHandler) GetGroups(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Tenant context required",
+		})
+		return
+	}
+
+	// Get groups using service
+	groups, err := h.rbacService.ListGroups(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to list groups", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve groups",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
-		"data":   stats,
+		"data":   gin.H{"groups": groups, "total": len(groups)},
 	})
 }
 
-// POST /api/v1/rbac/cache/warm
-// Warm up policy cache with common permissions
-func (h *RBACHandler) WarmPolicyCache(c *gin.Context) {
+// PUT /api/v1/rbac/groups/:groupName
+// Update an existing group
+func (h *RBACHandler) UpdateGroup(c *gin.Context) {
 	// Check if RBAC feature is enabled
 	if !h.checkFeatureEnabled(c) {
 		c.JSON(http.StatusForbidden, gin.H{
@@ -465,23 +843,716 @@ func (h *RBACHandler) WarmPolicyCache(c *gin.Context) {
 		return
 	}
 
-	// This would typically be called by an admin or during startup
-	// For now, we'll create a simple enforcer to warm the cache
-	enforcer := middleware.NewRBACEnforcer(h.rbacService, h.cache, h.logger)
-	err := enforcer.WarmCommonPolicies(c.Request.Context(), tenantID)
-	if err != nil {
-		h.logger.Error("Failed to warm policy cache", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
 			"status": "error",
-			"error":  "Failed to warm policy cache",
+			"error":  "User context required",
 		})
 		return
 	}
 
-	h.logger.Info("Policy cache warmed", "tenantID", tenantID)
+	groupName := c.Param("groupName")
+	if groupName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Group name is required",
+		})
+		return
+	}
+
+	var req struct {
+		Description  string   `json:"description"`
+		Roles        []string `json:"roles"`
+		ParentGroups []string `json:"parentGroups"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid request format",
+		})
+		return
+	}
+
+	// Update group using service
+	updates := &models.Group{
+		Description:  req.Description,
+		Roles:        req.Roles,
+		ParentGroups: req.ParentGroups,
+	}
+
+	err := h.rbacService.UpdateGroup(c.Request.Context(), tenantID, userID, groupName, updates)
+	if err != nil {
+		h.logger.Error("Failed to update group", "tenantID", tenantID, "groupName", groupName, "error", err)
+
+		// Handle specific validation errors
+		if strings.Contains(err.Error(), "validation error") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to update group",
+		})
+		return
+	}
+
+	h.logger.Info("Group updated", "tenantID", tenantID, "groupName", groupName)
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":  "success",
-		"message": "Policy cache warmed successfully",
+		"status": "success",
+		"data": gin.H{
+			"groupName": groupName,
+			"updatedAt": time.Now().Format(time.RFC3339),
+		},
+	})
+}
+
+// DELETE /api/v1/rbac/groups/:groupName
+// Delete a group
+func (h *RBACHandler) DeleteGroup(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Tenant context required",
+		})
+		return
+	}
+
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "User context required",
+		})
+		return
+	}
+
+	groupName := c.Param("groupName")
+	if groupName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Group name is required",
+		})
+		return
+	}
+
+	// Delete group using service
+	err := h.rbacService.DeleteGroup(c.Request.Context(), tenantID, userID, groupName)
+	if err != nil {
+		h.logger.Error("Failed to delete group", "tenantID", tenantID, "groupName", groupName, "error", err)
+
+		// Handle specific validation errors
+		if strings.Contains(err.Error(), "validation error") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to delete group",
+		})
+		return
+	}
+
+	h.logger.Info("Group deleted", "tenantID", tenantID, "groupName", groupName)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"groupName": groupName,
+			"deletedAt": time.Now().Format(time.RFC3339),
+		},
+	})
+}
+
+// PUT /api/v1/rbac/groups/:groupName/users
+// Add users to a group
+func (h *RBACHandler) AddUsersToGroup(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Tenant context required",
+		})
+		return
+	}
+
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "User context required",
+		})
+		return
+	}
+
+	groupName := c.Param("groupName")
+	if groupName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Group name is required",
+		})
+		return
+	}
+
+	var req struct {
+		UserIDs []string `json:"userIds" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid request format",
+		})
+		return
+	}
+
+	// Add users to group using service
+	err := h.rbacService.AddUsersToGroup(c.Request.Context(), tenantID, userID, groupName, req.UserIDs)
+	if err != nil {
+		h.logger.Error("Failed to add users to group", "tenantID", tenantID, "groupName", groupName, "error", err)
+
+		// Handle specific validation errors
+		if strings.Contains(err.Error(), "validation error") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to add users to group",
+		})
+		return
+	}
+
+	h.logger.Info("Users added to group", "tenantID", tenantID, "groupName", groupName, "userIDs", req.UserIDs)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"groupName": groupName,
+			"userIds":   req.UserIDs,
+		},
+	})
+}
+
+// DELETE /api/v1/rbac/groups/:groupName/users
+// Remove users from a group
+func (h *RBACHandler) RemoveUsersFromGroup(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Tenant context required",
+		})
+		return
+	}
+
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "User context required",
+		})
+		return
+	}
+
+	groupName := c.Param("groupName")
+	if groupName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Group name is required",
+		})
+		return
+	}
+
+	var req struct {
+		UserIDs []string `json:"userIds" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid request format",
+		})
+		return
+	}
+
+	// Remove users from group using service
+	err := h.rbacService.RemoveUsersFromGroup(c.Request.Context(), tenantID, userID, groupName, req.UserIDs)
+	if err != nil {
+		h.logger.Error("Failed to remove users from group", "tenantID", tenantID, "groupName", groupName, "error", err)
+
+		// Handle specific validation errors
+		if strings.Contains(err.Error(), "validation error") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to remove users from group",
+		})
+		return
+	}
+
+	h.logger.Info("Users removed from group", "tenantID", tenantID, "groupName", groupName, "userIDs", req.UserIDs)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"groupName": groupName,
+			"userIds":   req.UserIDs,
+		},
+	})
+}
+
+// GET /api/v1/rbac/groups/:groupName/members
+// Get members of a group
+func (h *RBACHandler) GetGroupMembers(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Tenant context required",
+		})
+		return
+	}
+
+	groupName := c.Param("groupName")
+	if groupName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Group name is required",
+		})
+		return
+	}
+
+	// Get group members using service
+	members, err := h.rbacService.GetGroupMembers(c.Request.Context(), tenantID, groupName)
+	if err != nil {
+		h.logger.Error("Failed to get group members", "tenantID", tenantID, "groupName", groupName, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve group members",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"groupName": groupName,
+			"members":   members,
+		},
+	})
+}
+
+// POST /api/v1/rbac/role-bindings
+// Create a new role binding for the current tenant
+func (h *RBACHandler) CreateRoleBinding(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
+	rbacMode, err := h.checkRBACMode(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to check RBAC mode",
+		})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Tenant context required",
+		})
+		return
+	}
+
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "User context required",
+		})
+		return
+	}
+
+	var req struct {
+		ID            string                       `json:"id" binding:"required"`
+		SubjectType   string                       `json:"subjectType" binding:"required"`
+		SubjectID     string                       `json:"subjectId" binding:"required"`
+		RoleID        string                       `json:"roleId" binding:"required"`
+		Scope         string                       `json:"scope"`
+		ResourceID    string                       `json:"resourceId"`
+		Precedence    string                       `json:"precedence"`
+		Conditions    models.RoleBindingConditions `json:"conditions"`
+		ExpiresAt     *time.Time                   `json:"expiresAt"`
+		Justification string                       `json:"justification"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid request format",
+		})
+		return
+	}
+
+	// Create role binding using service
+	binding := &models.RoleBinding{
+		ID:            req.ID,
+		SubjectType:   req.SubjectType,
+		SubjectID:     req.SubjectID,
+		RoleID:        req.RoleID,
+		Scope:         req.Scope,
+		ResourceID:    req.ResourceID,
+		Precedence:    req.Precedence,
+		Conditions:    req.Conditions,
+		ExpiresAt:     req.ExpiresAt,
+		Justification: req.Justification,
+	}
+
+	err = h.rbacService.CreateRoleBinding(c.Request.Context(), tenantID, userID, binding)
+	if err != nil {
+		h.logger.Error("Failed to create role binding", "tenantID", tenantID, "bindingID", req.ID, "error", err)
+
+		// In audit-only mode, log the error but don't fail the operation
+		if rbacMode == services.RBACModeAuditOnly {
+			h.logger.Info("RBAC audit-only mode: role binding creation failed but operation allowed", "tenantID", tenantID, "bindingID", req.ID)
+			c.JSON(http.StatusCreated, gin.H{
+				"status":  "success",
+				"data":    gin.H{"roleBinding": binding, "createdAt": binding.CreatedAt.Format(time.RFC3339)},
+				"warning": "RBAC validation failed but operation allowed in audit-only mode",
+			})
+			return
+		}
+
+		// Handle specific validation errors
+		if strings.Contains(err.Error(), "validation error") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to create role binding",
+		})
+		return
+	}
+
+	h.logger.Info("Role binding created", "tenantID", tenantID, "bindingID", req.ID)
+
+	c.JSON(http.StatusCreated, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"roleBinding": binding,
+			"createdAt":   binding.CreatedAt.Format(time.RFC3339),
+		},
+	})
+}
+
+// GET /api/v1/rbac/role-bindings
+// Get role bindings for the current tenant with optional filters
+func (h *RBACHandler) GetRoleBindings(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Tenant context required",
+		})
+		return
+	}
+
+	// Parse query parameters for filters
+	filters := rbac.RoleBindingFilters{}
+
+	if subjectType := c.Query("subjectType"); subjectType != "" {
+		filters.SubjectType = &subjectType
+	}
+	if subjectID := c.Query("subjectId"); subjectID != "" {
+		filters.SubjectID = &subjectID
+	}
+	if roleID := c.Query("roleId"); roleID != "" {
+		filters.RoleID = &roleID
+	}
+	if scope := c.Query("scope"); scope != "" {
+		filters.Scope = &scope
+	}
+	if resourceID := c.Query("resourceId"); resourceID != "" {
+		filters.ResourceID = &resourceID
+	}
+	if precedence := c.Query("precedence"); precedence != "" {
+		filters.Precedence = &precedence
+	}
+	if expired := c.Query("expired"); expired != "" {
+		if expired == "true" {
+			filters.Expired = &[]bool{true}[0]
+		} else if expired == "false" {
+			filters.Expired = &[]bool{false}[0]
+		}
+	}
+
+	// Get role bindings using service
+	bindings, err := h.rbacService.GetRoleBindings(c.Request.Context(), tenantID, filters)
+	if err != nil {
+		h.logger.Error("Failed to get role bindings", "tenantID", tenantID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve role bindings",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   gin.H{"roleBindings": bindings, "total": len(bindings)},
+	})
+}
+
+// PUT /api/v1/rbac/role-bindings/:bindingId
+// Update an existing role binding
+func (h *RBACHandler) UpdateRoleBinding(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Tenant context required",
+		})
+		return
+	}
+
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "User context required",
+		})
+		return
+	}
+
+	bindingID := c.Param("bindingId")
+	if bindingID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Binding ID is required",
+		})
+		return
+	}
+
+	var req struct {
+		SubjectType   string                       `json:"subjectType"`
+		SubjectID     string                       `json:"subjectId"`
+		RoleID        string                       `json:"roleId"`
+		Scope         string                       `json:"scope"`
+		ResourceID    string                       `json:"resourceId"`
+		Precedence    string                       `json:"precedence"`
+		Conditions    models.RoleBindingConditions `json:"conditions"`
+		ExpiresAt     *time.Time                   `json:"expiresAt"`
+		Justification string                       `json:"justification"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid request format",
+		})
+		return
+	}
+
+	// Update role binding using service
+	updates := &models.RoleBinding{
+		SubjectType:   req.SubjectType,
+		SubjectID:     req.SubjectID,
+		RoleID:        req.RoleID,
+		Scope:         req.Scope,
+		ResourceID:    req.ResourceID,
+		Precedence:    req.Precedence,
+		Conditions:    req.Conditions,
+		ExpiresAt:     req.ExpiresAt,
+		Justification: req.Justification,
+	}
+
+	err := h.rbacService.UpdateRoleBinding(c.Request.Context(), tenantID, userID, bindingID, updates)
+	if err != nil {
+		h.logger.Error("Failed to update role binding", "tenantID", tenantID, "bindingID", bindingID, "error", err)
+
+		// Handle specific validation errors
+		if strings.Contains(err.Error(), "validation error") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to update role binding",
+		})
+		return
+	}
+
+	h.logger.Info("Role binding updated", "tenantID", tenantID, "bindingID", bindingID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"bindingId": bindingID,
+			"updatedAt": time.Now().Format(time.RFC3339),
+		},
+	})
+}
+
+// DELETE /api/v1/rbac/role-bindings/:bindingId
+// Delete a role binding
+func (h *RBACHandler) DeleteRoleBinding(c *gin.Context) {
+	// Check if RBAC feature is enabled
+	if !h.checkFeatureEnabled(c) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "RBAC feature is disabled",
+		})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Tenant context required",
+		})
+		return
+	}
+
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "User context required",
+		})
+		return
+	}
+
+	bindingID := c.Param("bindingId")
+	if bindingID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Binding ID is required",
+		})
+		return
+	}
+
+	// Delete role binding using service
+	err := h.rbacService.DeleteRoleBinding(c.Request.Context(), tenantID, userID, bindingID)
+	if err != nil {
+		h.logger.Error("Failed to delete role binding", "tenantID", tenantID, "bindingID", bindingID, "error", err)
+
+		// Handle specific validation errors
+		if strings.Contains(err.Error(), "validation error") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to delete role binding",
+		})
+		return
+	}
+
+	h.logger.Info("Role binding deleted", "tenantID", tenantID, "bindingID", bindingID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"bindingId": bindingID,
+			"deletedAt": time.Now().Format(time.RFC3339),
+		},
 	})
 }
