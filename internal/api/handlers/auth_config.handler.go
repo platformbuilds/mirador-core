@@ -28,33 +28,33 @@ func NewAuthConfigHandler(rbacRepo rbac.RBACRepository, logger logger.Logger) *A
 
 // CreateAuthConfigRequest represents the request payload for creating AuthConfig
 type CreateAuthConfigRequest struct {
-	TenantID              string                      `json:"tenantId" binding:"required"`
-	DefaultBackend        string                      `json:"defaultBackend"`
-	EnabledBackends       []string                    `json:"enabledBackends"`
-	BackendConfigs        models.AuthBackendConfigs  `json:"backendConfigs"`
-	PasswordPolicy        models.PasswordPolicy      `json:"passwordPolicy"`
-	Require2FA            bool                        `json:"require2fa"`
-	TOTPIssuer            string                      `json:"totpIssuer"`
-	SessionTimeoutMinutes int                         `json:"sessionTimeoutMinutes"`
-	MaxConcurrentSessions int                         `json:"maxConcurrentSessions"`
-	AllowRememberMe       bool                        `json:"allowRememberMe"`
-	RememberMeDays        int                         `json:"rememberMeDays"`
-	Metadata              map[string]string           `json:"metadata"`
+	TenantID              string                    `json:"tenantId" binding:"required"`
+	DefaultBackend        string                    `json:"defaultBackend"`
+	EnabledBackends       []string                  `json:"enabledBackends"`
+	BackendConfigs        models.AuthBackendConfigs `json:"backendConfigs"`
+	PasswordPolicy        models.PasswordPolicy     `json:"passwordPolicy"`
+	Require2FA            bool                      `json:"require2fa"`
+	TOTPIssuer            string                    `json:"totpIssuer"`
+	SessionTimeoutMinutes int                       `json:"sessionTimeoutMinutes"`
+	MaxConcurrentSessions int                       `json:"maxConcurrentSessions"`
+	AllowRememberMe       bool                      `json:"allowRememberMe"`
+	RememberMeDays        int                       `json:"rememberMeDays"`
+	Metadata              map[string]string         `json:"metadata"`
 }
 
 // UpdateAuthConfigRequest represents the request payload for updating AuthConfig
 type UpdateAuthConfigRequest struct {
-	DefaultBackend        *string                     `json:"defaultBackend,omitempty"`
-	EnabledBackends       []string                    `json:"enabledBackends,omitempty"`
+	DefaultBackend        *string                    `json:"defaultBackend,omitempty"`
+	EnabledBackends       []string                   `json:"enabledBackends,omitempty"`
 	BackendConfigs        *models.AuthBackendConfigs `json:"backendConfigs,omitempty"`
 	PasswordPolicy        *models.PasswordPolicy     `json:"passwordPolicy,omitempty"`
-	Require2FA            *bool                       `json:"require2fa,omitempty"`
-	TOTPIssuer            *string                     `json:"totpIssuer,omitempty"`
-	SessionTimeoutMinutes *int                        `json:"sessionTimeoutMinutes,omitempty"`
-	MaxConcurrentSessions *int                        `json:"maxConcurrentSessions,omitempty"`
-	AllowRememberMe       *bool                       `json:"allowRememberMe,omitempty"`
-	RememberMeDays        *int                        `json:"rememberMeDays,omitempty"`
-	Metadata              map[string]string           `json:"metadata,omitempty"`
+	Require2FA            *bool                      `json:"require2fa,omitempty"`
+	TOTPIssuer            *string                    `json:"totpIssuer,omitempty"`
+	SessionTimeoutMinutes *int                       `json:"sessionTimeoutMinutes,omitempty"`
+	MaxConcurrentSessions *int                       `json:"maxConcurrentSessions,omitempty"`
+	AllowRememberMe       *bool                      `json:"allowRememberMe,omitempty"`
+	RememberMeDays        *int                       `json:"rememberMeDays,omitempty"`
+	Metadata              map[string]string          `json:"metadata,omitempty"`
 }
 
 // CreateAuthConfig handles POST /api/v1/auth/config
