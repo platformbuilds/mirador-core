@@ -7,7 +7,7 @@ run:
 
 output:
   formats:
-    - format: colored-line-number
+    colored-line-number: true
   print-issued-lines: true
   print-linter-name: true
 
