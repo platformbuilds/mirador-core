@@ -98,11 +98,11 @@ type LoadTestRunner struct {
 }
 
 // NewLoadTestRunner creates a new load test runner
-func NewLoadTestRunner(config LoadTestConfig, executor QueryExecutor, logger logger.Logger) *LoadTestRunner {
+func NewLoadTestRunner(config *LoadTestConfig, executor QueryExecutor, logger logger.Logger) *LoadTestRunner {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &LoadTestRunner{
-		config:         config,
+		config:         *config,
 		executor:       executor,
 		logger:         logger,
 		ctx:            ctx,
@@ -147,7 +147,7 @@ func (r *LoadTestRunner) Run() (*LoadTestResult, error) {
 }
 
 // worker simulates a single user executing queries
-func (r *LoadTestRunner) worker(workerID int, queriesPerSecond int) {
+func (r *LoadTestRunner) worker(workerID, queriesPerSecond int) {
 	defer r.wg.Done()
 
 	ticker := time.NewTicker(time.Second / time.Duration(queriesPerSecond))
@@ -585,7 +585,7 @@ func runLoadTest() {
 	}
 
 	// Run load test
-	runner := NewLoadTestRunner(config, executor, log)
+	runner := NewLoadTestRunner(&config, executor, log)
 	result, err := runner.Run()
 	if err != nil {
 		log.Error("Load test failed", "error", err)

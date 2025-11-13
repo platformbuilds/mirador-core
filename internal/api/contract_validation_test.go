@@ -23,6 +23,10 @@ import (
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
+const (
+	anonymousUserID = "anonymous"
+)
+
 // mockRBACRepositoryForContractValidation implements RBACRepository for testing
 type mockRBACRepositoryForContractValidation struct{}
 
@@ -55,7 +59,7 @@ func (m *mockRBACRepositoryForContractValidation) AssignUserRoles(ctx context.Co
 	return nil
 }
 func (m *mockRBACRepositoryForContractValidation) GetUserRoles(ctx context.Context, tenantID, userID string) ([]string, error) {
-	if tenantID == "default" && userID == "anonymous" {
+	if tenantID == "default" && userID == anonymousUserID {
 		return []string{"tenant_guest"}, nil
 	}
 	return nil, nil
@@ -72,14 +76,14 @@ func (m *mockRBACRepositoryForContractValidation) CreatePermission(ctx context.C
 func (m *mockRBACRepositoryForContractValidation) GetPermission(ctx context.Context, tenantID, permissionID string) (*models.Permission, error) {
 	// For simplicity, return a permission object that matches the permissionID
 	return &models.Permission{
-		ID:          permissionID,
-		TenantID:    tenantID,
-		Resource:    strings.Split(permissionID, ".")[0], // e.g., "kpi" from "kpi.read"
-		Action:      strings.Split(permissionID, ".")[1], // e.g., "read" from "kpi.read"
-		Scope:       "tenant",
-		Conditions:  models.PermissionConditions{},
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		ID:         permissionID,
+		TenantID:   tenantID,
+		Resource:   strings.Split(permissionID, ".")[0], // e.g., "kpi" from "kpi.read"
+		Action:     strings.Split(permissionID, ".")[1], // e.g., "read" from "kpi.read"
+		Scope:      "tenant",
+		Conditions: models.PermissionConditions{},
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}, nil
 }
 func (m *mockRBACRepositoryForContractValidation) ListPermissions(ctx context.Context, tenantID string) ([]*models.Permission, error) {
@@ -152,13 +156,13 @@ func (m *mockRBACRepositoryForContractValidation) CreateUser(ctx context.Context
 	return nil
 }
 func (m *mockRBACRepositoryForContractValidation) GetUser(ctx context.Context, userID string) (*models.User, error) {
-	if userID == "anonymous" {
+	if userID == anonymousUserID {
 		return &models.User{
-			ID:       "anonymous",
-			Email:    "anonymous@example.com",
+			ID:         anonymousUserID,
+			Email:      "anonymous@example.com",
 			GlobalRole: "tenant_user", // Regular user, not admin
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
 		}, nil
 	}
 	return nil, nil
@@ -176,10 +180,10 @@ func (m *mockRBACRepositoryForContractValidation) CreateTenantUser(ctx context.C
 	return nil
 }
 func (m *mockRBACRepositoryForContractValidation) GetTenantUser(ctx context.Context, tenantID, userID string) (*models.TenantUser, error) {
-	if tenantID == "default" && userID == "anonymous" {
+	if tenantID == "default" && userID == anonymousUserID {
 		return &models.TenantUser{
 			TenantID:   "default",
-			UserID:     "anonymous",
+			UserID:     anonymousUserID,
 			TenantRole: "tenant_guest", // Give basic read permissions
 			Status:     "active",
 			CreatedAt:  time.Now(),

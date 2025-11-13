@@ -78,7 +78,7 @@ func (m *MockTransport) GraphQL(ctx context.Context, query string, variables map
 }
 
 // handleGetQuery handles basic Get { Class(...) { fields } } queries
-func (m *MockTransport) handleGetQuery(query string, variables map[string]any, out any) error {
+func (m *MockTransport) handleGetQuery(query string, _variables map[string]any, out any) error {
 	// Very basic parsing - extract class name and fields
 	// This is a simplified implementation for testing
 
@@ -213,11 +213,11 @@ func (m *MockTransport) GetObjects(class string) map[string]map[string]any {
 
 	if objects, exists := m.objects[class]; exists {
 		// Return a copy to avoid external modifications
-		copy := make(map[string]map[string]any)
+		copiedObjects := make(map[string]map[string]any)
 		for id, props := range objects {
-			copy[id] = props
+			copiedObjects[id] = props
 		}
-		return copy
+		return copiedObjects
 	}
 	return make(map[string]map[string]any)
 }

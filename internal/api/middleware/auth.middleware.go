@@ -236,16 +236,6 @@ func isPublicEndpoint(path string) bool {
 	return false
 }
 
-// randomString generates a random string of specified length
-func randomString(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
-	}
-	return string(b)
-}
-
 // RequireAuth is a helper middleware that ensures authentication
 func RequireAuth(authConfig config.AuthConfig, cache cache.ValkeyCluster) gin.HandlerFunc {
 	return func(c *gin.Context) {

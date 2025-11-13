@@ -93,6 +93,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+const (
+	// HTTP status codes
+	httpClientErrorThreshold = 400
+)
+
 var (
 	// HTTP request metrics
 	httpRequestsTotal = prometheus.NewCounterVec(
@@ -502,7 +507,7 @@ func HTTPMetricsMiddleware() gin.HandlerFunc {
 		httpRequestDuration.WithLabelValues(method, endpoint, tenantID).Observe(duration)
 
 		// Record errors
-		if c.Writer.Status() >= 400 {
+		if c.Writer.Status() >= httpClientErrorThreshold {
 			errorsTotal.WithLabelValues("http", endpoint).Inc()
 		}
 	}
