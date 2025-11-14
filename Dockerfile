@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.6
 
 # Builder stage
-FROM golang:1.24-bookworm AS builder
+FROM golang:1.24.9-bookworm AS builder
 
 # Install build dependencies
 RUN apt-get update \
