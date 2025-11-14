@@ -1,6 +1,6 @@
 module github.com/platformbuilds/mirador-core
 
-go 1.24.0
+go 1.24.9
 
 require (
 	github.com/blevesearch/bleve/v2 v2.5.4
