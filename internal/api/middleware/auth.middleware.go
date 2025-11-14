@@ -103,11 +103,6 @@ func extractToken(c *gin.Context) string {
 		return cookie
 	}
 
-	// Try query parameter (for WebSocket upgrades)
-	if queryToken := c.Query("token"); queryToken != "" {
-		return queryToken
-	}
-
 	return ""
 }
 

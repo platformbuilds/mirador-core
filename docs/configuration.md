@@ -122,10 +122,12 @@ auth:
       email: "mail"
       displayName: "displayName"
       memberOf: "memberOf"
-    tls:
-      skipVerify: false
-      caCert: "/path/to/ca-cert.pem"
+    start_tls: false
+    tls_skip_verify: false
+    tls_ca_bundle_path: "/etc/mirador/ldap/ca-bundle.pem"
 ```
+
+`tlsCaBundlePath` accepts a PEM-encoded bundle that Mirador watches for changes. In Kubernetes mount the bundle via a ConfigMap (projected as a file) and updates will be applied automatically without restarting the service. In non-Kubernetes deployments update the file in place; the watcher validates the new bundle and swaps it in once parsing succeeds. If parsing fails the previous trust store remains active and the error is logged.
 
 ### OAuth 2.0 Configuration
 

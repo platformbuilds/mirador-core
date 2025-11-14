@@ -82,6 +82,9 @@ auth:
     base_dn: "dc=company,dc=com"
     username: "cn=mirador,ou=services,dc=company,dc=com"
     password: "" # Set via environment variable
+    start_tls: false
+    tls_skip_verify: false
+    tls_ca_bundle_path: "" # Optional path to PEM bundle; supports hot reload
     enabled: true
     
   oauth:

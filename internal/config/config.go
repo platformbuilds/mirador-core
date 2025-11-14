@@ -119,6 +119,7 @@ type LDAPConfig struct {
 	Attributes        LDAPAttributes `mapstructure:"attributes" yaml:"attributes"`
 	Sync              LDAPSyncConfig `mapstructure:"sync" yaml:"sync"`
 	StartTLS          bool           `mapstructure:"start_tls" yaml:"start_tls"`
+	TLSCABundlePath   string         `mapstructure:"tls_ca_bundle_path" yaml:"tls_ca_bundle_path"`
 	TLSSkipVerify     bool           `mapstructure:"tls_skip_verify" yaml:"tls_skip_verify"`
 	Enabled           bool           `mapstructure:"enabled" yaml:"enabled"`
 }

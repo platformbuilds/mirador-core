@@ -15,8 +15,8 @@ func TestExtractToken_Sources(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Request = httptest.NewRequest(http.MethodGet, "/x?token=qt", http.NoBody)
-	if got := extractToken(c); got != "qt" {
-		t.Fatalf("query token got %q", got)
+	if got := extractToken(c); got != "" {
+		t.Fatalf("query token should be rejected, got %q", got)
 	}
 
 	c.Request = httptest.NewRequest(http.MethodGet, "/x", http.NoBody)
