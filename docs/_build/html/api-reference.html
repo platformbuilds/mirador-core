@@ -48,10 +48,12 @@
 <li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="unified-query-architecture.html">Unified Query Engine Architecture</a></li>
 <li class="toctree-l1"><a class="reference internal" href="uql-language-guide.html">Unified Query Language (UQL) Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="unified-query-operations.html">Unified Query Platform Operations Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="correlation-engine.html">Mirador Core v7.0.0 - Log-Metrics-Traces Correlation Engine</a></li>
 <li class="toctree-l1"><a class="reference internal" href="correlation-queries-guide.html">Creating Correlation Queries in Mirador Core</a></li>
 <li class="toctree-l1"><a class="reference internal" href="monitoring-observability.html">Mirador Core v7.0.0 - Monitoring and Observability Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="testing.html">Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-guide.html">Migration Guide: Transitioning to Unified Query API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="readthedocs-integration.html">ReadTheDocs Integration</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#authentication">Authentication</a><ul>
@@ -61,6 +63,12 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#unified-query-api">Unified Query API</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#execute-unified-query">Execute Unified Query</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#uql-unified-query-language-api">UQL (Unified Query Language) API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#execute-uql-query">Execute UQL Query</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#validate-uql-syntax">Validate UQL Syntax</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#explain-uql-query-plan">Explain UQL Query Plan</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#metrics-apis">Metrics APIs</a><ul>
@@ -84,13 +92,28 @@
 <li class="toctree-l3"><a class="reference internal" href="#predictive-analysis">Predictive Analysis</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#schema-management-apis">Schema Management APIs</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#kpi-management-apis">KPI Management APIs</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#create-metric-definition">Create Metric Definition</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#bulk-upload-metrics">Bulk Upload Metrics</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#configuration-apis">Configuration APIs</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#update-runtime-features">Update Runtime Features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#user-preferences-apis">User Preferences APIs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#get-user-preferences">Get User Preferences</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#create-user-preferences">Create User Preferences</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#update-user-preferences">Update User Preferences</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#delete-user-preferences">Delete User Preferences</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dashboards-apis">Dashboards APIs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#get-dashboards">Get Dashboards</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#create-dashboard">Create Dashboard</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#get-dashboard-by-id">Get Dashboard by ID</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#update-dashboard">Update Dashboard</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#delete-dashboard">Delete Dashboard</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#health-monitoring">Health &amp; Monitoring</a><ul>
@@ -196,6 +219,141 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">traces</span></code> - Trace queries</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">correlation</span></code> - Cross-engine correlation queries</p></li>
 </ul>
+</section>
+</section>
+<section id="uql-unified-query-language-api">
+<h2>UQL (Unified Query Language) API<a class="headerlink" href="#uql-unified-query-language-api" title="Link to this heading"></a></h2>
+<p>UQL provides a unified query language for executing complex queries across multiple observability engines with advanced correlation, aggregation, and transformation capabilities.</p>
+<section id="execute-uql-query">
+<h3>Execute UQL Query<a class="headerlink" href="#execute-uql-query" title="Link to this heading"></a></h3>
+<p>Execute a UQL query with full parsing, optimization, and translation capabilities.</p>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/uql/query</span>
+</pre></div>
+</div>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uql-query-1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SELECT service, count(*) FROM logs:error WHERE level=&#39;error&#39; GROUP BY service&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;start_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-01T00:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;end_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-01T01:00:00Z&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;timeout&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;30s&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;cache_options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;ttl&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5m&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>UQL Examples:</strong></p>
+<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="c1">-- Basic correlations</span>
+<span class="n">logs</span><span class="p">:</span><span class="n">error</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">metrics</span><span class="p">:</span><span class="n">high_latency</span>
+<span class="n">logs</span><span class="p">:</span><span class="k">exception</span><span class="w"> </span><span class="n">WITHIN</span><span class="w"> </span><span class="mi">5</span><span class="n">m</span><span class="w"> </span><span class="k">OF</span><span class="w"> </span><span class="n">metrics</span><span class="p">:</span><span class="n">cpu_usage</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">80</span>
+
+<span class="c1">-- Advanced correlations</span>
+<span class="n">logs</span><span class="p">:</span><span class="n">error</span><span class="w"> </span><span class="n">NEAR</span><span class="w"> </span><span class="mi">1</span><span class="n">m</span><span class="w"> </span><span class="k">OF</span><span class="w"> </span><span class="n">traces</span><span class="p">:</span><span class="n">status</span><span class="p">:</span><span class="n">error</span>
+<span class="n">logs</span><span class="p">:</span><span class="n">timeout</span><span class="w"> </span><span class="k">BEFORE</span><span class="w"> </span><span class="mi">30</span><span class="n">s</span><span class="w"> </span><span class="k">OF</span><span class="w"> </span><span class="n">metrics</span><span class="p">:</span><span class="n">response_time</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">5000</span>
+
+<span class="c1">-- SELECT queries</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">service</span><span class="p">,</span><span class="w"> </span><span class="k">level</span><span class="p">,</span><span class="w"> </span><span class="k">count</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">logs</span><span class="p">:</span><span class="n">error</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="k">level</span><span class="o">=</span><span class="s1">&#39;error&#39;</span><span class="w"> </span><span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">service</span><span class="p">,</span><span class="w"> </span><span class="k">level</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">service</span><span class="p">,</span><span class="w"> </span><span class="k">avg</span><span class="p">(</span><span class="n">response_time</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">metrics</span><span class="p">:</span><span class="n">http_requests</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">status</span><span class="o">=</span><span class="s1">&#39;200&#39;</span><span class="w"> </span><span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">service</span>
+
+<span class="c1">-- Aggregation queries</span>
+<span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">logs</span><span class="p">:</span><span class="n">error</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="k">level</span><span class="o">=</span><span class="s1">&#39;error&#39;</span>
+<span class="k">AVG</span><span class="p">(</span><span class="n">response_time</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">metrics</span><span class="p">:</span><span class="n">http_requests</span><span class="w"> </span><span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">service</span>
+<span class="n">PERCENTILE_95</span><span class="p">(</span><span class="n">response_time</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">metrics</span><span class="p">:</span><span class="n">http_requests</span>
+
+<span class="c1">-- Join queries</span>
+<span class="n">logs</span><span class="p">:</span><span class="n">error</span><span class="w"> </span><span class="k">JOIN</span><span class="w"> </span><span class="n">traces</span><span class="p">:</span><span class="n">service</span><span class="p">:</span><span class="n">error</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">service</span><span class="w"> </span><span class="n">WITHIN</span><span class="w"> </span><span class="mi">5</span><span class="n">m</span>
+<span class="n">metrics</span><span class="p">:</span><span class="n">http_requests</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">1000</span><span class="w"> </span><span class="k">JOIN</span><span class="w"> </span><span class="n">logs</span><span class="p">:</span><span class="n">error</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">service</span><span class="w"> </span><span class="n">NEAR</span><span class="w"> </span><span class="mi">1</span><span class="n">m</span>
+</pre></div>
+</div>
+<p><strong>Response:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;result&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;query_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uql-query-1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;correlation&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;success&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;data&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;engine_results&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="err">...</span><span class="p">},</span>
+<span class="w">      </span><span class="nt">&quot;total_records&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">150</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;data_sources&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;logs&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;metrics&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;warnings&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;execution_time_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">245</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;cached&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="validate-uql-syntax">
+<h3>Validate UQL Syntax<a class="headerlink" href="#validate-uql-syntax" title="Link to this heading"></a></h3>
+<p>Validate UQL query syntax without execution.</p>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/uql/validate</span>
+</pre></div>
+</div>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SELECT service, count(*) FROM logs:error WHERE level=&#39;error&#39; GROUP BY service&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Response:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;valid&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SELECT service, count(*) FROM logs:error WHERE level=&#39;error&#39; GROUP BY service&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="explain-uql-query-plan">
+<h3>Explain UQL Query Plan<a class="headerlink" href="#explain-uql-query-plan" title="Link to this heading"></a></h3>
+<p>Get the execution plan for a UQL query.</p>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/uql/explain</span>
+</pre></div>
+</div>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uql-explain-1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;logs:error WITHIN 5m OF metrics:cpu_usage &gt; 80&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>Response:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;logs:error WITHIN 5m OF metrics:cpu_usage &gt; 80&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;plan&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;parse&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Parse UQL query into AST&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;engine&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uql_parser&quot;</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;optimize&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Apply query optimizations&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;engine&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uql_optimizer&quot;</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;translate&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Translate to engine-specific queries&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;engine&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uql_translator&quot;</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;execute&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Execute translated queries&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;engine&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unified_engine&quot;</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
 </section>
 </section>
 <section id="metrics-apis">
@@ -337,8 +495,8 @@
 </div>
 </section>
 </section>
-<section id="schema-management-apis">
-<h2>Schema Management APIs<a class="headerlink" href="#schema-management-apis" title="Link to this heading"></a></h2>
+<section id="kpi-management-apis">
+<h2>KPI Management APIs<a class="headerlink" href="#kpi-management-apis" title="Link to this heading"></a></h2>
 <section id="create-metric-definition">
 <h3>Create Metric Definition<a class="headerlink" href="#create-metric-definition" title="Link to this heading"></a></h3>
 <div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/schema/metrics</span>
@@ -381,6 +539,152 @@
 <span class="p">}</span>
 </pre></div>
 </div>
+</section>
+</section>
+<section id="user-preferences-apis">
+<h2>User Preferences APIs<a class="headerlink" href="#user-preferences-apis" title="Link to this heading"></a></h2>
+<section id="get-user-preferences">
+<h3>Get User Preferences<a class="headerlink" href="#get-user-preferences" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">GET /api/v1/config/user-preferences</span>
+</pre></div>
+</div>
+<p>Retrieve user preferences for the current user or specified user.</p>
+<p><strong>Query Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">userId</span></code> (optional): User ID to get preferences for (defaults to current user)</p></li>
+</ul>
+</section>
+<section id="create-user-preferences">
+<h3>Create User Preferences<a class="headerlink" href="#create-user-preferences" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/config/user-preferences</span>
+</pre></div>
+</div>
+<p>Create user preferences for a user.</p>
+<p><strong>Query Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">userId</span></code> (optional): User ID to create preferences for (defaults to current user)</p></li>
+</ul>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;preferences&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;theme&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dark&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;timezone&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;UTC&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;notifications&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="update-user-preferences">
+<h3>Update User Preferences<a class="headerlink" href="#update-user-preferences" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">PUT /api/v1/config/user-preferences</span>
+</pre></div>
+</div>
+<p>Update user preferences for the current user or specified user.</p>
+<p><strong>Query Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">userId</span></code> (optional): User ID to update preferences for (defaults to current user)</p></li>
+</ul>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;preferences&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;theme&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;light&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;timezone&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;America/New_York&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;notifications&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="delete-user-preferences">
+<h3>Delete User Preferences<a class="headerlink" href="#delete-user-preferences" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">DELETE /api/v1/config/user-preferences</span>
+</pre></div>
+</div>
+<p>Delete user preferences for the current user or specified user.</p>
+<p><strong>Query Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">userId</span></code> (optional): User ID to delete preferences for (defaults to current user)</p></li>
+</ul>
+</section>
+</section>
+<section id="dashboards-apis">
+<h2>Dashboards APIs<a class="headerlink" href="#dashboards-apis" title="Link to this heading"></a></h2>
+<section id="get-dashboards">
+<h3>Get Dashboards<a class="headerlink" href="#get-dashboards" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">GET /api/v1/config/dashboards</span>
+</pre></div>
+</div>
+<p>Retrieve dashboards for the current user or all dashboards if admin.</p>
+<p><strong>Query Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">userId</span></code> (optional): User ID to get dashboards for (defaults to current user)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">shared</span></code> (optional): Include shared dashboards (default false)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">limit</span></code> (optional): Maximum number of dashboards to return (default 50)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">offset</span></code> (optional): Number of dashboards to skip (default 0)</p></li>
+</ul>
+</section>
+<section id="create-dashboard">
+<h3>Create Dashboard<a class="headerlink" href="#create-dashboard" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">POST /api/v1/config/dashboards</span>
+</pre></div>
+</div>
+<p>Create a new dashboard for the current user.</p>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;API Performance Dashboard&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Monitor API performance metrics&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;shared&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;layout&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;panels&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="get-dashboard-by-id">
+<h3>Get Dashboard by ID<a class="headerlink" href="#get-dashboard-by-id" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">GET /api/v1/config/dashboards/{dashboardId}</span>
+</pre></div>
+</div>
+<p>Retrieve a specific dashboard by its ID.</p>
+<p><strong>Path Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">dashboardId</span></code>: Dashboard unique identifier</p></li>
+</ul>
+</section>
+<section id="update-dashboard">
+<h3>Update Dashboard<a class="headerlink" href="#update-dashboard" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">PUT /api/v1/config/dashboards/{dashboardId}</span>
+</pre></div>
+</div>
+<p>Update an existing dashboard.</p>
+<p><strong>Path Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">dashboardId</span></code>: Dashboard unique identifier</p></li>
+</ul>
+<p><strong>Request Body:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Updated API Dashboard&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Updated dashboard for monitoring API endpoints&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;shared&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;layout&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;panels&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="delete-dashboard">
+<h3>Delete Dashboard<a class="headerlink" href="#delete-dashboard" title="Link to this heading"></a></h3>
+<div class="highlight-http notranslate"><div class="highlight"><pre><span></span><span class="err">DELETE /api/v1/config/dashboards/{dashboardId}</span>
+</pre></div>
+</div>
+<p>Delete a dashboard by its ID.</p>
+<p><strong>Path Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">dashboardId</span></code>: Dashboard unique identifier</p></li>
+</ul>
 </section>
 </section>
 <section id="health-monitoring">
@@ -450,6 +754,11 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">/api/v1/ws/alerts</span></code> - Real-time alerts stream</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">/api/v1/ws/predictions</span></code> - Real-time predictions stream</p></li>
 </ul>
+<p>All WebSocket connections must send credentials in headers. Include either an <code class="docutils literal notranslate"><span class="pre">Authorization:</span> <span class="pre">Bearer</span> <span class="pre">&lt;token&gt;</span></code> header or an <code class="docutils literal notranslate"><span class="pre">X-Session-Token</span></code> header during the initial handshake—tokens in the query string are ignored.</p>
+<p>Example using <code class="docutils literal notranslate"><span class="pre">wscat</span></code> with a bearer token:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wscat<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer &lt;token&gt;&quot;</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;ws://localhost:8010/api/v1/ws/metrics&quot;</span>
+</pre></div>
+</div>
 </section>
 <section id="complete-openapi-specification">
 <h2>Complete OpenAPI Specification<a class="headerlink" href="#complete-openapi-specification" title="Link to this heading"></a></h2>

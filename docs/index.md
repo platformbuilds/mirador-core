@@ -7,6 +7,7 @@
 getting-started
 unified-query-architecture
 uql-language-guide
+unified-query-operations
 correlation-engine
 correlation-queries-guide
 monitoring-observability

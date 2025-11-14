@@ -109,15 +109,38 @@ mirador_cache_memory_bytes / mirador_cache_memory_limit_bytes
 rate(mirador_cache_evictions_total[5m])
 ```
 
-**Correlation Engine:**
-```promql
-# Correlation query performance
-rate(mirador_correlation_query_duration_seconds_sum[5m]) / 
-rate(mirador_correlation_query_duration_seconds_count[5m])
+### Unified Query Language (UQL) Metrics
 
-# Correlation confidence scores
+Monitor UQL-specific performance metrics:
+
+**Parsing Performance:**
+```promql
+# UQL parsing latency
 histogram_quantile(0.95, 
-  rate(mirador_correlation_confidence_bucket[5m])
+  rate(mirador_uql_parsing_duration_seconds_bucket[5m])
+)
+
+# Parsing success rate
+rate(mirador_uql_parsing_success_total[5m]) / 
+rate(mirador_uql_parsing_total[5m])
+```
+
+**Optimization Performance:**
+```promql
+# Query optimization latency
+histogram_quantile(0.95, 
+  rate(mirador_uql_optimization_duration_seconds_bucket[5m])
+)
+
+# Optimization passes applied
+rate(mirador_uql_optimization_passes_total[5m])
+```
+
+**Translation Performance:**
+```promql
+# Query translation latency by target engine
+histogram_quantile(0.95, 
+  rate(mirador_uql_translation_duration_seconds_bucket{engine="promql"}[5m])
 )
 ```
 
@@ -661,6 +684,60 @@ curl -X POST https://mirador-core/api/v1/unified/query \
 3. Ensure all referenced engines are healthy
 4. Optimize backend queries
 5. Check label matching configuration
+
+#### Issue 6: UQL Parsing Errors
+
+**Symptoms:**
+- UQL queries fail with parsing errors
+- Syntax validation failures
+- Unexpected query behavior
+
+**Diagnosis:**
+```bash
+# Check UQL parsing metrics
+curl https://mirador-core/api/v1/metrics | grep uql_parsing
+
+# Check parsing error logs
+kubectl logs -l app=mirador-core -n mirador-system | grep "UQL parsing failed"
+
+# Validate query syntax
+curl -X POST https://mirador-core/api/v1/uql/validate \
+  -d '{"query": "SELECT * FROM logs WHERE invalid syntax"}'
+```
+
+**Resolution:**
+1. Check UQL query syntax against language guide
+2. Validate field names and data sources
+3. Ensure proper quoting and escaping
+4. Use UQL validation endpoint for debugging
+5. Check for unsupported operators or functions
+
+#### Issue 7: UQL Optimization Failures
+
+**Symptoms:**
+- UQL queries execute slowly despite optimization
+- Optimization passes not applied
+- Query plans not generated
+
+**Diagnosis:**
+```bash
+# Check optimization metrics
+curl https://mirador-core/api/v1/metrics | grep uql_optimization
+
+# Check optimization logs
+kubectl logs -l app=mirador-core -n mirador-system | grep "optimization"
+
+# Generate query plan
+curl -X POST https://mirador-core/api/v1/uql/explain \
+  -d '{"query": "SELECT * FROM logs WHERE service = '\''api'\''"}'
+```
+
+**Resolution:**
+1. Enable optimization features in configuration
+2. Check data source statistics for cost-based optimization
+3. Review query structure for optimization opportunities
+4. Update optimizer configuration if needed
+5. Consider manual query rewriting for complex cases
 
 ### Debug Mode
 

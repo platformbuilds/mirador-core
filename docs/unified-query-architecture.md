@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Unified Query Engine is the core component of MIRADOR-CORE v7.0.0 that provides intelligent routing and execution of queries across multiple observability engines. It abstracts the complexity of dealing with different data sources (metrics, logs, traces) and provides a single, consistent API for all observability queries.
+The Unified Query Engine is the core component of MIRADOR-CORE that provides intelligent routing, parallel execution, and correlation of queries across multiple observability engines (VictoriaMetrics, VictoriaLogs, VictoriaTraces). It abstracts the complexity of dealing with different data sources and provides a single, consistent API for all observability queries, including advanced UQL (Unified Query Language) support.
 
 ## Architecture Components
 
@@ -18,6 +18,9 @@ type UnifiedQueryEngine interface {
     // ExecuteCorrelationQuery executes a correlation query across multiple engines
     ExecuteCorrelationQuery(ctx context.Context, query *models.UnifiedQuery) (*models.UnifiedResult, error)
 
+    // ExecuteUQLQuery executes a UQL query by parsing, optimizing, translating, and executing it
+    ExecuteUQLQuery(ctx context.Context, query *models.UnifiedQuery) (*models.UnifiedResult, error)
+
     // GetQueryMetadata returns metadata about supported query types and capabilities
     GetQueryMetadata(ctx context.Context) (*models.QueryMetadata, error)
 
@@ -31,104 +34,242 @@ type UnifiedQueryEngine interface {
 
 ### 2. Query Router
 
-The `QueryRouter` analyzes query patterns and routes them to the optimal engine based on query characteristics:
+The `QueryRouter` analyzes query patterns and routes them to the optimal engine based on query characteristics, supporting intelligent routing patterns and parallel execution.
 
 #### Routing Logic
 
-The router uses pattern matching to determine the best engine for each query:
+The router uses sophisticated pattern matching and metadata analysis:
 
-- **Metrics Queries**: Detected by patterns like `rate(`, `increase(`, `histogram`, `counter`, `gauge`, etc.
-- **Traces Queries**: Detected by patterns like `service:`, `operation:`, `span`, `trace`, etc.
-- **Logs Queries**: Default routing for general queries and search patterns
+- **Metrics Queries**: Detected by MetricsQL patterns (`rate(`, `increase(`, `histogram_quantile`, etc.)
+- **Traces Queries**: Detected by Jaeger/OTLP patterns (`service:`, `operation:`, `span.`, etc.)
+- **Logs Queries**: Detected by LogsQL patterns and general search terms
+- **Correlation Queries**: Multi-engine queries with temporal operators (`WITHIN`, `NEAR`, `BEFORE`, `AFTER`)
+
+#### Advanced Routing Features
+
+```go
+type QueryRouter struct {
+    // Pattern-based routing with regex matching
+    patterns map[QueryType][]*regexp.Regexp
+
+    // Metadata-driven routing using engine capabilities
+    metadataRouter *MetadataRouter
+
+    // Parallel execution coordinator
+    parallelExecutor *ParallelExecutor
+
+    // Health-aware routing
+    healthChecker *EngineHealthChecker
+}
+```
 
 #### Example Routing Decisions
 
 ```go
-// Metrics query - routes to VictoriaMetrics
-"rate(http_requests_total[5m])" → QueryTypeMetrics
+// Metrics query - routes to VictoriaMetrics with instant/range detection
+"rate(http_requests_total[5m])" → QueryTypeMetrics (Range)
 
-// Traces query - routes to VictoriaTraces
-"service:auth operation:login" → QueryTypeTraces
+// Traces query - routes to VictoriaTraces with service/operation filtering
+"service:auth operation:login status:error" → QueryTypeTraces
 
-// Logs query - routes to VictoriaLogs
-"error AND status:500" → QueryTypeLogs
+// Logs query - routes to VictoriaLogs with Lucene syntax
+"level:error AND service:api" → QueryTypeLogs
+
+// Correlation query - parallel execution across engines
+"logs:error WITHIN 5m OF metrics:cpu_usage > 80" → QueryTypeCorrelation
 ```
 
-### 3. Engine Abstraction Layer
+### 3. UQL Processing Pipeline
 
-The unified query engine abstracts three main observability engines:
+The Unified Query Language (UQL) processing pipeline handles advanced query parsing, optimization, and translation with a complete compiler-like architecture.
 
-#### VictoriaMetrics Service
-- Handles metrics queries (instant, range, series)
-- Supports MetricsQL query language
-- Provides metadata about available metrics
+#### UQL Parser (`uql_parser.go`)
+- **Grammar Definition**: Comprehensive grammar supporting SELECT, correlation, aggregation, JOIN, and temporal operators
+- **AST Generation**: Parses queries into Abstract Syntax Trees with full type checking
+- **Query Types**: Supports declarative queries, correlations, aggregations, and federated searches
 
-#### VictoriaLogs Service
-- Handles logs queries and streaming
-- Supports LogsQL query language
-- Provides field extraction and filtering
+#### UQL Optimizer (`uql_optimizer.go`)
+- **Multi-Pass Optimization**: Configurable optimization passes including:
+  - `PredicatePushdown`: Push filters down to individual engines
+  - `CostBasedPlanning`: Estimate execution costs and choose optimal plans
+  - `QueryRewriting`: Rewrite queries for better performance
+  - `Parallelization`: Identify opportunities for parallel execution
+- **Statistics Tracking**: Maintains optimization metrics and performance data
+- **Query Plan Generation**: Creates detailed execution plans with cost estimation
 
-#### VictoriaTraces Service
-- Handles distributed tracing queries
-- Supports trace correlation and flame graphs
-- Provides service and operation metadata
+#### UQL Translator Registry (`uql_translator.go`)
+- **Multi-Engine Translation**: Translates UQL to engine-specific languages:
+  - UQL → PromQL (VictoriaMetrics)
+  - UQL → LogsQL (VictoriaLogs)
+  - UQL → Trace filters (VictoriaTraces)
+- **Plugin Architecture**: Extensible translator system with engine-specific plugins
+- **Parameter Binding**: Handles query parameters, time windows, and aggregation functions
+
+#### Processing Flow
+
+```
+UQL Query String
+       ↓
+   UQL Parser
+   (Lexical Analysis → AST)
+       ↓
+  UQL Optimizer
+  (Predicate Pushdown, Cost Planning, Parallelization)
+       ↓
+UQL Translator Registry
+  (Multi-Engine Translation)
+       ↓
+Engine-Specific Queries
+  (PromQL, LogsQL, Trace Filters)
+       ↓
+   Parallel Execution
+   (QueryRouter coordinates execution)
+       ↓
+   Result Correlation
+   (UnifiedResult aggregation)
+```
+
+### 4. Correlation Engine
+
+The `CorrelationEngine` provides advanced cross-engine correlation capabilities:
+
+```go
+type CorrelationEngine struct {
+    // Service graph analysis
+    serviceGraph *ServiceGraphAnalyzer
+
+    // Temporal correlation with time windows
+    temporalCorrelator *TemporalCorrelator
+
+    // Causal relationship detection
+    causalAnalyzer *CausalAnalyzer
+
+    // Pattern-based correlation rules
+    patternMatcher *PatternMatcher
+}
+```
+
+#### Correlation Types
+
+- **Temporal Correlations**: Events within time windows (`WITHIN 5m OF`)
+- **Causal Correlations**: Cause-effect relationships between services
+- **Service Graph Correlations**: Dependency-based correlations
+- **Pattern-Based Correlations**: Known failure patterns and red flags
 
 ## Data Flow
 
 ### Query Execution Flow
 
 ```
-1. Query Request
+1. Query Request (HTTP API)
        ↓
-2. Query Router Analysis
+2. Authentication & RBAC
        ↓
-3. Engine Selection
+3. Query Type Detection
        ↓
-4. Cache Check
+4. UQL Processing Pipeline (if UQL)
+   ├── Parse → Validate → Optimize → Translate
        ↓
-5. Engine Execution
+5. Query Router Analysis
+   ├── Pattern Matching
+   ├── Metadata Analysis
+   └── Health Checking
        ↓
-6. Result Unification
+6. Engine Selection & Parallel Dispatch
+   ├── VictoriaMetrics (MetricsQL)
+   ├── VictoriaLogs (LogsQL)
+   └── VictoriaTraces (Jaeger API)
        ↓
-7. Cache Storage
+7. Cache Check (Valkey Cluster)
        ↓
-8. Response
+8. Parallel Execution
+   ├── executeParallelQuery()
+   ├── Result Aggregation
+   └── Timeout Handling
+       ↓
+9. Result Unification
+   ├── Format Normalization
+   ├── Metadata Enrichment
+   └── Warning Aggregation
+       ↓
+10. Cache Storage
+       ↓
+11. Response (UnifiedResult)
 ```
 
-### Detailed Flow
+### Parallel Execution Architecture
 
-1. **Query Reception**: HTTP request received at `/api/v1/unified/query`
-2. **Router Analysis**: QueryRouter analyzes query pattern and determines optimal engine
-3. **Cache Lookup**: Check Valkey cache for existing results
-4. **Engine Dispatch**: Route to appropriate engine (Metrics, Logs, or Traces)
-5. **Result Processing**: Transform engine-specific results to unified format
-6. **Caching**: Store results in cache with TTL
-7. **Response**: Return unified result to client
+The engine supports sophisticated parallel execution patterns:
+
+```go
+func (e *UnifiedQueryEngine) executeParallelQuery(ctx context.Context, queries map[QueryType]string) (*UnifiedResult, error) {
+    // Create execution context with timeout
+    execCtx, cancel := context.WithTimeout(ctx, e.config.Timeout)
+    defer cancel()
+
+    // Fan-out to multiple engines
+    results := make(chan *EngineResult, len(queries))
+    errors := make(chan error, len(queries))
+
+    for engine, query := range queries {
+        go func(engine QueryType, query string) {
+            result, err := e.executeOnEngine(execCtx, engine, query)
+            if err != nil {
+                errors <- err
+                return
+            }
+            results <- result
+        }(engine, query)
+    }
+
+    // Fan-in results with correlation
+    return e.correlateResults(execCtx, results, errors)
+}
+```
 
 ## Query Models
 
 ### UnifiedQuery
 
-The core query model that supports all engine types:
+The core query model supporting all engine types and advanced features:
 
 ```go
 type UnifiedQuery struct {
-    ID        string                 `json:"id"`
-    Type      QueryType              `json:"type"`
-    Query     string                 `json:"query"`
-    TenantID  string                 `json:"tenant_id,omitempty"`
-    StartTime *time.Time             `json:"start_time,omitempty"`
-    EndTime   *time.Time             `json:"end_time,omitempty"`
-    Timeout   string                 `json:"timeout,omitempty"`
-    Parameters map[string]interface{} `json:"parameters,omitempty"`
+    ID          string                    `json:"id"`
+    Type        QueryType                 `json:"type"`
+    Query       string                    `json:"query"`
+    TenantID    string                    `json:"tenant_id,omitempty"`
+    StartTime   *time.Time                `json:"start_time,omitempty"`
+    EndTime     *time.Time                `json:"end_time,omitempty"`
+    Timeout     string                    `json:"timeout,omitempty"`
+    Parameters  map[string]interface{}    `json:"parameters,omitempty"`
     CorrelationOptions *CorrelationOptions `json:"correlation_options,omitempty"`
-    CacheOptions *CacheOptions       `json:"cache_options,omitempty"`
+    CacheOptions *CacheOptions           `json:"cache_options,omitempty"`
+    UQLOptions  *UQLOptions              `json:"uql_options,omitempty"`
+}
+```
+
+### UQL Query Structure
+
+Advanced UQL query representation:
+
+```go
+type UQLQuery struct {
+    RawQuery    string
+    AST         *QueryAST
+    Engines     []QueryType
+    TimeWindow  *TimeWindow
+    Aggregations []Aggregation
+    Correlations []Correlation
+    Filters     []Filter
+    Joins       []Join
+    Optimizations []OptimizationPass
 }
 ```
 
 ### UnifiedResult
 
-The unified response format that normalizes results from all engines:
+The unified response format with comprehensive metadata:
 
 ```go
 type UnifiedResult struct {
@@ -140,63 +281,126 @@ type UnifiedResult struct {
     Correlations  *UnifiedCorrelationResult `json:"correlations,omitempty"`
     ExecutionTime int64                     `json:"execution_time_ms"`
     Cached        bool                      `json:"cached"`
+    Warnings      []string                  `json:"warnings,omitempty"`
+    EngineResults map[QueryType]*EngineResult `json:"engine_results,omitempty"`
 }
 ```
 
 ## Caching Strategy
 
-### Cache Architecture
+### Multi-Level Caching Architecture
 
-The unified query engine implements a comprehensive caching strategy:
+The unified query engine implements sophisticated caching:
 
-- **Query Result Cache**: Caches complete query results with configurable TTL
-- **Metadata Cache**: Caches engine metadata and capabilities
-- **Cross-Engine Invalidation**: Intelligent cache invalidation across engines
+- **Query Result Cache**: Caches complete query results with TTL
+- **Parsed Query Cache**: Caches parsed UQL ASTs
+- **Translated Query Cache**: Caches engine-specific translations
+- **Metadata Cache**: Caches engine capabilities and schemas
+- **Negative Cache**: Caches failed queries to prevent retries
 
-### Cache Configuration
+### Valkey Cluster Integration
 
-```yaml
-unified_query:
-  enabled: true
-  cache_ttl: 5m
-  max_cache_ttl: 1h
-  default_limit: 1000
+```go
+type ValkeyCache struct {
+    cluster *redis.ClusterClient
+    ttl     time.Duration
+    keyPrefix string
+}
+
+func (c *ValkeyCache) Get(ctx context.Context, key string) (interface{}, error) {
+    return c.cluster.Get(ctx, c.keyPrefix+key).Result()
+}
+
+func (c *ValkeyCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+    return c.cluster.Set(ctx, c.keyPrefix+key, value, ttl).Err()
+}
 ```
+
+### Cache Invalidation Strategy
+
+- **Time-Based**: TTL-based expiration
+- **Event-Based**: Invalidation on data updates
+- **Pattern-Based**: Wildcard invalidation for related queries
+- **Cross-Engine**: Coordinated invalidation across engines
 
 ## Health Monitoring
 
-### Engine Health Checks
+### Comprehensive Health Checks
 
-The unified query engine provides comprehensive health monitoring:
+```go
+type EngineHealthStatus struct {
+    OverallHealth string                     `json:"overall_health"`
+    EngineHealth  map[QueryType]string       `json:"engine_health"`
+    LastChecked   time.Time                  `json:"last_checked"`
+    ResponseTime  map[QueryType]time.Duration `json:"response_time"`
+    ErrorDetails  map[QueryType]string       `json:"error_details,omitempty"`
+}
+```
 
-- **Individual Engine Health**: Status of each underlying engine
-- **Overall System Health**: Aggregated health status
-- **Last Checked Timestamp**: When health was last verified
+### Health Check Implementation
 
-### Health Response
+```go
+func (e *UnifiedQueryEngine) HealthCheck(ctx context.Context) (*EngineHealthStatus, error) {
+    status := &EngineHealthStatus{
+        EngineHealth: make(map[QueryType]string),
+        ResponseTime: make(map[QueryType]time.Duration),
+        ErrorDetails: make(map[QueryType]string),
+    }
 
-```json
-{
-  "overall_health": "healthy",
-  "engine_health": {
-    "metrics": "healthy",
-    "logs": "healthy",
-    "traces": "healthy"
-  },
-  "last_checked": "2025-10-25T10:30:00Z"
+    // Parallel health checks
+    var wg sync.WaitGroup
+    var mu sync.Mutex
+
+    for _, engine := range []QueryType{QueryTypeMetrics, QueryTypeLogs, QueryTypeTraces} {
+        wg.Add(1)
+        go func(engine QueryType) {
+            defer wg.Done()
+
+            start := time.Now()
+            healthy, err := e.checkEngineHealth(ctx, engine)
+            duration := time.Since(start)
+
+            mu.Lock()
+            status.ResponseTime[engine] = duration
+            if healthy {
+                status.EngineHealth[engine] = "healthy"
+            } else {
+                status.EngineHealth[engine] = "unhealthy"
+                if err != nil {
+                    status.ErrorDetails[engine] = err.Error()
+                }
+            }
+            mu.Unlock()
+        }(engine)
+    }
+
+    wg.Wait()
+
+    // Determine overall health
+    status.OverallHealth = "healthy"
+    for _, health := range status.EngineHealth {
+        if health != "healthy" {
+            status.OverallHealth = "degraded"
+            break
+        }
+    }
+
+    status.LastChecked = time.Now()
+    return status, nil
 }
 ```
 
 ## Error Handling
 
-### Error Types
+### Error Types and Recovery
 
-The unified query engine handles various error scenarios:
+The unified query engine handles various error scenarios with graceful degradation:
 
-- **Routing Errors**: Invalid query patterns or unsupported engines
-- **Engine Errors**: Failures in individual engines (VictoriaMetrics, VictoriaLogs, VictoriaTraces)
-- **Timeout Errors**: Queries exceeding configured timeouts
-- **Cache Errors**: Cache connection or serialization failures
+- **Routing Errors**: Fallback to alternative engines
+- **Engine Errors**: Degraded mode with partial results
+- **Timeout Errors**: Configurable timeouts with partial result returns
+- **Cache Errors**: Cache miss fallback to direct execution
+- **Correlation Errors**: Independent engine execution when correlation fails
 
 ### Error Response Format
 
@@ -204,7 +408,10 @@ The unified query engine handles various error scenarios:
 {
   "error": "Query execution failed",
   "details": "VictoriaMetrics service unavailable",
-  "query_id": "query-12345"
+  "query_id": "query-12345",
+  "partial_results": {...},
+  "degraded_engines": ["metrics"],
+  "retry_after": 30
 }
 ```
 
@@ -212,88 +419,172 @@ The unified query engine handles various error scenarios:
 
 ### Intelligent Routing
 
-- **Pattern-Based Routing**: Routes queries to engines based on content analysis
-- **Load Balancing**: Distributes queries across multiple engine instances
-- **Query Optimization**: Applies engine-specific optimizations before execution
+- **Pattern-Based Routing**: Content analysis for optimal engine selection
+- **Load Balancing**: Query distribution across engine instances
+- **Query Optimization**: Engine-specific optimizations before execution
+- **Parallel Execution**: Concurrent query execution across engines
 
-### Caching Optimizations
+### Advanced Caching
 
-- **Adaptive TTL**: Adjusts cache lifetime based on query frequency
-- **Size-Based Limits**: Prevents cache bloat with size limits
-- **Background Invalidation**: Asynchronous cache cleanup
+- **Adaptive TTL**: Dynamic cache lifetime based on query patterns
+- **Size-Based Limits**: Memory management with result size limits
+- **Compression**: Result compression for large datasets
+- **Background Invalidation**: Asynchronous cache maintenance
+
+### Query Optimization
+
+```go
+type UQLOptimizer struct {
+    passes []OptimizationPass
+    stats  *OptimizationStats
+}
+
+type OptimizationPass struct {
+    Name        string
+    Enabled     bool
+    CostBenefit float64
+    Apply       func(*UQLQuery) error
+}
+
+func (o *UQLOptimizer) Optimize(query *UQLQuery) error {
+    for _, pass := range o.passes {
+        if pass.Enabled {
+            start := time.Now()
+            if err := pass.Apply(query); err != nil {
+                return err
+            }
+            o.stats.RecordPass(pass.Name, time.Since(start))
+        }
+    }
+    return nil
+}
+```
 
 ## Integration Points
 
 ### HTTP API Layer
 
-The unified query engine integrates with the HTTP API through handlers:
+Integration with comprehensive HTTP handlers:
 
-- `UnifiedQueryHandler`: Main query execution handler
-- `HandleUnifiedQuery`: POST `/api/v1/unified/query`
-- `HandleUnifiedCorrelation`: POST `/api/v1/unified/correlation`
-- `HandleQueryMetadata`: GET `/api/v1/unified/metadata`
-- `HandleHealthCheck`: GET `/api/v1/unified/health`
+```go
+type UnifiedQueryHandler struct {
+    engine *UnifiedQueryEngine
+    logger logger.Logger
+}
 
-### Service Layer
+func (h *UnifiedQueryHandler) HandleUnifiedQuery(c *gin.Context) {
+    // Authentication & RBAC
+    // Query parsing & validation
+    // Engine execution
+    // Result formatting
+}
 
-Integration with existing services:
+func (h *UnifiedQueryHandler) HandleUQLQuery(c *gin.Context) {
+    // UQL parsing & optimization
+    // Translation & execution
+    // Advanced result processing
+}
+```
 
-- **VictoriaMetricsServices**: Metrics query execution
-- **Cache (Valkey)**: Distributed caching layer
-- **Logger**: Structured logging for observability
+### Service Layer Integration
+
+- **VictoriaMetricsServices**: MetricsQL execution with PromQL compatibility
+- **VictoriaLogsServices**: LogsQL execution with Lucene/Bleve support
+- **VictoriaTracesServices**: Jaeger-compatible trace queries
+- **CorrelationEngine**: Cross-engine correlation analysis
+- **Valkey Cluster**: Distributed caching and session management
+- **RBAC Enforcer**: Comprehensive access control
 
 ## Configuration
 
 ### Unified Query Configuration
 
+```yaml
+unified_query:
+  enabled: true
+  cache_ttl: 5m
+  max_cache_ttl: 1h
+  default_limit: 1000
+  enable_correlation: true
+  uql:
+    enabled: true
+    optimization:
+      predicate_pushdown: true
+      cost_based_planning: true
+      parallel_execution: true
+  engines:
+    victoriametrics:
+      timeout: 30s
+      retries: 3
+    victorialogs:
+      timeout: 45s
+      retries: 2
+    victoriatraces:
+      timeout: 30s
+      retries: 3
+```
+
+## Monitoring and Observability
+
+### Comprehensive Metrics
+
 ```go
-type UnifiedQueryConfig struct {
-    Enabled           bool          `yaml:"enabled" default:"true"`
-    CacheTTL          time.Duration `yaml:"cache_ttl" default:"5m"`
-    MaxCacheTTL       time.Duration `yaml:"max_cache_ttl" default:"1h"`
-    DefaultLimit      int           `yaml:"default_limit" default:"1000"`
-    EnableCorrelation bool          `yaml:"enable_correlation" default:"false"`
+// Prometheus metrics
+unified_query_requests_total{engine="metrics", status="success"} counter
+unified_query_duration_seconds{engine="metrics", quantile="0.95"} histogram
+unified_query_cache_hits_total{operation="get"} counter
+unified_query_engine_routing{from="unified", to="metrics"} counter
+unified_uql_parse_duration_seconds histogram
+unified_uql_optimize_duration_seconds histogram
+unified_uql_translate_duration_seconds{engine="promql"} histogram
+```
+
+### Structured Logging
+
+```json
+{
+  "level": "info",
+  "component": "unified_query_engine",
+  "operation": "execute_uql",
+  "query_id": "uql-12345",
+  "query": "SELECT service, count(*) FROM logs:error WHERE level='error'",
+  "engines": ["logs"],
+  "execution_time_ms": 245,
+  "cached": false,
+  "optimization_applied": ["predicate_pushdown", "parallel_execution"]
 }
 ```
 
 ## Future Extensions
 
-### Planned Enhancements
+### Advanced Features
 
-- **Correlation Engine**: Cross-engine correlation queries
-- **Query Language**: Unified query language with advanced operators
-- **Metrics Metadata**: Indexed metrics discovery
-- **Performance Monitoring**: Detailed query performance metrics
+- **Federated Queries**: Cross-cluster query execution
+- **Machine Learning Integration**: Predictive query optimization
+- **Custom Functions**: User-defined aggregation functions
+- **Real-time Streaming**: Continuous query execution
+- **Query Templates**: Parameterized query templates
 
-### Extensibility
+### Extensibility Architecture
 
-The architecture is designed for easy extension:
+The architecture supports easy extension through plugin interfaces:
 
-- **New Engines**: Add new observability engines by implementing engine interfaces
-- **Custom Routers**: Implement custom routing logic for specialized use cases
-- **Query Types**: Extend query types for new observability patterns
+```go
+type EnginePlugin interface {
+    Name() string
+    SupportsQuery(query string) bool
+    ExecuteQuery(ctx context.Context, query *EngineQuery) (*EngineResult, error)
+    HealthCheck(ctx context.Context) error
+}
 
-## Monitoring and Observability
-
-### Metrics
-
-The unified query engine exposes Prometheus metrics:
-
-- `unified_query_requests_total`: Total number of unified queries
-- `unified_query_duration_seconds`: Query execution duration
-- `unified_query_cache_hits_total`: Cache hit counter
-- `unified_query_engine_routing`: Query routing decisions
-
-### Logging
-
-Structured logging provides observability:
-
-- Query routing decisions
-- Engine execution times
-- Cache hit/miss ratios
-- Error conditions and stack traces
+type TranslatorPlugin interface {
+    SourceLanguage() string
+    TargetLanguage() string
+    Translate(query string, params map[string]interface{}) (string, error)
+}
+```
 
 ## Conclusion
 
-The Unified Query Engine provides a robust, scalable foundation for unified observability queries across the VictoriaMetrics ecosystem. Its intelligent routing, comprehensive caching, and extensible architecture enable efficient querying of metrics, logs, and traces through a single, consistent API.</content>
+The Unified Query Engine provides a sophisticated, production-ready foundation for unified observability across the VictoriaMetrics ecosystem. Its advanced UQL processing pipeline, intelligent routing, parallel execution capabilities, and comprehensive caching strategy enable efficient, scalable querying of metrics, logs, and traces through a single, powerful API.</content>
 <parameter name="filePath">/Users/aarvee/repos/github/public/mirador-core/docs/unified-query-architecture.md
