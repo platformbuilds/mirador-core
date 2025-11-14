@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -209,10 +212,37 @@ func main() {
 	// Check for healthcheck command
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
 		// Load configuration to verify it's valid
-		_, err := config.Load()
+		cfg, err := config.Load()
 		if err != nil {
 			log.Fatalf("Configuration load failed: %v", err)
 		}
+
+		// Make HTTP request to health endpoint
+		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/v1/health", cfg.Port))
+		if err != nil {
+			log.Fatalf("Health check failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			log.Fatalf("Health check failed: status %d", resp.StatusCode)
+		}
+
+		// Parse response
+		var healthResp struct {
+			Service  string `json:"service"`
+			Status   string `json:"status"`
+			Version  string `json:"version"`
+			Timestamp string `json:"timestamp"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&healthResp); err != nil {
+			log.Fatalf("Failed to parse health response: %v", err)
+		}
+
+		if healthResp.Service != "mirador-core" || healthResp.Status != "healthy" {
+			log.Fatalf("Health check failed: invalid response %+v", healthResp)
+		}
+
 		log.Println("healthy")
 		return
 	}
