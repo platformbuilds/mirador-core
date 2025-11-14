@@ -117,7 +117,7 @@ func ExtractTenantFromJWT(claims map[string]interface{}) string {
 	}
 
 	// Default tenant
-	return "default"
+	return DefaultTenantID
 }
 
 // SecurityHeaders contains common security headers for MIRADOR-CORE

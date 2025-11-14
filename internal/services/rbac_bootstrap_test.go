@@ -477,7 +477,7 @@ func TestBootstrapAdminAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create admin auth credentials
-	err = bootstrap.BootstrapAdminAuth(ctx, adminUserID, tenantID)
+	err = bootstrap.BootstrapAdminAuth(ctx, adminUserID)
 	require.NoError(t, err, "Bootstrap admin auth should succeed")
 
 	// Verify auth was created

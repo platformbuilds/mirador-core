@@ -166,8 +166,10 @@ func (s *RBACBootstrapService) BootstrapDefaultTenant(ctx context.Context) (stri
 
 // BootstrapGlobalAdmin creates the default global admin user 'aarvee' if it doesn't exist
 func (s *RBACBootstrapService) BootstrapGlobalAdmin(ctx context.Context, defaultTenantID string) (string, error) {
+	const adminEmail = "admin@platformbuilds.com"
+
 	// Generate deterministic UUID for admin user based on email
-	adminUserID := makeRBACID("User", "", "admin@default.com")
+	adminUserID := makeRBACID("User", "", adminEmail)
 
 	s.logger.Info("Checking for global admin user", "user_id", adminUserID, "default_tenant_id", defaultTenantID)
 
@@ -223,8 +225,8 @@ func (s *RBACBootstrapService) BootstrapGlobalAdmin(ctx context.Context, default
 
 	// Create admin user
 	user := &models.User{
-		ID:         makeRBACID("User", "", "admin@default.com"),
-		Email:      "admin@default.com",
+		ID:         adminUserID,
+		Email:      adminEmail,
 		Username:   "aarvee", // Human-readable username
 		GlobalRole: "global_admin",
 		CreatedAt:  time.Now(),
