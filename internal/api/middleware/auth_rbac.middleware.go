@@ -121,8 +121,14 @@ func (as *AuthService) LocalAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// Extract tenant from header
+		tenantID := c.GetHeader("x-tenant-id")
+		if tenantID == "" {
+			tenantID = "default" // fallback to default tenant
+		}
+
 		// Authenticate user
-		session, err := as.authenticateLocalUser(req.Username, req.Password, req.TOTPCode, c)
+		session, err := as.authenticateLocalUser(req.Username, req.Password, req.TOTPCode, tenantID, c)
 		if err != nil {
 			as.logger.Warn("Local auth failed", "username", req.Username, "error", err)
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -334,8 +340,8 @@ func (as *AuthService) EnhancedCORSMiddleware() gin.HandlerFunc {
 }
 
 // AuthenticateLocalUser is a public wrapper for authenticateLocalUser
-func (as *AuthService) AuthenticateLocalUser(username, password, totpCode string, c *gin.Context) (*models.UserSession, error) {
-	return as.authenticateLocalUser(username, password, totpCode, c)
+func (as *AuthService) AuthenticateLocalUser(username, password, totpCode, tenantID string, c *gin.Context) (*models.UserSession, error) {
+	return as.authenticateLocalUser(username, password, totpCode, tenantID, c)
 }
 
 // GenerateJWTToken is a public wrapper for generateJWTToken
@@ -385,7 +391,7 @@ func (as *AuthService) validateJWTToken(tokenString string, c *gin.Context) (*mo
 }
 
 // authenticateLocalUser authenticates a local user
-func (as *AuthService) authenticateLocalUser(username, password, totpCode string, c *gin.Context) (*models.UserSession, error) {
+func (as *AuthService) authenticateLocalUser(username, password, totpCode, tenantID string, c *gin.Context) (*models.UserSession, error) {
 	// Find user by username/email
 	user, err := as.findUserByUsername(username)
 	if err != nil {
@@ -428,14 +434,14 @@ func (as *AuthService) authenticateLocalUser(username, password, totpCode string
 	as.resetFailedLogin(auth)
 
 	// Get user roles from RBAC system
-	roles, err := as.getUserRoles(user.ID, auth.TenantID)
+	roles, err := as.getUserRoles(user.ID, tenantID)
 	if err != nil {
 		as.logger.Warn("Failed to get user roles", "user_id", user.ID, "error", err)
 		roles = []string{"tenant_guest"} // Default role
 	}
 
 	// Create session
-	session := as.sessionMgr.CreateSession(user.ID, auth.TenantID, roles)
+	session := as.sessionMgr.CreateSession(user.ID, tenantID, roles)
 	session.IPAddress = c.ClientIP()
 	session.UserAgent = c.Request.UserAgent()
 

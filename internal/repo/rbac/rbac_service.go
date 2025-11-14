@@ -1437,7 +1437,7 @@ func (s *RBACService) CreateUser(ctx context.Context, userID string, user *model
 	// Automatically associate new user with default tenant as guest
 	// Skip for system-created users (bootstrap process handles this explicitly)
 	if userID != "system" {
-		defaultTenantName := "PLATFORMBUILDS"
+		defaultTenantName := "platformbuilds"
 		tenants, err := s.repository.ListTenants(ctx, TenantFilters{Name: &defaultTenantName})
 		if err == nil && len(tenants) > 0 {
 			defaultTenantID := tenants[0].ID
@@ -1476,7 +1476,7 @@ func (s *RBACService) CreateUser(ctx context.Context, userID string, user *model
 			}
 		} else {
 			// Log warning if default tenant not found, but don't fail user creation
-			if auditErr := s.auditService.LogError(ctx, "", userID, "default_tenant.not_found", "rbac.tenant", fmt.Errorf("default tenant PLATFORMBUILDS not found"), correlationID); auditErr != nil {
+			if auditErr := s.auditService.LogError(ctx, "", userID, "default_tenant.not_found", "rbac.tenant", fmt.Errorf("default tenant platformbuilds not found"), correlationID); auditErr != nil {
 				monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
 			}
 		}

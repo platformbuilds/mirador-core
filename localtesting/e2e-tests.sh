@@ -8,11 +8,41 @@ set -euo pipefail
 # Configuration
 BASE_URL=${BASE_URL:-"http://localhost:8010"}
 API_BASE="$BASE_URL/api/v1"
-TENANT_ID="default"
+TENANT_ID=${TENANT_ID:-"platformbuilds"}  # Default bootstrap tenant
 VERBOSE=${VERBOSE:-false}
 RESULTS_FILE="e2e-test-results.json"
 FAILURES_TABLE_FILE="test-failures-table.md"
 RUN_CODE_TESTS=${RUN_CODE_TESTS:-true}
+
+# Authentication
+AUTH_TOKEN=""
+ADMIN_USERNAME="aarvee"
+ADMIN_PASSWORD="ChangeMe123!"
+
+# Authenticate and get JWT token
+authenticate() {
+    log_info "Authenticating as admin user..."
+    
+    local login_data='{
+        "username": "'$ADMIN_USERNAME'",
+        "password": "'$ADMIN_PASSWORD'"
+    }'
+    
+    local response
+    response=$(curl -s -X POST "$API_BASE/auth/login" \
+        -H "Content-Type: application/json" \
+        -H "x-tenant-id: $TENANT_ID" \
+        -d "$login_data")
+    
+    if echo "$response" | jq -e '.status == "success"' >/dev/null 2>&1; then
+        AUTH_TOKEN=$(echo "$response" | jq -r '.data.jwt_token')
+        log_success "Authentication successful, got JWT token"
+        return 0
+    else
+        log_error "Authentication failed: $response"
+        return 1
+    fi
+}
 
 # Platform detection for cross-platform compatibility
 OS_TYPE="$(uname -s)"
@@ -237,9 +267,13 @@ http_request() {
     curl_cmd+=(-H "Content-Type: application/json")
     curl_cmd+=(-H "x-tenant-id: $TENANT_ID")
     
-    # Add dummy authorization header for testing when auth is disabled
-    # This should be ignored by the server when auth is properly disabled
-    curl_cmd+=(-H "Authorization: Bearer test-token")
+    # Add authentication header if we have a token
+    if [[ -n "$AUTH_TOKEN" ]]; then
+        curl_cmd+=(-H "Authorization: Bearer $AUTH_TOKEN")
+    else
+        # Fallback to dummy token for public endpoints
+        curl_cmd+=(-H "Authorization: Bearer test-token")
+    fi
     
     # Add data for POST/PUT requests
     if [[ -n "$data" && ("$method" == "POST" || "$method" == "PUT") ]]; then
@@ -1033,6 +1067,13 @@ main() {
     log_phase "Infrastructure Setup"
     log_info "Checking service readiness..."
     wait_for_service
+    
+    # Phase 2.5: Authentication
+    log_phase "Authentication"
+    if ! authenticate; then
+        log_error "Failed to authenticate, cannot proceed with API tests"
+        exit 1
+    fi
     echo
     
     # Phase 3: API Testing

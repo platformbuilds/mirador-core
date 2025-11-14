@@ -47,7 +47,7 @@ func NewPolicyCache(cache cache.ValkeyCluster, logger logger.Logger, ttl time.Du
 }
 
 // GetPolicyCacheKey generates a cache key for policy evaluation
-func (pc *PolicyCache) GetPolicyCacheKey(userID, tenantID, globalRole string, requiredPermissions []string) string {
+func (pc *PolicyCache) GetPolicyCacheKey(userID, tenantID string, requiredPermissions []string) string {
 	// Sort permissions for consistent cache key
 	sortedPerms := make([]string, len(requiredPermissions))
 	copy(sortedPerms, requiredPermissions)
@@ -61,12 +61,12 @@ func (pc *PolicyCache) GetPolicyCacheKey(userID, tenantID, globalRole string, re
 	}
 
 	permsStr := strings.Join(sortedPerms, ",")
-	return fmt.Sprintf("rbac:policy:%s:%s:%s:%s", tenantID, userID, globalRole, permsStr)
+	return fmt.Sprintf("rbac:policy:%s:%s:%s", tenantID, userID, permsStr)
 }
 
 // GetCachedPolicy retrieves a cached policy evaluation result
-func (pc *PolicyCache) GetCachedPolicy(ctx context.Context, userID, tenantID, globalRole string, requiredPermissions []string) (*PolicyCacheResult, error) {
-	cacheKey := pc.GetPolicyCacheKey(userID, tenantID, globalRole, requiredPermissions)
+func (pc *PolicyCache) GetCachedPolicy(ctx context.Context, userID, tenantID string, requiredPermissions []string) (*PolicyCacheResult, error) {
+	cacheKey := pc.GetPolicyCacheKey(userID, tenantID, requiredPermissions)
 
 	data, err := pc.cache.Get(ctx, cacheKey)
 	if err != nil {
@@ -90,8 +90,8 @@ func (pc *PolicyCache) GetCachedPolicy(ctx context.Context, userID, tenantID, gl
 }
 
 // SetCachedPolicy stores a policy evaluation result in cache
-func (pc *PolicyCache) SetCachedPolicy(ctx context.Context, userID, tenantID, globalRole string, requiredPermissions []string, allowed bool, reason string) error {
-	cacheKey := pc.GetPolicyCacheKey(userID, tenantID, globalRole, requiredPermissions)
+func (pc *PolicyCache) SetCachedPolicy(ctx context.Context, userID, tenantID string, requiredPermissions []string, allowed bool, reason string) error {
+	cacheKey := pc.GetPolicyCacheKey(userID, tenantID, requiredPermissions)
 
 	result := PolicyCacheResult{
 		Allowed:  allowed,
@@ -231,7 +231,7 @@ func (r *RBACEnforcer) RBACMiddleware(requiredPermissions []string) gin.HandlerF
 // evaluateAccess performs two-tier RBAC evaluation (Global + Tenant roles)
 func (r *RBACEnforcer) evaluateAccess(userID, tenantID, globalRole string, requiredPermissions []string, c *gin.Context) (bool, string) {
 	// Check policy cache first
-	if cachedResult, err := r.policyCache.GetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions); err == nil && cachedResult != nil {
+	if cachedResult, err := r.policyCache.GetCachedPolicy(c.Request.Context(), userID, tenantID, requiredPermissions); err == nil && cachedResult != nil {
 		r.logger.Debug("Policy cache hit", "userId", userID, "tenantId", tenantID, "permissions", requiredPermissions, "allowed", cachedResult.Allowed)
 		return cachedResult.Allowed, cachedResult.Reason
 	}
@@ -244,7 +244,7 @@ func (r *RBACEnforcer) evaluateAccess(userID, tenantID, globalRole string, requi
 		resource, action, err := r.parsePermissionString(perm)
 		if err != nil {
 			r.logger.Error("Invalid permission format", "permission", perm, "error", err)
-			r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, false, "invalid_permission_format")
+			r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, requiredPermissions, false, "invalid_permission_format")
 			return false, "invalid_permission_format"
 		}
 
@@ -262,20 +262,20 @@ func (r *RBACEnforcer) evaluateAccess(userID, tenantID, globalRole string, requi
 		allowed, err := r.rbacService.CheckPermissionWithContext(c.Request.Context(), permCtx)
 		if err != nil {
 			r.logger.Error("RBAC service permission check failed", "userId", userID, "tenantId", tenantID, "resource", resource, "action", action, "error", err)
-			r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, false, "rbac_service_error")
+			r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, requiredPermissions, false, "rbac_service_error")
 			return false, "rbac_service_error"
 		}
 
 		if !allowed {
 			r.logger.Debug("Permission denied", "userId", userID, "tenantId", tenantID, "resource", resource, "action", action)
-			r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, false, "permission_denied")
+			r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, requiredPermissions, false, "permission_denied")
 			return false, "permission_denied"
 		}
 	}
 
 	// All permissions granted
 	r.logger.Debug("All permissions granted", "userId", userID, "tenantId", tenantID, "permissions", requiredPermissions)
-	r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, globalRole, requiredPermissions, true, "all_permissions_granted")
+	r.policyCache.SetCachedPolicy(c.Request.Context(), userID, tenantID, requiredPermissions, true, "all_permissions_granted")
 	return true, "all_permissions_granted"
 }
 

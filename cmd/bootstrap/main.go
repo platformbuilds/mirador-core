@@ -92,7 +92,7 @@ func main() {
 	log.Println("")
 	log.Println("📋 Default credentials:")
 	log.Println("   Username: aarvee")
-	log.Println("   Password: ChangeMe123!")
+	log.Println("   Password: password123")
 	log.Println("   Tenant:   PLATFORMBUILDS")
 	log.Println("")
 	log.Println("⚠️  IMPORTANT: Change the default password immediately after first login!")
