@@ -3,12 +3,14 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -60,6 +62,87 @@ func getenv(k, def string) string {
 		return v
 	}
 	return def
+}
+
+// UUID v5 (SHA-1) namespace for deterministic IDs
+var nsMirador = mustParseUUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8") // URL namespace (stable)
+
+func makeID(parts ...string) string {
+	name := strings.Join(parts, "|")
+	return uuidV5(nsMirador, name)
+}
+
+func mustParseUUID(s string) [16]byte {
+	b, ok := parseUUID(s)
+	if !ok {
+		panic("invalid UUID namespace: " + s)
+	}
+	return b
+}
+
+func parseUUID(s string) ([16]byte, bool) {
+	var out [16]byte
+	// remove hyphens
+	hex := make([]byte, 0, 32)
+	for i := 0; i < len(s); i++ {
+		if s[i] == '-' {
+			continue
+		}
+		hex = append(hex, s[i])
+	}
+	if len(hex) != 32 {
+		return out, false
+	}
+	// convert hex to bytes
+	for i := 0; i < 16; i++ {
+		hi := fromHex(hex[2*i])
+		lo := fromHex(hex[2*i+1])
+		if hi < 0 || lo < 0 {
+			return out, false
+		}
+		out[i] = byte(hi<<4 | lo)
+	}
+	return out, true
+}
+
+func fromHex(b byte) int {
+	switch {
+	case '0' <= b && b <= '9':
+		return int(b - '0')
+	case 'a' <= b && b <= 'f':
+		return int(b - 'a' + 10)
+	case 'A' <= b && b <= 'F':
+		return int(b - 'A' + 10)
+	default:
+		return -1
+	}
+}
+
+func uuidV5(ns [16]byte, name string) string {
+	// RFC 4122, version 5: SHA-1 of namespace + name
+	h := sha1.New()
+	h.Write(ns[:])
+	h.Write([]byte(name))
+	sum := h.Sum(nil) // 20 bytes
+	var u [16]byte
+	copy(u[:], sum[:16])
+	// Set version (5) in high nibble of byte 6
+	u[6] = (u[6] & 0x0f) | (5 << 4)
+	// Set variant (RFC4122) in the two most significant bits of byte 8
+	u[8] = (u[8] & 0x3f) | 0x80
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		uint32(u[0])<<24|uint32(u[1])<<16|uint32(u[2])<<8|uint32(u[3]),
+		uint16(u[4])<<8|uint16(u[5]),
+		uint16(u[6])<<8|uint16(u[7]),
+		uint16(u[8])<<8|uint16(u[9]),
+		(uint64(u[10])<<40)|(uint64(u[11])<<32)|(uint64(u[12])<<24)|(uint64(u[13])<<16)|(uint64(u[14])<<8)|uint64(u[15]),
+	)
+}
+
+// makeRBACID generates deterministic IDs for RBAC objects
+func makeRBACID(class, tenantID string, parts ...string) string {
+	allParts := append([]string{class, tenantID}, parts...)
+	return makeID(allParts...)
 }
 
 // dumpedObject is a portable representation used for restore.
@@ -134,11 +217,11 @@ func seed(ctx context.Context, c *client, tenantID string) error {
 }
 
 func seedDefaultDashboard(ctx context.Context, c *client, tenantID string) error {
+	dashboardID := makeRBACID("Dashboard", tenantID, "default")
 	dashboard := map[string]interface{}{
 		"class": "Dashboard",
-		"id":    "default",
+		"id":    dashboardID,
 		"properties": map[string]interface{}{
-			"id":          "default",
 			"name":        "Default Dashboard",
 			"ownerUserId": "system",
 			"visibility":  "org",
@@ -153,7 +236,7 @@ func seedDefaultDashboard(ctx context.Context, c *client, tenantID string) error
 	var existing struct {
 		Properties map[string]interface{} `json:"properties"`
 	}
-	err := c.do(ctx, http.MethodGet, "/v1/objects/"+dashboard["id"].(string), nil, &existing)
+	err := c.do(ctx, http.MethodGet, "/v1/objects/"+dashboardID, nil, &existing)
 	if err == nil {
 		fmt.Printf("Default dashboard already exists for tenant %s\n", tenantID)
 		return nil
@@ -172,9 +255,8 @@ func seedSampleKPIs(ctx context.Context, c *client, tenantID string) error {
 	sampleKPIs := []map[string]interface{}{
 		{
 			"class": "KPIDefinition",
-			"id":    "http_request_duration",
+			"id":    makeRBACID("KPIDefinition", tenantID, "http_request_duration"),
 			"properties": map[string]interface{}{
-				"id":     "http_request_duration",
 				"kind":   "tech",
 				"name":   "HTTP Request Duration",
 				"unit":   "seconds",
@@ -218,9 +300,8 @@ func seedSampleKPIs(ctx context.Context, c *client, tenantID string) error {
 		},
 		{
 			"class": "KPIDefinition",
-			"id":    "error_rate",
+			"id":    makeRBACID("KPIDefinition", tenantID, "error_rate"),
 			"properties": map[string]interface{}{
-				"id":     "error_rate",
 				"kind":   "tech",
 				"name":   "Error Rate",
 				"unit":   "percent",
@@ -265,22 +346,25 @@ func seedSampleKPIs(ctx context.Context, c *client, tenantID string) error {
 	}
 
 	for _, kpi := range sampleKPIs {
+		kpiID := kpi["id"].(string)
+		kpiName := kpi["properties"].(map[string]interface{})["name"].(string)
+
 		// Check if KPI already exists
 		var existing struct {
 			Properties map[string]interface{} `json:"properties"`
 		}
-		err := c.do(ctx, http.MethodGet, "/v1/objects/"+kpi["id"].(string), nil, &existing)
+		err := c.do(ctx, http.MethodGet, "/v1/objects/"+kpiID, nil, &existing)
 		if err == nil {
-			fmt.Printf("KPI %s already exists for tenant %s\n", kpi["id"], tenantID)
+			fmt.Printf("KPI %s already exists for tenant %s\n", kpiName, tenantID)
 			continue
 		}
 
 		// Create KPI
 		if err := c.do(ctx, http.MethodPost, "/v1/objects", kpi, nil); err != nil {
-			return fmt.Errorf("failed to create KPI %s: %w", kpi["id"], err)
+			return fmt.Errorf("failed to create KPI %s: %w", kpiName, err)
 		}
 
-		fmt.Printf("Created KPI %s for tenant %s\n", kpi["id"], tenantID)
+		fmt.Printf("Created KPI %s for tenant %s\n", kpiName, tenantID)
 	}
 
 	return nil
@@ -312,7 +396,7 @@ func main() {
 	flag.StringVar(&mode, "mode", "dump", "mode: dump|restore|seed")
 	flag.StringVar(&out, "out", "schema_dump.json", "output file for dump")
 	flag.StringVar(&in, "in", "schema_dump.json", "input file for restore")
-	flag.StringVar(&tenantID, "tenant", "default", "tenant ID for seeding")
+	flag.StringVar(&tenantID, "tenant", "PLATFORMBUILDS", "tenant ID for seeding")
 	flag.Parse()
 	c := newClient()
 	ctx := context.Background()

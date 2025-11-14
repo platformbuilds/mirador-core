@@ -453,6 +453,63 @@ func (s *RBACService) ListTenants(ctx context.Context, userID string, filters Te
 	return tenants, nil
 }
 
+// ResolveTenantID resolves tenant identifier to canonical tenant ID without requiring user authorization
+func (s *RBACService) ResolveTenantID(ctx context.Context, tenantIdentifier string) (string, error) {
+	if tenantIdentifier == "" {
+		return "", fmt.Errorf("empty tenant identifier")
+	}
+
+	// If it's already a UUID-like ID, try to get the tenant directly
+	if isUUID(tenantIdentifier) {
+		tenant, err := s.repository.GetTenant(ctx, tenantIdentifier)
+		if err == nil && tenant != nil {
+			return tenant.ID, nil
+		}
+	}
+
+	// Try to find by name
+	filters := TenantFilters{
+		Name:  &tenantIdentifier,
+		Limit: 1,
+	}
+
+	tenants, err := s.repository.ListTenants(ctx, filters)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve tenant %s: %w", tenantIdentifier, err)
+	}
+
+	if len(tenants) > 0 && tenants[0] != nil {
+		return tenants[0].ID, nil
+	}
+
+	return "", fmt.Errorf("tenant %s not found", tenantIdentifier)
+}
+
+// isHexChar checks if a rune is a valid hexadecimal character
+func isHexChar(r rune) bool {
+	return (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')
+}
+
+// isUUID checks if a string is a valid UUID format
+func isUUID(str string) bool {
+	// Simple check for UUID format: 8-4-4-4-12 hex digits
+	parts := strings.Split(str, "-")
+	if len(parts) != 5 {
+		return false
+	}
+	if len(parts[0]) != 8 || len(parts[1]) != 4 || len(parts[2]) != 4 || len(parts[3]) != 4 || len(parts[4]) != 12 {
+		return false
+	}
+	for _, part := range parts {
+		for _, r := range part {
+			if !isHexChar(r) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // UpdateTenant updates an existing tenant
 func (s *RBACService) UpdateTenant(ctx context.Context, userID string, tenant *models.Tenant) error {
 	start := time.Now()

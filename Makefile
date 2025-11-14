@@ -205,7 +205,7 @@ localdev-seed-otel:
 localdev-seed-data:
 	@echo "Seeding default dashboard and sample KPIs in Weaviate..."
 	@go build -o bin/schemactl cmd/schemactl/main.go
-	WEAVIATE_HOST=localhost WEAVIATE_PORT=8080 ./bin/schemactl -mode=seed -tenant=default
+	WEAVIATE_HOST=localhost WEAVIATE_PORT=8080 ./bin/schemactl -mode=seed -tenant=PLATFORMBUILDS
 
 localdev-down:
 	@docker-compose -f deployments/localdev/docker-compose.yaml down -v

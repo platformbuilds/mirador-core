@@ -1129,12 +1129,44 @@ func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
 		))},
 		// New API classes for mirador-core v8.0.0
 		{"KPIDefinition", class("KPIDefinition", props(
-			text("kind"), text("name"), text("unit"), text("format"),
-			object("query"), object("thresholds"), stringArray("tags"), object("sparkline"),
-			text("ownerUserId"), text("visibility"), date("createdAt"), date("updatedAt"),
+			text("tenantId"), text("kind"), text("name"), text("unit"), text("format"),
+			map[string]any{
+				"name":     "query",
+				"dataType": []string{"object"},
+				"nestedProperties": []any{
+					map[string]any{"name": "metric", "dataType": []string{"text"}},
+					map[string]any{"name": "labels", "dataType": []string{"object"},
+						"nestedProperties": []any{
+							map[string]any{"name": "method", "dataType": []string{"text"}},
+							map[string]any{"name": "status", "dataType": []string{"text"}},
+						}},
+					map[string]any{"name": "aggregation", "dataType": []string{"text"}},
+				},
+			},
+			map[string]any{
+				"name":     "thresholds",
+				"dataType": []string{"object[]"},
+				"nestedProperties": []any{
+					map[string]any{"name": "operator", "dataType": []string{"text"}},
+					map[string]any{"name": "value", "dataType": []string{"number"}},
+					map[string]any{"name": "severity", "dataType": []string{"text"}},
+					map[string]any{"name": "message", "dataType": []string{"text"}},
+				},
+			},
+			stringArray("tags"),
+			map[string]any{
+				"name":     "sparkline",
+				"dataType": []string{"object"},
+				"nestedProperties": []any{
+					map[string]any{"name": "type", "dataType": []string{"text"}},
+					map[string]any{"name": "query", "dataType": []string{"object"},
+						"nestedProperties": []any{map[string]any{"name": "range", "dataType": []string{"text"}}}},
+				},
+			},
+			text("definition"), text("sentiment"), text("ownerUserId"), text("visibility"), date("createdAt"), date("updatedAt"),
 		))},
 		{"Dashboard", class("Dashboard", props(
-			text("name"), text("ownerUserId"), text("visibility"), boolp("isDefault"),
+			text("tenantId"), text("name"), text("ownerUserId"), text("visibility"), boolp("isDefault"),
 			date("createdAt"), date("updatedAt"),
 		))},
 		{"KPILayout", class("KPILayout", props(
@@ -1681,6 +1713,7 @@ func (r *WeaviateRepo) UpsertKPI(ctx context.Context, kpi *models.KPIDefinition)
 	}
 
 	props := map[string]any{
+		"tenantId":    kpi.TenantID,
 		"kind":        kpi.Kind,
 		"name":        kpi.Name,
 		"unit":        kpi.Unit,
@@ -1707,6 +1740,7 @@ func (r *WeaviateRepo) GetKPI(ctx context.Context, tenantID, id string) (*models
 	      where: {
 	        operator: And,
 	        operands: [
+	          { path: ["tenantId"], operator: Equal, valueString: "%s" },
 	          { path: ["id"], operator: Equal, valueString: "%s" }
 	        ]
 	      },
@@ -1715,7 +1749,7 @@ func (r *WeaviateRepo) GetKPI(ctx context.Context, tenantID, id string) (*models
 	      id kind name unit format query thresholds tags sparkline ownerUserId visibility createdAt updatedAt
 	    }
 	  }
-	}`, id)
+	}`, tenantID, id)
 
 	var resp struct {
 		Data struct {
@@ -1793,11 +1827,7 @@ func (r *WeaviateRepo) GetKPI(ctx context.Context, tenantID, id string) (*models
 func (r *WeaviateRepo) ListKPIs(ctx context.Context, tenantID string, tags []string, limit, offset int) ([]*models.KPIDefinition, int, error) {
 	r.ensureOnce(ctx)
 	// Build where clause
-	whereClause := ""
-	if len(tags) > 0 {
-		// For simplicity, we'll skip tag filtering for now and implement basic listing
-		// Tag filtering would require more complex GraphQL with OR conditions
-	}
+	whereClause := fmt.Sprintf(`where: { path: ["tenantId"], operator: Equal, valueString: "%s" }`, tenantID)
 
 	q := fmt.Sprintf(`{
 	  Get {
@@ -1990,6 +2020,7 @@ func (r *WeaviateRepo) UpsertDashboard(ctx context.Context, dashboard *models.Da
 	}
 
 	props := map[string]any{
+		"tenantId":    dashboard.TenantID,
 		"name":        dashboard.Name,
 		"ownerUserId": dashboard.OwnerUserID,
 		"visibility":  dashboard.Visibility,
@@ -2010,6 +2041,7 @@ func (r *WeaviateRepo) GetDashboard(ctx context.Context, tenantID, id string) (*
 	      where: {
 	        operator: And,
 	        operands: [
+	          { path: ["tenantId"], operator: Equal, valueString: "%s" },
 	          { path: ["id"], operator: Equal, valueString: "%s" }
 	        ]
 	      },
@@ -2018,7 +2050,7 @@ func (r *WeaviateRepo) GetDashboard(ctx context.Context, tenantID, id string) (*
 	      id name ownerUserId visibility isDefault createdAt updatedAt
 	    }
 	  }
-	}`, id)
+	}`, tenantID, id)
 
 	var resp struct {
 		Data struct {
@@ -2065,13 +2097,14 @@ func (r *WeaviateRepo) ListDashboards(ctx context.Context, tenantID string, limi
 	q := fmt.Sprintf(`{
 	  Get {
 	    Dashboard(
+	      where: { path: ["tenantId"], operator: Equal, valueString: "%s" }
 	      limit: %d
 	      offset: %d
 	    ) {
 	      id name ownerUserId visibility isDefault createdAt updatedAt
 	    }
 	  }
-	}`, limit, offset)
+	}`, tenantID, limit, offset)
 
 	var resp struct {
 		Data struct {
