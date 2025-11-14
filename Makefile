@@ -123,7 +123,7 @@ help:
 
 
 
-localdev: localdev-up localdev-wait localdev-seed-otel localdev-seed-data localdev-test localdev-down
+localdev: localdev-up localdev-wait bootstrap localdev-seed-otel localdev-seed-data localdev-test localdev-down
 	@echo "Localdev E2E completed. Reports under localdev/."
 
 .PHONY: openapi-json openapi-validate
@@ -138,41 +138,27 @@ swag:
 	@echo "🔧 Generating OpenAPI 3.0 spec from code annotations..."
 	@swag init -g cmd/server/main.go -o api/
 
-localdev-up:
+localdev-up: bootstrap
 	mkdir -p localdev
 	# Pull images only if missing (prevents re-pulling on every run)
 	docker-compose -f deployments/localdev/docker-compose.yaml up -d --build
+	@echo "⏳ Waiting for services to be ready..."
+	@deployments/localdev/scripts/wait-for-url.sh $(BASE_URL)/ready 120 2
+	@echo "🔐 Running RBAC bootstrap..."
+	@./bin/bootstrap
 
 localdev-wait:
 	@deployments/localdev/scripts/wait-for-url.sh $(BASE_URL)/ready 120 2
 
 localdev-test:
-	mkdir -p deployments/localdev
-	E2E_BASE_URL=$(BASE_URL) bash deployments/localdev/scripts/run-e2e.sh
-	@echo "=========================================================="
-	@echo "=== E2E Summary (deployments/localdev/e2e-report.json) ==="
-	@echo "=========================================================="
-	@REPORT=deployments/localdev/e2e-report.json; \
-	if [ -f "$$REPORT" ]; then \
-	  ALL=$$(wc -l < "$$REPORT" | tr -d ' '); \
-	  PASSED=$$(grep -c '\"ok\":true' "$$REPORT" || true); \
-	  FAILED=$$(grep -c '\"ok\":false' "$$REPORT" || true); \
-	  echo "Tests=$$ALL total, $$PASSED passed, $$FAILED failed"; \
-	  echo "=========================================================="; \
-	  echo; echo "Failed tests:"; \
-	  FAIL_LIST=$$(grep '\"ok\":false' "$$REPORT" | grep -o '\"name\":\"[^\"]*\"' | cut -d: -f2- | tr -d '\"' | sed '/^$$/d' | sort -u); \
-	  if [ -n "$$FAIL_LIST" ]; then \
-	    while IFS= read -r T; do \
-	      MSG=$$(grep -F '\"name\":\"'"$$T"'\"' "$$REPORT" | tail -1 | sed -E 's/.*\"message\":\"//; s/\"\}\s*$$//'); \
-	      echo "  - $$T: $$MSG"; \
-	    done <<< "$$FAIL_LIST"; \
-	  else \
-	    echo "  (none)"; \
-	  fi; \
-	  echo; echo "See $$REPORT for full details."; \
-	else \
-	  echo "Report not found: $$REPORT"; \
-	fi
+	@echo "🧪 Running unified E2E tests..."
+	@echo "Base URL: $(BASE_URL)"
+	@echo "============================================"
+	@./localtesting/e2e-tests.sh --base-url "$(BASE_URL)" --output "deployments/localdev/e2e-report.json" --verbose || true
+	@echo "============================================"
+	@echo "✅ E2E tests completed!"
+	@echo "📊 Results: deployments/localdev/e2e-report.json"
+	@echo "📋 Failures: test-failures-table.md"
 	@echo "=========================================================="
 
 localdev-test-all-api:
