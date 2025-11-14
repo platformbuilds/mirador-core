@@ -226,25 +226,29 @@ func (s *Server) setupRoutes() {
 	} else {
 		metricsHandler = handlers.NewMetricsQLHandler(s.vmServices.Metrics, s.cache, s.logger)
 	}
-	// New metrics endpoints under /metrics/* - require metrics.read permission
-	metricsGroup := v1.Group("/metrics")
-	metricsGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}))
-	{
-		metricsGroup.POST("/query", metricsHandler.ExecuteQuery)
-		metricsGroup.POST("/query_range", metricsHandler.ExecuteRangeQuery)
-		metricsGroup.GET("/names", metricsHandler.GetMetricNames)
-		metricsGroup.GET("/series", metricsHandler.GetSeries)
-		metricsGroup.POST("/labels", metricsHandler.GetLabels)
-		metricsGroup.GET("/label/:name/values", metricsHandler.GetLabelValues)
+
+	// Register metrics endpoints conditionally - retired when unified query is enabled
+	if !s.config.UnifiedQuery.Enabled {
+		// New metrics endpoints under /metrics/* - require metrics.read permission
+		metricsGroup := v1.Group("/metrics")
+		metricsGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}))
+		{
+			metricsGroup.POST("/query", metricsHandler.ExecuteQuery)
+			metricsGroup.POST("/query_range", metricsHandler.ExecuteRangeQuery)
+			metricsGroup.GET("/names", metricsHandler.GetMetricNames)
+			metricsGroup.GET("/series", metricsHandler.GetSeries)
+			metricsGroup.POST("/labels", metricsHandler.GetLabels)
+			metricsGroup.GET("/label/:name/values", metricsHandler.GetLabelValues)
+		}
+		// Back-compat (deprecated): keep old routes registered with RBAC protection
+		v1.POST("/query", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.ExecuteQuery)
+		v1.POST("/query_range", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.ExecuteRangeQuery)
+		s.router.POST("/query", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.ExecuteQuery)
+		s.router.POST("/query_range", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.ExecuteRangeQuery)
+		s.router.GET("/metrics/names", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.GetMetricNames)
+		s.router.GET("/metrics/series", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.GetSeries)
+		s.router.POST("/metrics/labels", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.GetLabels)
 	}
-	// Back-compat (deprecated): keep old routes registered with RBAC protection
-	v1.POST("/query", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.ExecuteQuery)
-	v1.POST("/query_range", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.ExecuteRangeQuery)
-	s.router.POST("/query", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.ExecuteQuery)
-	s.router.POST("/query_range", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.ExecuteRangeQuery)
-	s.router.GET("/metrics/names", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.GetMetricNames)
-	s.router.GET("/metrics/series", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.GetSeries)
-	s.router.POST("/metrics/labels", s.rbacEnforcer.RBACMiddleware([]string{"metrics.read"}), metricsHandler.GetLabels)
 
 	// MetricsQL function query endpoints (hierarchical by category)
 	queryHandler := handlers.NewMetricsQLQueryHandler(s.vmServices.Query, s.cache, s.logger)
@@ -281,14 +285,18 @@ func (s *Server) setupRoutes() {
 
 	// LogsQL endpoints (VictoriaLogs integration)
 	logsHandler := handlers.NewLogsQLHandler(s.vmServices.Logs, s.cache, s.logger, s.searchRouter, s.config)
-	logsGroup := v1.Group("/logs")
-	logsGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"logs.read"}))
-	{
-		logsGroup.POST("/query", s.searchThrottling.ThrottleLogsQuery(), logsHandler.ExecuteQuery)
-		logsGroup.GET("/streams", logsHandler.GetStreams)
-		logsGroup.GET("/fields", logsHandler.GetFields)
-		logsGroup.POST("/export", logsHandler.ExportLogs)
-		logsGroup.POST("/store", logsHandler.StoreEvent) // For AI engines to store JSON events
+
+	// Register logs endpoints conditionally - retired when unified query is enabled
+	if !s.config.UnifiedQuery.Enabled {
+		logsGroup := v1.Group("/logs")
+		logsGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"logs.read"}))
+		{
+			logsGroup.POST("/query", s.searchThrottling.ThrottleLogsQuery(), logsHandler.ExecuteQuery)
+			logsGroup.GET("/streams", logsHandler.GetStreams)
+			logsGroup.GET("/fields", logsHandler.GetFields)
+			logsGroup.POST("/export", logsHandler.ExportLogs)
+			logsGroup.POST("/store", logsHandler.StoreEvent) // For AI engines to store JSON events
+		}
 	}
 
 	// D3-friendly log endpoints for the upcoming UI (histogram, facets, search, tail)
@@ -304,15 +312,19 @@ func (s *Server) setupRoutes() {
 
 	// VictoriaTraces endpoints (Jaeger-compatible HTTP API)
 	tracesHandler := handlers.NewTracesHandler(s.vmServices.Traces, s.cache, s.logger, s.searchRouter, s.config)
-	tracesGroup := v1.Group("/traces")
-	tracesGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"traces.read"}))
-	{
-		tracesGroup.GET("/services", tracesHandler.GetServices)
-		tracesGroup.GET("/services/:service/operations", tracesHandler.GetOperations)
-		tracesGroup.GET("/:traceId", tracesHandler.GetTrace)
-		tracesGroup.GET("/:traceId/flamegraph", tracesHandler.GetFlameGraph)
-		tracesGroup.POST("/search", s.searchThrottling.ThrottleTracesQuery(), tracesHandler.SearchTraces)
-		tracesGroup.POST("/flamegraph/search", tracesHandler.SearchFlameGraph)
+
+	// Register traces endpoints conditionally - retired when unified query is enabled
+	if !s.config.UnifiedQuery.Enabled {
+		tracesGroup := v1.Group("/traces")
+		tracesGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"traces.read"}))
+		{
+			tracesGroup.GET("/services", tracesHandler.GetServices)
+			tracesGroup.GET("/services/:service/operations", tracesHandler.GetOperations)
+			tracesGroup.GET("/:traceId", tracesHandler.GetTrace)
+			tracesGroup.GET("/:traceId/flamegraph", tracesHandler.GetFlameGraph)
+			tracesGroup.POST("/search", s.searchThrottling.ThrottleTracesQuery(), tracesHandler.SearchTraces)
+			tracesGroup.POST("/flamegraph/search", tracesHandler.SearchFlameGraph)
+		}
 	}
 
 	// AI RCA-ENGINE endpoints (correlation with red anchors pattern)

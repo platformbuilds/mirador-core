@@ -1835,6 +1835,18 @@ phases:
         parallelizable: true  # Can be set up early
         ci_stage: "pre-commit"
         owner_role: "devops"
+
+      - id: "bootstrap-documentation"
+        title: "RBAC bootstrap process documentation"
+        description: "Document the bootstrap process for production deployments, including customer credential configuration, Helm chart options, and troubleshooting common bootstrap issues"
+        priority: "medium"
+        status: "not-started"
+        dependencies: []
+        estimated_effort: "6h"
+        assignee: "backend-dev"
+        parallelizable: true  # Can be developed early
+        ci_stage: "build"
+        owner_role: "backend-dev"
 critical_path:
   - "✅ Phase 0: Schema Design (COMPLETED - 12 RBAC classes designed)"
   - "✅ Phase 0.5: Repository Implementation (COMPLETED - 5 files, 3450+ LOC, 40+ CRUD methods)"

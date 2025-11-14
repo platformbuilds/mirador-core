@@ -209,13 +209,13 @@ MIRADOR-CORE v9.0.0 includes comprehensive end-to-end testing to validate the RB
 # Run full E2E test suite (requires running infrastructure)
 make localdev-up
 make localdev-wait
-./localtesting/e2e-tests-new.sh
+./localtesting/e2e-tests.sh
 
 # Run code quality tests only (no infrastructure required)
-./localtesting/e2e-tests-new.sh --code-tests-only
+./localtesting/e2e-tests.sh --code-tests-only
 
 # Run API tests only (requires running server)
-./localtesting/e2e-tests-new.sh --api-tests-only
+./localtesting/e2e-tests.sh --api-tests-only
 ```
 
 **Test Coverage:**
@@ -1356,8 +1356,8 @@ make dev             # Run server locally (requires local setup)
 - `make bootstrap` - Build RBAC bootstrap tool
 - `./bin/bootstrap --deploy-schema` - Deploy Weaviate RBAC schema
 - `./bin/bootstrap` - Initialize RBAC system with default data
-- `./localtesting/e2e-tests-new.sh` - Run comprehensive E2E tests
-- `./localtesting/e2e-tests-new.sh --code-tests-only` - Code quality validation only
+- `./localtesting/e2e-tests.sh` - Run comprehensive E2E tests
+- `./localtesting/e2e-tests.sh --code-tests-only` - Code quality validation only
 
 **Local development (not recommended):**
 - `make setup` - Install local dependencies
