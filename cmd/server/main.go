@@ -206,6 +206,17 @@ var (
 )
 
 func main() {
+	// Check for healthcheck command
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		// Load configuration to verify it's valid
+		_, err := config.Load()
+		if err != nil {
+			log.Fatalf("Configuration load failed: %v", err)
+		}
+		log.Println("healthy")
+		return
+	}
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
