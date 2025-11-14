@@ -360,7 +360,7 @@ func (s *RBACBootstrapService) BootstrapAdminAuth(ctx context.Context, adminUser
 	}
 
 	s.logger.Info("Created admin auth credentials", "user_id", adminUserID, "tenant_id", defaultTenantID)
-	s.logger.Warn("Default admin password set - CHANGE IMMEDIATELY", "username", adminUserID, "default_password", defaultPassword)
+	s.logger.Warn("Default admin password set - CHANGE IMMEDIATELY", "username", user.Username, "user_id", adminUserID, "default_password", defaultPassword)
 	return nil
 }
 
