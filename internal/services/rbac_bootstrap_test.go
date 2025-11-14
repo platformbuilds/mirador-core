@@ -2,11 +2,13 @@ package services
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -342,7 +344,8 @@ func TestBootstrapDefaultTenant(t *testing.T) {
 	mockRepo := NewMockRBACRepository()
 	mockCache := &MockCacheRepository{}
 	auditService := rbac.NewAuditService(mockRepo)
-	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
+	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 	testLogger := &TestLogger{}
 
 	bootstrap := NewRBACBootstrapService(rbacService, mockRepo, testLogger)
@@ -367,7 +370,8 @@ func TestBootstrapDefaultTenantIdempotency(t *testing.T) {
 	mockRepo := NewMockRBACRepository()
 	mockCache := &MockCacheRepository{}
 	auditService := rbac.NewAuditService(mockRepo)
-	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
+	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 	testLogger := &TestLogger{}
 
 	bootstrap := NewRBACBootstrapService(rbacService, mockRepo, testLogger)
@@ -394,7 +398,8 @@ func TestBootstrapGlobalAdmin(t *testing.T) {
 	mockRepo := NewMockRBACRepository()
 	mockCache := &MockCacheRepository{}
 	auditService := rbac.NewAuditService(mockRepo)
-	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
+	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 	testLogger := &TestLogger{}
 
 	bootstrap := NewRBACBootstrapService(rbacService, mockRepo, testLogger)
@@ -431,7 +436,8 @@ func TestBootstrapGlobalAdminIdempotency(t *testing.T) {
 	mockRepo := NewMockRBACRepository()
 	mockCache := &MockCacheRepository{}
 	auditService := rbac.NewAuditService(mockRepo)
-	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
+	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 	testLogger := &TestLogger{}
 
 	bootstrap := NewRBACBootstrapService(rbacService, mockRepo, testLogger)
@@ -462,7 +468,8 @@ func TestBootstrapAdminAuth(t *testing.T) {
 	mockRepo := NewMockRBACRepository()
 	mockCache := &MockCacheRepository{}
 	auditService := rbac.NewAuditService(mockRepo)
-	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
+	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 	testLogger := &TestLogger{}
 
 	bootstrap := NewRBACBootstrapService(rbacService, mockRepo, testLogger)
@@ -477,7 +484,7 @@ func TestBootstrapAdminAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create admin auth credentials
-	err = bootstrap.BootstrapAdminAuth(ctx, adminUserID)
+	err = bootstrap.BootstrapAdminAuth(ctx, adminUserID, tenantID)
 	require.NoError(t, err, "Bootstrap admin auth should succeed")
 
 	// Verify auth was created
@@ -494,7 +501,8 @@ func TestBootstrapDefaultRoles(t *testing.T) {
 	mockRepo := NewMockRBACRepository()
 	mockCache := &MockCacheRepository{}
 	auditService := rbac.NewAuditService(mockRepo)
-	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
+	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 	testLogger := &TestLogger{}
 
 	bootstrap := NewRBACBootstrapService(rbacService, mockRepo, testLogger)
@@ -529,7 +537,8 @@ func TestRunBootstrapComplete(t *testing.T) {
 	mockRepo := NewMockRBACRepository()
 	mockCache := &MockCacheRepository{}
 	auditService := rbac.NewAuditService(mockRepo)
-	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
+	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 	testLogger := &TestLogger{}
 
 	bootstrap := NewRBACBootstrapService(rbacService, mockRepo, testLogger)
@@ -574,7 +583,8 @@ func TestRunBootstrapIdempotency(t *testing.T) {
 	mockRepo := NewMockRBACRepository()
 	mockCache := &MockCacheRepository{}
 	auditService := rbac.NewAuditService(mockRepo)
-	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
+	rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 	testLogger := &TestLogger{}
 
 	bootstrap := NewRBACBootstrapService(rbacService, mockRepo, testLogger)
@@ -614,7 +624,8 @@ func TestBootstrapErrorHandling(t *testing.T) {
 
 		mockCache := &MockCacheRepository{}
 		auditService := rbac.NewAuditService(mockRepo)
-		rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService)
+		mockLogger := logger.NewMockLogger(&strings.Builder{})
+		rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 		testLogger := &TestLogger{}
 
 		bootstrap := NewRBACBootstrapService(rbacService, mockRepo, testLogger)
@@ -639,7 +650,8 @@ func TestBootstrapErrorHandling(t *testing.T) {
 
 		mockCache := &MockCacheRepository{}
 		auditService := rbac.NewAuditService(mockRepo)
-		rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService)
+		mockLogger := logger.NewMockLogger(&strings.Builder{})
+		rbacService := rbac.NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 		testLogger := &TestLogger{}
 
 		bootstrap := NewRBACBootstrapService(rbacService, mockRepo, testLogger)

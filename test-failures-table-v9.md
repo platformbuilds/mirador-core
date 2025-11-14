@@ -8,10 +8,10 @@ The following table provides detailed information about failed API tests, includ
 |-----------|--------------|-----------------|---------------|--------------|---------------|
 | Validate Default Tenant Exists | `http://localhost:8010/api/v1/tenants/PLATFORMBUILDS` | 200 | 403 | Expected status 200, got 403 | Access forbidden. Check user permissions and RBAC roles. |
 | Validate Default Admin User Exists | `http://localhost:8010/api/v1/users/aarvee` | 200 | 403 | Expected status 200, got 403 | Access forbidden. Check user permissions and RBAC roles. |
-| Validate Global Admin Role Exists | `http://localhost:8010/api/v1/rbac/roles/global_admin` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
-| Validate Tenant Admin Role Exists | `http://localhost:8010/api/v1/rbac/roles/tenant_admin` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
-| Validate Tenant Editor Role Exists | `http://localhost:8010/api/v1/rbac/roles/tenant_editor` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
-| Validate Tenant Guest Role Exists | `http://localhost:8010/api/v1/rbac/roles/tenant_guest` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
+| Validate Global Admin Role Exists | `http://localhost:8010/api/v1/rbac/roles?name=global_admin` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
+| Validate Tenant Admin Role Exists | `http://localhost:8010/api/v1/rbac/roles?name=tenant_admin` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
+| Validate Tenant Editor Role Exists | `http://localhost:8010/api/v1/rbac/roles?name=tenant_editor` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
+| Validate Tenant Guest Role Exists | `http://localhost:8010/api/v1/rbac/roles?name=tenant_guest` | 200 | 404 | Expected status 200, got 404 | Endpoint not found. Verify API version and endpoint path |
 | Validate Admin Tenant-User Association | `http://localhost:8010/api/v1/tenants/PLATFORMBUILDS/users/aarvee` | 200 | 403 | Expected status 200, got 403 | Access forbidden. Check user permissions and RBAC roles. |
 
 ## Common Issues and Solutions

@@ -303,7 +303,7 @@ func (s *RBACBootstrapService) BootstrapGlobalAdmin(ctx context.Context, default
 }
 
 // BootstrapAdminAuth creates MiradorAuth credentials for the admin user
-func (s *RBACBootstrapService) BootstrapAdminAuth(ctx context.Context, adminUserID string) error {
+func (s *RBACBootstrapService) BootstrapAdminAuth(ctx context.Context, adminUserID, defaultTenantID string) error {
 	s.logger.Info("Checking for admin auth credentials", "user_id", adminUserID)
 
 	// Check if auth already exists
@@ -337,11 +337,11 @@ func (s *RBACBootstrapService) BootstrapAdminAuth(ctx context.Context, adminUser
 		return fmt.Errorf("failed to get user for auth creation: %w", err)
 	}
 
-	// Create MiradorAuth record
+	// Create MiradorAuth record with the default tenant
 	auth := &models.MiradorAuth{
 		UserID:       adminUserID,
 		Username:     user.Username,
-		TenantID:     "", // MiradorAuth is tenant-agnostic
+		TenantID:     defaultTenantID, // Associate with the default tenant
 		PasswordHash: string(hashedPassword),
 		TOTPSecret:   totpSecret,
 		IsActive:     true,
@@ -359,7 +359,7 @@ func (s *RBACBootstrapService) BootstrapAdminAuth(ctx context.Context, adminUser
 		return fmt.Errorf("failed to create admin auth credentials: %w", err)
 	}
 
-	s.logger.Info("Created admin auth credentials", "user_id", adminUserID)
+	s.logger.Info("Created admin auth credentials", "user_id", adminUserID, "tenant_id", defaultTenantID)
 	s.logger.Warn("Default admin password set - CHANGE IMMEDIATELY", "username", adminUserID, "default_password", defaultPassword)
 	return nil
 }
@@ -377,25 +377,25 @@ func (s *RBACBootstrapService) BootstrapDefaultRoles(ctx context.Context, defaul
 		{
 			name:        "global_admin",
 			description: "Global administrator with full system access",
-			permissions: []string{"*:admin", "rbac:admin", "tenant:admin", "user:admin"},
+			permissions: []string{"*.admin", "rbac.admin", "tenant.admin", "user.admin"},
 			isSystem:    true,
 		},
 		{
 			name:        "tenant_admin",
 			description: "Tenant administrator with tenant-level management",
-			permissions: []string{"tenant:admin", "rbac:admin", "user:admin", "dashboard:admin"},
+			permissions: []string{"tenant.admin", "rbac.admin", "user.admin", "dashboard.admin"},
 			isSystem:    true,
 		},
 		{
 			name:        "tenant_editor",
 			description: "Tenant editor with read/write access",
-			permissions: []string{"dashboard:create", "dashboard:update", "dashboard:read", "kpi:create", "kpi:update", "kpi:read"},
+			permissions: []string{"dashboard.create", "dashboard.update", "dashboard.read", "kpi.create", "kpi.update", "kpi.read"},
 			isSystem:    true,
 		},
 		{
 			name:        "tenant_guest",
 			description: "Tenant guest with read-only access",
-			permissions: []string{"dashboard:read", "kpi:read"},
+			permissions: []string{"dashboard.read", "kpi.read"},
 			isSystem:    true,
 		},
 	}
@@ -460,7 +460,7 @@ func (s *RBACBootstrapService) RunBootstrap(ctx context.Context) error {
 
 	// Bootstrap admin auth credentials
 	s.logger.Info("Running bootstrap step", "step", "admin auth credentials")
-	if err := s.BootstrapAdminAuth(ctx, adminUserID); err != nil {
+	if err := s.BootstrapAdminAuth(ctx, adminUserID, defaultTenantID); err != nil {
 		return fmt.Errorf("bootstrap step admin auth credentials failed: %w", err)
 	}
 

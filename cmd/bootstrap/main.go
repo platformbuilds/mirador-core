@@ -74,7 +74,7 @@ func main() {
 	cacheRepo := rbac.NewValkeyRBACRepository(valkeyAdapter)
 
 	// Initialize RBAC service
-	rbacService := rbac.NewRBACService(rbacRepo, cacheRepo, auditService)
+	rbacService := rbac.NewRBACService(rbacRepo, cacheRepo, auditService, logger)
 	logger.Info("RBAC service initialized")
 
 	// Create bootstrap service
