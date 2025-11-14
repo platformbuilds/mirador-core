@@ -100,7 +100,7 @@ func (s *IntegrationsService) SendSlackNotification(ctx context.Context, notific
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Slack notification failed with status %d", resp.StatusCode)
+		return fmt.Errorf("slack notification failed with status %d", resp.StatusCode)
 	}
 
 	s.logger.Info("Slack notification sent", "type", notification.Type, "component", notification.Component)
@@ -151,7 +151,7 @@ func (s *IntegrationsService) SendMSTeamsNotification(ctx context.Context, notif
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("MS Teams notification failed with status %d", resp.StatusCode)
+		return fmt.Errorf("ms teams notification failed with status %d", resp.StatusCode)
 	}
 
 	s.logger.Info("MS Teams notification sent", "type", notification.Type, "component", notification.Component)
@@ -198,23 +198,62 @@ func (s *IntegrationsService) SendEmailNotification(ctx context.Context, notific
 
 	addr := fmt.Sprintf("%s:%d", s.config.Email.SMTPHost, s.config.Email.SMTPPort)
 
-	subject := fmt.Sprintf("[Mirador] %s - %s", strings.ToUpper(notification.Severity), notification.Title)
+	safeFrom, err := sanitizeEmailHeader("from address", s.config.Email.FromAddress)
+	if err != nil {
+		return err
+	}
+	if safeFrom == "" {
+		return fmt.Errorf("from address cannot be empty")
+	}
+
+	safeRecipients := make([]string, 0, len(recipients))
+	for _, recipient := range recipients {
+		safeRecipient, err := sanitizeEmailHeader("recipient", recipient)
+		if err != nil {
+			return err
+		}
+		if safeRecipient == "" {
+			return fmt.Errorf("recipient cannot be empty")
+		}
+		safeRecipients = append(safeRecipients, safeRecipient)
+	}
+
+	safeSeverity, err := sanitizeEmailHeader("severity", notification.Severity)
+	if err != nil {
+		return err
+	}
+	safeTitle, err := sanitizeEmailHeader("title", notification.Title)
+	if err != nil {
+		return err
+	}
+	safeComponent, err := sanitizeEmailHeader("component", notification.Component)
+	if err != nil {
+		return err
+	}
+
+	subject := fmt.Sprintf("[Mirador] %s - %s", strings.ToUpper(safeSeverity), safeTitle)
 	body := fmt.Sprintf(
 		"Component: %s\nSeverity: %s\nTime: %s\nType: %s\n\n%s",
-		notification.Component,
-		notification.Severity,
+		safeComponent,
+		safeSeverity,
 		notification.Timestamp.Format(time.RFC3339),
 		notification.Type,
 		notification.Message,
 	)
 
-	msg := []byte(fmt.Sprintf(
-		"From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s",
-		s.config.Email.FromAddress,
-		strings.Join(recipients, ","),
-		subject,
-		body,
-	))
+	var msgBuilder strings.Builder
+	msgBuilder.WriteString("From: ")
+	msgBuilder.WriteString(safeFrom)
+	msgBuilder.WriteString("\r\n")
+	msgBuilder.WriteString("To: ")
+	msgBuilder.WriteString(strings.Join(safeRecipients, ","))
+	msgBuilder.WriteString("\r\n")
+	msgBuilder.WriteString("Subject: ")
+	msgBuilder.WriteString(subject)
+	msgBuilder.WriteString("\r\n\r\n")
+	msgBuilder.WriteString(body)
+
+	msg := []byte(msgBuilder.String())
 
 	// Build auth only if username/password provided
 	var auth smtp.Auth
@@ -227,14 +266,23 @@ func (s *IntegrationsService) SendEmailNotification(ctx context.Context, notific
 		)
 	}
 
-	if err := smtp.SendMail(addr, auth, s.config.Email.FromAddress, recipients, msg); err != nil {
+	if err := smtp.SendMail(addr, auth, safeFrom, safeRecipients, msg); err != nil {
 		return fmt.Errorf("failed to send email: %w", err)
 	}
 
 	s.logger.Info("Email notification sent",
 		"type", notification.Type,
 		"component", notification.Component,
-		"to", recipients,
+		"to", safeRecipients,
 	)
 	return nil
+}
+
+// sanitizeEmailHeader rejects header values that could break out of email headers.
+func sanitizeEmailHeader(fieldName, value string) (string, error) {
+	trimmed := strings.TrimSpace(value)
+	if strings.ContainsAny(trimmed, "\r\n") {
+		return "", fmt.Errorf("%s contains invalid newline characters", fieldName)
+	}
+	return trimmed, nil
 }

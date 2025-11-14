@@ -476,7 +476,10 @@ curl -X GET "https://mirador-core/api/v1/logs/facets?query_language=lucene&query
 #### Real-time Logs (WebSocket)
 ```bash
 # Connect to WebSocket for real-time logs
-wscat -c "ws://mirador-core/api/v1/logs/tail?query=_time:5m&sampling=10"
+wscat -H "Authorization: Bearer <token>" \
+  -c "ws://mirador-core/api/v1/logs/tail?query=_time:5m&sampling=10"
+# Or if you are using session tokens from the UI:
+# wscat -H "X-Session-Token: <session-id>" -c "ws://mirador-core/api/v1/logs/tail?query=_time:5m"
 ```
 
 ### Traces APIs
@@ -819,13 +822,13 @@ curl -X GET https://mirador-core/api/v1/metrics
 #### Real-time Data Streams
 ```bash
 # Metrics stream
-wscat -c "ws://mirador-core/api/v1/ws/metrics"
+wscat -H "Authorization: Bearer <token>" -c "ws://mirador-core/api/v1/ws/metrics"
 
 # Alerts stream
-wscat -c "ws://mirador-core/api/v1/ws/alerts"
+wscat -H "Authorization: Bearer <token>" -c "ws://mirador-core/api/v1/ws/alerts"
 
 # Predictions stream
-wscat -c "ws://mirador-core/api/v1/ws/predictions"
+wscat -H "Authorization: Bearer <token>" -c "ws://mirador-core/api/v1/ws/predictions"
 ```
 
 ### Session Management APIs
@@ -1377,6 +1380,8 @@ auth:
     url: "ldap://ldap.corp.company.com"
     baseDN: "dc=company,dc=com"
     userSearchFilter: "(sAMAccountName={0})"
+    tlsCaBundlePath: "/etc/mirador/ldap/ca-bundle.pem" # hot-reloaded PEM bundle
+    tlsSkipVerify: false
 
 rbac:
   enabled: true

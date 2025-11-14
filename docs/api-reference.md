@@ -465,6 +465,14 @@ Real-time streaming endpoints:
 - `/api/v1/ws/alerts` - Real-time alerts stream
 - `/api/v1/ws/predictions` - Real-time predictions stream
 
+All WebSocket connections must send credentials in headers. Include either an `Authorization: Bearer <token>` header or an `X-Session-Token` header during the initial handshake—tokens in the query string are ignored.
+
+Example using `wscat` with a bearer token:
+
+```bash
+wscat -H "Authorization: Bearer <token>" -c "ws://localhost:8010/api/v1/ws/metrics"
+```
+
 ## Complete OpenAPI Specification
 
 For the complete API specification, see the [OpenAPI YAML file](../api/openapi.yaml) in the repository.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
+	"github.com/platformbuilds/mirador-core/internal/security/cabundle"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -22,6 +24,8 @@ type LDAPSyncService struct {
 	repo      rbac.RBACRepository
 	logger    logger.Logger
 	conn      *ldap.Conn
+	connMu    sync.RWMutex
+	caBundle  *cabundle.Manager
 	syncMutex sync.Mutex
 	lastSync  time.Time
 	isRunning bool
@@ -59,6 +63,18 @@ func NewLDAPSyncService(cfg config.LDAPConfig, rbacRepo rbac.RBACRepository, log
 		stopChan: make(chan struct{}),
 	}
 
+	if cfg.TLSCABundlePath != "" {
+		manager, err := cabundle.NewManager(cfg.TLSCABundlePath, logger, service.handleCABundleReload)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize LDAP CA bundle: %w", err)
+		}
+		service.caBundle = manager
+	}
+
+	if cfg.TLSSkipVerify {
+		logger.Warn("LDAP TLS certificate verification is disabled; prefer providing tls_ca_bundle_path")
+	}
+
 	if cfg.Enabled && cfg.Sync.Enabled {
 		if err := service.connect(); err != nil {
 			return nil, fmt.Errorf("failed to connect to LDAP: %w", err)
@@ -71,15 +87,69 @@ func NewLDAPSyncService(cfg config.LDAPConfig, rbacRepo rbac.RBACRepository, log
 	return service, nil
 }
 
+func (s *LDAPSyncService) buildTLSConfig() *tls.Config {
+	if s.caBundle != nil {
+		cfg := s.caBundle.TLSConfig(s.config.TLSSkipVerify)
+		s.applyServerName(cfg)
+		return cfg
+	}
+
+	cfg := &tls.Config{InsecureSkipVerify: s.config.TLSSkipVerify}
+	s.applyServerName(cfg)
+	return cfg
+}
+
+func (s *LDAPSyncService) applyServerName(cfg *tls.Config) {
+	if cfg == nil || cfg.InsecureSkipVerify || cfg.ServerName != "" {
+		return
+	}
+	if host := s.serverHostname(); host != "" {
+		cfg.ServerName = host
+	}
+}
+
+func (s *LDAPSyncService) serverHostname() string {
+	if !strings.Contains(s.config.URL, "://") {
+		return s.config.URL
+	}
+	parsed, err := url.Parse(s.config.URL)
+	if err != nil {
+		return ""
+	}
+	if host := parsed.Hostname(); host != "" {
+		return host
+	}
+	return parsed.Host
+}
+
+func (s *LDAPSyncService) handleCABundleReload() {
+	if !s.config.Enabled {
+		return
+	}
+
+	s.logger.Info("LDAP CA bundle updated; refreshing connection")
+	if err := s.connect(); err != nil {
+		s.logger.Warn("Failed to refresh LDAP connection after CA bundle update", "error", err)
+	}
+}
+
+func (s *LDAPSyncService) currentConn() (*ldap.Conn, error) {
+	s.connMu.RLock()
+	conn := s.conn
+	s.connMu.RUnlock()
+	if conn == nil {
+		return nil, fmt.Errorf("LDAP connection not established")
+	}
+	return conn, nil
+}
+
 // connect establishes LDAP connection with proper TLS configuration
 func (s *LDAPSyncService) connect() error {
 	var conn *ldap.Conn
 	var err error
 
-	// Configure TLS
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: s.config.TLSSkipVerify,
-	}
+	// Configure TLS using optional CA bundle
+	tlsConfig := s.buildTLSConfig()
 
 	// Connect to LDAP server
 	if strings.HasPrefix(s.config.URL, "ldaps://") {
@@ -104,16 +174,20 @@ func (s *LDAPSyncService) connect() error {
 		return err
 	}
 
-	s.conn = conn
-
 	// Bind with service account
 	if s.config.BindDN != "" {
-		err = conn.Bind(s.config.BindDN, s.config.BindPassword)
-		if err != nil {
+		if err := conn.Bind(s.config.BindDN, s.config.BindPassword); err != nil {
 			conn.Close()
 			return fmt.Errorf("failed to bind: %w", err)
 		}
 	}
+
+	s.connMu.Lock()
+	if s.conn != nil {
+		s.conn.Close()
+	}
+	s.conn = conn
+	s.connMu.Unlock()
 
 	s.logger.Info("Successfully connected to LDAP server", "url", s.config.URL)
 	return nil
@@ -193,8 +267,9 @@ func (s *LDAPSyncService) SyncAll(ctx context.Context, tenantID string) error {
 
 // searchUsers searches for users in LDAP with paging support
 func (s *LDAPSyncService) searchUsers(ctx context.Context) ([]*LDAPUser, error) {
-	if s.conn == nil {
-		return nil, fmt.Errorf("LDAP connection not established")
+	conn, err := s.currentConn()
+	if err != nil {
+		return nil, err
 	}
 
 	searchBase := s.config.UserSearchBase
@@ -238,7 +313,7 @@ func (s *LDAPSyncService) searchUsers(ctx context.Context) ([]*LDAPUser, error) 
 			searchRequest.Controls = append(searchRequest.Controls, pagingControl)
 		}
 
-		searchResult, err := s.conn.SearchWithPaging(searchRequest, uint32(pageSize))
+		searchResult, err := conn.SearchWithPaging(searchRequest, uint32(pageSize))
 		if err != nil {
 			return nil, fmt.Errorf("LDAP search failed: %w", err)
 		}
@@ -262,8 +337,9 @@ func (s *LDAPSyncService) searchUsers(ctx context.Context) ([]*LDAPUser, error) 
 
 // searchGroups searches for groups in LDAP with paging support
 func (s *LDAPSyncService) searchGroups(ctx context.Context) ([]*LDAPGroup, error) {
-	if s.conn == nil {
-		return nil, fmt.Errorf("LDAP connection not established")
+	conn, err := s.currentConn()
+	if err != nil {
+		return nil, err
 	}
 
 	searchBase := s.config.GroupSearchBase
@@ -305,7 +381,7 @@ func (s *LDAPSyncService) searchGroups(ctx context.Context) ([]*LDAPGroup, error
 			searchRequest.Controls = append(searchRequest.Controls, pagingControl)
 		}
 
-		searchResult, err := s.conn.SearchWithPaging(searchRequest, uint32(pageSize))
+		searchResult, err := conn.SearchWithPaging(searchRequest, uint32(pageSize))
 		if err != nil {
 			return nil, fmt.Errorf("LDAP group search failed: %w", err)
 		}
@@ -499,8 +575,16 @@ func (s *LDAPSyncService) Stop() {
 	if s.isRunning {
 		close(s.stopChan)
 	}
+	s.connMu.Lock()
 	if s.conn != nil {
 		s.conn.Close()
+		s.conn = nil
+	}
+	s.connMu.Unlock()
+	if s.caBundle != nil {
+		if err := s.caBundle.Close(); err != nil {
+			s.logger.Warn("Failed to stop LDAP CA bundle watcher", "error", err)
+		}
 	}
 }
 
@@ -511,14 +595,13 @@ func (s *LDAPSyncService) GetLastSync() time.Time {
 
 // IsHealthy checks if the LDAP connection is healthy
 func (s *LDAPSyncService) IsHealthy() bool {
-	if s.conn == nil {
+	conn, err := s.currentConn()
+	if err != nil {
 		return false
 	}
 
-	// Simple bind test
 	if s.config.BindDN != "" {
-		err := s.conn.Bind(s.config.BindDN, s.config.BindPassword)
-		return err == nil
+		return conn.Bind(s.config.BindDN, s.config.BindPassword) == nil
 	}
 
 	return true
@@ -526,8 +609,8 @@ func (s *LDAPSyncService) IsHealthy() bool {
 
 // AuthenticateUser authenticates a user against LDAP directory
 func (s *LDAPSyncService) AuthenticateUser(username, password string) (*LDAPUser, error) {
-	if s.conn == nil {
-		return nil, fmt.Errorf("LDAP connection not established")
+	if _, err := s.currentConn(); err != nil {
+		return nil, err
 	}
 
 	// Find user DN first
@@ -559,8 +642,8 @@ func (s *LDAPSyncService) AuthenticateUser(username, password string) (*LDAPUser
 
 // GetUserByUsername retrieves user details by username
 func (s *LDAPSyncService) GetUserByUsername(username string) (*LDAPUser, error) {
-	if s.conn == nil {
-		return nil, fmt.Errorf("LDAP connection not established")
+	if _, err := s.currentConn(); err != nil {
+		return nil, err
 	}
 
 	userDN, err := s.findUserDN(username)
@@ -573,6 +656,11 @@ func (s *LDAPSyncService) GetUserByUsername(username string) (*LDAPUser, error) 
 
 // findUserDN finds the DN for a given username
 func (s *LDAPSyncService) findUserDN(username string) (string, error) {
+	conn, err := s.currentConn()
+	if err != nil {
+		return "", err
+	}
+
 	searchBase := s.config.UserSearchBase
 	if searchBase == "" {
 		searchBase = s.config.BaseDN
@@ -590,7 +678,7 @@ func (s *LDAPSyncService) findUserDN(username string) (string, error) {
 		nil,
 	)
 
-	searchResult, err := s.conn.Search(searchRequest)
+	searchResult, err := conn.Search(searchRequest)
 	if err != nil {
 		return "", fmt.Errorf("LDAP search failed: %w", err)
 	}
@@ -604,6 +692,11 @@ func (s *LDAPSyncService) findUserDN(username string) (string, error) {
 
 // getUserByDN retrieves user details by DN
 func (s *LDAPSyncService) getUserByDN(userDN string) (*LDAPUser, error) {
+	conn, err := s.currentConn()
+	if err != nil {
+		return nil, err
+	}
+
 	attributes := []string{
 		s.config.Attributes.Username,
 		s.config.Attributes.Email,
@@ -623,7 +716,7 @@ func (s *LDAPSyncService) getUserByDN(userDN string) (*LDAPUser, error) {
 		nil,
 	)
 
-	searchResult, err := s.conn.Search(searchRequest)
+	searchResult, err := conn.Search(searchRequest)
 	if err != nil {
 		return nil, fmt.Errorf("LDAP search failed: %w", err)
 	}
@@ -641,9 +734,7 @@ func (s *LDAPSyncService) createAuthConnection() (*ldap.Conn, error) {
 	var err error
 
 	// Configure TLS
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: s.config.TLSSkipVerify,
-	}
+	tlsConfig := s.buildTLSConfig()
 
 	// Connect to LDAP server
 	if strings.HasPrefix(s.config.URL, "ldaps://") {
