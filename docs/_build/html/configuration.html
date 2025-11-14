@@ -48,10 +48,12 @@
 <li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="unified-query-architecture.html">Unified Query Engine Architecture</a></li>
 <li class="toctree-l1"><a class="reference internal" href="uql-language-guide.html">Unified Query Language (UQL) Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="unified-query-operations.html">Unified Query Platform Operations Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="correlation-engine.html">Mirador Core v7.0.0 - Log-Metrics-Traces Correlation Engine</a></li>
 <li class="toctree-l1"><a class="reference internal" href="correlation-queries-guide.html">Creating Correlation Queries in Mirador Core</a></li>
 <li class="toctree-l1"><a class="reference internal" href="monitoring-observability.html">Mirador Core v7.0.0 - Monitoring and Observability Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="testing.html">Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migration-guide.html">Migration Guide: Transitioning to Unified Query API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="readthedocs-integration.html">ReadTheDocs Integration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api-reference.html">API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment Guide</a></li>
@@ -84,7 +86,7 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#caching-configuration">Caching Configuration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#rate-limiting">Rate Limiting</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#schema-management">Schema Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#kpi-management">KPI Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#ai-and-analytics">AI and Analytics</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#root-cause-analysis">Root Cause Analysis</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#predictive-analysis">Predictive Analysis</a></li>
@@ -283,11 +285,12 @@
 <span class="w">      </span><span class="nt">email</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;mail&quot;</span>
 <span class="w">      </span><span class="nt">displayName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;displayName&quot;</span>
 <span class="w">      </span><span class="nt">memberOf</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;memberOf&quot;</span>
-<span class="w">    </span><span class="nt">tls</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">skipVerify</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">      </span><span class="nt">caCert</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/path/to/ca-cert.pem&quot;</span>
+<span class="w">    </span><span class="nt">start_tls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">tls_skip_verify</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">tls_ca_bundle_path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/etc/mirador/ldap/ca-bundle.pem&quot;</span>
 </pre></div>
 </div>
+<p><code class="docutils literal notranslate"><span class="pre">tlsCaBundlePath</span></code> accepts a PEM-encoded bundle that Mirador watches for changes. In Kubernetes mount the bundle via a ConfigMap (projected as a file) and updates will be applied automatically without restarting the service. In non-Kubernetes deployments update the file in place; the watcher validates the new bundle and swaps it in once parsing succeeds. If parsing fails the previous trust store remains active and the error is logged.</p>
 </section>
 <section id="oauth-2-0-configuration">
 <h3>OAuth 2.0 Configuration<a class="headerlink" href="#oauth-2-0-configuration" title="Link to this heading"></a></h3>
@@ -488,8 +491,8 @@
 </pre></div>
 </div>
 </section>
-<section id="schema-management">
-<h2>Schema Management<a class="headerlink" href="#schema-management" title="Link to this heading"></a></h2>
+<section id="kpi-management">
+<h2>KPI Management<a class="headerlink" href="#kpi-management" title="Link to this heading"></a></h2>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">schema</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">  </span><span class="nt">validation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>

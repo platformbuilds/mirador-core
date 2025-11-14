@@ -186,7 +186,7 @@ CREATE EXTENSION IF NOT EXISTS "timescaledb";
 
 ### Schema Initialization
 
-The application will automatically create and migrate the database schema on startup. For manual schema management:
+The application will automatically create and migrate the database schema on startup. For manual KPI management:
 
 ```bash
 # Run schema migrations

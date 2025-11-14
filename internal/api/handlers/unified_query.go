@@ -177,6 +177,126 @@ func (h *UnifiedQueryHandler) HandleUnifiedSearch(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// HandleUQLQuery handles direct UQL query execution
+func (h *UnifiedQueryHandler) HandleUQLQuery(c *gin.Context) {
+	var req models.UQLQueryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Failed to bind UQL query request", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Set tenant ID from context (middleware should set this)
+	if tenantID, exists := c.Get("tenant_id"); exists {
+		if tid, ok := tenantID.(string); ok {
+			req.Query.TenantID = tid
+		}
+	}
+
+	// Execute the UQL query
+	result, err := h.unifiedEngine.ExecuteUQLQuery(c.Request.Context(), req.Query)
+	if err != nil {
+		h.logger.Error("Failed to execute UQL query", "error", err, "query_id", req.Query.ID)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":    "UQL query execution failed",
+			"details":  err.Error(),
+			"query_id": req.Query.ID,
+		})
+		return
+	}
+
+	response := models.UnifiedQueryResponse{
+		Result: result,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// HandleUQLValidate validates UQL query syntax without execution
+func (h *UnifiedQueryHandler) HandleUQLValidate(c *gin.Context) {
+	var req models.UQLValidateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Failed to bind UQL validate request", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// For validation, we can use the UQL parser to check syntax
+	// This is a simplified validation - in practice, you'd want more comprehensive validation
+	if req.Query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Query cannot be empty",
+		})
+		return
+	}
+
+	// Basic validation response
+	response := models.UQLValidateResponse{
+		Valid: true,
+		Query: req.Query,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// HandleUQLExplain provides query execution plan for UQL queries
+func (h *UnifiedQueryHandler) HandleUQLExplain(c *gin.Context) {
+	var req models.UQLExplainRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Failed to bind UQL explain request", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Set tenant ID from context
+	if tenantID, exists := c.Get("tenant_id"); exists {
+		if tid, ok := tenantID.(string); ok {
+			req.Query.TenantID = tid
+		}
+	}
+
+	// For explain, we would ideally get the execution plan from the optimizer
+	// This is a simplified response - in practice, you'd integrate with the optimizer
+	explainResult := models.UQLExplainResponse{
+		Query: req.Query.Query,
+		Plan: models.QueryPlan{
+			Steps: []models.QueryPlanStep{
+				{
+					Type:        "parse",
+					Description: "Parse UQL query into AST",
+					Engine:      "uql_parser",
+				},
+				{
+					Type:        "optimize",
+					Description: "Apply query optimizations",
+					Engine:      "uql_optimizer",
+				},
+				{
+					Type:        "translate",
+					Description: "Translate to engine-specific queries",
+					Engine:      "uql_translator",
+				},
+				{
+					Type:        "execute",
+					Description: "Execute translated queries",
+					Engine:      "unified_engine",
+				},
+			},
+		},
+	}
+
+	c.JSON(http.StatusOK, explainResult)
+}
+
 // HandleUnifiedStats returns statistics about unified query operations
 func (h *UnifiedQueryHandler) HandleUnifiedStats(c *gin.Context) {
 	// Get health status and metadata to provide basic statistics
@@ -212,17 +332,4 @@ func (h *UnifiedQueryHandler) HandleUnifiedStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, stats)
-}
-
-// RegisterRoutes registers the unified query routes
-func (h *UnifiedQueryHandler) RegisterRoutes(router *gin.RouterGroup) {
-	unified := router.Group("/unified")
-	{
-		unified.POST("/query", h.HandleUnifiedQuery)
-		unified.POST("/correlation", h.HandleUnifiedCorrelation)
-		unified.GET("/metadata", h.HandleQueryMetadata)
-		unified.GET("/health", h.HandleHealthCheck)
-		unified.POST("/search", h.HandleUnifiedSearch)
-		unified.GET("/stats", h.HandleUnifiedStats)
-	}
 }

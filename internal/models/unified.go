@@ -88,40 +88,6 @@ type CacheOptions struct {
 	BypassCache bool          `json:"bypass_cache"`  // Force fresh query
 }
 
-// UnmarshalJSON implements custom JSON unmarshaling for CacheOptions
-func (c *CacheOptions) UnmarshalJSON(data []byte) error {
-	type Alias CacheOptions
-	aux := &struct {
-		TTL interface{} `json:"ttl"`
-		*Alias
-	}{
-		Alias: (*Alias)(c),
-	}
-
-	if err := json.Unmarshal(data, aux); err != nil {
-		return err
-	}
-
-	// Handle TTL parsing
-	switch v := aux.TTL.(type) {
-	case string:
-		duration, err := time.ParseDuration(v)
-		if err != nil {
-			return fmt.Errorf("invalid TTL duration string: %w", err)
-		}
-		c.TTL = duration
-	case float64:
-		// Assume it's in seconds
-		c.TTL = time.Duration(v) * time.Second
-	case nil:
-		// TTL not provided, keep zero value
-	default:
-		return fmt.Errorf("invalid TTL type: %T", v)
-	}
-
-	return nil
-}
-
 // UnifiedResult represents the result of a unified query
 type UnifiedResult struct {
 	QueryID       string                    `json:"query_id"`
@@ -253,4 +219,46 @@ type EngineHealthStatus struct {
 	OverallHealth string               `json:"overall_health"`
 	EngineHealth  map[QueryType]string `json:"engine_health"`
 	LastChecked   time.Time            `json:"last_checked"`
+}
+
+// QueryPlan represents a query execution plan
+type QueryPlan struct {
+	Steps []QueryPlanStep `json:"steps"`
+}
+
+// QueryPlanStep represents a single step in a query execution plan
+type QueryPlanStep struct {
+	Type        string `json:"type"`
+	Description string `json:"description"`
+	Engine      string `json:"engine"`
+	Cost        int    `json:"cost,omitempty"`
+}
+
+// UQLQueryRequest represents a request to execute a UQL query
+type UQLQueryRequest struct {
+	Query *UnifiedQuery `json:"query"`
+}
+
+// UQLValidateRequest represents a request to validate UQL syntax
+type UQLValidateRequest struct {
+	Query string `json:"query"`
+}
+
+// UQLValidateResponse represents the response from UQL validation
+type UQLValidateResponse struct {
+	Valid bool   `json:"valid"`
+	Query string `json:"query"`
+	Error string `json:"error,omitempty"`
+}
+
+// UQLExplainRequest represents a request to explain a UQL query execution plan
+type UQLExplainRequest struct {
+	Query *UnifiedQuery `json:"query"`
+}
+
+// UQLExplainResponse represents the response from UQL explain
+type UQLExplainResponse struct {
+	Query string    `json:"query"`
+	Plan  QueryPlan `json:"plan"`
+	Error string    `json:"error,omitempty"`
 }

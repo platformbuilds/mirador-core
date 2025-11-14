@@ -592,6 +592,15 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup) {
 		unifiedGroup.GET("/stats", unifiedHandler.HandleUnifiedStats)
 	}
 
+	// Register UQL routes with RBAC protection
+	uqlGroup := router.Group("/uql")
+	uqlGroup.Use(s.rbacEnforcer.RBACMiddleware([]string{"unified.read"}))
+	{
+		uqlGroup.POST("/query", unifiedHandler.HandleUQLQuery)
+		uqlGroup.POST("/validate", unifiedHandler.HandleUQLValidate)
+		uqlGroup.POST("/explain", unifiedHandler.HandleUQLExplain)
+	}
+
 	s.logger.Info("Unified query engine initialized and routes registered")
 }
 

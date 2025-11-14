@@ -12,7 +12,9 @@ ReadTheDocs automatically builds and hosts the project documentation using Sphin
 - Deployment Guides
 - Migration Guide (including Weaviate KPI Management)
 - Correlation Engine Documentation (Phase 3 - Completed)
-- Unified Query Architecture
+- **Unified Query Architecture** - Complete architecture and design
+- **Unified Query Language (UQL) Guide** - Comprehensive query language reference
+- **Unified Query Operations** - Production operations and monitoring
 
 ## Configuration Files
 
