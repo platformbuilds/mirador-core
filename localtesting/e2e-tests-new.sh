@@ -9,7 +9,8 @@ set -euo pipefail
 # Configuration
 BASE_URL=${BASE_URL:-"http://localhost:8010"}
 API_BASE="$BASE_URL/api/v1"
-TENANT_ID=${TENANT_ID:-"PLATFORMBUILDS"}  # Default bootstrap tenant
+TENANT_ID=${TENANT_ID:-"PLATFORMBUILDS"}  # Default bootstrap tenant identifier (name or ID)
+DEFAULT_TENANT_NAME=${DEFAULT_TENANT_NAME:-"${TENANT_ID}"}
 VERBOSE=${VERBOSE:-false}
 RESULTS_FILE="e2e-test-results-v9.json"
 FAILURES_TABLE_FILE="test-failures-table-v9.md"
@@ -268,6 +269,42 @@ generate_suggested_fix() {
     esac
 }
 
+resolve_tenant_id_by_name() {
+    local tenant_name="$1"
+    if [[ -z "$tenant_name" ]]; then
+        return 1
+    fi
+
+    local url="$API_BASE/tenants?name=$tenant_name"
+    local curl_cmd=(curl -s -w "%{http_code}" -X GET "$url" -H "Accept: application/json" -H "Content-Type: application/json")
+
+    if [[ -n "$AUTH_TOKEN" ]]; then
+        curl_cmd+=(-H "Authorization: Bearer $AUTH_TOKEN")
+    fi
+
+    if [[ -n "$TENANT_ID" ]]; then
+        curl_cmd+=(-H "x-tenant-id: $TENANT_ID")
+    fi
+
+    local response
+    response=$("${curl_cmd[@]}") || return 1
+    local status_code="${response: -3}"
+    local body="${response%???}"
+
+    if [[ "$status_code" != "200" ]]; then
+        return 1
+    fi
+
+    local resolved
+    resolved=$(echo "$body" | jq -r '.data.tenants[0].id // empty' 2>/dev/null || true)
+    if [[ -z "$resolved" ]]; then
+        return 1
+    fi
+
+    echo "$resolved"
+    return 0
+}
+
 # Check required tools
 check_dependencies() {
     local missing_tools=()
@@ -336,6 +373,22 @@ authenticate() {
 
     if echo "$response" | jq -e '.status == "success"' >/dev/null 2>&1; then
         AUTH_TOKEN=$(echo "$response" | jq -r '.data.jwt_token')
+        local resolved_tenant
+        resolved_tenant=$(echo "$response" | jq -r '.data.tenant_id // empty' 2>/dev/null || true)
+        if [[ -n "$resolved_tenant" && "$resolved_tenant" != "null" ]]; then
+            TENANT_ID="$resolved_tenant"
+            log_info "Resolved tenant ID from login response: $TENANT_ID"
+        else
+            local lookup_name="${DEFAULT_TENANT_NAME:-$TENANT_ID}"
+            local lookup_id
+            lookup_id=$(resolve_tenant_id_by_name "$lookup_name" || true)
+            if [[ -n "$lookup_id" ]]; then
+                TENANT_ID="$lookup_id"
+                log_info "Resolved tenant ID via lookup: $TENANT_ID"
+            else
+                log_warning "Unable to resolve tenant ID automatically; continuing with $TENANT_ID"
+            fi
+        fi
         log_success "$test_name successful, got JWT token"
         return 0
     else
@@ -349,19 +402,19 @@ validate_bootstrap() {
     log_phase "Bootstrap Validation"
 
     # Test 1: Check if default tenant exists
-    http_request "GET" "$API_BASE/tenants/PLATFORMBUILDS" "200" "" "Validate Default Tenant Exists"
+    http_request "GET" "$API_BASE/tenants/$TENANT_ID" "200" "" "Validate Default Tenant Exists"
 
     # Test 2: Check if default admin user exists
     http_request "GET" "$API_BASE/users/aarvee" "200" "" "Validate Default Admin User Exists"
 
     # Test 3: Check if default roles exist
-    http_request "GET" "$API_BASE/rbac/roles/global_admin" "200" "" "Validate Global Admin Role Exists"
-    http_request "GET" "$API_BASE/rbac/roles/tenant_admin" "200" "" "Validate Tenant Admin Role Exists"
-    http_request "GET" "$API_BASE/rbac/roles/tenant_editor" "200" "" "Validate Tenant Editor Role Exists"
-    http_request "GET" "$API_BASE/rbac/roles/tenant_guest" "200" "" "Validate Tenant Guest Role Exists"
+    http_request "GET" "$API_BASE/rbac/roles?name=global_admin" "200" "" "Validate Global Admin Role Exists"
+    http_request "GET" "$API_BASE/rbac/roles?name=tenant_admin" "200" "" "Validate Tenant Admin Role Exists"
+    http_request "GET" "$API_BASE/rbac/roles?name=tenant_editor" "200" "" "Validate Tenant Editor Role Exists"
+    http_request "GET" "$API_BASE/rbac/roles?name=tenant_guest" "200" "" "Validate Tenant Guest Role Exists"
 
     # Test 4: Check tenant-user association
-    http_request "GET" "$API_BASE/tenants/PLATFORMBUILDS/users/aarvee" "200" "" "Validate Admin Tenant-User Association"
+    http_request "GET" "$API_BASE/tenants/$TENANT_ID/users/aarvee" "200" "" "Validate Admin Tenant-User Association"
 }
 
 # Authentication and Session Management Tests
@@ -865,22 +918,22 @@ main() {
         echo
     fi
 
-    # Phase 2: Infrastructure Setup
+# Phase 2: Infrastructure Setup
     log_phase "Infrastructure Setup"
     log_info "Checking service readiness..."
     wait_for_service
 
-    # Phase 3: Bootstrap Validation (if enabled)
-    if [[ "$BOOTSTRAP_ENABLED" == "true" ]]; then
-        validate_bootstrap
-        echo
-    fi
-
-    # Phase 4: Authentication
+    # Phase 3: Authentication (needed for bootstrap validation)
     log_phase "Authentication Setup"
     if ! authenticate "$ADMIN_USERNAME" "$ADMIN_PASSWORD"; then
         log_error "Failed to authenticate as admin, cannot proceed with API tests"
         exit 1
+    fi
+
+    # Phase 4: Bootstrap Validation (if enabled)
+    if [[ "$BOOTSTRAP_ENABLED" == "true" ]]; then
+        validate_bootstrap
+        echo
     fi
     echo
 

@@ -67,7 +67,7 @@ status: "in-progress"
 #   1. Phase 5: Data Seeding & Bootstrap E2E Validation (CRITICAL - 4-6h)
 #      ACTION ITEMS:
 #      a) ✅ COMPLETED: Created comprehensive E2E validation script (e2e-tests-new.sh)
-#      b) Run E2E script against real Weaviate/Valkey infrastructure: `./localtesting/e2e-tests-new.sh`
+#      b) Use `make localdev-up` to start Weaviate + Valkey stack, then run `./localtesting/e2e-tests-new.sh`
 #      c) Validate bootstrap idempotency (multiple runs should not fail/duplicate)
 #      d) Test bootstrap error handling and recovery (Weaviate down, Valkey down, etc.)
 #      e) Document bootstrap process and default credentials in README/docs
@@ -83,13 +83,12 @@ status: "in-progress"
 #      g) Security testing (attempt privilege escalation, cross-tenant access, session hijacking)
 #
 #   3. Phase 7: Enterprise Federation (MEDIUM - 20-24h)
-#      ACTION ITEMS:
-#      a) SAML SP implementation (assertion validation, SLO, metadata endpoints)
-#      b) OIDC integration (JWKS validation, PKCE, token refresh)
-#      c) LDAP/AD integration (user sync, group mapping, authentication)
-#      d) JIT provisioning (auto-create users on first login)
-#      e) Federation configuration API (tenant-level IdP configuration)
-#      f) Break-glass emergency access mechanism
+#      ACTION ITEMS (scope update 2025-11-14):
+#      a) LDAP/AD integration (user sync, group mapping, authentication) — IN SCOPE
+#      b) SAML/OIDC flows deferred until post-LDAP milestone
+#      c) JIT provisioning deferred with SAML/OIDC
+#      d) Federation configuration API TBD after LDAP delivery
+#      e) Break-glass emergency access mechanism remains in planning backlog
 #
 # ⚠️  CRITICAL GAPS & RISKS:
 #   - Bootstrap validation: NOT YET TESTED end-to-end with real Weaviate/Valkey (new E2E script ready to run)
@@ -164,7 +163,9 @@ phases:
         title: "Design Tenant Weaviate class"
         description: "Design Weaviate class for Tenant with properties: id, name, display_name, description, deployments (metrics/logs/traces endpoints), status, admin_email, admin_name, quotas, features, metadata, tags, timestamps. Aligns with multi-tenant architecture for physical isolation."
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "RBACTenant schema delivered via scripts/deploy-rbac-schema.sh and enforced in internal/repo/rbac/weaviate_repository.go."
         dependencies: []
         estimated_effort: "3h"
         assignee: "backend-dev"
@@ -176,7 +177,9 @@ phases:
         title: "Design TenantUser Weaviate class (Join Table)"
         description: "Design Weaviate class for TenantUser (user-to-tenant association) with properties: id, tenant_id (cross-reference), user_id (cross-reference), tenant_role (tenant_admin/tenant_editor/tenant_guest), status, invited_by, additional_permissions, metadata, timestamps"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "RBACTenantUser schema covered by scripts/deploy-rbac-schema.sh and repository CRUD in internal/repo/rbac/weaviate_repository.go."
         dependencies: ["rbac-schema-user", "rbac-schema-tenant"]
         estimated_effort: "2.5h"
         assignee: "backend-dev"
@@ -188,7 +191,9 @@ phases:
         title: "Design User Weaviate class (Global Entity)"
         description: "Design Weaviate class for User (global entity) with properties: id, email, username, full_name, global_role (global_admin/global_tenant_admin/tenant_user), password_hash, mfa_enabled, mfa_secret, status, email_verified, avatar, phone, timezone, language, metadata, tags, timestamps"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "RBACUser schema and CRUD implemented; see scripts/deploy-rbac-schema.sh and internal/repo/rbac/weaviate_repository.go."
         dependencies: []
         estimated_effort: "3h"
         assignee: "backend-dev"
@@ -200,7 +205,9 @@ phases:
         title: "Design MiradorAuth Weaviate class"
         description: "Design Weaviate class for MiradorAuth with properties: id, username, email, password_hash, salt, totp_secret, totp_enabled, tenant_id, roles (cross-reference), groups (cross-reference), is_active, password_changed_at, created_at, updated_at, last_login"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "RBACMiradorAuth schema deployed via scripts/deploy-rbac-schema.sh; repository create/read/update/delete implemented."
         dependencies: []
         estimated_effort: "2.5h"
         assignee: "backend-dev"
@@ -212,7 +219,9 @@ phases:
         title: "Design AuthConfig Weaviate class"
         description: "Design Weaviate class for AuthConfig with properties: id, tenant_id, default_backend, enabled_backends (array), backend_configs (JSON), password_policy (JSON), require_2fa, totp_issuer, timestamps"
         priority: "medium"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "RBACAuthConfig class creation scripted in scripts/deploy-rbac-schema.sh with backing CRUD in repository layer."
         dependencies: []
         estimated_effort: "2h"
         assignee: "backend-dev"
@@ -224,7 +233,9 @@ phases:
         title: "Design Role Weaviate class (Tenant-Scoped)"
         description: "Design Weaviate class for Role (tenant-scoped custom roles) with properties: id, name, description, permissions (cross-reference), tenant_id, is_system (for built-in roles), timestamps. Supports custom roles beyond built-in tenant_admin/tenant_editor/tenant_guest."
         priority: "medium"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "RBACRole schema covered by scripts/deploy-rbac-schema.sh and role CRUD in internal/repo/rbac/weaviate_repository.go."
         dependencies: ["rbac-schema-tenant"]
         estimated_effort: "2.5h"
         assignee: "backend-dev"
@@ -236,7 +247,9 @@ phases:
         title: "Design Permission Weaviate class"
         description: "Design Weaviate class for Permission with properties: id, resource, action, scope, description, timestamps"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "RBACPermission schema defined in scripts/deploy-rbac-schema.sh with supporting repository methods."
         dependencies: []
         estimated_effort: "1.5h"
         assignee: "backend-dev"
@@ -248,7 +261,9 @@ phases:
         title: "Design Group Weaviate class"
         description: "Design Weaviate class for Group with properties: id, name, description, members (user IDs), roles (cross-reference), tenant_id, timestamps"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "RBACGroup schema deployed via scripts/deploy-rbac-schema.sh; repository exposes CreateGroup and related operations."
         dependencies: ["rbac-schema-role"]
         estimated_effort: "2h"
         assignee: "backend-dev"
@@ -260,7 +275,9 @@ phases:
         title: "Design RoleBinding Weaviate class"
         description: "Design Weaviate class for RoleBinding with properties: id, subject (user/group), role (cross-reference), scope (tenant/team/resource), expires_at, not_before, precedence (allow/deny), timestamps"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "RBACRoleBinding schema established in scripts/deploy-rbac-schema.sh with binding CRUD in repository service."
         dependencies: ["rbac-schema-role", "rbac-schema-group"]
         estimated_effort: "2.5h"
         assignee: "backend-dev"
@@ -272,7 +289,9 @@ phases:
         title: "Design GroupBinding Weaviate class"
         description: "Design Weaviate class for GroupBinding with properties: id, user_id, group_id (cross-reference), tenant_id, expires_at, not_before, timestamps"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "RBACGroupBinding schema delivered through scripts/deploy-rbac-schema.sh and associated repository methods."
         dependencies: ["rbac-schema-group"]
         estimated_effort: "2h"
         assignee: "backend-dev"
@@ -284,7 +303,9 @@ phases:
         title: "Design AuditLog Weaviate class"
         description: "Design Weaviate class for AuditLog with properties: id, timestamp, subject, action, resource, result, details, tenant_id"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "RBACAuditLog schema scripted in scripts/deploy-rbac-schema.sh; repository handles LogAuditEvent and queries."
         dependencies: []
         estimated_effort: "2h"
         assignee: "backend-dev"
@@ -296,7 +317,9 @@ phases:
         title: "Validate RBAC Weaviate schema design"
         description: "Ensure RBAC schema supports multi-tenant two-tier role model (Global + Tenant roles), tenant isolation, user-tenant associations, and all policy evaluation requirements"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "Schema validated through scripts/deploy-rbac-schema.sh deployment and ensureRBACSchema checks in repository layer."
         dependencies: ["rbac-schema-tenant", "rbac-schema-tenant-user", "rbac-schema-user", "rbac-schema-local-user", "rbac-schema-auth-config", "rbac-schema-role", "rbac-schema-permission", "rbac-schema-group", "rbac-schema-rolebinding", "rbac-schema-groupbinding", "rbac-schema-auditlog"]
         estimated_effort: "3h"
         assignee: "backend-dev"
@@ -308,7 +331,9 @@ phases:
         title: "Implement RBAC Go structs and validation"
         description: "Create Go structs for all RBAC entities with JSON tags, validation tags, and business logic methods. Includes: User (global), Tenant, TenantUser, GlobalRole (global_admin/global_tenant_admin/tenant_user), TenantRole (tenant_admin/tenant_editor/tenant_guest), Permission, Group, RoleBinding, GroupBinding."
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "All RBAC structs live in internal/models/rbac.go with validators in internal/models/rbac_validation.go."
         dependencies: ["rbac-schema-validation"]
         estimated_effort: "8h"
         assignee: "backend-dev"
@@ -320,7 +345,9 @@ phases:
         title: "Plan RBAC schema migration strategy"
         description: "Design migration strategy for adding RBAC classes to existing Weaviate schema with backward compatibility"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "Schema deployment approach documented in scripts/deploy-rbac-schema.sh and Makefile targets for bootstrap."
         dependencies: ["rbac-schema-validation"]
         estimated_effort: "3h"
         assignee: "backend-dev"
@@ -386,7 +413,8 @@ phases:
         title: "Implement SAML SP endpoints"
         description: "Implement SAML Service Provider endpoints: /saml/acs (Assertion Consumer Service), /saml/metadata, /saml/login for SP-initiated flows"
         priority: "high"
-        status: "not-started"
+        status: "deferred"
+        status_notes: "Deferred per 2025-11-14 scope update; focus on LDAP/AD integration before reintroducing SAML."
         dependencies: []
         estimated_effort: "6h"
         assignee: "backend-dev"
@@ -398,7 +426,8 @@ phases:
         title: "Implement SAML IdP-initiated flows"
         description: "Implement SAML IdP-initiated login flows with unsolicited assertions and relay state handling"
         priority: "high"
-        status: "not-started"
+        status: "deferred"
+        status_notes: "Deferred alongside SAML SP endpoints until LDAP milestone completes."
         dependencies: ["saml-sp-endpoints"]
         estimated_effort: "3h"
         assignee: "backend-dev"
@@ -410,7 +439,8 @@ phases:
         title: "OIDC integration with JWKS validation"
         description: "Implement OIDC integration for Google, Okta, Azure AD, Auth0 with JWKS endpoint validation, issuer checking, and key rotation"
         priority: "high"
-        status: "not-started"
+        status: "deferred"
+        status_notes: "Deferred per scope update; revisit after LDAP/AD integration shipped."
         dependencies: []
         estimated_effort: "8h"
         assignee: "backend-dev"
@@ -446,7 +476,8 @@ phases:
         title: "SAML Single Logout (SLO) implementation"
         description: "Implement SAML SLO with front-channel and back-channel logout, session propagation, clock-skew handling, and signed/encrypted assertions"
         priority: "high"
-        status: "not-started"
+        status: "deferred"
+        status_notes: "Depends on SAML SP; deferred with wider SAML scope."
         dependencies: ["saml-sp-endpoints"]
         estimated_effort: "6h"
         assignee: "backend-dev"
@@ -458,7 +489,8 @@ phases:
         title: "OIDC security hardening"
         description: "Implement OIDC PKCE, nonce validation, refresh token rotation with reuse detection, backchannel logout, and tenant-specific token lifetimes"
         priority: "high"
-        status: "not-started"
+        status: "deferred"
+        status_notes: "Deferred pending OIDC integration availability."
         dependencies: ["oidc-integration"]
         estimated_effort: "8h"
         assignee: "backend-dev"
@@ -470,7 +502,8 @@ phases:
         title: "JIT user provisioning and de-provisioning"
         description: "Implement Just-In-Time user provisioning on first SAML/OIDC login with mapped defaults, and de-provisioning hooks via SCIM or LDAP group removal"
         priority: "medium"
-        status: "not-started"
+        status: "deferred"
+        status_notes: "JIT provisioning depends on SAML/OIDC flows; defer until those integrations resume."
         dependencies: ["federation-metadata-discovery", "scim-provisioning"]
         estimated_effort: "6h"
         assignee: "backend-dev"
@@ -560,7 +593,9 @@ phases:
         title: "Valkey client integration"
         description: "Integrate Valkey Go client library and configure connection to Valkey instance for session storage"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "Valkey cluster implemented in pkg/cache/valkey_cluster.go with autoswap support and wired through internal/api/middleware/auth_rbac.middleware.go."
         dependencies: []
         estimated_effort: "4h"
         assignee: "backend-dev"
@@ -572,7 +607,9 @@ phases:
         title: "Session data structure design"
         description: "Design session data structure with user_id, tenant_id, roles, groups, expiration, metadata, and secure token generation"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "Session payload defined in internal/models/models.go (UserSession) and persisted via Valkey cache adapters."
         dependencies: ["valkey-integration"]
         estimated_effort: "3h"
         assignee: "backend-dev"
@@ -584,7 +621,9 @@ phases:
         title: "Session validation middleware"
         description: "Implement session validation middleware with token extraction, Valkey lookup, and automatic refresh"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "SessionManager in internal/api/middleware/session.go combined with auth middleware validates and refreshes sessions."
         dependencies: ["session-schema-design"]
         estimated_effort: "5h"
         assignee: "backend-dev"
@@ -596,7 +635,9 @@ phases:
         title: "Session lifecycle management"
         description: "Implement session creation, renewal, expiration, and cleanup with configurable TTL and concurrent session limits"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "Session lifecycle handled through pkg/cache/valkey_cluster.go TTL handling and SessionManager RefreshSession function."
         dependencies: ["session-middleware"]
         estimated_effort: "4h"
         assignee: "backend-dev"
@@ -608,7 +649,9 @@ phases:
         title: "Session security hardening"
         description: "Implement session fixation protection, secure token generation, logout functionality, and session invalidation"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "Handlers invalidate sessions via internal/api/handlers/session.handler.go; tokens regenerated by SessionManager; cache exposes InvalidateSession."
         dependencies: ["session-lifecycle-management"]
         estimated_effort: "3h"
         assignee: "backend-dev"
@@ -627,7 +670,9 @@ phases:
         title: "Policy cache with Valkey"
         description: "Implement policy caching in Valkey for fast evaluation (subject→roles, role→permissions mappings)"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "Cache repository implemented in internal/repo/rbac/valkey_repository.go with SetUserRoles, GetUserRoles, and invalidation hooks."
         dependencies: ["valkey-session-integration"]
         estimated_effort: "6h"
         assignee: "backend-dev"
@@ -639,7 +684,9 @@ phases:
         title: "RBAC authorization middleware"
         description: "Implement middleware to enforce RBAC policies on API endpoints using the existing RBACService logic"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "middleware/rbac.middleware.go enforces policy decisions using RBACService and policy cache."
         dependencies: ["session-middleware", "policy-cache-implementation"]
         estimated_effort: "8h"
         assignee: "backend-dev"
@@ -651,7 +698,9 @@ phases:
         title: "Apply RBAC to v8.0.0 APIs"
         description: "Integrate RBAC checks into all existing v8.0.0 API endpoints (KPI, dashboards, layouts, preferences) with tenant context"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "internal/api/server.go wires RBAC middleware across v8 endpoints; handlers guard operations with tenant context checks."
         dependencies: ["rbac-authorization-middleware", "tenant-isolation-middleware"]
         estimated_effort: "12h"
         assignee: "backend-dev"
@@ -663,7 +712,9 @@ phases:
         title: "RBAC compatibility and feature flags"
         description: "Implement feature flags for RBAC enablement and backward compatibility mode"
         priority: "medium"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "Feature flags expose auth.rbac.enabled via internal/config/loader.go and runtime_feature_flags service, allowing gradual rollout."
         dependencies: ["v8-api-rbac-integration"]
         estimated_effort: "3h"
         assignee: "backend-dev"
@@ -674,7 +725,9 @@ phases:
         title: "Core policy evaluator with two-tier role support"
         description: "Implement policy evaluator supporting Global roles (global_admin, global_tenant_admin, tenant_user) and Tenant roles (tenant_admin, tenant_editor, tenant_guest). Evaluates global permissions first, then tenant-scoped permissions. Deny-by-default with tenant context awareness."
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "RBACService.CheckPermissionWithContext in internal/repo/rbac/rbac_service.go handles global vs tenant roles with deny-by-default."
         dependencies: ["rbac-models-go", "rbac-schema-user", "rbac-schema-tenant", "rbac-schema-tenant-user"]
         estimated_effort: "10h"
         assignee: "backend-dev"
@@ -688,7 +741,9 @@ phases:
         title: "Tenant isolation and context enforcement"
         description: "Implement tenant isolation checks ensuring users can only access resources within tenants they're associated with via TenantUser. Enforce tenant context propagation through all RBAC checks."
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "TenantIsolationMiddleware in internal/api/middleware/auth_rbac.middleware.go and service-level checks enforce tenant scoping."
         dependencies: ["policy-evaluator-core"]
         estimated_effort: "4h"
         assignee: "backend-dev"
@@ -700,7 +755,9 @@ phases:
         title: "Policy cache (subject→roles, role→permissions)"
         description: "Implement in-memory policy cache with TTL and invalidation for fast policy evaluation (subject→roles, role→permissions mappings)"
         priority: "high"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "Valkey cache repository provides TTL-based storage and invalidation; RBACService updates cache on role changes."
         dependencies: ["policy-evaluator-core"]
         estimated_effort: "6h"
         assignee: "backend-dev"
@@ -713,7 +770,9 @@ phases:
         title: "Constraint-based evaluation (ABAC hooks)"
         description: "Implement constraint evaluation for Attribute-Based Access Control hooks (time-based, IP-based, resource-specific constraints)"
         priority: "medium"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "evaluatePermissionsWithConstraints and evaluateConstraints methods in RBACService honor ABAC-style permission conditions."
         dependencies: ["policy-evaluator-core"]
         estimated_effort: "4h"
         assignee: "backend-dev"
@@ -725,7 +784,9 @@ phases:
         title: "Group hierarchy and cycle detection"
         description: "Implement nested groups with cycle detection, pre-flattening strategy, and efficient group resolution caching"
         priority: "medium"
-        status: "not-started"
+        status: "completed"
+        completion_date: "2025-11-13"
+        completion_notes: "RBACService.validateGroup and getGroupPermissions manage parent group hierarchies with cycle detection and recursion."
         dependencies: ["rbac-models-go"]
         estimated_effort: "5h"
         assignee: "backend-dev"

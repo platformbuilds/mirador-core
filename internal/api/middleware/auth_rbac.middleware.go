@@ -124,10 +124,8 @@ func (as *AuthService) LocalAuthMiddleware() gin.HandlerFunc {
 		// Extract tenant from header
 		tenantID := c.GetHeader("x-tenant-id")
 		if tenantID == "" {
-			tenantID = "default" // fallback to default tenant
-		}
-
-		// Authenticate user
+			tenantID = "PLATFORMBUILDS" // fallback to default tenant
+		} // Authenticate user
 		session, err := as.authenticateLocalUser(req.Username, req.Password, req.TOTPCode, tenantID, c)
 		if err != nil {
 			as.logger.Warn("Local auth failed", "username", req.Username, "error", err)
@@ -392,6 +390,20 @@ func (as *AuthService) validateJWTToken(tokenString string, c *gin.Context) (*mo
 
 // authenticateLocalUser authenticates a local user
 func (as *AuthService) authenticateLocalUser(username, password, totpCode, tenantID string, c *gin.Context) (*models.UserSession, error) {
+	ctx := context.Background()
+
+	originalTenantIdentifier := tenantID
+	resolvedTenantID, tenantAlias, err := as.resolveTenantIdentifier(ctx, tenantID)
+	if err != nil {
+		as.logger.Warn("Failed to resolve tenant identifier", "tenant_identifier", tenantID, "error", err)
+		return nil, fmt.Errorf("tenant context invalid: %w", err)
+	}
+	tenantID = resolvedTenantID
+
+	if tenantAlias != "" {
+		as.logger.Debug("Resolved tenant identifier", "provided", originalTenantIdentifier, "resolved", tenantID)
+	}
+
 	// Find user by username/email
 	user, err := as.findUserByUsername(username)
 	if err != nil {
@@ -442,10 +454,48 @@ func (as *AuthService) authenticateLocalUser(username, password, totpCode, tenan
 
 	// Create session
 	session := as.sessionMgr.CreateSession(user.ID, tenantID, roles)
+	if tenantAlias != "" && session.Settings != nil {
+		session.Settings["tenant_alias"] = tenantAlias
+	}
 	session.IPAddress = c.ClientIP()
 	session.UserAgent = c.Request.UserAgent()
 
 	return session, nil
+}
+
+func (as *AuthService) resolveTenantIdentifier(ctx context.Context, tenantIdentifier string) (string, string, error) {
+	if tenantIdentifier == "" {
+		return DefaultTenantID, "", nil
+	}
+
+	if tenantIdentifier == DefaultTenantID {
+		return tenantIdentifier, "", nil
+	}
+
+	tenant, err := as.repo.GetTenant(ctx, tenantIdentifier)
+	if err == nil && tenant != nil {
+		return tenant.ID, "", nil
+	}
+
+	filters := rbac.TenantFilters{
+		Name:  &tenantIdentifier,
+		Limit: 1,
+	}
+
+	tenants, listErr := as.repo.ListTenants(ctx, filters)
+	if listErr != nil {
+		return "", "", fmt.Errorf("failed to resolve tenant %s: %w", tenantIdentifier, listErr)
+	}
+
+	if len(tenants) > 0 && tenants[0] != nil {
+		return tenants[0].ID, tenantIdentifier, nil
+	}
+
+	if err != nil {
+		return "", "", fmt.Errorf("failed to resolve tenant %s: %w", tenantIdentifier, err)
+	}
+
+	return "", "", fmt.Errorf("tenant %s not found", tenantIdentifier)
 }
 
 // validateTOTPCode validates a TOTP code

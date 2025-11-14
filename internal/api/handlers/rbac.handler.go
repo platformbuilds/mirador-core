@@ -88,6 +88,30 @@ func (h *RBACHandler) GetRoles(c *gin.Context) {
 		return
 	}
 
+	if roleName := c.Query("name"); roleName != "" {
+		role, err := h.rbacService.GetRole(c.Request.Context(), tenantID, roleName)
+		if err != nil {
+			h.logger.Error("Failed to get role", "tenantID", tenantID, "role", roleName, "error", err)
+			status := http.StatusInternalServerError
+			if strings.Contains(strings.ToLower(err.Error()), "not found") {
+				status = http.StatusNotFound
+			}
+			c.JSON(status, gin.H{
+				"status": "error",
+				"error":  "Failed to retrieve role",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"role": role,
+			},
+		})
+		return
+	}
+
 	// Get roles using service
 	roles, err := h.rbacService.ListRoles(c.Request.Context(), tenantID)
 	if err != nil {

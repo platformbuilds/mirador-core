@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -76,6 +77,22 @@ func (m *TenantIsolationMiddleware) TenantIsolation() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
+		// Resolve tenant identifier to canonical ID
+		resolvedTenantID, err := m.resolveTenantID(c.Request.Context(), tenantID)
+		if err != nil {
+			m.logger.Warn("Failed to resolve tenant identifier",
+				"tenant_identifier", tenantID,
+				"path", c.Request.URL.Path,
+				"error", err)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status": "error",
+				"error":  "Invalid tenant context",
+			})
+			c.Abort()
+			return
+		}
+		tenantID = resolvedTenantID
 
 		// Validate tenant access
 		userID := c.GetString("user_id")
@@ -224,6 +241,11 @@ func (m *TenantIsolationMiddleware) extractTenantID(c *gin.Context) (string, str
 	}
 
 	return "", ""
+}
+
+// resolveTenantID resolves tenant identifier to canonical tenant ID
+func (m *TenantIsolationMiddleware) resolveTenantID(ctx context.Context, tenantIdentifier string) (string, error) {
+	return m.rbacService.ResolveTenantID(ctx, tenantIdentifier)
 }
 
 // extractTenantFromPath extracts tenant ID from URL path patterns

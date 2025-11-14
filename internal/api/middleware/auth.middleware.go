@@ -17,7 +17,7 @@ import (
 
 const (
 	// DefaultTenantID is the fallback tenant ID when none is specified
-	DefaultTenantID = "default"
+	DefaultTenantID = "PLATFORMBUILDS"
 	// UnknownTenantID represents an unknown/unset tenant
 	UnknownTenantID = "unknown"
 )

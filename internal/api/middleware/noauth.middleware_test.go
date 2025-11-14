@@ -20,7 +20,7 @@ func TestNoAuthMiddleware_DefaultsAndOverride(t *testing.T) {
 	// default tenant
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ping", http.NoBody))
-	if w.Code != 200 || w.Body.String() != "default,anonymous" {
+	if w.Code != 200 || w.Body.String() != "PLATFORMBUILDS,anonymous" {
 		t.Fatalf("unexpected resp: %d %q", w.Code, w.Body.String())
 	}
 

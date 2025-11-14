@@ -17,7 +17,7 @@ RUN_CODE_TESTS=${RUN_CODE_TESTS:-true}
 # Authentication
 AUTH_TOKEN=""
 ADMIN_USERNAME="aarvee"
-ADMIN_PASSWORD="ChangeMe123!"
+ADMIN_PASSWORD="password123"
 
 # Authenticate and get JWT token
 authenticate() {

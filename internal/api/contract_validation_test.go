@@ -25,6 +25,7 @@ import (
 
 const (
 	anonymousUserID = "anonymous"
+	testTenantID    = "PLATFORMBUILDS"
 )
 
 // mockRBACRepositoryForContractValidation implements RBACRepository for testing
@@ -59,7 +60,7 @@ func (m *mockRBACRepositoryForContractValidation) AssignUserRoles(ctx context.Co
 	return nil
 }
 func (m *mockRBACRepositoryForContractValidation) GetUserRoles(ctx context.Context, tenantID, userID string) ([]string, error) {
-	if tenantID == "default" && userID == anonymousUserID {
+	if tenantID == testTenantID && userID == anonymousUserID {
 		return []string{"tenant_guest"}, nil
 	}
 	return nil, nil
@@ -180,9 +181,9 @@ func (m *mockRBACRepositoryForContractValidation) CreateTenantUser(ctx context.C
 	return nil
 }
 func (m *mockRBACRepositoryForContractValidation) GetTenantUser(ctx context.Context, tenantID, userID string) (*models.TenantUser, error) {
-	if tenantID == "default" && userID == anonymousUserID {
+	if tenantID == testTenantID && userID == anonymousUserID {
 		return &models.TenantUser{
-			TenantID:   "default",
+			TenantID:   testTenantID,
 			UserID:     anonymousUserID,
 			TenantRole: "tenant_guest", // Give basic read permissions
 			Status:     "active",
@@ -224,6 +225,12 @@ func (m *mockRBACRepositoryForContractValidation) UpdateAuthConfig(ctx context.C
 }
 func (m *mockRBACRepositoryForContractValidation) DeleteAuthConfig(ctx context.Context, tenantID string) error {
 	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) ResolveTenantID(ctx context.Context, tenantIdentifier string) (string, error) {
+	if tenantIdentifier == testTenantID {
+		return testTenantID, nil
+	}
+	return tenantIdentifier, nil
 }
 
 // Contract validation test structures matching the API contract
@@ -328,7 +335,7 @@ func newMockRepo() *mockRepo {
 
 	// Initialize with test data
 	testKPI := &models.KPIDefinition{
-		TenantID: "default",
+		TenantID: testTenantID,
 		ID:       "test-kpi-1",
 		Kind:     "business",
 		Name:     "Test KPI",
@@ -338,10 +345,10 @@ func newMockRepo() *mockRepo {
 		},
 		Visibility: "org",
 	}
-	repo.kpis["default|test-kpi-1"] = testKPI
+	repo.kpis[testTenantID+"|test-kpi-1"] = testKPI
 
 	testDashboard := &models.Dashboard{
-		TenantID:    "default",
+		TenantID:    testTenantID,
 		ID:          "test-dashboard-1",
 		Name:        "Test Dashboard",
 		OwnerUserID: "anonymous",
@@ -349,7 +356,7 @@ func newMockRepo() *mockRepo {
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-	repo.dashboards["default|test-dashboard-1"] = testDashboard
+	repo.dashboards[testTenantID+"|test-dashboard-1"] = testDashboard
 
 	return repo
 }

@@ -29,7 +29,7 @@ func TestExtractHelpers(t *testing.T) {
 	if ExtractTenantFromJWT(map[string]interface{}{"tenant_id": "acme"}) != "acme" {
 		t.Fatalf("tenant parse failed")
 	}
-	if ExtractTenantFromJWT(map[string]interface{}{}) != "default" {
+	if ExtractTenantFromJWT(map[string]interface{}{}) != "PLATFORMBUILDS" {
 		t.Fatalf("default tenant expected")
 	}
 }
