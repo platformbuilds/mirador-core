@@ -111,7 +111,7 @@ func NewRBACBootstrapService(rbacService *rbac.RBACService, repository rbac.RBAC
 	}
 }
 
-// BootstrapDefaultTenant creates the default 'platformbuilds' tenant if it doesn't exist
+// BootstrapDefaultTenant creates the default 'PLATFORMBUILDS' tenant if it doesn't exist
 func (s *RBACBootstrapService) BootstrapDefaultTenant(ctx context.Context) (string, error) {
 	const defaultTenantName = "PLATFORMBUILDS"
 	tenantNameFilter := defaultTenantName
@@ -167,7 +167,7 @@ func (s *RBACBootstrapService) BootstrapDefaultTenant(ctx context.Context) (stri
 // BootstrapGlobalAdmin creates the default global admin user 'aarvee' if it doesn't exist
 func (s *RBACBootstrapService) BootstrapGlobalAdmin(ctx context.Context, defaultTenantID string) (string, error) {
 	// Generate deterministic UUID for admin user based on email
-	adminUserID := makeRBACID("User", "", "admin@platformbuilds.com")
+	adminUserID := makeRBACID("User", "", "admin@default.com")
 
 	s.logger.Info("Checking for global admin user", "user_id", adminUserID, "default_tenant_id", defaultTenantID)
 
@@ -223,8 +223,8 @@ func (s *RBACBootstrapService) BootstrapGlobalAdmin(ctx context.Context, default
 
 	// Create admin user
 	user := &models.User{
-		ID:         makeRBACID("User", "", "admin@platformbuilds.com"),
-		Email:      "admin@platformbuilds.com",
+		ID:         makeRBACID("User", "", "admin@default.com"),
+		Email:      "admin@default.com",
 		Username:   "aarvee", // Human-readable username
 		GlobalRole: "global_admin",
 		CreatedAt:  time.Now(),
@@ -301,26 +301,14 @@ func (s *RBACBootstrapService) BootstrapGlobalAdmin(ctx context.Context, default
 }
 
 // BootstrapAdminAuth creates MiradorAuth credentials for the admin user
-func (s *RBACBootstrapService) BootstrapAdminAuth(ctx context.Context, adminUserID, tenantID string) error {
+func (s *RBACBootstrapService) BootstrapAdminAuth(ctx context.Context, adminUserID string) error {
 	s.logger.Info("Checking for admin auth credentials", "user_id", adminUserID)
 
 	// Check if auth already exists
 	existingAuth, err := s.repository.GetMiradorAuth(ctx, adminUserID)
 	if err == nil && existingAuth != nil {
-		// Check if the existing auth record has the correct tenant ID
-		if existingAuth.TenantID == tenantID {
-			s.logger.Info("Admin auth credentials already exist with correct tenant, skipping creation", "user_id", adminUserID, "tenant_id", tenantID)
-			return nil
-		} else {
-			// Update the existing auth record with the correct tenant ID
-			s.logger.Info("Updating existing admin auth credentials with correct tenant", "user_id", adminUserID, "old_tenant", existingAuth.TenantID, "new_tenant", tenantID)
-			existingAuth.TenantID = tenantID
-			existingAuth.UpdatedAt = time.Now()
-			if err := s.repository.UpdateMiradorAuth(ctx, existingAuth); err != nil {
-				return fmt.Errorf("failed to update admin auth credentials: %w", err)
-			}
-			return nil
-		}
+		s.logger.Info("Admin auth credentials already exist, skipping creation", "user_id", adminUserID)
+		return nil
 	}
 
 	// If error is not "not found", it's a real error
@@ -329,7 +317,7 @@ func (s *RBACBootstrapService) BootstrapAdminAuth(ctx context.Context, adminUser
 	}
 
 	// Generate secure password (this should be changed after first login)
-	defaultPassword := "ChangeMe123!"
+	defaultPassword := "password123"
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash default password: %w", err)
@@ -351,7 +339,7 @@ func (s *RBACBootstrapService) BootstrapAdminAuth(ctx context.Context, adminUser
 	auth := &models.MiradorAuth{
 		UserID:       adminUserID,
 		Username:     user.Username,
-		TenantID:     tenantID,
+		TenantID:     "", // MiradorAuth is tenant-agnostic
 		PasswordHash: string(hashedPassword),
 		TOTPSecret:   totpSecret,
 		IsActive:     true,
@@ -470,7 +458,7 @@ func (s *RBACBootstrapService) RunBootstrap(ctx context.Context) error {
 
 	// Bootstrap admin auth credentials
 	s.logger.Info("Running bootstrap step", "step", "admin auth credentials")
-	if err := s.BootstrapAdminAuth(ctx, adminUserID, defaultTenantID); err != nil {
+	if err := s.BootstrapAdminAuth(ctx, adminUserID); err != nil {
 		return fmt.Errorf("bootstrap step admin auth credentials failed: %w", err)
 	}
 

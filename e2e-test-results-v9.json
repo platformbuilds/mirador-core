@@ -1,0 +1,385 @@
+[
+  {
+    "name": "Invalid Login Credentials",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/auth/login",
+    "status": 401,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Get Current User Info (Not Implemented)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/auth/me",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "List All Tenants (Requires Global Admin)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/tenants",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Get Current Tenant (Requires Tenant Admin)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/tenants/PLATFORMBUILDS",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Create Test Tenant (Requires Global Admin)",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/tenants",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Update Test Tenant (Requires Tenant Admin)",
+    "method": "PUT",
+    "url": "http://localhost:8010/api/v1/tenants/e2e-test-tenant-1763105940",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "List Tenant Users (Requires Tenant Admin)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/tenants/PLATFORMBUILDS/users",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "List All Users (Requires Global Admin)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/users",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Get Admin User (Requires Global Admin)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/users/aarvee",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Create Test User (Requires Global Admin)",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/users",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Update Test User (Requires Global Admin)",
+    "method": "PUT",
+    "url": "http://localhost:8010/api/v1/users/e2e-test-user-1763105940",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "List All Roles",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/roles",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Get Global Admin Role (Not Implemented)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/roles/global_admin",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "List All Permissions",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/permissions",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Create Role Binding (Not Implemented)",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/rbac/bindings",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "List Role Bindings (Not Implemented)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/bindings",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Access Different Tenant Data (Should Fail)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/tenants/PLATFORMBUILDS",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Create Tenant-User Association in Test Tenant (Requires Tenant Admin)",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/tenants/e2e-test-tenant-1763105940/users",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Verify Tenant-User Association in Test Tenant (Requires Tenant Admin)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/tenants/e2e-test-tenant-1763105940/users/e2e-test-user-1763105940",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Health Check",
+    "method": "GET",
+    "url": "http://localhost:8010/health",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "API Health Check",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/health",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Get Metric Names (Protected)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/metrics/names",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Get Log Fields (Protected)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/logs/fields",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Get Trace Services (Protected)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/traces/services",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Get MiradorAuth User (Not Implemented)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/mirador_auth/users/aarvee",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Update Password Policy (Not Implemented)",
+    "method": "PUT",
+    "url": "http://localhost:8010/api/v1/mirador_auth/config/password_policy",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Get Audit Logs (Requires Tenant Admin)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/audit/logs",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "Filter Audit Logs by User (Requires Tenant Admin)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/audit/logs?user_id=aarvee",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "SAML Metadata (Not Implemented)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/auth/saml/metadata",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:01Z",
+    "error": ""
+  },
+  {
+    "name": "SAML Assertion Consumer (Not Implemented)",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/auth/saml/acs",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 1000,
+    "timestamp": "2025-11-14T07:39:02Z",
+    "error": ""
+  },
+  {
+    "name": "OIDC Login (Not Implemented)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/auth/oidc/login",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:02Z",
+    "error": ""
+  },
+  {
+    "name": "OIDC Callback (Not Implemented)",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/auth/oidc/callback",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:02Z",
+    "error": ""
+  },
+  {
+    "name": "Delete Test Tenant-User Association (Requires Tenant Admin)",
+    "method": "DELETE",
+    "url": "http://localhost:8010/api/v1/tenants/e2e-test-tenant-1763105940/users/e2e-test-user-1763105940",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:02Z",
+    "error": ""
+  },
+  {
+    "name": "Delete Test Tenant (Requires Global Admin)",
+    "method": "DELETE",
+    "url": "http://localhost:8010/api/v1/tenants/e2e-test-tenant-1763105940",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:02Z",
+    "error": ""
+  },
+  {
+    "name": "Delete Test User (Requires Global Admin)",
+    "method": "DELETE",
+    "url": "http://localhost:8010/api/v1/users/e2e-test-user-1763105940",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T07:39:02Z",
+    "error": ""
+  },
+  {
+    "comprehensive_summary": {
+      "version": "9.0.0",
+      "platform": "macOS",
+      "os_type": "Darwin",
+      "timestamp": "2025-11-14T07:39:02Z",
+      "tenant_id": "PLATFORMBUILDS",
+      "features_tested": [
+        "authentication_jwt",
+        "tenant_management",
+        "user_management",
+        "rbac_enforcement",
+        "bootstrap_validation",
+        "multi_tenant_isolation"
+      ],
+      "code_quality": {
+        "tests_run": false,
+        "passed": 0,
+        "failed": 0,
+        "success_rate": 0
+      },
+      "api_tests": {
+        "total_tests": 35,
+        "passed_tests": 35,
+        "failed_tests": 0,
+        "success_rate": 100.00
+      },
+      "files": {
+        "json_results": "e2e-test-results-v9.json",
+        "failures_table": "test-failures-table-v9.md"
+      }
+    }
+  }
+]

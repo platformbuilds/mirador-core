@@ -47,8 +47,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// Extract tenant from header
+	tenantID := c.GetHeader("x-tenant-id")
+	if tenantID == "" {
+		tenantID = "default" // fallback to default tenant
+	}
+
 	// Authenticate user using the auth service
-	session, err := h.authService.AuthenticateLocalUser(req.Username, req.Password, req.TOTPCode, c)
+	session, err := h.authService.AuthenticateLocalUser(req.Username, req.Password, req.TOTPCode, tenantID, c)
 	if err != nil {
 		h.logger.Warn("Local auth failed", "username", req.Username, "error", err)
 		c.JSON(http.StatusUnauthorized, gin.H{
