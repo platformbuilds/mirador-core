@@ -12,6 +12,7 @@ build/*
 
 # Server binary
 server
+mirador-core
 
 # Test binary, built with `go test -c`
 *.test
