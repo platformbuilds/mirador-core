@@ -230,9 +230,9 @@ func main() {
 
 		// Parse response
 		var healthResp struct {
-			Service  string `json:"service"`
-			Status   string `json:"status"`
-			Version  string `json:"version"`
+			Service   string `json:"service"`
+			Status    string `json:"status"`
+			Version   string `json:"version"`
 			Timestamp string `json:"timestamp"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&healthResp); err != nil {
