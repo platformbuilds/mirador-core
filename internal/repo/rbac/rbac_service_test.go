@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // Mock implementations for testing
@@ -363,8 +365,9 @@ func TestRBACService_CreateRole(t *testing.T) {
 	mockCache := &MockCacheRepository{}
 
 	auditService := NewAuditService(mockRepo)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
 
-	service := NewRBACService(mockRepo, mockCache, auditService)
+	service := NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 
 	ctx := context.Background()
 	tenantID := "test-tenant"
@@ -373,7 +376,7 @@ func TestRBACService_CreateRole(t *testing.T) {
 	role := &models.Role{
 		Name:        "test-role",
 		Description: "Test role",
-		Permissions: []string{"read:resource", "write:resource"},
+		Permissions: []string{"read.resource", "write.resource"},
 	}
 
 	// Setup expectations
@@ -402,8 +405,9 @@ func TestRBACService_CreateRole_ValidationError(t *testing.T) {
 	mockCache := &MockCacheRepository{}
 
 	auditService := NewAuditService(mockRepo)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
 
-	service := NewRBACService(mockRepo, mockCache, auditService)
+	service := NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 
 	ctx := context.Background()
 	tenantID := "test-tenant"
@@ -413,7 +417,7 @@ func TestRBACService_CreateRole_ValidationError(t *testing.T) {
 	role := &models.Role{
 		Name:        "",
 		Description: "Test role",
-		Permissions: []string{"read:resource"},
+		Permissions: []string{"read.resource"},
 	}
 
 	// Setup expectations for error logging
@@ -434,8 +438,9 @@ func TestRBACService_GetRole_CacheHit(t *testing.T) {
 	mockCache := &MockCacheRepository{}
 
 	auditService := NewAuditService(mockRepo)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
 
-	service := NewRBACService(mockRepo, mockCache, auditService)
+	service := NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 
 	ctx := context.Background()
 	tenantID := "test-tenant"
@@ -444,7 +449,7 @@ func TestRBACService_GetRole_CacheHit(t *testing.T) {
 	cachedRole := &models.Role{
 		Name:        roleName,
 		Description: "Cached role",
-		Permissions: []string{"read:resource"},
+		Permissions: []string{"read.resource"},
 	}
 
 	// Setup expectations - cache hit
@@ -467,8 +472,9 @@ func TestRBACService_GetRole_CacheMiss(t *testing.T) {
 	mockCache := &MockCacheRepository{}
 
 	auditService := NewAuditService(mockRepo)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
 
-	service := NewRBACService(mockRepo, mockCache, auditService)
+	service := NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 
 	ctx := context.Background()
 	tenantID := "test-tenant"
@@ -477,7 +483,7 @@ func TestRBACService_GetRole_CacheMiss(t *testing.T) {
 	repoRole := &models.Role{
 		Name:        roleName,
 		Description: "Repository role",
-		Permissions: []string{"read:resource", "write:resource"},
+		Permissions: []string{"read.resource", "write.resource"},
 		TenantID:    tenantID, // Add tenant ID
 	}
 
@@ -502,8 +508,9 @@ func TestRBACService_AssignUserRoles(t *testing.T) {
 	mockCache := &MockCacheRepository{}
 
 	auditService := NewAuditService(mockRepo)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
 
-	service := NewRBACService(mockRepo, mockCache, auditService)
+	service := NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 
 	ctx := context.Background()
 	tenantID := "test-tenant"
@@ -513,7 +520,7 @@ func TestRBACService_AssignUserRoles(t *testing.T) {
 
 	// Mock roles exist
 	adminRole := &models.Role{Name: "admin", Permissions: []string{"*"}, TenantID: tenantID}
-	editorRole := &models.Role{Name: "editor", Permissions: []string{"read:*", "write:*"}, TenantID: tenantID}
+	editorRole := &models.Role{Name: "editor", Permissions: []string{"read.*", "write.*"}, TenantID: tenantID}
 
 	// Cache misses for role validation
 	mockCache.On("GetRole", ctx, tenantID, "admin").Return(nil, nil)
@@ -541,8 +548,9 @@ func TestRBACService_CheckPermission_Allowed(t *testing.T) {
 	mockCache := &MockCacheRepository{}
 
 	auditService := NewAuditService(mockRepo)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
 
-	service := NewRBACService(mockRepo, mockCache, auditService)
+	service := NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 
 	ctx := context.Background()
 	tenantID := "test-tenant"
@@ -553,12 +561,12 @@ func TestRBACService_CheckPermission_Allowed(t *testing.T) {
 	userRoles := []string{"viewer"}
 	viewerRole := &models.Role{
 		Name:        "viewer",
-		Permissions: []string{"dashboard:read"},
+		Permissions: []string{"dashboard.read"},
 		TenantID:    tenantID,
 	}
 
 	dashboardReadPerm := &models.Permission{
-		ID:       "dashboard:read",
+		ID:       "dashboard.read",
 		Resource: "dashboard",
 		Action:   "read",
 		Scope:    "tenant",
@@ -584,7 +592,7 @@ func TestRBACService_CheckPermission_Allowed(t *testing.T) {
 	mockCache.On("GetRole", ctx, tenantID, "viewer").Return(nil, nil) // Cache miss
 	mockRepo.On("GetRole", ctx, tenantID, "viewer").Return(viewerRole, nil)
 	mockCache.On("SetRole", ctx, tenantID, "viewer", viewerRole, mock.AnythingOfType("time.Duration")).Return(nil)
-	mockRepo.On("GetPermission", ctx, tenantID, "dashboard:read").Return(dashboardReadPerm, nil)
+	mockRepo.On("GetPermission", ctx, tenantID, "dashboard.read").Return(dashboardReadPerm, nil)
 	mockRepo.On("GetUserGroups", ctx, tenantID, userID).Return([]string{}, nil) // No groups for this user
 	mockRepo.On("LogAuditEvent", ctx, mock.AnythingOfType("*models.AuditLog")).Return(nil)
 
@@ -604,8 +612,9 @@ func TestRBACService_CheckPermission_Denied(t *testing.T) {
 	mockCache := &MockCacheRepository{}
 
 	auditService := NewAuditService(mockRepo)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
 
-	service := NewRBACService(mockRepo, mockCache, auditService)
+	service := NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 
 	ctx := context.Background()
 	tenantID := "test-tenant"
@@ -616,12 +625,12 @@ func TestRBACService_CheckPermission_Denied(t *testing.T) {
 	userRoles := []string{"viewer"}
 	viewerRole := &models.Role{
 		Name:        "viewer",
-		Permissions: []string{"dashboard:read"}, // No delete permission
+		Permissions: []string{"dashboard.read"}, // No delete permission
 		TenantID:    tenantID,
 	}
 
 	dashboardReadPerm := &models.Permission{
-		ID:       "dashboard:read",
+		ID:       "dashboard.read",
 		Resource: "dashboard",
 		Action:   "read",
 		Scope:    "tenant",
@@ -647,7 +656,7 @@ func TestRBACService_CheckPermission_Denied(t *testing.T) {
 	mockCache.On("GetRole", ctx, tenantID, "viewer").Return(nil, nil) // Cache miss
 	mockRepo.On("GetRole", ctx, tenantID, "viewer").Return(viewerRole, nil)
 	mockCache.On("SetRole", ctx, tenantID, "viewer", viewerRole, mock.AnythingOfType("time.Duration")).Return(nil)
-	mockRepo.On("GetPermission", ctx, tenantID, "dashboard:read").Return(dashboardReadPerm, nil)
+	mockRepo.On("GetPermission", ctx, tenantID, "dashboard.read").Return(dashboardReadPerm, nil)
 	mockRepo.On("GetUserGroups", ctx, tenantID, userID).Return([]string{}, nil) // No groups for this user
 	mockRepo.On("LogAuditEvent", ctx, mock.AnythingOfType("*models.AuditLog")).Return(nil)
 
@@ -667,8 +676,9 @@ func TestRBACService_ValidateRoleAssignments_CircularDependency(t *testing.T) {
 	mockCache := &MockCacheRepository{}
 
 	auditService := NewAuditService(mockRepo)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
 
-	service := NewRBACService(mockRepo, mockCache, auditService)
+	service := NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 
 	ctx := context.Background()
 	tenantID := "test-tenant"
@@ -709,8 +719,9 @@ func TestRBACService_ValidateRoleAssignments_RoleNotFound(t *testing.T) {
 	mockCache := &MockCacheRepository{}
 
 	auditService := NewAuditService(mockRepo)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
 
-	service := NewRBACService(mockRepo, mockCache, auditService)
+	service := NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 
 	ctx := context.Background()
 	tenantID := "test-tenant"

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -313,7 +314,8 @@ func newTestRouterWithContext(cch cache.ValkeyCluster, mw func(*gin.Context)) *g
 	mockRepo := &mockRBACRepository{}
 	mockCacheRepo := &mockCacheRepository{}
 	auditService := rbac.NewAuditService(mockRepo)
-	rbacService := rbac.NewRBACService(mockRepo, mockCacheRepo, auditService)
+	mockLogger := logger.NewMockLogger(&strings.Builder{})
+	rbacService := rbac.NewRBACService(mockRepo, mockCacheRepo, auditService, mockLogger)
 
 	// RBAC
 	rbacHandler := NewRBACHandler(rbacService, cch, log)

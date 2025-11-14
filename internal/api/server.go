@@ -89,7 +89,7 @@ func NewServer(
 	valkeyAdapter := rbac.NewValkeyClusterAdapter(valkeyCache)
 	cacheRepo := rbac.NewValkeyRBACRepository(valkeyAdapter)
 
-	rbacService := rbac.NewRBACService(rbacRepo, cacheRepo, auditService)
+	rbacService := rbac.NewRBACService(rbacRepo, cacheRepo, auditService, log)
 
 	// Initialize RBAC bootstrap service
 	rbacBootstrap := services.NewRBACBootstrapService(rbacService, rbacRepo, log)

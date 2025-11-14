@@ -9,6 +9,7 @@ import (
 
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // RBACService provides business logic for RBAC operations
@@ -16,14 +17,16 @@ type RBACService struct {
 	repository   RBACRepository
 	cache        CacheRepository
 	auditService *AuditService
+	logger       logger.Logger
 }
 
 // NewRBACService creates a new RBAC service
-func NewRBACService(repository RBACRepository, cache CacheRepository, auditService *AuditService) *RBACService {
+func NewRBACService(repository RBACRepository, cache CacheRepository, auditService *AuditService, logger logger.Logger) *RBACService {
 	return &RBACService{
 		repository:   repository,
 		cache:        cache,
 		auditService: auditService,
+		logger:       logger,
 	}
 }
 
@@ -907,8 +910,11 @@ func (s *RBACService) CheckPermissionWithContext(ctx context.Context, permCtx *P
 		return false, fmt.Errorf("user not found")
 	}
 
+	s.logger.Info("RBAC CheckPermissionWithContext", "user_id", permCtx.UserID, "global_role", user.GlobalRole, "resource", permCtx.Resource, "action", permCtx.Action)
+
 	// Global admin has all permissions
 	if user.GlobalRole == "global_admin" {
+		s.logger.Info("Global admin access granted", "user_id", permCtx.UserID, "resource", permCtx.Resource, "action", permCtx.Action)
 		if err := s.auditService.LogPermissionCheck(ctx, permCtx.TenantID, permCtx.UserID, permCtx.Resource, permCtx.Action, true, correlationID); err != nil {
 			monitoring.RecordAPIOperation("audit_log_failure", "rbac.audit", time.Since(start), false)
 		}
@@ -1338,9 +1344,9 @@ func (s *RBACService) hasCircularDependency(ctx context.Context, tenantID string
 
 // isValidPermissionFormat validates permission string format
 func isValidPermissionFormat(permission string) bool {
-	// Expected format: "resource:action" or "resource:action:scope"
-	parts := strings.Split(permission, ":")
-	return len(parts) >= 2 && len(parts) <= 3
+	// Expected format: "resource.action" (consistent with middleware)
+	parts := strings.Split(permission, ".")
+	return len(parts) == 2 && parts[0] != "" && parts[1] != ""
 }
 
 // isAdminAction checks if the requested action is an administrative action

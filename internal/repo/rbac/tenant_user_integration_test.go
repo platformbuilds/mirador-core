@@ -2,6 +2,7 @@ package rbac
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // TestTenantUserBasicOperations tests basic tenant-user operations with mocks
@@ -22,7 +24,8 @@ func TestTenantUserBasicOperations(t *testing.T) {
 		mockRepo := &MockRBACRepository{}
 		mockCache := &MockCacheRepository{}
 		auditService := NewAuditService(mockRepo)
-		service := NewRBACService(mockRepo, mockCache, auditService)
+		mockLogger := logger.NewMockLogger(&strings.Builder{})
+		service := NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 
 		tenantUser := &models.TenantUser{
 			TenantID:   tenantID,
@@ -57,7 +60,8 @@ func TestTenantUserBasicOperations(t *testing.T) {
 		mockRepo := &MockRBACRepository{}
 		mockCache := &MockCacheRepository{}
 		auditService := NewAuditService(mockRepo)
-		service := NewRBACService(mockRepo, mockCache, auditService)
+		mockLogger := logger.NewMockLogger(&strings.Builder{})
+		service := NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 
 		expectedTenantUser := &models.TenantUser{
 			TenantID:   tenantID,
@@ -82,7 +86,8 @@ func TestTenantUserBasicOperations(t *testing.T) {
 		mockRepo := &MockRBACRepository{}
 		mockCache := &MockCacheRepository{}
 		auditService := NewAuditService(mockRepo)
-		service := NewRBACService(mockRepo, mockCache, auditService)
+		mockLogger := logger.NewMockLogger(&strings.Builder{})
+		service := NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 
 		expectedUsers := []*models.TenantUser{
 			{
@@ -109,7 +114,8 @@ func TestTenantUserBasicOperations(t *testing.T) {
 		mockRepo := &MockRBACRepository{}
 		mockCache := &MockCacheRepository{}
 		auditService := NewAuditService(mockRepo)
-		service := NewRBACService(mockRepo, mockCache, auditService)
+		mockLogger := logger.NewMockLogger(&strings.Builder{})
+		service := NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 
 		existing := &models.TenantUser{
 			TenantID:   tenantID,
@@ -150,7 +156,8 @@ func TestTenantUserBasicOperations(t *testing.T) {
 		mockRepo := &MockRBACRepository{}
 		mockCache := &MockCacheRepository{}
 		auditService := NewAuditService(mockRepo)
-		service := NewRBACService(mockRepo, mockCache, auditService)
+		mockLogger := logger.NewMockLogger(&strings.Builder{})
+		service := NewRBACService(mockRepo, mockCache, auditService, mockLogger)
 
 		existing := &models.TenantUser{
 			TenantID:   tenantID,

@@ -169,7 +169,7 @@ services:
       - JWT_SECRET=development-secret-key-not-for-production
       - RBAC_ENABLED=true
     healthcheck:
-      test: ["CMD", "/mirador-core", "healthcheck"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8010/api/v1/health | jq -e '.service == \"mirador-core\" and .status == \"healthy\"'"]
       interval: 10s
       timeout: 5s
       retries: 12
