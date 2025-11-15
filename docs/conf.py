@@ -57,6 +57,23 @@ myst_enable_extensions = [
 
 myst_heading_anchors = 3
 
+# Configure code block highlighting
+myst_highlight_code_blocks = True
+myst_code_block_default_language = 'text'  # Default to plain text to avoid auto-detection issues
+
 # -- Custom configuration ---------------------------------------------------
 
 # Add any custom configuration here
+
+# Configure Pygments for better syntax highlighting
+pygments_options = {
+    'stripnl': False,
+    'stripall': False,
+    'ensurenl': False,
+}
+
+# Suppress highlighting warnings for code blocks
+highlight_options = {
+    'python3': True,
+    'linenothreshold': 5,
+}
