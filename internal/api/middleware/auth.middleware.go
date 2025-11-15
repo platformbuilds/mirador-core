@@ -368,6 +368,7 @@ func checkAPIKeyRateLimit(c *gin.Context, cache cache.ValkeyCluster, apiKeyID, t
 // isPublicEndpoint checks if an endpoint requires authentication
 func isPublicEndpoint(path string) bool {
 	publicPaths := []string{
+		"/", // Root path (redirects to Swagger UI)
 		"/health",
 		"/ready",
 		"/api/openapi.json",
