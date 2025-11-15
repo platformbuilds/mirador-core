@@ -118,7 +118,7 @@ help:
 	"                            Used by localdev-wait and passed to tests as E2E_BASE_URL." \
 	"" \
 	"Notes:" \
-	"  - Auth is disabled by default in the localdev compose." \
+	"  - Auth is enabled by default in the localdev compose." \
 	"  - localdev-down runs 'docker-compose ... down -v' and removes volumes created by that compose file."
 
 

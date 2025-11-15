@@ -1,4 +1,4 @@
-# MIRADOR-CORE User Journeys: Authentication and Unified Query
+# User Journeys: Authentication and Unified Query
 
 ## User Authentication Journey
 
