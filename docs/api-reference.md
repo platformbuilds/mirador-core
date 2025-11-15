@@ -89,7 +89,7 @@ The Unified Query API provides intelligent routing and parallel execution across
 
 Execute queries across multiple engines with intelligent routing and parallel execution.
 
-```http
+```text
 POST /api/v1/unified/query
 ```
 
@@ -147,7 +147,7 @@ POST /api/v1/unified/query
 
 Execute correlation queries that span multiple observability engines.
 
-```http
+```text
 POST /api/v1/unified/correlation
 ```
 
@@ -176,7 +176,7 @@ POST /api/v1/unified/correlation
 
 Get metadata about available engines and their capabilities.
 
-```http
+```text
 GET /api/v1/unified/metadata
 ```
 
@@ -213,7 +213,7 @@ GET /api/v1/unified/metadata
 
 Perform federated search across all engines.
 
-```http
+```text
 POST /api/v1/unified/search
 ```
 
@@ -234,7 +234,7 @@ POST /api/v1/unified/search
 
 Check health of all unified query components.
 
-```http
+```text
 GET /api/v1/unified/health
 ```
 
@@ -244,7 +244,7 @@ GET /api/v1/unified/health
 
 Get execution statistics and performance metrics.
 
-```http
+```text
 GET /api/v1/unified/stats
 ```
 
@@ -258,7 +258,7 @@ UQL provides a unified query language for executing complex queries across multi
 
 Execute a UQL query with full parsing, optimization, and translation capabilities.
 
-```http
+```text
 POST /api/v1/uql/query
 ```
 
@@ -340,7 +340,7 @@ metrics:http_requests > 1000 JOIN logs:error ON service NEAR 1m
 
 Validate UQL query syntax without execution.
 
-```http
+```text
 POST /api/v1/uql/validate
 ```
 
@@ -373,7 +373,7 @@ POST /api/v1/uql/validate
 
 Get the execution plan for a UQL query including optimization steps.
 
-```http
+```text
 POST /api/v1/uql/explain
 ```
 
@@ -434,7 +434,7 @@ Comprehensive MetricsQL API with VictoriaMetrics integration, supporting instant
 
 Execute instant MetricsQL queries.
 
-```http
+```text
 POST /api/v1/metrics/query
 ```
 
@@ -475,7 +475,7 @@ POST /api/v1/metrics/query
 
 Execute range MetricsQL queries with time series data.
 
-```http
+```text
 POST /api/v1/metrics/query_range
 ```
 
@@ -496,7 +496,7 @@ POST /api/v1/metrics/query_range
 
 Retrieve all available metric names.
 
-```http
+```text
 GET /api/v1/metrics/names
 ```
 
@@ -510,7 +510,7 @@ GET /api/v1/metrics/names
 
 Retrieve time series data for metrics.
 
-```http
+```text
 GET /api/v1/metrics/series
 ```
 
@@ -525,7 +525,7 @@ GET /api/v1/metrics/series
 
 Retrieve all label names or values.
 
-```http
+```text
 POST /api/v1/metrics/labels
 GET /api/v1/metrics/label/{name}/values
 ```
@@ -545,7 +545,7 @@ GET /api/v1/metrics/label/{name}/values
 
 Execute rollup aggregation functions.
 
-```http
+```text
 POST /api/v1/metrics/query/rollup/{function}
 POST /api/v1/metrics/query/rollup/{function}/range
 ```
@@ -558,7 +558,7 @@ POST /api/v1/metrics/query/rollup/{function}/range
 
 Execute transformation functions.
 
-```http
+```text
 POST /api/v1/metrics/query/transform/{function}
 POST /api/v1/metrics/query/transform/{function}/range
 ```
@@ -571,7 +571,7 @@ POST /api/v1/metrics/query/transform/{function}/range
 
 Execute label manipulation functions.
 
-```http
+```text
 POST /api/v1/metrics/query/label/{function}
 POST /api/v1/metrics/query/label/{function}/range
 ```
@@ -584,7 +584,7 @@ POST /api/v1/metrics/query/label/{function}/range
 
 Execute aggregation functions.
 
-```http
+```text
 POST /api/v1/metrics/query/aggregate/{function}
 POST /api/v1/metrics/query/aggregate/{function}/range
 ```
@@ -601,7 +601,7 @@ Comprehensive logs API with VictoriaLogs integration, supporting LogsQL queries,
 
 Execute LogsQL queries against VictoriaLogs.
 
-```http
+```text
 POST /api/v1/logs/query
 ```
 
@@ -629,7 +629,7 @@ POST /api/v1/logs/query
 
 Retrieve available log streams.
 
-```http
+```text
 GET /api/v1/logs/streams
 ```
 
@@ -639,7 +639,7 @@ GET /api/v1/logs/streams
 
 Retrieve available log fields.
 
-```http
+```text
 GET /api/v1/logs/fields
 ```
 
@@ -649,7 +649,7 @@ GET /api/v1/logs/fields
 
 Export logs in various formats.
 
-```http
+```text
 POST /api/v1/logs/export
 ```
 
@@ -671,7 +671,7 @@ POST /api/v1/logs/export
 
 Store JSON events in VictoriaLogs (for AI engines).
 
-```http
+```text
 POST /api/v1/logs/store
 ```
 
@@ -683,7 +683,7 @@ POST /api/v1/logs/store
 
 Get time-bucketed log counts for histogram visualization.
 
-```http
+```text
 GET /api/v1/logs/histogram
 ```
 
@@ -714,7 +714,7 @@ GET /api/v1/logs/histogram
 
 Get field value distributions for facet visualization.
 
-```http
+```text
 GET /api/v1/logs/facets
 ```
 
@@ -750,7 +750,7 @@ GET /api/v1/logs/facets
 
 Search logs with pagination support.
 
-```http
+```text
 POST /api/v1/logs/search
 ```
 
@@ -792,7 +792,7 @@ POST /api/v1/logs/search
 
 WebSocket endpoint for real-time log tailing.
 
-```http
+```text
 GET /api/v1/logs/tail
 ```
 
@@ -810,7 +810,7 @@ Jaeger-compatible traces API with VictoriaTraces integration.
 
 List all services with traces.
 
-```http
+```text
 GET /api/v1/traces/services
 ```
 
@@ -827,7 +827,7 @@ GET /api/v1/traces/services
 
 List operations for a specific service.
 
-```http
+```text
 GET /api/v1/traces/services/{service}/operations
 ```
 
@@ -844,7 +844,7 @@ GET /api/v1/traces/services/{service}/operations
 
 Retrieve a complete trace by its ID.
 
-```http
+```text
 GET /api/v1/traces/{traceId}
 ```
 
@@ -867,7 +867,7 @@ GET /api/v1/traces/{traceId}
 
 Search traces with advanced filtering.
 
-```http
+```text
 POST /api/v1/traces/search
 ```
 
@@ -897,7 +897,7 @@ POST /api/v1/traces/search
 
 Get flame graph data for a single trace.
 
-```http
+```text
 GET /api/v1/traces/{traceId}/flamegraph
 ```
 
@@ -910,7 +910,7 @@ GET /api/v1/traces/{traceId}/flamegraph
 
 Aggregate flame graph over search results.
 
-```http
+```text
 POST /api/v1/traces/flamegraph/search
 ```
 
@@ -934,7 +934,7 @@ POST /api/v1/traces/flamegraph/search
 
 Retrieve currently active correlation patterns.
 
-```http
+```text
 GET /api/v1/rca/correlations
 ```
 
@@ -944,7 +944,7 @@ GET /api/v1/rca/correlations
 
 Initiate root cause analysis investigation.
 
-```http
+```text
 POST /api/v1/rca/investigate
 ```
 
@@ -967,7 +967,7 @@ POST /api/v1/rca/investigate
 
 Retrieve known failure patterns.
 
-```http
+```text
 GET /api/v1/rca/patterns
 ```
 
@@ -977,7 +977,7 @@ GET /api/v1/rca/patterns
 
 Generate service dependency graph.
 
-```http
+```text
 POST /api/v1/rca/service-graph
 ```
 
@@ -987,7 +987,7 @@ POST /api/v1/rca/service-graph
 
 Store correlation analysis results.
 
-```http
+```text
 POST /api/v1/rca/store
 ```
 
@@ -1001,7 +1001,7 @@ POST /api/v1/rca/store
 
 Retrieve KPI definitions.
 
-```http
+```text
 GET /api/v1/kpi/defs
 ```
 
@@ -1011,7 +1011,7 @@ GET /api/v1/kpi/defs
 
 Create or update a KPI definition.
 
-```http
+```text
 POST /api/v1/kpi/defs
 ```
 
@@ -1037,7 +1037,7 @@ POST /api/v1/kpi/defs
 
 Delete a KPI definition.
 
-```http
+```text
 DELETE /api/v1/kpi/defs/{id}
 ```
 
@@ -1049,7 +1049,7 @@ DELETE /api/v1/kpi/defs/{id}
 
 Retrieve KPI dashboard layouts.
 
-```http
+```text
 GET /api/v1/kpi/layouts
 ```
 
@@ -1059,7 +1059,7 @@ GET /api/v1/kpi/layouts
 
 Update multiple KPI layouts.
 
-```http
+```text
 POST /api/v1/kpi/layouts/batch
 ```
 
@@ -1073,7 +1073,7 @@ POST /api/v1/kpi/layouts/batch
 
 Retrieve configured data sources.
 
-```http
+```text
 GET /api/v1/config/datasources
 ```
 
@@ -1083,7 +1083,7 @@ GET /api/v1/config/datasources
 
 Add a new data source configuration.
 
-```http
+```text
 POST /api/v1/config/datasources
 ```
 
@@ -1095,7 +1095,7 @@ POST /api/v1/config/datasources
 
 Retrieve integration configurations.
 
-```http
+```text
 GET /api/v1/config/integrations
 ```
 
@@ -1105,7 +1105,7 @@ GET /api/v1/config/integrations
 
 #### Get User Preferences
 
-```http
+```text
 GET /api/v1/config/user-preferences
 ```
 
@@ -1113,7 +1113,7 @@ GET /api/v1/config/user-preferences
 
 #### Create User Preferences
 
-```http
+```text
 POST /api/v1/config/user-preferences
 ```
 
@@ -1121,7 +1121,7 @@ POST /api/v1/config/user-preferences
 
 #### Update User Preferences
 
-```http
+```text
 PUT /api/v1/config/user-preferences
 ```
 
@@ -1129,7 +1129,7 @@ PUT /api/v1/config/user-preferences
 
 #### Delete User Preferences
 
-```http
+```text
 DELETE /api/v1/config/user-preferences
 ```
 
@@ -1141,7 +1141,7 @@ DELETE /api/v1/config/user-preferences
 
 Retrieve runtime feature flags.
 
-```http
+```text
 GET /api/v1/config/features
 ```
 
@@ -1151,7 +1151,7 @@ GET /api/v1/config/features
 
 Update runtime feature flags.
 
-```http
+```text
 PUT /api/v1/config/features
 ```
 
@@ -1161,7 +1161,7 @@ PUT /api/v1/config/features
 
 Reset feature flags to defaults.
 
-```http
+```text
 POST /api/v1/config/features/reset
 ```
 
@@ -1173,7 +1173,7 @@ POST /api/v1/config/features/reset
 
 Retrieve configured gRPC endpoints.
 
-```http
+```text
 GET /api/v1/config/grpc/endpoints
 ```
 
@@ -1183,7 +1183,7 @@ GET /api/v1/config/grpc/endpoints
 
 Update gRPC endpoint configurations.
 
-```http
+```text
 PUT /api/v1/config/grpc/endpoints
 ```
 
@@ -1193,7 +1193,7 @@ PUT /api/v1/config/grpc/endpoints
 
 Reset gRPC endpoints to defaults.
 
-```http
+```text
 POST /api/v1/config/grpc/endpoints/reset
 ```
 
@@ -1205,7 +1205,7 @@ POST /api/v1/config/grpc/endpoints/reset
 
 #### Create MiradorAuth
 
-```http
+```text
 POST /api/v1/auth/users
 ```
 
@@ -1213,7 +1213,7 @@ POST /api/v1/auth/users
 
 #### Get MiradorAuth
 
-```http
+```text
 GET /api/v1/auth/users/{userId}
 ```
 
@@ -1221,7 +1221,7 @@ GET /api/v1/auth/users/{userId}
 
 #### Update MiradorAuth
 
-```http
+```text
 PUT /api/v1/auth/users/{userId}
 ```
 
@@ -1229,7 +1229,7 @@ PUT /api/v1/auth/users/{userId}
 
 #### Delete MiradorAuth
 
-```http
+```text
 DELETE /api/v1/auth/users/{userId}
 ```
 
@@ -1239,7 +1239,7 @@ DELETE /api/v1/auth/users/{userId}
 
 #### Create AuthConfig
 
-```http
+```text
 POST /api/v1/auth/config
 ```
 
@@ -1247,7 +1247,7 @@ POST /api/v1/auth/config
 
 #### Get AuthConfig
 
-```http
+```text
 GET /api/v1/auth/config/{tenantId}
 ```
 
@@ -1255,7 +1255,7 @@ GET /api/v1/auth/config/{tenantId}
 
 #### Update AuthConfig
 
-```http
+```text
 PUT /api/v1/auth/config/{tenantId}
 ```
 
@@ -1263,7 +1263,7 @@ PUT /api/v1/auth/config/{tenantId}
 
 #### Delete AuthConfig
 
-```http
+```text
 DELETE /api/v1/auth/config/{tenantId}
 ```
 
@@ -1275,7 +1275,7 @@ DELETE /api/v1/auth/config/{tenantId}
 
 #### Get Roles
 
-```http
+```text
 GET /api/v1/rbac/roles
 ```
 
@@ -1283,7 +1283,7 @@ GET /api/v1/rbac/roles
 
 #### Create Role
 
-```http
+```text
 POST /api/v1/rbac/roles
 ```
 
@@ -1291,7 +1291,7 @@ POST /api/v1/rbac/roles
 
 #### Get User Roles
 
-```http
+```text
 GET /api/v1/rbac/users/{userId}/roles
 ```
 
@@ -1301,7 +1301,7 @@ GET /api/v1/rbac/users/{userId}/roles
 
 #### Get Permissions
 
-```http
+```text
 GET /api/v1/rbac/permissions
 ```
 
@@ -1309,7 +1309,7 @@ GET /api/v1/rbac/permissions
 
 #### Create Permission
 
-```http
+```text
 POST /api/v1/rbac/permissions
 ```
 
@@ -1317,7 +1317,7 @@ POST /api/v1/rbac/permissions
 
 #### Update Permission
 
-```http
+```text
 PUT /api/v1/rbac/permissions/{permissionId}
 ```
 
@@ -1325,7 +1325,7 @@ PUT /api/v1/rbac/permissions/{permissionId}
 
 #### Delete Permission
 
-```http
+```text
 DELETE /api/v1/rbac/permissions/{permissionId}
 ```
 
@@ -1335,7 +1335,7 @@ DELETE /api/v1/rbac/permissions/{permissionId}
 
 #### Get Groups
 
-```http
+```text
 GET /api/v1/rbac/groups
 ```
 
@@ -1343,7 +1343,7 @@ GET /api/v1/rbac/groups
 
 #### Create Group
 
-```http
+```text
 POST /api/v1/rbac/groups
 ```
 
@@ -1351,7 +1351,7 @@ POST /api/v1/rbac/groups
 
 #### Update Group
 
-```http
+```text
 PUT /api/v1/rbac/groups/{groupName}
 ```
 
@@ -1359,7 +1359,7 @@ PUT /api/v1/rbac/groups/{groupName}
 
 #### Delete Group
 
-```http
+```text
 DELETE /api/v1/rbac/groups/{groupName}
 ```
 
@@ -1367,7 +1367,7 @@ DELETE /api/v1/rbac/groups/{groupName}
 
 #### Add Users to Group
 
-```http
+```text
 PUT /api/v1/rbac/groups/{groupName}/users
 ```
 
@@ -1375,7 +1375,7 @@ PUT /api/v1/rbac/groups/{groupName}/users
 
 #### Remove Users from Group
 
-```http
+```text
 DELETE /api/v1/rbac/groups/{groupName}/users
 ```
 
@@ -1383,7 +1383,7 @@ DELETE /api/v1/rbac/groups/{groupName}/users
 
 #### Get Group Members
 
-```http
+```text
 GET /api/v1/rbac/groups/{groupName}/members
 ```
 
@@ -1393,7 +1393,7 @@ GET /api/v1/rbac/groups/{groupName}/members
 
 #### Get Role Bindings
 
-```http
+```text
 GET /api/v1/rbac/role-bindings
 ```
 
@@ -1401,7 +1401,7 @@ GET /api/v1/rbac/role-bindings
 
 #### Create Role Binding
 
-```http
+```text
 POST /api/v1/rbac/role-bindings
 ```
 
@@ -1409,7 +1409,7 @@ POST /api/v1/rbac/role-bindings
 
 #### Update Role Binding
 
-```http
+```text
 PUT /api/v1/rbac/role-bindings/{bindingId}
 ```
 
@@ -1417,7 +1417,7 @@ PUT /api/v1/rbac/role-bindings/{bindingId}
 
 #### Delete Role Binding
 
-```http
+```text
 DELETE /api/v1/rbac/role-bindings/{bindingId}
 ```
 
@@ -1427,7 +1427,7 @@ DELETE /api/v1/rbac/role-bindings/{bindingId}
 
 #### Get Audit Events
 
-```http
+```text
 GET /api/v1/rbac/audit
 ```
 
@@ -1435,7 +1435,7 @@ GET /api/v1/rbac/audit
 
 #### Get Audit Event
 
-```http
+```text
 GET /api/v1/rbac/audit/{eventId}
 ```
 
@@ -1443,7 +1443,7 @@ GET /api/v1/rbac/audit/{eventId}
 
 #### Get Audit Summary
 
-```http
+```text
 GET /api/v1/rbac/audit/summary
 ```
 
@@ -1451,7 +1451,7 @@ GET /api/v1/rbac/audit/summary
 
 #### Get Audit Events by Subject
 
-```http
+```text
 GET /api/v1/rbac/audit/subject/{subjectId}
 ```
 
@@ -1463,7 +1463,7 @@ GET /api/v1/rbac/audit/subject/{subjectId}
 
 #### List Tenants
 
-```http
+```text
 GET /api/v1/tenants
 ```
 
@@ -1471,7 +1471,7 @@ GET /api/v1/tenants
 
 #### Create Tenant
 
-```http
+```text
 POST /api/v1/tenants
 ```
 
@@ -1479,7 +1479,7 @@ POST /api/v1/tenants
 
 #### Delete Tenant
 
-```http
+```text
 DELETE /api/v1/tenants/{tenantId}
 ```
 
@@ -1489,7 +1489,7 @@ DELETE /api/v1/tenants/{tenantId}
 
 #### Get Tenant
 
-```http
+```text
 GET /api/v1/tenants/{tenantId}
 ```
 
@@ -1497,7 +1497,7 @@ GET /api/v1/tenants/{tenantId}
 
 #### Update Tenant
 
-```http
+```text
 PUT /api/v1/tenants/{tenantId}
 ```
 
@@ -1507,7 +1507,7 @@ PUT /api/v1/tenants/{tenantId}
 
 #### Create Tenant User
 
-```http
+```text
 POST /api/v1/tenants/{tenantId}/users
 ```
 
@@ -1515,7 +1515,7 @@ POST /api/v1/tenants/{tenantId}/users
 
 #### List Tenant Users
 
-```http
+```text
 GET /api/v1/tenants/{tenantId}/users
 ```
 
@@ -1523,7 +1523,7 @@ GET /api/v1/tenants/{tenantId}/users
 
 #### Get Tenant User
 
-```http
+```text
 GET /api/v1/tenants/{tenantId}/users/{userId}
 ```
 
@@ -1531,7 +1531,7 @@ GET /api/v1/tenants/{tenantId}/users/{userId}
 
 #### Update Tenant User
 
-```http
+```text
 PUT /api/v1/tenants/{tenantId}/users/{userId}
 ```
 
@@ -1539,7 +1539,7 @@ PUT /api/v1/tenants/{tenantId}/users/{userId}
 
 #### Delete Tenant User
 
-```http
+```text
 DELETE /api/v1/tenants/{tenantId}/users/{userId}
 ```
 
@@ -1551,7 +1551,7 @@ DELETE /api/v1/tenants/{tenantId}/users/{userId}
 
 #### List Users
 
-```http
+```text
 GET /api/v1/users
 ```
 
@@ -1559,7 +1559,7 @@ GET /api/v1/users
 
 #### Create User
 
-```http
+```text
 POST /api/v1/users
 ```
 
@@ -1567,7 +1567,7 @@ POST /api/v1/users
 
 #### Get User
 
-```http
+```text
 GET /api/v1/users/{id}
 ```
 
@@ -1575,7 +1575,7 @@ GET /api/v1/users/{id}
 
 #### Update User
 
-```http
+```text
 PUT /api/v1/users/{id}
 ```
 
@@ -1583,7 +1583,7 @@ PUT /api/v1/users/{id}
 
 #### Delete User
 
-```http
+```text
 DELETE /api/v1/users/{id}
 ```
 
@@ -1593,7 +1593,7 @@ DELETE /api/v1/users/{id}
 
 ### Get Active Sessions
 
-```http
+```text
 GET /api/v1/sessions/active
 ```
 
@@ -1601,7 +1601,7 @@ GET /api/v1/sessions/active
 
 ### Invalidate Session
 
-```http
+```text
 POST /api/v1/sessions/invalidate
 ```
 
@@ -1609,7 +1609,7 @@ POST /api/v1/sessions/invalidate
 
 ### Get User Sessions
 
-```http
+```text
 GET /api/v1/sessions/user/{userId}
 ```
 
@@ -1621,7 +1621,7 @@ Real-time streaming endpoints for live data:
 
 ### Metrics Stream
 
-```http
+```text
 GET /api/v1/ws/metrics
 ```
 
@@ -1631,7 +1631,7 @@ Streams real-time metrics data via WebSocket.
 
 ### Alerts Stream
 
-```http
+```text
 GET /api/v1/ws/alerts
 ```
 
@@ -1643,7 +1643,7 @@ Streams real-time alert notifications via WebSocket.
 
 ### Health Check
 
-```http
+```text
 GET /api/v1/health
 ```
 
@@ -1660,7 +1660,7 @@ Returns basic service health status.
 
 ### Readiness Check
 
-```http
+```text
 GET /api/v1/ready
 ```
 
@@ -1668,7 +1668,7 @@ Checks backend connectivity and returns readiness status.
 
 ### Microservices Status
 
-```http
+```text
 GET /api/v1/microservices/status
 ```
 
@@ -1676,7 +1676,7 @@ Returns status of all connected microservices.
 
 ### Prometheus Metrics
 
-```http
+```text
 GET /api/v1/metrics
 ```
 

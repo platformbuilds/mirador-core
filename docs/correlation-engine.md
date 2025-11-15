@@ -158,7 +158,7 @@ Correlation confidence is calculated based on multiple factors:
 
 ### Execute Correlation Query
 
-```http
+```text
 POST /api/v1/unified/correlation
 Content-Type: application/json
 
