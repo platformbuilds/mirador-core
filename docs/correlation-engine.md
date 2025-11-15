@@ -1,4 +1,4 @@
-# Mirador Core v7.0.0 - Log-Metrics-Traces Correlation Engine
+# Mirador Core  - Log-Metrics-Traces Correlation Engine
 
 ## Overview
 

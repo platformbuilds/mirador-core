@@ -1,6 +1,6 @@
-# Mirador Core v7.0.0 - Monitoring and Observability Guide
+# Mirador Core  - Monitoring and Observability Guide
 
-This document provides comprehensive guidance for monitoring and observing Mirador Core v7.0.0, including metrics collection, distributed tracing, performance dashboards, and alerting rules.
+This document provides comprehensive guidance for monitoring and observing Mirador Core , including metrics collection, distributed tracing, performance dashboards, and alerting rules.
 
 ## Table of Contents
 
@@ -14,7 +14,7 @@ This document provides comprehensive guidance for monitoring and observing Mirad
 
 ## Overview
 
-Mirador Core v7.0.0 implements comprehensive monitoring and observability capabilities to ensure operational visibility and reliability of the unified observability platform. The monitoring stack includes:
+Mirador Core  implements comprehensive monitoring and observability capabilities to ensure operational visibility and reliability of the unified observability platform. The monitoring stack includes:
 
 - **Prometheus** for metrics collection and storage
 - **OpenTelemetry** for distributed tracing
