@@ -270,7 +270,15 @@ clean-build: clean proto
 # Run tests (generate proto first)
 test: proto
 	@echo "🧪 Running tests..."
-	go test -v -race -coverprofile=coverage.out ./...
+	@packages=$$(find . -name "*_test.go" -type f -exec dirname {} \; | sort | uniq | sed 's|^\./||' | xargs -I {} sh -c 'pkg=$$(go list ./{} 2>/dev/null); [ -n "$$pkg" ] && echo $$pkg'); \
+	if [ -n "$$packages" ]; then \
+	  echo "$$packages" | tr ' ' '\n' | while read -r pkg; do \
+	    echo "Testing $$pkg..."; \
+	    go test -v -race -coverprofile=coverage.out.$$(echo $$pkg | tr '/' '_') $$pkg || exit 1; \
+	  done; \
+	else \
+	  echo "No test packages found"; \
+	fi
 
 # Update dependencies
 vendor:
