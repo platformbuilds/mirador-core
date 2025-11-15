@@ -93,6 +93,39 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// Create API key record for login-generated key
+	apiKeyRecord := &models.APIKey{
+		UserID:    session.UserID,
+		TenantID:  session.TenantID,
+		Name:      "login-generated",
+		KeyHash:   models.HashAPIKey(rawAPIKey),
+		Prefix:    models.ExtractKeyPrefix(rawAPIKey),
+		Roles:     session.Roles,
+		Scopes:    []string{"read", "write"}, // Default scopes for login-generated keys
+		ExpiresAt: nil,                       // No expiry for login-generated keys
+		IsActive:  true,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		CreatedBy: session.UserID,
+		UpdatedBy: session.UserID,
+		Metadata:  map[string]string{"note": "Auto-generated on login"},
+	}
+
+	// Store API key in repository
+	if err := h.rbacRepo.CreateAPIKey(c.Request.Context(), apiKeyRecord); err != nil {
+		h.logger.Error("Failed to store login-generated API key", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "API key storage failed",
+		})
+		return
+	}
+
+	h.logger.Info("Login-generated API key created",
+		"user_id", session.UserID,
+		"tenant_id", session.TenantID,
+		"api_key_id", apiKeyRecord.ID)
+
 	// Return session token and API key
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
@@ -151,8 +184,11 @@ func (h *AuthHandler) ValidateToken(c *gin.Context) {
 
 	// Try to validate as API key first (starts with "mrk_")
 	if strings.HasPrefix(req.Token, "mrk_") {
-		// Extract tenant from header or use default
-		tenantID := c.GetHeader("x-tenant-id")
+		// Extract tenant from authenticated context (set by middleware) or header
+		tenantID := c.GetString("tenant_id")
+		if tenantID == "" {
+			tenantID = c.GetHeader("x-tenant-id")
+		}
 		if tenantID == "" {
 			tenantID = "default"
 		}

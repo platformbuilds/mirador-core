@@ -367,11 +367,15 @@ func (r *WeaviateRBACRepository) ensureRBACSchema(ctx context.Context) error {
 			"properties": []map[string]any{
 				{"name": "tenantId", "dataType": []string{"text"}},
 				{"name": "userId", "dataType": []string{"text"}},
+				{"name": "name", "dataType": []string{"text"}},
 				{"name": "keyHash", "dataType": []string{"text"}},
+				{"name": "prefix", "dataType": []string{"text"}},
 				{"name": "isActive", "dataType": []string{"boolean"}},
 				{"name": "expiresAt", "dataType": []string{"date"}},
 				{"name": "lastUsedAt", "dataType": []string{"date"}},
 				{"name": "description", "dataType": []string{"text"}},
+				{"name": "roles", "dataType": []string{"text[]"}},
+				{"name": "scopes", "dataType": []string{"text[]"}},
 				{"name": "metadata", "dataType": []string{"object"},
 					"nestedProperties": []map[string]any{
 						{"name": "note", "dataType": []string{"text"}},
@@ -2924,6 +2928,8 @@ func (r *WeaviateRBACRepository) UpdateMiradorAuth(ctx context.Context, auth *mo
 	auth.UpdatedAt = time.Now()
 
 	props := map[string]any{
+		"userId":                auth.UserID,
+		"tenantId":              auth.TenantID,
 		"username":              auth.Username,
 		"email":                 auth.Email,
 		"passwordHash":          auth.PasswordHash,
@@ -3488,7 +3494,7 @@ func (r *WeaviateRBACRepository) GetAPIKeyByHash(ctx context.Context, tenantID, 
 				{ path: ["keyHash"], operator: Equal, valueString: "%s" }
 			] }) {
 				userId tenantId name keyHash prefix isActive expiresAt lastUsedAt
-				roles scopes metadata createdAt updatedAt createdBy updatedBy
+				roles scopes metadata { note } createdAt updatedAt createdBy updatedBy
 				_additional { id }
 			}
 		}
@@ -3529,7 +3535,7 @@ func (r *WeaviateRBACRepository) GetAPIKeyByID(ctx context.Context, tenantID, ke
 				{ path: ["id"], operator: Equal, valueString: "%s" }
 			] }) {
 				userId tenantId name keyHash prefix isActive expiresAt lastUsedAt
-				roles scopes metadata createdAt updatedAt createdBy updatedBy
+				roles scopes metadata { note } createdAt updatedAt createdBy updatedBy
 				_additional { id }
 			}
 		}
@@ -3570,7 +3576,7 @@ func (r *WeaviateRBACRepository) ListAPIKeys(ctx context.Context, tenantID, user
 				{ path: ["userId"], operator: Equal, valueString: "%s" }
 			] }) {
 				userId tenantId name keyHash prefix isActive expiresAt lastUsedAt
-				roles scopes metadata createdAt updatedAt createdBy updatedBy
+				roles scopes metadata { note } createdAt updatedAt createdBy updatedBy
 				_additional { id }
 			}
 		}

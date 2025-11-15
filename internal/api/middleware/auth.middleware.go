@@ -377,6 +377,7 @@ func isPublicEndpoint(path string) bool {
 		"/api/v1/auth/login",
 		"/api/v1/auth/oauth/callback",
 		"/api/v1/auth/oauth/login",
+		"/api/v1/health", // Back-compat health endpoint
 	}
 
 	for _, publicPath := range publicPaths {

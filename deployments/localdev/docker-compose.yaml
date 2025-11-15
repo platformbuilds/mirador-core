@@ -77,6 +77,8 @@ services:
     container_name: mirador-valkey
     ports:
       - "6379:6379"
+    volumes:
+      - valkeydata:/data
     networks:
       - mirador-net
     healthcheck:
@@ -144,7 +146,7 @@ services:
       - LOG_LEVEL=debug
       - ENVIRONMENT=development
       - CONFIG_PATH=/configs/config.development.yaml
-      - AUTH_ENABLED=false
+      - AUTH_ENABLED=true
 
       # Upload limits
       - BULK_UPLOAD_MAX_BYTES=5242880
@@ -187,6 +189,7 @@ volumes:
   vldata: {}
   vtdata: {}
   weavdata: {}
+  valkeydata: {}
   bleve-data: {}
 
 # ──────────────────────────────────────────────
