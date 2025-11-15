@@ -383,6 +383,31 @@ func (s *Server) setupRoutes() {
 	v1.POST("/auth/logout", authHandler.Logout)
 	v1.POST("/auth/validate", authHandler.ValidateToken)
 
+	// API Key management endpoints with proper RBAC
+	apiKeyGroup := v1.Group("/auth/apikeys")
+	{
+		// Self-service API key management (requires apikey.manage permission)
+		apiKeyGroup.POST("/", s.rbacEnforcer.RBACMiddleware([]string{"apikey.manage"}), authHandler.GenerateAPIKey)
+		apiKeyGroup.GET("/", s.rbacEnforcer.RBACMiddleware([]string{"apikey.manage"}), authHandler.ListAPIKeys)
+		apiKeyGroup.DELETE("/:keyId", s.rbacEnforcer.RBACMiddleware([]string{"apikey.manage"}), authHandler.RevokeAPIKey)
+	}
+
+	// API Key limits management (admin only)
+	apiKeyLimitsGroup := v1.Group("/auth/apikey-limits")
+	{
+		// Get current limits (requires apikey.manage)
+		apiKeyLimitsGroup.GET("/", s.rbacEnforcer.RBACMiddleware([]string{"apikey.manage"}), authHandler.GetAPIKeyLimits)
+		// Update limits (requires tenant admin or global admin)
+		apiKeyLimitsGroup.PUT("/", s.rbacEnforcer.RBACMiddleware([]string{"apikey.admin"}), authHandler.UpdateAPIKeyLimits)
+	}
+
+	// API Key configuration management (global admin only)
+	apiKeyConfigGroup := v1.Group("/auth/apikey-config")
+	{
+		// Get system-wide API key configuration (requires global admin)
+		apiKeyConfigGroup.GET("/", s.rbacEnforcer.RBACMiddleware([]string{"apikey.global_admin"}), authHandler.GetAPIKeyConfiguration)
+	}
+
 	// RBAC endpoints
 	rbacHandler := handlers.NewRBACHandler(s.rbacService, s.cache, s.logger)
 	rbacGroup := v1.Group("/rbac")
