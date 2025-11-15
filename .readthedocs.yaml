@@ -16,7 +16,7 @@ build:
     post_install:
       - echo "Post-install setup"
     pre_build:
-      - echo "Pre-build setup - MIRADOR-CORE v7.0.0 with Correlation Engine"
+      - echo "Pre-build setup - MIRADOR-CORE v9.0.0 with Unified Query Engine"
     post_build:
       - echo "Post-build setup"
 

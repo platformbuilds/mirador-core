@@ -2,23 +2,11 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, master, develop, v7.0.0, 'release/**' ]
-    paths-ignore:
-      - 'docs/**'
-      - '.readthedocs.yaml'
-      - 'api/openapi.yaml'
-      - 'api/openapi.json'
-      - 'README.md'
-      - 'CHANGELOG.md'
+    branches: [ main, master, develop, v9.0.0, 'release/**' ]
+    # Removed paths-ignore to ensure documentation changes trigger builds
   pull_request:
     branches: [ '**' ]
-    paths-ignore:
-      - 'docs/**'
-      - '.readthedocs.yaml'
-      - 'api/openapi.yaml'
-      - 'api/openapi.json'
-      - 'README.md'
-      - 'CHANGELOG.md'
+    # Removed paths-ignore to ensure documentation changes are validated
   schedule:
     - cron: '0 3 * * 1'  # Weekly security scan on Mondays
   workflow_dispatch:
@@ -146,8 +134,10 @@ jobs:
     name: Documentation & ReadTheDocs
     runs-on: ubuntu-latest
     if: |
-      (github.event_name == 'push' && contains(fromJSON('["main", "master", "v7.0.0"]'), github.ref_name)) ||
-      (github.event_name == 'pull_request' && contains(fromJSON('["main", "master", "v7.0.0"]'), github.base_ref))
+      (github.event_name == 'push' && contains(fromJSON('["main", "master", "v9.0.0"]'), github.ref_name)) ||
+      (github.event_name == 'pull_request' && contains(fromJSON('["main", "master", "v9.0.0"]'), github.base_ref)) ||
+      contains(github.event.head_commit.message, '[docs]') ||
+      contains(github.event.pull_request.title, '[docs]')
     steps:
       - name: Checkout
         uses: actions/checkout@v5

@@ -1,0 +1,142 @@
+name: Documentation Build & Deploy
+
+on:
+  push:
+    branches: [main, master, v9.0.0]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'api/openapi.yaml'
+      - 'api/swagger.yaml'
+      - '.readthedocs.yaml'
+  pull_request:
+    branches: [main, master, v9.0.0]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'api/openapi.yaml'
+      - 'api/swagger.yaml'
+      - '.readthedocs.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Validate documentation build
+  docs-validation:
+    name: Validate Documentation Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('docs/requirements.txt') }}
+
+      - name: Install documentation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r docs/requirements.txt
+
+      - name: Validate Sphinx configuration
+        run: |
+          cd docs
+          python -c "from conf import *; print(f'Project: {project} v{release}')"
+
+      - name: Build documentation
+        run: |
+          cd docs
+          python -m sphinx -W -b html . _build/html
+
+      - name: Check for broken links
+        run: |
+          cd docs  
+          python -m sphinx -b linkcheck . _build/linkcheck
+        continue-on-error: true
+
+      - name: Generate OpenAPI documentation
+        run: |
+          cd docs
+          # Convert OpenAPI YAML to HTML for inclusion in docs
+          if command -v redoc-cli &> /dev/null; then
+            redoc-cli build ../api/openapi.yaml --output _build/html/api-reference.html
+          else
+            echo "redoc-cli not found, skipping API documentation generation"
+          fi
+        continue-on-error: true
+
+      - name: Upload documentation artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: documentation-build-${{ github.sha }}
+          path: docs/_build/
+          retention-days: 30
+
+      - name: Documentation build summary
+        run: |
+          echo "## 📚 Documentation Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ Build successful" >> $GITHUB_STEP_SUMMARY
+          echo "- **Python Version**: $(python --version)" >> $GITHUB_STEP_SUMMARY  
+          echo "- **Sphinx Version**: $(python -m sphinx --version)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Project**: MIRADOR-CORE v9.0.0" >> $GITHUB_STEP_SUMMARY
+          if [ -f docs/_build/html/index.html ]; then
+            echo "- **Main Documentation**: Generated ✅" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f docs/_build/html/api-reference.html ]; then
+            echo "- **API Documentation**: Generated ✅" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Notify ReadTheDocs (if configured)
+  readthedocs-trigger:
+    name: Trigger ReadTheDocs Build
+    runs-on: ubuntu-latest
+    needs: docs-validation
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Trigger ReadTheDocs Build
+        run: |
+          echo "🔔 Triggering ReadTheDocs build for MIRADOR-CORE v9.0.0"
+          
+          # Method 1: Generic webhook (if configured)
+          if [ -n "${{ secrets.RTD_WEBHOOK_URL }}" ] && [ -n "${{ secrets.RTD_TOKEN }}" ]; then
+            echo "📡 Triggering via webhook..."
+            curl -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"branches": ["main"], "token": "${{ secrets.RTD_TOKEN }}"}' \
+              "${{ secrets.RTD_WEBHOOK_URL }}"
+          fi
+          
+          # Method 2: ReadTheDocs API (alternative approach)
+          if [ -n "${{ secrets.RTD_API_TOKEN }}" ] && [ -n "${{ secrets.RTD_PROJECT_SLUG }}" ]; then
+            echo "🔄 Triggering via ReadTheDocs API..."
+            curl -X POST \
+              -H "Authorization: Token ${{ secrets.RTD_API_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              "https://readthedocs.org/api/v3/projects/${{ secrets.RTD_PROJECT_SLUG }}/versions/latest/builds/" \
+              -d '{}'
+          fi
+          
+          # Method 3: Repository dispatch (for ReadTheDocs GitHub integration)
+          echo "📢 Repository updated - ReadTheDocs should auto-build if GitHub integration is enabled"
+          echo "If ReadTheDocs is not building automatically:"
+          echo "1. Check ReadTheDocs project settings"
+          echo "2. Verify webhook configuration"
+          echo "3. Ensure .readthedocs.yaml is properly configured"
+          echo "4. Check ReadTheDocs build logs for errors"
+
+      - name: ReadTheDocs integration status
+        run: |
+          echo "## 📖 ReadTheDocs Integration Status" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger**: Documentation build trigger executed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: main (latest)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Configuration**: .readthedocs.yaml updated to v9.0.0" >> $GITHUB_STEP_SUMMARY
+          echo "- **Next Steps**: Check ReadTheDocs dashboard for build status" >> $GITHUB_STEP_SUMMARY
