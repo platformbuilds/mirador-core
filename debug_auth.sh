@@ -20,7 +20,7 @@ echo "Response 1: $response1"
 
 # Extract token if successful
 if echo "$response1" | jq -e '.status == "success"' >/dev/null 2>&1; then
-    AUTH_TOKEN=$(echo "$response1" | jq -r '.data.jwt_token')
+    AUTH_TOKEN=$(echo "$response1" | jq -r '.data.api_key')
     echo "Got token: ${AUTH_TOKEN:0:50}..."
 else
     echo "First auth failed"

@@ -172,6 +172,27 @@ func (m *mockRBACRepositoryForMetricsTest) UpdateAuthConfig(ctx context.Context,
 func (m *mockRBACRepositoryForMetricsTest) DeleteAuthConfig(ctx context.Context, tenantID string) error {
 	return nil
 }
+func (m *mockRBACRepositoryForMetricsTest) CreateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+func (m *mockRBACRepositoryForMetricsTest) GetAPIKeyByHash(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForMetricsTest) GetAPIKeyByID(ctx context.Context, tenantID, keyID string) (*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForMetricsTest) ListAPIKeys(ctx context.Context, tenantID, userID string) ([]*models.APIKey, error) {
+	return []*models.APIKey{}, nil
+}
+func (m *mockRBACRepositoryForMetricsTest) UpdateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+func (m *mockRBACRepositoryForMetricsTest) RevokeAPIKey(ctx context.Context, tenantID, keyID string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForMetricsTest) ValidateAPIKey(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, nil
+}
 
 func TestMetricsMetadataIntegration(t *testing.T) {
 	// Create a test configuration with metrics metadata enabled

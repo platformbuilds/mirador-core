@@ -136,10 +136,10 @@ echo "# Port-forward to access API:"
 echo "kubectl port-forward -n $NAMESPACE svc/mirador-core 8010:8010"
 echo
 echo "# Test API key configuration endpoint (requires global admin JWT):"
-echo "curl -H \"Authorization: Bearer \$JWT_TOKEN\" http://localhost:8010/api/v1/auth/apikey-config"
+echo "curl -H \"Authorization: Bearer \$API_KEY\" http://localhost:8010/api/v1/auth/apikey-config"
 echo
 echo "# Get API key limits for tenant (requires user JWT):"
-echo "curl -H \"Authorization: Bearer \$JWT_TOKEN\" http://localhost:8010/api/v1/auth/apikey-limits"
+echo "curl -H \"Authorization: Bearer \$API_KEY\" http://localhost:8010/api/v1/auth/apikey-limits"
 
 # Cleanup temporary file
 rm /tmp/api-key-values.yaml

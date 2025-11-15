@@ -171,6 +171,27 @@ func (m *mockRBACRepositoryForHealthTest) UpdateAuthConfig(ctx context.Context, 
 func (m *mockRBACRepositoryForHealthTest) DeleteAuthConfig(ctx context.Context, tenantID string) error {
 	return nil
 }
+func (m *mockRBACRepositoryForHealthTest) CreateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+func (m *mockRBACRepositoryForHealthTest) GetAPIKeyByHash(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForHealthTest) GetAPIKeyByID(ctx context.Context, tenantID, keyID string) (*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForHealthTest) ListAPIKeys(ctx context.Context, tenantID, userID string) ([]*models.APIKey, error) {
+	return []*models.APIKey{}, nil
+}
+func (m *mockRBACRepositoryForHealthTest) UpdateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+func (m *mockRBACRepositoryForHealthTest) RevokeAPIKey(ctx context.Context, tenantID, keyID string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForHealthTest) ValidateAPIKey(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, nil
+}
 
 // Smoke test for /health route with minimal dependencies.
 func TestHealth_OK(t *testing.T) {

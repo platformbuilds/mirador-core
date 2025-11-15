@@ -5,19 +5,19 @@
 ### Preconditions
 - **Base URL**: The MIRADOR-CORE API server URL (e.g., `http://localhost:8010` for local development, or production URL)
 - **Credentials**: Valid username and password from LDAP/AD or SSO system
-- **Tenant Information**: Optional tenant ID (defaults to "default" if not provided)
+- **Tenant Information**: Optional tenant ID (defaults to "PLATFORMBUILDS" if not provided)
 - **Environment**: Ensure the server is running and accessible
 
 ### Step-by-Step Flow
 
 #### Step 1 – Obtain Access Token
-**Purpose**: Authenticate the user and obtain session and JWT tokens for subsequent API calls.
+**Purpose**: Authenticate the user and obtain an API key for subsequent API calls. API keys are the primary authentication method for all programmatic access.
 
 **HTTP Method + URL Path**: `POST /api/v1/auth/login`
 
 **Required Headers**:
 - `Content-Type: application/json`
-- `x-tenant-id: <tenant-id>` (optional, defaults to "default")
+- `x-tenant-id: <tenant-id>` (optional, defaults to "PLATFORMBUILDS")
 
 **Request Body**:
 ```json
@@ -33,7 +33,7 @@
 ```bash
 curl -X POST http://localhost:8010/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -H "x-tenant-id: default" \
+  -H "x-tenant-id: PLATFORMBUILDS" \
   -d '{
     "username": "john.doe",
     "password": "secure-password",
@@ -48,21 +48,24 @@ curl -X POST http://localhost:8010/api/v1/auth/login \
   "status": "success",
   "data": {
     "session_token": "sess_abc123def456",
-    "jwt_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "api_key": "mrk_1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef12",
+    "key_prefix": "mrk_1a2b",
     "user_id": "john.doe",
-    "tenant_id": "default",
+    "tenant_id": "PLATFORMBUILDS",
     "roles": ["mirador-user", "mirador-admin"],
-    "expires_at": "2025-11-16T10:30:00Z"
+    "expires_at": "2025-11-16T10:30:00Z",
+    "warning": "Store this API key securely. It will not be shown again."
   }
 }
 ```
 
 **Notes**:
-- The `session_token` is used for session-based authentication and stored in cache
-- The `jwt_token` is a JWT token that can be used for stateless authentication
+- The `api_key` is the primary authentication method for all programmatic API access
+- The `session_token` is provided for UI/web applications that need session-based authentication
+- API keys start with the "mrk_" prefix (MIRADOR Key identifier) for easy identification
 - Tokens expire after 24 hours of inactivity
 - RBAC roles are extracted from LDAP group memberships
-- Tenant ID is determined from LDAP OU or defaults to "default"
+- Tenant ID is determined from LDAP OU or defaults to "PLATFORMBUILDS"
 
 ### Error Handling & Best Practices
 
@@ -74,7 +77,7 @@ curl -X POST http://localhost:8010/api/v1/auth/login \
 ```json
 {
   "status": "error",
-  "error": "Authentication failed"
+  "error":  "Authentication failed"
 }
 ```
 - **Client Action**: Prompt user to re-enter credentials
@@ -85,21 +88,21 @@ curl -X POST http://localhost:8010/api/v1/auth/login \
 ```json
 {
   "status": "error",
-  "error": "Tenant context required"
+  "error":  "Tenant context required"
 }
 ```
 - **Client Action**: Verify tenant ID or use default
 
-**Session/Token Expired**:
+**API Key/Token Expired**:
 - **Status Code**: `401 Unauthorized`
 - **Response**:
 ```json
 {
   "status": "error",
-  "error": "Invalid authentication token"
+  "error":  "Invalid authentication token"
 }
 ```
-- **Client Action**: Re-authenticate using login endpoint
+- **Client Action**: Re-authenticate using login endpoint to obtain a new API key
 
 **RBAC/Permission Issues**:
 - **Status Code**: `403 Forbidden`
@@ -117,14 +120,151 @@ curl -X POST http://localhost:8010/api/v1/auth/login \
 - Implement token refresh logic before expiration
 - Handle token validation failures by redirecting to login
 - Use HTTPS in production environments
-- Implement proper logout by calling `POST /api/v1/auth/logout` with the session token
+- Implement proper logout by calling `POST /api/v1/auth/logout` with the session token (for UI applications)
+
+## API Key Management
+
+**Note**: API keys are the recommended authentication method for all REST API calls (except login). They provide secure, programmatic access without storing user credentials.
+
+### Generate API Key
+**Purpose**: Create a new API key for programmatic access to all REST APIs.
+
+**HTTP Method + URL Path**: `POST /api/v1/auth/apikeys`
+
+**Required Headers**:
+- `Authorization: Bearer <existing_api_key>` or `X-API-Key: <existing_api_key>`
+- `Content-Type: application/json`
+
+**Request Body**:
+```json
+{
+  "name": "Production API Key",
+  "description": "Key for production deployments",
+  "expires_at": "2026-11-15T00:00:00Z",
+  "scopes": ["metrics.read", "logs.read"]
+}
+```
+
+**Example Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "api_key": "mrk_1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef12",
+    "key_prefix": "mrk_1a2b",
+    "name": "Production API Key",
+    "expires_at": "2026-11-15T00:00:00Z",
+    "scopes": ["metrics.read", "logs.read"],
+    "warning": "Store this API key securely. It will not be shown again."
+  }
+}
+```
+
+### List API Keys
+**Purpose**: Retrieve all API keys for the authenticated user.
+
+**HTTP Method + URL Path**: `GET /api/v1/auth/apikeys`
+
+**Required Headers**:
+- `Authorization: Bearer <token>` or `X-API-Key: <api_key>`
+
+**Example Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "api_keys": [
+      {
+        "id": "key-1",
+        "name": "Production API Key",
+        "prefix": "mrk_abcd",
+        "expires_at": null,
+        "scopes": ["metrics.read", "logs.read"],
+        "created_at": "2025-11-15T10:00:00Z",
+        "last_used": "2025-11-15T12:00:00Z"
+      }
+    ],
+    "total": 1
+  }
+}
+```
+
+### Revoke API Key
+**Purpose**: Deactivate an API key.
+
+**HTTP Method + URL Path**: `DELETE /api/v1/auth/apikeys/{keyId}`
+
+**Required Headers**:
+- `Authorization: Bearer <token>` or `X-API-Key: <api_key>`
+
+**Example Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "message": "API key revoked successfully"
+  }
+}
+```
+
+### Validate Token
+**Purpose**: Validate an API key (primarily for testing API key validity).
+
+**HTTP Method + URL Path**: `POST /api/v1/auth/validate`
+
+**Request Body**:
+```json
+{
+  "token": "mrk_1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef12"
+}
+```
+
+**Example Response**:
+```json
+{
+  "status": "success",
+  "data": {
+    "valid": true,
+    "type": "api_key",
+    "user_id": "john.doe",
+    "tenant_id": "PLATFORMBUILDS",
+    "roles": ["mirador-user"]
+  }
+}
+```
 
 ## Unified Query Journey (after Authentication)
 
+### Authentication & Authorization Requirements
+
+**🔐 REQUIRED: Authentication**
+All unified query endpoints require valid authentication. For **programmatic API access**, you must use API keys only.
+
+**✅ RECOMMENDED: API Key Authentication**
+```bash
+# Use API keys for all REST API calls (except login)
+-H "Authorization: Bearer <api_key>"
+# OR
+-H "X-API-Key: <api_key>"
+```
+
+**⚠️ IMPORTANT: Authentication Method Guidelines**
+- **Login Endpoint Only**: `POST /api/v1/auth/login` accepts username/password
+- **All Other APIs**: Use API keys only (not session tokens or JWT for programmatic access)
+- **UI Applications**: May use session tokens from login response
+- **API Keys**: Start with `mrk_` prefix (MIRADOR Key identifier) and are returned only during creation
+
+**🛡️ REQUIRED: RBAC Permissions**
+All unified query endpoints require the `unified.read` permission. Users must have this permission assigned through their roles.
+
+**🏢 REQUIRED: Tenant Context**
+Requests must include a valid tenant ID, either from authentication or explicitly specified.
+
 ### Preconditions
-- **Valid Token**: Session token or JWT token obtained from authentication
+- **Valid API Key**: API key obtained from authentication (starts with `mrk_` prefix for MIRADOR Key identification)
 - **Tenant Context**: Valid tenant ID from authentication
-- **Authorization Header**: `Authorization: Bearer <token>` for all requests
+- **Authorization Header**: `Authorization: Bearer <api_key>` or `X-API-Key: <api_key>`
+- **RBAC Permission**: User must have `unified.read` permission
 - **Base URL**: Same as authentication endpoint
 
 ### Step-by-Step Flow
@@ -132,10 +272,10 @@ curl -X POST http://localhost:8010/api/v1/auth/login \
 #### Step 1 – Prepare Unified Query Request
 **Purpose**: Construct a query request for metrics, logs, traces, or correlation data.
 
-**HTTP Method + URL Path**: `POST /unified/query`
+**HTTP Method + URL Path**: `POST /api/v1/unified/query`
 
 **Required Headers**:
-- `Authorization: Bearer <session_token or jwt_token>`
+- `Authorization: Bearer <api_key>` OR `X-API-Key: <api_key>`
 - `Content-Type: application/json`
 
 **Request Body Structure**:
@@ -164,15 +304,18 @@ curl -X POST http://localhost:8010/api/v1/auth/login \
 
 **Example cURL Request (Metrics Query)**:
 ```bash
-curl -X POST http://localhost:8010/unified/query \
-  -H "Authorization: Bearer sess_abc123def456" \
+# Note: Use API keys for programmatic access (not session tokens)
+# Replace 'mrk_...' with your actual API key from login response
+# API keys start with 'mrk_' (MIRADOR Key identifier)
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Authorization: Bearer mrk_1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef12" \
   -H "Content-Type: application/json" \
   -d '{
     "query": {
       "id": "metrics-query-001",
       "type": "metrics",
       "query": "http_requests_total{job=\"api\"}",
-      "tenant_id": "default",
+      "tenant_id": "PLATFORMBUILDS",
       "start_time": "2025-11-15T00:00:00Z",
       "end_time": "2025-11-15T01:00:00Z",
       "timeout": "30s",
@@ -225,15 +368,15 @@ curl -X POST http://localhost:8010/unified/query \
 
 **Example cURL Request (Logs Query)**:
 ```bash
-curl -X POST http://localhost:8010/unified/query \
-  -H "Authorization: Bearer sess_abc123def456" \
+curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Authorization: Bearer mrk_1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef12" \
   -H "Content-Type: application/json" \
   -d '{
     "query": {
       "id": "logs-query-001",
       "type": "logs",
       "query": "service.name:api AND level:error",
-      "tenant_id": "default",
+      "tenant_id": "PLATFORMBUILDS",
       "start_time": "2025-11-15T00:00:00Z",
       "end_time": "2025-11-15T01:00:00Z",
       "timeout": "30s",
@@ -249,25 +392,25 @@ curl -X POST http://localhost:8010/unified/query \
 - Time ranges are optional but recommended for performance
 - Cache options help reduce latency for repeated queries
 - Tenant isolation ensures data separation between tenants
-- RBAC permissions are enforced based on user roles
+- RBAC permissions are enforced based on user roles (requires "unified.read" permission)
 
 ### End-to-End Narrative
-1. **Client authenticates** via `POST /api/v1/auth/login` with credentials
-2. **Receives tokens** (session_token and jwt_token) in response
-3. **Stores token securely** for subsequent requests
-4. **Constructs unified query** with appropriate type and parameters
-5. **Sends query** via `POST /unified/query` with Authorization header
-6. **Receives results** in standardized format with metadata
-7. **Handles pagination/limits** if result sets are large
-8. **Processes correlations** if correlation query type was used
-9. **Implements retry logic** for transient failures
-10. **Refreshes tokens** before expiration
+1. **Client authenticates** via `POST /api/v1/auth/login` with username/password (credentials only used here)
+2. **Receives API key** (primary auth method) and session token (for UI use) in response
+3. **Stores API key securely** for subsequent requests (API key is the primary auth method for all programmatic APIs)
+4. **Uses API key** for all subsequent REST API calls (session tokens are for UI applications only)
+5. **Constructs unified query** with appropriate type and parameters
+6. **Sends query** via `POST /api/v1/unified/query` with Authorization header containing API key
+7. **Receives results** in standardized format with metadata
+8. **Handles pagination/limits** if result sets are large
+9. **Processes correlations** if correlation query type was used
+10. **Implements retry logic** for transient failures
 
 ### Error Handling for Unified Query
 
-#### Common Query Errors
+#### Authentication & Authorization Errors
 
-**Invalid/Expired Token**:
+**Missing Authentication**:
 - **Status Code**: `401 Unauthorized`
 - **Response**:
 ```json
@@ -275,7 +418,32 @@ curl -X POST http://localhost:8010/unified/query \
   "error": "Authentication required"
 }
 ```
-- **Client Action**: Re-authenticate and retry
+- **Client Action**: Include valid authentication token in request headers
+
+**Invalid/Expired Token**:
+- **Status Code**: `401 Unauthorized`
+- **Response**:
+```json
+{
+  "error": "Invalid authentication token"
+}
+```
+- **Client Action**: Re-authenticate using login endpoint
+
+**Insufficient RBAC Permissions**:
+- **Status Code**: `403 Forbidden`
+- **Response**:
+```json
+{
+  "status": "error",
+  "error": "Access denied",
+  "reason": "permission_denied",
+  "required_permissions": ["unified.read"]
+}
+```
+- **Client Action**: Request `unified.read` permission from administrator
+
+#### Common Query Errors
 
 **Invalid Query Format**:
 - **Status Code**: `400 Bad Request`
@@ -287,16 +455,6 @@ curl -X POST http://localhost:8010/unified/query \
 }
 ```
 - **Client Action**: Validate query parameters before sending
-
-**Insufficient Permissions**:
-- **Status Code**: `403 Forbidden`
-- **Response**:
-```json
-{
-  "error": "Insufficient permissions"
-}
-```
-- **Client Action**: Check user roles or request elevated permissions
 
 **Query Execution Failed**:
 - **Status Code**: `500 Internal Server Error`
@@ -335,5 +493,132 @@ curl -X POST http://localhost:8010/unified/query \
 - Handle rate limiting (429 responses) with backoff
 - Cache results appropriately based on cache_options
 - Monitor execution_time_ms for performance issues
-- Parse metadata for detailed error information per engine</content>
+- Parse metadata for detailed error information per engine
+
+## Additional Unified Query Endpoints
+
+**Note**: All unified query endpoints require authentication and `unified.read` RBAC permission.
+
+### Correlation Queries
+**Purpose**: Execute correlation queries across multiple engines.
+
+**HTTP Method + URL Path**: `POST /api/v1/unified/correlation`
+
+**Authentication**: Required (same as unified query)
+**RBAC Permission**: `unified.read`
+**Request Body**: Same as unified query but with `type: "correlation"` and correlation options.
+
+### Unified Search
+**Purpose**: Perform search across all engines.
+
+**HTTP Method + URL Path**: `POST /api/v1/unified/search`
+
+**Authentication**: Required (same as unified query)
+**RBAC Permission**: `unified.read`
+**Request Body**: Same as unified query.
+
+### Query Metadata
+**Purpose**: Get information about supported query capabilities.
+
+**HTTP Method + URL Path**: `GET /api/v1/unified/metadata`
+
+**Authentication**: Required (same as unified query)
+**RBAC Permission**: `unified.read`
+
+**Example Response**:
+```json
+{
+  "supported_engines": ["metrics", "logs", "traces", "correlation"],
+  "query_capabilities": {
+    "metrics": ["promql", "metricsql"],
+    "logs": ["lucene"],
+    "traces": ["jaeger"],
+    "correlation": ["cross-engine"]
+  },
+  "cache_capabilities": {
+    "supported": true,
+    "default_ttl": "5m",
+    "max_ttl": "1h"
+  }
+}
+```
+
+### Health Check
+**Purpose**: Check health status of all engines.
+
+**HTTP Method + URL Path**: `GET /api/v1/unified/health`
+
+**Authentication**: Required (same as unified query)
+**RBAC Permission**: `unified.read`
+
+**Example Response**:
+```json
+{
+  "overall_health": "healthy",
+  "engine_health": {
+    "metrics": "healthy",
+    "logs": "healthy",
+    "traces": "healthy",
+    "correlation": "healthy"
+  },
+  "last_checked": "2025-11-15T12:00:00Z"
+}
+```
+
+### UQL (Unified Query Language) Endpoints
+
+**Note**: UQL endpoints also require authentication and `unified.read` permission.
+
+**Execute UQL Query**: `POST /api/v1/uql/query`
+**Validate UQL Syntax**: `POST /api/v1/uql/validate`
+**Explain UQL Plan**: `POST /api/v1/uql/explain`
+
+### Query Statistics
+**Purpose**: Get statistics about unified query operations.
+
+**HTTP Method + URL Path**: `GET /api/v1/unified/stats`
+
+**Authentication**: Required (same as unified query)
+**RBAC Permission**: `unified.read`
+
+**Example Response**:
+```json
+{
+  "unified_query_engine": {
+    "health": "healthy",
+    "supported_engines": ["metrics", "logs", "traces", "correlation"],
+    "cache_enabled": true,
+    "cache_default_ttl": "5m",
+    "cache_max_ttl": "1h",
+    "last_health_check": "2025-11-15T12:00:00Z"
+  },
+  "engines": {
+    "metrics": "healthy",
+    "logs": "healthy",
+    "traces": "healthy",
+    "correlation": "healthy"
+  }
+}
+```
+
+## Authentication Guidelines Summary
+
+### For Programmatic API Access (Recommended)
+1. **Login once** with username/password to get API key
+2. **Use API keys** for all subsequent API calls
+3. **Store API keys securely** (never in code or version control)
+4. **API keys start with `mrk_`** prefix (MIRADOR Key identifier) for easy identification
+
+### Authentication Methods by Use Case
+- **Login Endpoint**: Username + password only
+- **REST APIs**: API keys only (Authorization Bearer or X-API-Key header)
+- **UI Applications**: Session tokens (from login response)
+- **OAuth/OIDC**: JWT tokens (when enabled)
+
+### Security Best Practices
+- Use API keys for programmatic access (more secure than storing credentials)
+- Rotate API keys regularly
+- Use different API keys for different applications/services
+- Monitor API key usage and revoke unused keys
+- Never share API keys in code, logs, or version control</content>
 <parameter name="filePath">/Users/aarvee/repos/github/public/miradorstack/mirador-core/docs/user-journeys.md

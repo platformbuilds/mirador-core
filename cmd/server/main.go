@@ -172,6 +172,27 @@ func (m *mockRBACRepository) UpdateAuthConfig(ctx context.Context, config *model
 func (m *mockRBACRepository) DeleteAuthConfig(ctx context.Context, tenantID string) error {
 	return nil
 }
+func (m *mockRBACRepository) CreateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+func (m *mockRBACRepository) GetAPIKeyByHash(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepository) GetAPIKeyByID(ctx context.Context, tenantID, apiKeyID string) (*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepository) ListAPIKeys(ctx context.Context, tenantID, userID string) ([]*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepository) UpdateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+func (m *mockRBACRepository) RevokeAPIKey(ctx context.Context, tenantID, apiKeyID string) error {
+	return nil
+}
+func (m *mockRBACRepository) ValidateAPIKey(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, nil
+}
 
 // @title Mirador Core API
 // @version 8.0.0
