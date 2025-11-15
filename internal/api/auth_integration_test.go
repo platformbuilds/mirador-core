@@ -12,6 +12,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/platformbuilds/mirador-core/internal/api/handlers"
 	"github.com/platformbuilds/mirador-core/internal/api/middleware"
 	"github.com/platformbuilds/mirador-core/internal/config"
@@ -19,8 +22,6 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // mockRBACRepositoryForIntegrationTest implements RBACRepository for integration testing
@@ -552,8 +553,8 @@ func TestAuthIntegration_RateLimiting(t *testing.T) {
 
 		// Make requests up to the limit
 		for i := 0; i < 3; i++ {
-			req, err := http.NewRequest("GET", "/api/v1/protected", nil)
-			require.NoError(t, err)
+			req, reqErr := http.NewRequest("GET", "/api/v1/protected", nil)
+			require.NoError(t, reqErr)
 			req.Header.Set("Authorization", "Bearer mrk_ratelimit_testkey123")
 			req.Header.Set("X-Tenant-ID", "rate-limit-tenant")
 
@@ -565,8 +566,8 @@ func TestAuthIntegration_RateLimiting(t *testing.T) {
 		}
 
 		// 4th request should be rate limited
-		req, err := http.NewRequest("GET", "/api/v1/protected", nil)
-		require.NoError(t, err)
+		req, reqErr := http.NewRequest("GET", "/api/v1/protected", nil)
+		require.NoError(t, reqErr)
 		req.Header.Set("Authorization", "Bearer mrk_ratelimit_testkey123")
 		req.Header.Set("X-Tenant-ID", "rate-limit-tenant")
 

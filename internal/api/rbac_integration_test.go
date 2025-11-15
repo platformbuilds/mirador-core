@@ -12,13 +12,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/platformbuilds/mirador-core/internal/api/middleware"
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // mockRBACRepositoryForRBACIntegrationTest implements RBACRepository for RBAC integration testing
@@ -248,6 +249,18 @@ func TestRBACIntegration_APIKeyRBACEnforcement(t *testing.T) {
 	if os.Getenv("MIRADOR_RUN_INTEGRATION_TESTS") != "1" {
 		t.Skip("integration test requires external services")
 	}
+
+	router := setupRBACIntegrationRouter(t)
+
+	t.Run("AdminRole_AccessGranted", testAdminRoleAccessGranted(router))
+	t.Run("WriteScope_AccessGranted", testWriteScopeAccessGranted(router))
+	t.Run("ReadScope_AccessGranted", testReadScopeAccessGranted(router))
+	t.Run("InsufficientPermissions_AccessDenied", testInsufficientPermissionsAccessDenied(router))
+	t.Run("NoScopes_AccessDenied", testNoScopesAccessDenied(router))
+}
+
+// setupRBACIntegrationRouter creates a test router with RBAC middleware and routes
+func setupRBACIntegrationRouter(t *testing.T) *gin.Engine {
 	// Setup test environment
 	gin.SetMode(gin.TestMode)
 
@@ -281,102 +294,85 @@ func TestRBACIntegration_APIKeyRBACEnforcement(t *testing.T) {
 	apiGroup := router.Group("/api/v1")
 	apiGroup.Use(authMiddleware)
 
-	{
-		// Admin only endpoint
-		apiGroup.GET("/admin/users", func(c *gin.Context) {
-			// Check if user has admin role
-			roles, exists := c.Get("roles")
-			if !exists {
-				c.JSON(http.StatusForbidden, gin.H{"error": "no roles found"})
-				return
-			}
+	apiGroup.GET("/admin/users", adminUsersHandler)
+	apiGroup.POST("/data", writeDataHandler)
+	apiGroup.GET("/data", readDataHandler)
 
-			userRoles, ok := roles.([]string)
-			if !ok {
-				c.JSON(http.StatusForbidden, gin.H{"error": "invalid roles format"})
-				return
-			}
+	return router
+}
 
-			hasAdmin := false
-			for _, role := range userRoles {
-				if role == "admin" {
-					hasAdmin = true
-					break
-				}
-			}
+// adminUsersHandler handles admin-only endpoint
+func adminUsersHandler(c *gin.Context) {
+	if !hasRole(c, "admin") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "admin role required"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "admin access granted"})
+}
 
-			if !hasAdmin {
-				c.JSON(http.StatusForbidden, gin.H{"error": "admin role required"})
-				return
-			}
+// writeDataHandler handles write endpoint
+func writeDataHandler(c *gin.Context) {
+	if !hasScope(c, "write") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "write scope required"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "write access granted"})
+}
 
-			c.JSON(http.StatusOK, gin.H{"message": "admin access granted"})
-		})
+// readDataHandler handles read endpoint
+func readDataHandler(c *gin.Context) {
+	if !hasScope(c, "read") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "read scope required"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "read access granted"})
+}
 
-		// Read-write endpoint
-		apiGroup.POST("/data", func(c *gin.Context) {
-			// Check if user has write scope
-			scopes, exists := c.Get("scopes")
-			if !exists {
-				c.JSON(http.StatusForbidden, gin.H{"error": "no scopes found"})
-				return
-			}
-
-			userScopes, ok := scopes.([]string)
-			if !ok {
-				c.JSON(http.StatusForbidden, gin.H{"error": "invalid scopes format"})
-				return
-			}
-
-			hasWrite := false
-			for _, scope := range userScopes {
-				if scope == "write" {
-					hasWrite = true
-					break
-				}
-			}
-
-			if !hasWrite {
-				c.JSON(http.StatusForbidden, gin.H{"error": "write scope required"})
-				return
-			}
-
-			c.JSON(http.StatusOK, gin.H{"message": "write access granted"})
-		})
-
-		// Read-only endpoint
-		apiGroup.GET("/data", func(c *gin.Context) {
-			// Check if user has read scope
-			scopes, exists := c.Get("scopes")
-			if !exists {
-				c.JSON(http.StatusForbidden, gin.H{"error": "no scopes found"})
-				return
-			}
-
-			userScopes, ok := scopes.([]string)
-			if !ok {
-				c.JSON(http.StatusForbidden, gin.H{"error": "invalid scopes format"})
-				return
-			}
-
-			hasRead := false
-			for _, scope := range userScopes {
-				if scope == "read" {
-					hasRead = true
-					break
-				}
-			}
-
-			if !hasRead {
-				c.JSON(http.StatusForbidden, gin.H{"error": "read scope required"})
-				return
-			}
-
-			c.JSON(http.StatusOK, gin.H{"message": "read access granted"})
-		})
+// hasRole checks if user has the specified role
+func hasRole(c *gin.Context, role string) bool {
+	roles, exists := c.Get("roles")
+	if !exists {
+		return false
 	}
 
-	t.Run("AdminRole_AccessGranted", func(t *testing.T) {
+	userRoles, ok := roles.([]string)
+	if !ok {
+		return false
+	}
+
+	for _, r := range userRoles {
+		if r == role {
+			return true
+		}
+	}
+	return false
+}
+
+// hasScope checks if user has the specified scope
+func hasScope(c *gin.Context, scope string) bool {
+	scopes, exists := c.Get("scopes")
+	if !exists {
+		return false
+	}
+
+	userScopes, ok := scopes.([]string)
+	if !ok {
+		return false
+	}
+
+	for _, s := range userScopes {
+		if s == scope {
+			return true
+		}
+	}
+	return false
+}
+
+// testAdminRoleAccessGranted tests admin role access
+func testAdminRoleAccessGranted(router *gin.Engine) func(t *testing.T) {
+	return func(t *testing.T) {
+		rbacRepo := newMockRBACRepositoryForRBACIntegrationTest()
+
 		// Create API key with admin role
 		expiresAt := time.Now().Add(24 * time.Hour)
 		adminKey := &models.APIKey{
@@ -412,9 +408,14 @@ func TestRBACIntegration_APIKeyRBACEnforcement(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 		assert.Equal(t, "admin access granted", response["message"])
-	})
+	}
+}
 
-	t.Run("WriteScope_AccessGranted", func(t *testing.T) {
+// testWriteScopeAccessGranted tests write scope access
+func testWriteScopeAccessGranted(router *gin.Engine) func(t *testing.T) {
+	return func(t *testing.T) {
+		rbacRepo := newMockRBACRepositoryForRBACIntegrationTest()
+
 		// Create API key with write scope
 		expiresAt := time.Now().Add(24 * time.Hour)
 		writeKey := &models.APIKey{
@@ -450,9 +451,14 @@ func TestRBACIntegration_APIKeyRBACEnforcement(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 		assert.Equal(t, "write access granted", response["message"])
-	})
+	}
+}
 
-	t.Run("ReadScope_AccessGranted", func(t *testing.T) {
+// testReadScopeAccessGranted tests read scope access
+func testReadScopeAccessGranted(router *gin.Engine) func(t *testing.T) {
+	return func(t *testing.T) {
+		rbacRepo := newMockRBACRepositoryForRBACIntegrationTest()
+
 		// Create API key with read scope only
 		expiresAt := time.Now().Add(24 * time.Hour)
 		readKey := &models.APIKey{
@@ -488,9 +494,14 @@ func TestRBACIntegration_APIKeyRBACEnforcement(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 		assert.Equal(t, "read access granted", response["message"])
-	})
+	}
+}
 
-	t.Run("InsufficientPermissions_AccessDenied", func(t *testing.T) {
+// testInsufficientPermissionsAccessDenied tests insufficient permissions access denial
+func testInsufficientPermissionsAccessDenied(router *gin.Engine) func(t *testing.T) {
+	return func(t *testing.T) {
+		rbacRepo := newMockRBACRepositoryForRBACIntegrationTest()
+
 		// Create API key with read scope only
 		expiresAt := time.Now().Add(24 * time.Hour)
 		readOnlyKey := &models.APIKey{
@@ -526,9 +537,14 @@ func TestRBACIntegration_APIKeyRBACEnforcement(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 		assert.Contains(t, response["error"], "admin role required")
-	})
+	}
+}
 
-	t.Run("NoScopes_AccessDenied", func(t *testing.T) {
+// testNoScopesAccessDenied tests no scopes access denial
+func testNoScopesAccessDenied(router *gin.Engine) func(t *testing.T) {
+	return func(t *testing.T) {
+		rbacRepo := newMockRBACRepositoryForRBACIntegrationTest()
+
 		// Create API key with no scopes
 		expiresAt := time.Now().Add(24 * time.Hour)
 		noScopeKey := &models.APIKey{
@@ -564,7 +580,7 @@ func TestRBACIntegration_APIKeyRBACEnforcement(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 		assert.Contains(t, response["error"], "read scope required")
-	})
+	}
 }
 
 // TestRBACIntegration_MultiTenantIsolation tests tenant isolation in RBAC

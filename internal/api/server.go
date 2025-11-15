@@ -642,6 +642,11 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup) {
 }
 
 func (s *Server) Start(ctx context.Context) error {
+	// Validate port before starting
+	if s.config.Port < 0 || s.config.Port > 65535 {
+		return fmt.Errorf("invalid port number: %d", s.config.Port)
+	}
+
 	// Run RBAC bootstrap on startup
 	s.logger.Info("Running RBAC bootstrap on server startup")
 	if err := s.rbacBootstrap.RunBootstrap(ctx); err != nil {
