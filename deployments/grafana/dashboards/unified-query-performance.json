@@ -1,7 +1,7 @@
 {
   "dashboard": {
     "id": null,
-    "title": "Mirador Core v7.0.0 - Unified Query Performance",
+    "title": "Mirador Core - Unified Query Performance",
     "tags": ["mirador-core", "unified-query", "performance"],
     "timezone": "browser",
     "panels": [

@@ -17,7 +17,7 @@ MIRADOR-CORE employs a comprehensive testing strategy covering functional tests,
 - **Integration tests**: End-to-end tests with build tag `integration`
 - **Database tests**: Live DB tests with build tag `db`
 
-## Unified Query Language (UQL) Testing (v7.0.0)
+## Unified Query Language (UQL) Testing
 
 ### Performance Regression Tests
 
