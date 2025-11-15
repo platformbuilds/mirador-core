@@ -110,7 +110,7 @@ The system applies limits in the following priority order:
 ## API Endpoints
 
 ### Get API Key Limits
-```http
+```text
 GET /api/v1/auth/apikey-limits
 Authorization: Bearer <jwt_token>
 ```
@@ -118,7 +118,7 @@ Authorization: Bearer <jwt_token>
 Returns current limits for the authenticated user's tenant, including configuration metadata.
 
 ### Update API Key Limits (Admin Only)
-```http
+```text
 PUT /api/v1/auth/apikey-limits
 Authorization: Bearer <jwt_token>
 Content-Type: application/json
@@ -131,7 +131,7 @@ Content-Type: application/json
 ```
 
 ### Get System Configuration (Global Admin Only)
-```http
+```text
 GET /api/v1/auth/apikey-config
 Authorization: Bearer <jwt_token>
 ```
