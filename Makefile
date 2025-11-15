@@ -135,8 +135,9 @@ openapi-validate:
 
 .PHONY: swag
 swag:
-	@echo "🔧 Generating OpenAPI 3.0 spec from code annotations..."
-	@swag init -g cmd/server/main.go -o api/
+	@echo "🔧 Validating existing OpenAPI spec files..."
+	@python3 tools/validate_openapi.py
+	@echo "✅ OpenAPI files validated successfully"
 
 localdev-up: bootstrap
 	mkdir -p localdev

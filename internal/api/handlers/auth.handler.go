@@ -38,7 +38,17 @@ func NewAuthHandler(cfg *config.Config, cache cache.ValkeyCluster, rbacRepo rbac
 }
 
 // Login handles local authentication login requests
-// POST /api/v1/auth/login
+// @Summary User login
+// @Description Authenticate a user with username and password, returns session token and API key
+// @Tags authentication
+// @Accept json
+// @Produce json
+// @Param credentials body object{username=string,password=string,totp_code=string,remember_me=bool} true "Login credentials"
+// @Success 200 {object} map[string]interface{} "status: success, data: {session_token, api_key, user_id, tenant_id, roles, expires_at}"
+// @Failure 400 {object} map[string]string "error: Invalid request format"
+// @Failure 401 {object} map[string]string "error: Authentication failed"
+// @Failure 500 {object} map[string]string "error: Session creation failed or API key generation failed"
+// @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req struct {
 		Username   string `json:"username" binding:"required"`
@@ -143,7 +153,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 // Logout handles user logout
-// POST /api/v1/auth/logout
+// @Summary User logout
+// @Description Invalidate the current user session
+// @Tags authentication
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "status: success, data: {logged_out: true}"
+// @Failure 400 {object} map[string]string "error: No active session"
+// @Router /api/v1/auth/logout [post]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *AuthHandler) Logout(c *gin.Context) {
 	sessionID := c.GetString("session_id")
 	if sessionID == "" {
@@ -168,7 +187,16 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 }
 
 // ValidateToken validates a session, API key, or JWT token
-// POST /api/v1/auth/validate
+// @Summary Validate token
+// @Description Validate a session token, API key, or JWT token and return user information
+// @Tags authentication
+// @Accept json
+// @Produce json
+// @Param token body object{token=string} true "Token to validate"
+// @Success 200 {object} map[string]interface{} "status: success, data: {valid, type, user_id, tenant_id, roles, scopes}"
+// @Failure 400 {object} map[string]string "error: Invalid request format"
+// @Failure 401 {object} map[string]string "error: Invalid token or expired session"
+// @Router /api/v1/auth/validate [post]
 func (h *AuthHandler) ValidateToken(c *gin.Context) {
 	var req struct {
 		Token string `json:"token" binding:"required"`
@@ -284,7 +312,18 @@ func (h *AuthHandler) ValidateToken(c *gin.Context) {
 }
 
 // GenerateAPIKey creates a new API key for the authenticated user
-// POST /api/v1/auth/apikeys
+// @Summary Generate API key
+// @Description Create a new API key for the authenticated user with specified name, description, and scopes
+// @Tags api-keys
+// @Accept json
+// @Produce json
+// @Param apikey body object{name=string,description=string,expires_at=string,scopes=[]string} true "API key details"
+// @Success 201 {object} map[string]interface{} "status: success, data: {api_key, key_prefix, name, expires_at, scopes, warning}"
+// @Failure 400 {object} map[string]string "error: Invalid request format or API key limit exceeded"
+// @Failure 500 {object} map[string]string "error: Failed to generate or create API key"
+// @Router /api/v1/auth/apikeys [post]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *AuthHandler) GenerateAPIKey(c *gin.Context) {
 	userID := c.GetString("user_id")
 	tenantID := c.GetString("tenant_id")
@@ -393,7 +432,16 @@ func (h *AuthHandler) GenerateAPIKey(c *gin.Context) {
 }
 
 // ListAPIKeys returns API keys based on user permissions
-// GET /api/v1/auth/apikeys
+// @Summary List API keys
+// @Description Retrieve all API keys for the authenticated user
+// @Tags api-keys
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "status: success, data: {api_keys: [{id, name, prefix, expires_at, scopes, created_at, last_used, is_active}], total}"
+// @Failure 500 {object} map[string]string "error: Failed to retrieve API keys"
+// @Router /api/v1/auth/apikeys [get]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *AuthHandler) ListAPIKeys(c *gin.Context) {
 	userID := c.GetString("user_id")
 	tenantID := c.GetString("tenant_id")
@@ -439,7 +487,18 @@ func (h *AuthHandler) ListAPIKeys(c *gin.Context) {
 }
 
 // RevokeAPIKey deactivates an API key
-// DELETE /api/v1/auth/apikeys/:keyId
+// @Summary Revoke API key
+// @Description Deactivate an API key by its ID
+// @Tags api-keys
+// @Accept json
+// @Produce json
+// @Param keyId path string true "API key ID"
+// @Success 200 {object} map[string]interface{} "status: success, data: {message: API key revoked successfully}"
+// @Failure 400 {object} map[string]string "error: API key ID is required"
+// @Failure 500 {object} map[string]string "error: Failed to revoke API key"
+// @Router /api/v1/auth/apikeys/{keyId} [delete]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *AuthHandler) RevokeAPIKey(c *gin.Context) {
 	userID := c.GetString("user_id")
 	tenantID := c.GetString("tenant_id")
@@ -477,7 +536,15 @@ func (h *AuthHandler) RevokeAPIKey(c *gin.Context) {
 }
 
 // GetAPIKeyLimits returns the current API key limits for a tenant
-// GET /api/v1/auth/apikey-limits
+// @Summary Get API key limits
+// @Description Retrieve the current API key limits and configuration for the authenticated tenant
+// @Tags api-keys
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "status: success, data: limits, configuration: config metadata"
+// @Router /api/v1/auth/apikey-limits [get]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *AuthHandler) GetAPIKeyLimits(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -504,7 +571,18 @@ func (h *AuthHandler) GetAPIKeyLimits(c *gin.Context) {
 }
 
 // UpdateAPIKeyLimits updates the API key limits for a tenant (admin only)
-// PUT /api/v1/auth/apikey-limits
+// @Summary Update API key limits
+// @Description Update API key limits for a tenant (requires tenant admin or global admin role)
+// @Tags api-keys
+// @Accept json
+// @Produce json
+// @Param limits body models.APIKeyLimitsRequest true "Updated API key limits"
+// @Success 200 {object} map[string]interface{} "status: success, data: {message, limits}"
+// @Failure 400 {object} map[string]string "error: Invalid request format"
+// @Failure 403 {object} map[string]string "error: Insufficient permissions or updates disabled by configuration"
+// @Router /api/v1/auth/apikey-limits [put]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *AuthHandler) UpdateAPIKeyLimits(c *gin.Context) {
 	userID := c.GetString("user_id")
 	tenantID := c.GetString("tenant_id")
@@ -670,7 +748,16 @@ func (h *AuthHandler) convertConfigToModels() models.APIKeyLimitsConfig {
 }
 
 // GetAPIKeyConfiguration returns the current API key configuration (global admin only)
-// GET /api/v1/auth/apikey-config
+// @Summary Get API key configuration
+// @Description Retrieve the current API key configuration (global admin only)
+// @Tags api-keys
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "status: success, data: configuration details"
+// @Failure 403 {object} map[string]string "error: Insufficient permissions"
+// @Router /api/v1/auth/apikey-config [get]
+// @Security BearerAuth
+// @Security ApiKeyAuth
 func (h *AuthHandler) GetAPIKeyConfiguration(c *gin.Context) {
 	userRoles := c.GetStringSlice("roles")
 
