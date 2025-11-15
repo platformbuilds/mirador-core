@@ -132,15 +132,15 @@ info:
     email: support@platformbuilds.com
     name: PLATFORMBUILDS Team
     url: https://github.com/platformbuilds/mirador-core
-  description: Mirador Core is a comprehensive observability and analytics platform
-    that provides KPI definitions, layouts, dashboards, and user preferences for monitoring
-    and analyzing system metrics.
+  description: MIRADOR-CORE is a comprehensive observability and analytics platform
+    that provides unified query access, KPI definitions, layouts, dashboards, and 
+    RBAC management for monitoring and analyzing system metrics, logs, and traces.
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
-  title: Mirador Core API
-  version: 8.0.0
+  title: MIRADOR-CORE API
+  version: 9.0.0
 paths:
   /api/v1/kpi/dashboards:
     get:

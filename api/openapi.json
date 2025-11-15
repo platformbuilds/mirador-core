@@ -3,10 +3,10 @@
   "info": {
     "title": "MIRADOR-CORE API",
     "description": "Advanced Observability Platform REST API",
-    "version": "7.0.0",
+    "version": "9.0.0",
     "contact": {
-      "name": "Platformbuilds Team",
-      "email": "rv@platformbuilds.org"
+      "name": "PlatformBuilds Team",
+      "email": "support@miradorstack.com"
     }
   },
   "servers": [
