@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.0.0] - 2025-11-15
+
+### Security
+- **RBAC Security Fixes**: Complete implementation of API key authentication replacing mock implementations
+- **Authentication Method Enforcement**: Strict mode requiring API keys for programmatic access, rejecting session tokens
+- **API Key Management**: Full CRUD operations with secure hashed storage and tenant isolation
+- **Security Hardening**: Penetration testing, rate limiting, and comprehensive audit logging
+- **Multi-Tenant Isolation**: Physical data separation with enforced tenant boundaries
+
+### Added
+- **API Key Repository**: Real Valkey/Weaviate implementations replacing mocks
+- **Authentication Middleware**: Strict mode enforcement and security validation
+- **Security E2E Tests**: Penetration testing scenarios and boundary validation
+- **Rate Limiting**: Per-API-key rate limits with abuse detection
+- **Audit Logging**: Comprehensive security event tracking
+
+### Technical Implementation
+- **Repository Layer**: `internal/repo/rbac/` - Real API key CRUD operations
+- **Middleware Layer**: `internal/api/middleware/auth.middleware.go` - Strict mode and validation
+- **Handler Layer**: `internal/api/handlers/auth.handler.go` - API key management endpoints
+- **Security Testing**: `internal/api/security_e2e_test.go` - Penetration testing and validation
+
+### Breaking Changes
+- **Authentication Method Restrictions**: Programmatic API access now requires API keys only
+- **Session Token Rejection**: Session tokens no longer accepted for REST API calls
+- **API Key Format**: All API keys now start with `mrk_` prefix
+
+### Security Improvements
+- **No Plaintext Storage**: API keys are SHA256 hashed before storage
+- **Tenant Isolation**: Complete data separation between tenants
+- **Rate Limiting**: Configurable per-key rate limits
+- **Audit Compliance**: All authentication events logged with user attribution
+
 ## [6.0.0] - 2025-10-08
 
 ### Added

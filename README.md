@@ -31,7 +31,12 @@ MIRADOR-CORE serves as the central orchestration layer for advanced observabilit
 ### Enterprise Security & Multi-Tenancy
 - **RBAC System**: Fine-grained permissions with role hierarchies and group management
 - **Multi-Tenant Isolation**: Physical data separation with tenant-scoped resources
-- **Authentication**: LDAP/AD integration, OAuth 2.0, API keys, and session management
+### Enterprise Security & Multi-Tenancy
+- **RBAC System**: Fine-grained permissions with role hierarchies and group management
+- **Multi-Tenant Isolation**: Physical data separation with tenant-scoped resources
+- **API Key Authentication**: Secure programmatic access with hashed storage and strict mode enforcement
+- **Session Management**: JWT-based sessions for UI/web authentication
+- **Audit Logging**: Comprehensive security event tracking and compliance reporting
 - **Audit Logging**: Comprehensive security event tracking and compliance reporting
 
 ### Performance & Reliability
@@ -154,6 +159,41 @@ WEAVIATE_HOST=weaviate-cluster
 WEAVIATE_PORT=8080
 
 # Authentication
+
+MIRADOR-CORE implements a dual-authentication system designed for both programmatic API access and web UI usage:
+
+## Programmatic API Access (API Keys)
+- **Primary Method**: API keys for all REST API calls except login
+- **Security**: Keys are hashed and never stored in plaintext
+- **Format**: Keys start with `mrk_` prefix (MIRADOR Key identifier)
+- **Strict Mode**: Enforced for all protected endpoints - session tokens are rejected
+- **Management**: Generate via `/api/v1/auth/apikeys`, list via `/api/v1/auth/apikeys`, revoke via `/api/v1/auth/apikeys/{id}`
+
+## Web UI Authentication (Sessions)
+- **Method**: Username/password login via `/api/v1/auth/login`
+- **Technology**: JWT-based sessions with configurable expiry
+- **Usage**: Web applications and interactive tools
+- **Backend**: LDAP/AD integration with role mapping
+
+## Security Features
+- **Rate Limiting**: Per-API-key rate limits with abuse detection
+- **Tenant Isolation**: Complete data separation between tenants
+- **Audit Logging**: All authentication events are logged
+- **Incident Response**: Built-in procedures for key compromise
+
+## Example Usage
+
+```bash
+# 1. Login to get API key (one-time)
+curl -X POST http://localhost:8010/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "user", "password": "pass"}'
+# Returns: {"api_key": "mrk_1a2b3c...", "session_token": "sess_..."}
+
+# 2. Use API key for all subsequent calls
+curl -H "Authorization: Bearer mrk_1a2b3c..." \
+     http://localhost:8010/api/v1/unified/query
+```
 LDAP_URL=ldap://ldap.company.com
 LDAP_BASE_DN=dc=company,dc=com
 RBAC_ENABLED=true

@@ -372,7 +372,7 @@ authenticate() {
         -d "$login_data")
 
     if echo "$response" | jq -e '.status == "success"' >/dev/null 2>&1; then
-        AUTH_TOKEN=$(echo "$response" | jq -r '.data.jwt_token')
+        AUTH_TOKEN=$(echo "$response" | jq -r '.data.api_key')
         local resolved_tenant
         resolved_tenant=$(echo "$response" | jq -r '.data.tenant_id // empty' 2>/dev/null || true)
         if [[ -n "$resolved_tenant" && "$resolved_tenant" != "null" ]]; then

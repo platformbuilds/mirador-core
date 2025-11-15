@@ -85,6 +85,15 @@ type RBACRepository interface {
 	GetAuthConfig(ctx context.Context, tenantID string) (*models.AuthConfig, error)
 	UpdateAuthConfig(ctx context.Context, config *models.AuthConfig) error
 	DeleteAuthConfig(ctx context.Context, tenantID string) error
+
+	// API Key operations
+	CreateAPIKey(ctx context.Context, apiKey *models.APIKey) error
+	GetAPIKeyByHash(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error)
+	GetAPIKeyByID(ctx context.Context, tenantID, keyID string) (*models.APIKey, error)
+	ListAPIKeys(ctx context.Context, tenantID, userID string) ([]*models.APIKey, error)
+	UpdateAPIKey(ctx context.Context, apiKey *models.APIKey) error
+	RevokeAPIKey(ctx context.Context, tenantID, keyID string) error
+	ValidateAPIKey(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error)
 }
 
 // RoleBindingFilters defines filters for role binding queries

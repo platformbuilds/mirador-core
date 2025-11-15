@@ -84,7 +84,7 @@ test_authentication() {
         -d '{"username":"aarvee","password":"password123"}' \
         "$BASE_URL/api/v1/auth/login")
 
-    if echo "$response" | grep -q "jwt_token"; then
+    if echo "$response" | grep -q "api_key"; then
         log_success "$test_name: Admin authentication successful"
         TEST_RESULTS+=("{\"test\":\"$test_name\",\"status\":\"passed\"}")
         ((PASSED_TESTS++))
@@ -110,7 +110,7 @@ test_rbac_enforcement() {
     admin_token=$(curl -s -X POST -H "Content-Type: application/json" \
         -H "x-tenant-id: PLATFORMBUILDS" \
         -d '{"username":"aarvee","password":"password123"}' \
-        "$BASE_URL/api/v1/auth/login" | jq -r '.data.jwt_token // empty' 2>/dev/null || echo "")
+        "$BASE_URL/api/v1/auth/login" | jq -r '.data.api_key // empty' 2>/dev/null || echo "")
 
     if [[ -z "$admin_token" ]]; then
         log_error "$test_name: Failed to get admin token"
@@ -166,7 +166,7 @@ test_tenant_isolation() {
     admin_token=$(curl -s -X POST -H "Content-Type: application/json" \
         -H "x-tenant-id: PLATFORMBUILDS" \
         -d '{"username":"aarvee","password":"password123"}' \
-        "$BASE_URL/api/v1/auth/login" | jq -r '.data.jwt_token // empty' 2>/dev/null || echo "")
+        "$BASE_URL/api/v1/auth/login" | jq -r '.data.api_key // empty' 2>/dev/null || echo "")
 
     if [[ -z "$admin_token" ]]; then
         log_error "$test_name: Failed to get admin token"

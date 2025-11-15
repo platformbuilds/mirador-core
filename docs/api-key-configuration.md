@@ -112,7 +112,7 @@ The system applies limits in the following priority order:
 ### Get API Key Limits
 ```text
 GET /api/v1/auth/apikey-limits
-Authorization: Bearer <jwt_token>
+Authorization: Bearer <api_key>
 ```
 
 Returns current limits for the authenticated user's tenant, including configuration metadata.
@@ -120,7 +120,7 @@ Returns current limits for the authenticated user's tenant, including configurat
 ### Update API Key Limits (Admin Only)
 ```text
 PUT /api/v1/auth/apikey-limits
-Authorization: Bearer <jwt_token>
+Authorization: Bearer <api_key>
 Content-Type: application/json
 
 {
@@ -133,7 +133,7 @@ Content-Type: application/json
 ### Get System Configuration (Global Admin Only)
 ```text
 GET /api/v1/auth/apikey-config
-Authorization: Bearer <jwt_token>
+Authorization: Bearer <api_key>
 ```
 
 Returns system-wide configuration including all settings and their sources.
@@ -154,6 +154,70 @@ Returns system-wide configuration including all settings and their sources.
 - All limit changes are logged with user attribution
 - API key generation attempts against limits are logged
 - Configuration access is audited
+
+## Security Best Practices
+
+### API Key Management
+- **Never share plaintext API keys**: Keys are only shown once during creation
+- **Use secure storage**: Store keys in environment variables or secure vaults, never in code
+- **Rotate regularly**: Generate new keys and revoke old ones periodically
+- **Use minimal scopes**: Only grant necessary permissions for each key
+- **Set expiration**: Always configure expiry dates for keys
+
+### Authentication Security
+- **Strict mode enforcement**: Use `strict_api_key_mode: true` for programmatic endpoints
+- **Rate limiting**: Configure appropriate rate limits to prevent abuse
+- **Monitor usage**: Track API key usage patterns for anomalies
+- **Audit logging**: Enable comprehensive audit logging for security events
+
+### Tenant Isolation
+- **Consistent tenant context**: All operations respect tenant boundaries
+- **No cross-tenant access**: Users cannot access resources from other tenants
+- **Secure tenant identification**: Tenant IDs are validated and isolated
+
+## Incident Response Procedures
+
+### API Key Compromise
+1. **Immediate revocation**: Revoke the compromised key using the API or admin interface
+2. **Generate replacement**: Create a new key with same permissions
+3. **Update applications**: Replace the key in all affected systems
+4. **Audit investigation**: Review audit logs for unauthorized usage
+5. **Security review**: Assess how the compromise occurred and prevent recurrence
+
+### Rate Limit Violations
+1. **Monitor alerts**: Set up alerts for excessive rate limit hits
+2. **Investigate source**: Check client IP and user patterns
+3. **Temporary blocks**: Use rate limiting to automatically block abusive clients
+4. **Contact users**: Notify users of policy violations if appropriate
+
+### Unauthorized Access Attempts
+1. **Log analysis**: Review authentication failure logs
+2. **Pattern detection**: Identify brute force or enumeration attempts
+3. **IP blocking**: Implement IP-based blocking for persistent attackers
+4. **Security hardening**: Adjust rate limits or enable stricter validation
+
+## Testing Security
+
+### Running Integration Tests
+```bash
+# Run security-focused integration tests
+MIRADOR_RUN_INTEGRATION_TESTS=1 go test ./internal/api -run "TestSecurityE2E"
+```
+
+### Penetration Testing Scenarios
+- API key enumeration attempts
+- Brute force protection validation
+- Session fixation attack prevention
+- Tenant isolation boundary testing
+- Rate limiting bypass attempts
+
+### Security Validation Checklist
+- [ ] API keys are hashed and never stored in plaintext
+- [ ] Error messages don't leak sensitive information
+- [ ] Tenant isolation is enforced in all operations
+- [ ] Rate limiting prevents abuse
+- [ ] Audit logging captures security events
+- [ ] Strict mode blocks session tokens for programmatic access
 
 ## Examples
 
@@ -241,7 +305,7 @@ api_keys:
 Use the global admin endpoint to view effective configuration:
 
 ```bash
-curl -H "Authorization: Bearer $JWT_TOKEN" \
+curl -H "Authorization: Bearer $API_KEY" \
      http://mirador-api:8010/api/v1/auth/apikey-config
 ```
 

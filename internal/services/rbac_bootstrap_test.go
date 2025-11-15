@@ -325,6 +325,34 @@ func (m *MockRBACRepository) DeleteAuthConfig(ctx context.Context, tenantID stri
 	return nil
 }
 
+func (m *MockRBACRepository) CreateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+
+func (m *MockRBACRepository) GetAPIKeyByHash(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, ErrNotFound
+}
+
+func (m *MockRBACRepository) GetAPIKeyByID(ctx context.Context, tenantID, keyID string) (*models.APIKey, error) {
+	return nil, ErrNotFound
+}
+
+func (m *MockRBACRepository) ListAPIKeys(ctx context.Context, tenantID, userID string) ([]*models.APIKey, error) {
+	return []*models.APIKey{}, nil
+}
+
+func (m *MockRBACRepository) UpdateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+
+func (m *MockRBACRepository) RevokeAPIKey(ctx context.Context, tenantID, keyID string) error {
+	return nil
+}
+
+func (m *MockRBACRepository) ValidateAPIKey(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, ErrNotFound
+}
+
 // Common errors
 var (
 	ErrNotFound      = &NotFoundError{}

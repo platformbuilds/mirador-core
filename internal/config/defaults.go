@@ -41,6 +41,8 @@ func GetDefaultConfig() *Config {
 		},
 
 		Auth: AuthConfig{
+			Enabled:          true,
+			StrictAPIKeyMode: false, // Default to false for backward compatibility
 			LDAP: LDAPConfig{
 				Enabled:           false,
 				UserSearchFilter:  "(&(objectClass=user)(sAMAccountName=%s))",
@@ -75,6 +77,13 @@ func GetDefaultConfig() *Config {
 			},
 			JWT: JWTConfig{
 				ExpiryMin: 1440, // 24 hours
+			},
+			APIKeyRateLimit: APIKeyRateLimitConfig{
+				Enabled:              true,
+				MaxRequests:          1000,             // 1000 requests per window
+				WindowDuration:       time.Hour,        // per hour
+				BlockDuration:        15 * time.Minute, // block for 15 minutes
+				EnableAbuseDetection: true,
 			},
 		},
 

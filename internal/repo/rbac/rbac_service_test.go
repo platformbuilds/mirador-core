@@ -298,6 +298,50 @@ func (m *MockRBACRepository) DeleteAuthConfig(ctx context.Context, tenantID stri
 	return args.Error(0)
 }
 
+func (m *MockRBACRepository) CreateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	args := m.Called(ctx, apiKey)
+	return args.Error(0)
+}
+
+func (m *MockRBACRepository) GetAPIKeyByHash(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	args := m.Called(ctx, tenantID, keyHash)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.APIKey), args.Error(1)
+}
+
+func (m *MockRBACRepository) GetAPIKeyByID(ctx context.Context, tenantID, keyID string) (*models.APIKey, error) {
+	args := m.Called(ctx, tenantID, keyID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.APIKey), args.Error(1)
+}
+
+func (m *MockRBACRepository) ListAPIKeys(ctx context.Context, tenantID, userID string) ([]*models.APIKey, error) {
+	args := m.Called(ctx, tenantID, userID)
+	return args.Get(0).([]*models.APIKey), args.Error(1)
+}
+
+func (m *MockRBACRepository) UpdateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	args := m.Called(ctx, apiKey)
+	return args.Error(0)
+}
+
+func (m *MockRBACRepository) RevokeAPIKey(ctx context.Context, tenantID, keyID string) error {
+	args := m.Called(ctx, tenantID, keyID)
+	return args.Error(0)
+}
+
+func (m *MockRBACRepository) ValidateAPIKey(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	args := m.Called(ctx, tenantID, keyHash)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.APIKey), args.Error(1)
+}
+
 type MockCacheRepository struct {
 	mock.Mock
 }

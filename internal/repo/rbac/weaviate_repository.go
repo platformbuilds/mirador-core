@@ -360,28 +360,18 @@ func (r *WeaviateRBACRepository) ensureRBACSchema(ctx context.Context) error {
 				{"name": "updatedBy", "dataType": []string{"text"}},
 			},
 		},
-		// AuthConfig class
+		// API Key class
 		map[string]any{
-			"class":      "RBACAuthConfig",
+			"class":      "RBACAPIKey",
 			"vectorizer": "none",
 			"properties": []map[string]any{
 				{"name": "tenantId", "dataType": []string{"text"}},
-				{"name": "defaultBackend", "dataType": []string{"text"}},
-				{"name": "enabledBackends", "dataType": []string{"text[]"}},
-				{"name": "backendConfigs", "dataType": []string{"object"},
-					"nestedProperties": []map[string]any{
-						{"name": "note", "dataType": []string{"text"}},
-					}},
-				{"name": "passwordPolicy", "dataType": []string{"object"},
-					"nestedProperties": []map[string]any{
-						{"name": "note", "dataType": []string{"text"}},
-					}},
-				{"name": "require2fa", "dataType": []string{"boolean"}},
-				{"name": "totpIssuer", "dataType": []string{"text"}},
-				{"name": "sessionTimeoutMinutes", "dataType": []string{"int"}},
-				{"name": "maxConcurrentSessions", "dataType": []string{"int"}},
-				{"name": "allowRememberMe", "dataType": []string{"boolean"}},
-				{"name": "rememberMeDays", "dataType": []string{"int"}},
+				{"name": "userId", "dataType": []string{"text"}},
+				{"name": "keyHash", "dataType": []string{"text"}},
+				{"name": "isActive", "dataType": []string{"boolean"}},
+				{"name": "expiresAt", "dataType": []string{"date"}},
+				{"name": "lastUsedAt", "dataType": []string{"date"}},
+				{"name": "description", "dataType": []string{"text"}},
 				{"name": "metadata", "dataType": []string{"object"},
 					"nestedProperties": []map[string]any{
 						{"name": "note", "dataType": []string{"text"}},
@@ -3443,4 +3433,334 @@ func (r *WeaviateRBACRepository) mapToAuthConfig(data map[string]any) (*models.A
 	}
 
 	return config, nil
+}
+
+func (r *WeaviateRBACRepository) CreateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	if err := r.ensureRBACSchema(ctx); err != nil {
+		return err
+	}
+
+	apiKey.ID = makeRBACID("APIKey", apiKey.TenantID, apiKey.UserID)
+	now := time.Now()
+
+	props := map[string]any{
+		"userId":    apiKey.UserID,
+		"tenantId":  apiKey.TenantID,
+		"name":      apiKey.Name,
+		"keyHash":   apiKey.KeyHash,
+		"prefix":    apiKey.Prefix,
+		"isActive":  apiKey.IsActive,
+		"roles":     apiKey.Roles,
+		"scopes":    apiKey.Scopes,
+		"metadata":  apiKey.Metadata,
+		"createdAt": now.Format(time.RFC3339),
+		"updatedAt": now.Format(time.RFC3339),
+		"createdBy": apiKey.CreatedBy,
+		"updatedBy": apiKey.UpdatedBy,
+	}
+
+	// Handle optional timestamp fields
+	if apiKey.ExpiresAt != nil {
+		props["expiresAt"] = apiKey.ExpiresAt.Format(time.RFC3339)
+	}
+	if apiKey.LastUsedAt != nil {
+		props["lastUsedAt"] = apiKey.LastUsedAt.Format(time.RFC3339)
+	}
+
+	start := time.Now()
+	err := r.transport.PutObject(ctx, "RBACAPIKey", apiKey.ID, props)
+	duration := time.Since(start)
+
+	if err != nil {
+		monitoring.RecordWeaviateOperation("create_api_key", apiKey.UserID, duration, false)
+		return fmt.Errorf("failed to create API key for user %s: %w", apiKey.UserID, err)
+	}
+
+	monitoring.RecordWeaviateOperation("create_api_key", apiKey.UserID, duration, true)
+	return nil
+}
+
+func (r *WeaviateRBACRepository) GetAPIKeyByHash(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	query := fmt.Sprintf(`{
+		Get {
+			RBACAPIKey(where: { operator: And, operands: [
+				{ path: ["tenantId"], operator: Equal, valueString: "%s" },
+				{ path: ["keyHash"], operator: Equal, valueString: "%s" }
+			] }) {
+				userId tenantId name keyHash prefix isActive expiresAt lastUsedAt
+				roles scopes metadata createdAt updatedAt createdBy updatedBy
+				_additional { id }
+			}
+		}
+	}`, tenantID, keyHash)
+
+	var resp struct {
+		Data struct {
+			Get struct {
+				RBACAPIKey []map[string]any `json:"RBACAPIKey"`
+			} `json:"Get"`
+		} `json:"data"`
+	}
+
+	start := time.Now()
+	err := r.transport.GraphQL(ctx, query, nil, &resp)
+	duration := time.Since(start)
+
+	if err != nil {
+		monitoring.RecordWeaviateOperation("get_api_key_by_hash", keyHash[:8], duration, false)
+		return nil, fmt.Errorf("failed to get API key by hash: %w", err)
+	}
+
+	monitoring.RecordWeaviateOperation("get_api_key_by_hash", keyHash[:8], duration, true)
+
+	apiKeys := resp.Data.Get.RBACAPIKey
+	if len(apiKeys) == 0 {
+		return nil, fmt.Errorf("API key not found")
+	}
+
+	return r.mapToAPIKey(apiKeys[0])
+}
+
+func (r *WeaviateRBACRepository) GetAPIKeyByID(ctx context.Context, tenantID, keyID string) (*models.APIKey, error) {
+	query := fmt.Sprintf(`{
+		Get {
+			RBACAPIKey(where: { operator: And, operands: [
+				{ path: ["tenantId"], operator: Equal, valueString: "%s" },
+				{ path: ["id"], operator: Equal, valueString: "%s" }
+			] }) {
+				userId tenantId name keyHash prefix isActive expiresAt lastUsedAt
+				roles scopes metadata createdAt updatedAt createdBy updatedBy
+				_additional { id }
+			}
+		}
+	}`, tenantID, keyID)
+
+	var resp struct {
+		Data struct {
+			Get struct {
+				RBACAPIKey []map[string]any `json:"RBACAPIKey"`
+			} `json:"Get"`
+		} `json:"data"`
+	}
+
+	start := time.Now()
+	err := r.transport.GraphQL(ctx, query, nil, &resp)
+	duration := time.Since(start)
+
+	if err != nil {
+		monitoring.RecordWeaviateOperation("get_api_key_by_id", keyID, duration, false)
+		return nil, fmt.Errorf("failed to get API key by ID: %w", err)
+	}
+
+	monitoring.RecordWeaviateOperation("get_api_key_by_id", keyID, duration, true)
+
+	apiKeys := resp.Data.Get.RBACAPIKey
+	if len(apiKeys) == 0 {
+		return nil, fmt.Errorf("API key not found")
+	}
+
+	return r.mapToAPIKey(apiKeys[0])
+}
+
+func (r *WeaviateRBACRepository) ListAPIKeys(ctx context.Context, tenantID, userID string) ([]*models.APIKey, error) {
+	query := fmt.Sprintf(`{
+		Get {
+			RBACAPIKey(where: { operator: And, operands: [
+				{ path: ["tenantId"], operator: Equal, valueString: "%s" },
+				{ path: ["userId"], operator: Equal, valueString: "%s" }
+			] }) {
+				userId tenantId name keyHash prefix isActive expiresAt lastUsedAt
+				roles scopes metadata createdAt updatedAt createdBy updatedBy
+				_additional { id }
+			}
+		}
+	}`, tenantID, userID)
+
+	var resp struct {
+		Data struct {
+			Get struct {
+				RBACAPIKey []map[string]any `json:"RBACAPIKey"`
+			} `json:"Get"`
+		} `json:"data"`
+	}
+
+	start := time.Now()
+	err := r.transport.GraphQL(ctx, query, nil, &resp)
+	duration := time.Since(start)
+
+	if err != nil {
+		monitoring.RecordWeaviateOperation("list_api_keys", userID, duration, false)
+		return nil, fmt.Errorf("failed to list API keys for user %s: %w", userID, err)
+	}
+
+	monitoring.RecordWeaviateOperation("list_api_keys", userID, duration, true)
+
+	apiKeys := resp.Data.Get.RBACAPIKey
+	result := make([]*models.APIKey, len(apiKeys))
+	for i, apiKeyData := range apiKeys {
+		apiKey, err := r.mapToAPIKey(apiKeyData)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = apiKey
+	}
+
+	return result, nil
+}
+
+func (r *WeaviateRBACRepository) UpdateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	apiKey.UpdatedAt = time.Now()
+
+	props := map[string]any{
+		"name":      apiKey.Name,
+		"isActive":  apiKey.IsActive,
+		"roles":     apiKey.Roles,
+		"scopes":    apiKey.Scopes,
+		"metadata":  apiKey.Metadata,
+		"updatedAt": apiKey.UpdatedAt.Format(time.RFC3339),
+		"updatedBy": apiKey.UpdatedBy,
+	}
+
+	// Handle optional timestamp fields
+	if apiKey.ExpiresAt != nil {
+		props["expiresAt"] = apiKey.ExpiresAt.Format(time.RFC3339)
+	}
+	if apiKey.LastUsedAt != nil {
+		props["lastUsedAt"] = apiKey.LastUsedAt.Format(time.RFC3339)
+	}
+
+	start := time.Now()
+	err := r.transport.PutObject(ctx, "RBACAPIKey", apiKey.ID, props)
+	duration := time.Since(start)
+
+	if err != nil {
+		monitoring.RecordWeaviateOperation("update_api_key", apiKey.UserID, duration, false)
+		return fmt.Errorf("failed to update API key for user %s: %w", apiKey.UserID, err)
+	}
+
+	monitoring.RecordWeaviateOperation("update_api_key", apiKey.UserID, duration, true)
+	return nil
+}
+
+func (r *WeaviateRBACRepository) RevokeAPIKey(ctx context.Context, tenantID, keyID string) error {
+	apiKey, err := r.GetAPIKeyByID(ctx, tenantID, keyID)
+	if err != nil {
+		return fmt.Errorf("failed to get API key: %w", err)
+	}
+
+	apiKey.IsActive = false
+	apiKey.UpdatedAt = time.Now()
+
+	return r.UpdateAPIKey(ctx, apiKey)
+}
+
+func (r *WeaviateRBACRepository) ValidateAPIKey(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	apiKey, err := r.GetAPIKeyByHash(ctx, tenantID, keyHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API key: %w", err)
+	}
+
+	if apiKey == nil {
+		return nil, fmt.Errorf("API key not found")
+	}
+
+	// Check if active
+	if !apiKey.IsActive {
+		return nil, fmt.Errorf("API key is revoked")
+	}
+
+	// Check expiry
+	if apiKey.IsExpired() {
+		return nil, fmt.Errorf("API key is expired")
+	}
+
+	// Update last used timestamp
+	apiKey.UpdateLastUsed()
+	if err := r.UpdateAPIKey(ctx, apiKey); err != nil {
+		// Log but don't fail validation
+		monitoring.RecordWeaviateOperation("update_api_key_last_used", apiKey.UserID, 0, false)
+	}
+
+	return apiKey, nil
+}
+
+// mapToAPIKey converts Weaviate response to APIKey model
+func (r *WeaviateRBACRepository) mapToAPIKey(data map[string]any) (*models.APIKey, error) {
+	apiKey := &models.APIKey{}
+
+	if id, ok := data["_additional"].(map[string]any)["id"].(string); ok {
+		apiKey.ID = id
+	}
+	if v, ok := data["userId"].(string); ok {
+		apiKey.UserID = v
+	}
+	if v, ok := data["tenantId"].(string); ok {
+		apiKey.TenantID = v
+	}
+	if v, ok := data["name"].(string); ok {
+		apiKey.Name = v
+	}
+	if v, ok := data["keyHash"].(string); ok {
+		apiKey.KeyHash = v
+	}
+	if v, ok := data["prefix"].(string); ok {
+		apiKey.Prefix = v
+	}
+	if v, ok := data["isActive"].(bool); ok {
+		apiKey.IsActive = v
+	}
+	if v, ok := data["roles"].([]interface{}); ok {
+		apiKey.Roles = make([]string, len(v))
+		for i, r := range v {
+			if s, ok := r.(string); ok {
+				apiKey.Roles[i] = s
+			}
+		}
+	}
+	if v, ok := data["scopes"].([]interface{}); ok {
+		apiKey.Scopes = make([]string, len(v))
+		for i, s := range v {
+			if str, ok := s.(string); ok {
+				apiKey.Scopes[i] = str
+			}
+		}
+	}
+	if v, ok := data["metadata"].(map[string]any); ok {
+		apiKey.Metadata = make(map[string]string)
+		for k, val := range v {
+			if s, ok := val.(string); ok {
+				apiKey.Metadata[k] = s
+			}
+		}
+	}
+	if v, ok := data["createdBy"].(string); ok {
+		apiKey.CreatedBy = v
+	}
+	if v, ok := data["updatedBy"].(string); ok {
+		apiKey.UpdatedBy = v
+	}
+
+	// Parse timestamps
+	if v, ok := data["createdAt"].(string); ok {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			apiKey.CreatedAt = t
+		}
+	}
+	if v, ok := data["updatedAt"].(string); ok {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			apiKey.UpdatedAt = t
+		}
+	}
+	if v, ok := data["expiresAt"].(string); ok {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			apiKey.ExpiresAt = &t
+		}
+	}
+	if v, ok := data["lastUsedAt"].(string); ok {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			apiKey.LastUsedAt = &t
+		}
+	}
+
+	return apiKey, nil
 }

@@ -99,11 +99,13 @@ type AlertEngineConfig struct {
 
 // AuthConfig handles authentication and authorization
 type AuthConfig struct {
-	Enabled bool        `mapstructure:"enabled" yaml:"enabled"`
-	LDAP    LDAPConfig  `mapstructure:"ldap" yaml:"ldap"`
-	OAuth   OAuthConfig `mapstructure:"oauth" yaml:"oauth"`
-	RBAC    RBACConfig  `mapstructure:"rbac" yaml:"rbac"`
-	JWT     JWTConfig   `mapstructure:"jwt" yaml:"jwt"`
+	Enabled          bool                  `mapstructure:"enabled" yaml:"enabled"`
+	StrictAPIKeyMode bool                  `mapstructure:"strict_api_key_mode" yaml:"strict_api_key_mode"` // Enforce API key-only for programmatic access
+	LDAP             LDAPConfig            `mapstructure:"ldap" yaml:"ldap"`
+	OAuth            OAuthConfig           `mapstructure:"oauth" yaml:"oauth"`
+	RBAC             RBACConfig            `mapstructure:"rbac" yaml:"rbac"`
+	JWT              JWTConfig             `mapstructure:"jwt" yaml:"jwt"`
+	APIKeyRateLimit  APIKeyRateLimitConfig `mapstructure:"api_key_rate_limit" yaml:"api_key_rate_limit"`
 }
 
 type LDAPConfig struct {
@@ -161,6 +163,14 @@ type RBACConfig struct {
 type JWTConfig struct {
 	Secret    string `mapstructure:"secret" yaml:"secret"`
 	ExpiryMin int    `mapstructure:"expiry_minutes" yaml:"expiry_minutes"`
+}
+
+type APIKeyRateLimitConfig struct {
+	Enabled              bool          `mapstructure:"enabled" yaml:"enabled"`
+	MaxRequests          int           `mapstructure:"max_requests" yaml:"max_requests"`       // Max requests per window
+	WindowDuration       time.Duration `mapstructure:"window_duration" yaml:"window_duration"` // Time window for rate limiting
+	BlockDuration        time.Duration `mapstructure:"block_duration" yaml:"block_duration"`   // How long to block after exceeding limit
+	EnableAbuseDetection bool          `mapstructure:"enable_abuse_detection" yaml:"enable_abuse_detection"`
 }
 
 // CacheConfig handles Valkey cluster caching configuration

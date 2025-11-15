@@ -171,6 +171,27 @@ func (m *mockRBACRepositoryForServerMoreTest) UpdateAuthConfig(ctx context.Conte
 func (m *mockRBACRepositoryForServerMoreTest) DeleteAuthConfig(ctx context.Context, tenantID string) error {
 	return nil
 }
+func (m *mockRBACRepositoryForServerMoreTest) CreateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+func (m *mockRBACRepositoryForServerMoreTest) GetAPIKeyByHash(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForServerMoreTest) GetAPIKeyByID(ctx context.Context, tenantID, keyID string) (*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForServerMoreTest) ListAPIKeys(ctx context.Context, tenantID, userID string) ([]*models.APIKey, error) {
+	return []*models.APIKey{}, nil
+}
+func (m *mockRBACRepositoryForServerMoreTest) UpdateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+func (m *mockRBACRepositoryForServerMoreTest) RevokeAPIKey(ctx context.Context, tenantID, keyID string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForServerMoreTest) ValidateAPIKey(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, nil
+}
 
 // Covers auth-off branch and openapi.json route
 func TestServer_OpenAPI_AndRootRedirect(t *testing.T) {

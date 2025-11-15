@@ -226,6 +226,27 @@ func (m *mockRBACRepositoryForContractValidation) UpdateAuthConfig(ctx context.C
 func (m *mockRBACRepositoryForContractValidation) DeleteAuthConfig(ctx context.Context, tenantID string) error {
 	return nil
 }
+func (m *mockRBACRepositoryForContractValidation) CreateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetAPIKeyByHash(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) GetAPIKeyByID(ctx context.Context, tenantID, keyID string) (*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForContractValidation) ListAPIKeys(ctx context.Context, tenantID, userID string) ([]*models.APIKey, error) {
+	return []*models.APIKey{}, nil
+}
+func (m *mockRBACRepositoryForContractValidation) UpdateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) RevokeAPIKey(ctx context.Context, tenantID, keyID string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForContractValidation) ValidateAPIKey(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, nil
+}
 func (m *mockRBACRepositoryForContractValidation) ResolveTenantID(ctx context.Context, tenantIdentifier string) (string, error) {
 	if tenantIdentifier == testTenantID {
 		return testTenantID, nil

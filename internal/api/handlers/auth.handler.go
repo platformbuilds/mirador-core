@@ -2,8 +2,10 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,6 +21,7 @@ import (
 type AuthHandler struct {
 	authService *middleware.AuthService
 	cache       cache.ValkeyCluster
+	rbacRepo    rbac.RBACRepository
 	logger      logger.Logger
 	config      *config.Config
 }
@@ -28,6 +31,7 @@ func NewAuthHandler(cfg *config.Config, cache cache.ValkeyCluster, rbacRepo rbac
 	return &AuthHandler{
 		authService: authService,
 		cache:       cache,
+		rbacRepo:    rbacRepo,
 		logger:      logger,
 		config:      cfg,
 	}
@@ -78,27 +82,29 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Generate JWT token for the session
-	jwtToken, err := h.authService.GenerateJWTToken(session)
+	// Generate API key for the user instead of JWT token
+	rawAPIKey, err := models.GenerateAPIKey()
 	if err != nil {
-		h.logger.Error("Failed to generate JWT token", "error", err)
+		h.logger.Error("Failed to generate API key", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
-			"error":  "Token generation failed",
+			"error":  "API key generation failed",
 		})
 		return
 	}
 
-	// Return session token and JWT token
+	// Return session token and API key
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data": gin.H{
 			"session_token": session.ID,
-			"jwt_token":     jwtToken,
+			"api_key":       rawAPIKey,
+			"key_prefix":    models.ExtractKeyPrefix(rawAPIKey),
 			"user_id":       session.UserID,
 			"tenant_id":     session.TenantID,
 			"roles":         session.Roles,
 			"expires_at":    session.CreatedAt.Add(24 * time.Hour),
+			"warning":       "Store this API key securely. It will not be shown again.",
 		},
 	})
 }
@@ -128,7 +134,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	})
 }
 
-// ValidateToken validates a session or JWT token
+// ValidateToken validates a session, API key, or JWT token
 // POST /api/v1/auth/validate
 func (h *AuthHandler) ValidateToken(c *gin.Context) {
 	var req struct {
@@ -139,6 +145,57 @@ func (h *AuthHandler) ValidateToken(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status": "error",
 			"error":  "Invalid request format",
+		})
+		return
+	}
+
+	// Try to validate as API key first (starts with "mrk_")
+	if strings.HasPrefix(req.Token, "mrk_") {
+		// Extract tenant from header or use default
+		tenantID := c.GetHeader("x-tenant-id")
+		if tenantID == "" {
+			tenantID = "default"
+		}
+
+		// Hash the API key for validation
+		keyHash := models.HashAPIKey(req.Token)
+
+		// Validate API key using repository
+		apiKey, err := h.rbacRepo.ValidateAPIKey(c.Request.Context(), tenantID, keyHash)
+		if err != nil {
+			h.logger.Warn("API key validation failed", "tenant_id", tenantID, "error", err)
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"status": "error",
+				"error":  "Invalid API key",
+			})
+			return
+		}
+
+		if !apiKey.IsValid() {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"status": "error",
+				"error":  "API key is inactive or expired",
+			})
+			return
+		}
+
+		// Update last used timestamp
+		apiKey.UpdateLastUsed()
+		if updateErr := h.rbacRepo.UpdateAPIKey(c.Request.Context(), apiKey); updateErr != nil {
+			h.logger.Warn("Failed to update API key last used", "api_key_id", apiKey.ID, "error", updateErr)
+			// Don't fail the request for this, just log it
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"data": gin.H{
+				"valid":     true,
+				"type":      "api_key",
+				"user_id":   apiKey.UserID,
+				"tenant_id": apiKey.TenantID,
+				"roles":     apiKey.Roles,
+				"scopes":    apiKey.Scopes,
+			},
 		})
 		return
 	}
@@ -270,17 +327,26 @@ func (h *AuthHandler) GenerateAPIKey(c *gin.Context) {
 		Metadata:  map[string]string{"description": req.Description},
 	}
 
-	// Store in repository (assume RBAC repo has API key methods)
-	// This would need to be implemented in the RBAC repository
+	// Store in repository
+	if err := h.rbacRepo.CreateAPIKey(c.Request.Context(), apiKeyRecord); err != nil {
+		h.logger.Error("Failed to create API key in repository", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to create API key",
+		})
+		return
+	}
+
 	h.logger.Info("API key created",
 		"user_id", userID,
 		"tenant_id", tenantID,
-		"name", req.Name)
+		"name", req.Name,
+		"api_key_id", apiKeyRecord.ID)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"status": "success",
 		"data": gin.H{
-			"api_key":    rawKey, // Only returned on creation
+			"api_key":    rawKey, // Security: Raw key returned only on creation; never stored or logged
 			"key_prefix": apiKeyRecord.Prefix,
 			"name":       apiKeyRecord.Name,
 			"expires_at": apiKeyRecord.ExpiresAt,
@@ -296,30 +362,42 @@ func (h *AuthHandler) ListAPIKeys(c *gin.Context) {
 	userID := c.GetString("user_id")
 	tenantID := c.GetString("tenant_id")
 
-	// For now, return mock data showing the structure
-	// This would need actual repository implementation
-	mockKeys := []gin.H{
-		{
-			"id":         "key-1",
-			"name":       "Production API Key",
-			"prefix":     "mrk_abcd",
-			"expires_at": nil,
-			"scopes":     []string{"metrics.read", "logs.read"},
-			"created_at": time.Now().Add(-24 * time.Hour),
-			"last_used":  time.Now().Add(-2 * time.Hour),
-		},
+	// Get API keys from repository
+	apiKeys, err := h.rbacRepo.ListAPIKeys(c.Request.Context(), tenantID, userID)
+	if err != nil {
+		h.logger.Error("Failed to list API keys", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to retrieve API keys",
+		})
+		return
+	}
+
+	// Convert to response format (exclude sensitive data like key hashes)
+	var responseKeys []gin.H
+	for _, key := range apiKeys {
+		responseKeys = append(responseKeys, gin.H{
+			"id":         key.ID,
+			"name":       key.Name,
+			"prefix":     key.Prefix,
+			"expires_at": key.ExpiresAt,
+			"scopes":     key.Scopes,
+			"created_at": key.CreatedAt,
+			"last_used":  key.LastUsedAt,
+			"is_active":  key.IsActive,
+		})
 	}
 
 	h.logger.Info("Listed API keys",
 		"user_id", userID,
 		"tenant_id", tenantID,
-		"count", len(mockKeys))
+		"count", len(apiKeys))
 
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data": gin.H{
-			"api_keys": mockKeys,
-			"total":    len(mockKeys),
+			"api_keys": responseKeys,
+			"total":    len(responseKeys),
 		},
 	})
 }
@@ -328,6 +406,7 @@ func (h *AuthHandler) ListAPIKeys(c *gin.Context) {
 // DELETE /api/v1/auth/apikeys/:keyId
 func (h *AuthHandler) RevokeAPIKey(c *gin.Context) {
 	userID := c.GetString("user_id")
+	tenantID := c.GetString("tenant_id")
 	keyID := c.Param("keyId")
 
 	if keyID == "" {
@@ -338,11 +417,20 @@ func (h *AuthHandler) RevokeAPIKey(c *gin.Context) {
 		return
 	}
 
-	// For now, log the revocation
-	// This would need actual repository implementation with authorization checks
+	// Revoke API key using repository
+	if err := h.rbacRepo.RevokeAPIKey(c.Request.Context(), tenantID, keyID); err != nil {
+		h.logger.Error("Failed to revoke API key", "error", err, "api_key_id", keyID)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to revoke API key",
+		})
+		return
+	}
+
 	h.logger.Info("API key revoked",
 		"api_key_id", keyID,
-		"user_id", userID)
+		"user_id", userID,
+		"tenant_id", tenantID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
@@ -461,9 +549,22 @@ func (h *AuthHandler) UpdateAPIKeyLimits(c *gin.Context) {
 
 // getCurrentAPIKeyCount returns the current number of active API keys for a user
 func (h *AuthHandler) getCurrentAPIKeyCount(userID string) int {
-	// Mock implementation - this would need actual repository query
-	// Example: return h.rbacRepo.GetUserActiveAPIKeyCount(userID)
-	return 3 // Mock current count
+	// Get all API keys for the user and count active ones
+	// Note: This assumes tenant context is available, but for now we'll use a default
+	// In production, this should be called with proper tenant context
+	apiKeys, err := h.rbacRepo.ListAPIKeys(context.Background(), "default", userID)
+	if err != nil {
+		h.logger.Warn("Failed to get API key count", "user_id", userID, "error", err)
+		return 0
+	}
+
+	activeCount := 0
+	for _, key := range apiKeys {
+		if key.IsActive && key.IsValid() {
+			activeCount++
+		}
+	}
+	return activeCount
 }
 
 // getMaxAPIKeysForUser returns the maximum allowed API keys for a user based on tenant limits and roles

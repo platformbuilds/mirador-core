@@ -102,6 +102,7 @@ func (m *mockRBACRepositoryForServerTest) GetAuditEvents(ctx context.Context, te
 	return nil, nil
 }
 func (m *mockRBACRepositoryForServerTest) CreateTenant(ctx context.Context, tenant *models.Tenant) error {
+	tenant.ID = "test-tenant-id"
 	return nil
 }
 func (m *mockRBACRepositoryForServerTest) GetTenant(ctx context.Context, tenantID string) (*models.Tenant, error) {
@@ -120,7 +121,11 @@ func (m *mockRBACRepositoryForServerTest) CreateUser(ctx context.Context, user *
 	return nil
 }
 func (m *mockRBACRepositoryForServerTest) GetUser(ctx context.Context, userID string) (*models.User, error) {
-	return nil, nil
+	return &models.User{
+		ID:       userID,
+		Username: "admin",
+		Email:    "admin@platformbuilds.com",
+	}, nil
 }
 func (m *mockRBACRepositoryForServerTest) ListUsers(ctx context.Context, filters rbac.UserFilters) ([]*models.User, error) {
 	return nil, nil
@@ -169,6 +174,27 @@ func (m *mockRBACRepositoryForServerTest) UpdateAuthConfig(ctx context.Context, 
 }
 func (m *mockRBACRepositoryForServerTest) DeleteAuthConfig(ctx context.Context, tenantID string) error {
 	return nil
+}
+func (m *mockRBACRepositoryForServerTest) CreateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+func (m *mockRBACRepositoryForServerTest) GetAPIKeyByHash(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForServerTest) GetAPIKeyByID(ctx context.Context, tenantID, keyID string) (*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForServerTest) ListAPIKeys(ctx context.Context, tenantID, userID string) ([]*models.APIKey, error) {
+	return []*models.APIKey{}, nil
+}
+func (m *mockRBACRepositoryForServerTest) UpdateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+func (m *mockRBACRepositoryForServerTest) RevokeAPIKey(ctx context.Context, tenantID, keyID string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForServerTest) ValidateAPIKey(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, nil
 }
 
 func TestServer_Start_And_Handler(t *testing.T) {

@@ -168,7 +168,7 @@ func (s *Server) setupMiddleware() {
 
 	// Authentication (can be disabled via config.auth.enabled)
 	if s.config.Auth.Enabled {
-		s.router.Use(middleware.AuthMiddleware(s.config.Auth, s.cache))
+		s.router.Use(middleware.AuthMiddleware(s.config.Auth, s.cache, s.rbacRepo))
 	} else {
 		s.router.Use(middleware.NoAuthMiddleware())
 		s.logger.Warn("Authentication is DISABLED by configuration; requests will use anonymous/default context")

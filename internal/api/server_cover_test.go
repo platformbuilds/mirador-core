@@ -174,6 +174,27 @@ func (m *mockRBACRepositoryForServerCoverTest) UpdateAuthConfig(ctx context.Cont
 func (m *mockRBACRepositoryForServerCoverTest) DeleteAuthConfig(ctx context.Context, tenantID string) error {
 	return nil
 }
+func (m *mockRBACRepositoryForServerCoverTest) CreateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+func (m *mockRBACRepositoryForServerCoverTest) GetAPIKeyByHash(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForServerCoverTest) GetAPIKeyByID(ctx context.Context, tenantID, keyID string) (*models.APIKey, error) {
+	return nil, nil
+}
+func (m *mockRBACRepositoryForServerCoverTest) ListAPIKeys(ctx context.Context, tenantID, userID string) ([]*models.APIKey, error) {
+	return []*models.APIKey{}, nil
+}
+func (m *mockRBACRepositoryForServerCoverTest) UpdateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	return nil
+}
+func (m *mockRBACRepositoryForServerCoverTest) RevokeAPIKey(ctx context.Context, tenantID, keyID string) error {
+	return nil
+}
+func (m *mockRBACRepositoryForServerCoverTest) ValidateAPIKey(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	return nil, nil
+}
 
 // stubSchemaRepo is a minimal implementation to make schema routes register.
 type stubSchemaRepo struct{}

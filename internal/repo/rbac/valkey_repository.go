@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/models"
@@ -600,6 +601,184 @@ func (r *ValkeyRBACRepository) GetPermissions(ctx context.Context, tenantID stri
 // InvalidatePermissions implements CacheRepository.InvalidatePermissions
 func (r *ValkeyRBACRepository) InvalidatePermissions(ctx context.Context, tenantID string) error {
 	return r.InvalidatePermissionsCache(ctx, tenantID, "all")
+}
+
+// CreateAPIKey creates a new API key
+func (r *ValkeyRBACRepository) CreateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	// Store API key data by hash
+	hashKey := fmt.Sprintf("apikey:%s:%s", apiKey.TenantID, apiKey.KeyHash)
+	apiKeyData, err := json.Marshal(apiKey)
+	if err != nil {
+		return fmt.Errorf("failed to marshal API key: %w", err)
+	}
+
+	// Set expiry if specified
+	var ttl time.Duration
+	if apiKey.ExpiresAt != nil {
+		ttl = time.Until(*apiKey.ExpiresAt)
+		if ttl <= 0 {
+			return fmt.Errorf("API key is already expired")
+		}
+	}
+
+	err = r.client.Set(ctx, hashKey, string(apiKeyData), ttl)
+	if err != nil {
+		monitoring.RecordCacheOperation("create_api_key", "error")
+		return fmt.Errorf("failed to create API key: %w", err)
+	}
+
+	monitoring.RecordCacheOperation("create_api_key", "success")
+
+	// Store key ID to hash mapping for reverse lookup
+	idKey := fmt.Sprintf("apikey_id:%s:%s", apiKey.TenantID, apiKey.ID)
+	err = r.client.Set(ctx, idKey, apiKey.KeyHash, ttl)
+	if err != nil {
+		monitoring.RecordCacheOperation("create_api_key_id_mapping", "error")
+		// Try to clean up the hash key
+		r.client.Del(ctx, hashKey)
+		return fmt.Errorf("failed to create API key ID mapping: %w", err)
+	}
+
+	monitoring.RecordCacheOperation("create_api_key_id_mapping", "success")
+	return nil
+}
+
+// GetAPIKeyByHash retrieves an API key by its hash
+func (r *ValkeyRBACRepository) GetAPIKeyByHash(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	hashKey := fmt.Sprintf("apikey:%s:%s", tenantID, keyHash)
+
+	data, err := r.client.Get(ctx, hashKey)
+	if err != nil {
+		monitoring.RecordCacheOperation("get_api_key_by_hash", "miss")
+		return nil, fmt.Errorf("failed to get API key: %w", err)
+	}
+
+	monitoring.RecordCacheOperation("get_api_key_by_hash", "hit")
+
+	var apiKey models.APIKey
+	if err := json.Unmarshal([]byte(data), &apiKey); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal API key: %w", err)
+	}
+
+	// Set the KeyHash since it's not included in JSON marshaling
+	apiKey.KeyHash = keyHash
+
+	return &apiKey, nil
+}
+
+// GetAPIKeyByID retrieves an API key by its ID
+func (r *ValkeyRBACRepository) GetAPIKeyByID(ctx context.Context, tenantID, keyID string) (*models.APIKey, error) {
+	idKey := fmt.Sprintf("apikey_id:%s:%s", tenantID, keyID)
+
+	keyHash, err := r.client.Get(ctx, idKey)
+	if err != nil {
+		monitoring.RecordCacheOperation("get_api_key_by_id", "miss")
+		return nil, fmt.Errorf("failed to get API key hash: %w", err)
+	}
+
+	monitoring.RecordCacheOperation("get_api_key_by_id", "hit")
+
+	return r.GetAPIKeyByHash(ctx, tenantID, keyHash)
+}
+
+// ListAPIKeys lists API keys for a user (simplified implementation)
+func (r *ValkeyRBACRepository) ListAPIKeys(ctx context.Context, tenantID, userID string) ([]*models.APIKey, error) {
+	// This is a simplified implementation that scans for keys
+	// In production, you'd want a more efficient data structure
+	pattern := fmt.Sprintf("apikey_id:%s:*", tenantID)
+
+	keys, err := r.client.Keys(ctx, pattern)
+	if err != nil {
+		monitoring.RecordCacheOperation("list_api_keys", "error")
+		return nil, fmt.Errorf("failed to list API key IDs: %w", err)
+	}
+
+	monitoring.RecordCacheOperation("list_api_keys", "success")
+
+	apiKeys := make([]*models.APIKey, 0)
+	for _, key := range keys {
+		// Extract keyID from key name
+		parts := strings.Split(key, ":")
+		if len(parts) != 3 {
+			continue
+		}
+		keyID := parts[2]
+
+		apiKey, err := r.GetAPIKeyByID(ctx, tenantID, keyID)
+		if err != nil {
+			continue // Skip invalid keys
+		}
+
+		// Filter by userID
+		if apiKey.UserID == userID {
+			apiKeys = append(apiKeys, apiKey)
+		}
+	}
+
+	return apiKeys, nil
+}
+
+// UpdateAPIKey updates an existing API key
+func (r *ValkeyRBACRepository) UpdateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
+	hashKey := fmt.Sprintf("apikey:%s:%s", apiKey.TenantID, apiKey.KeyHash)
+
+	apiKeyData, err := json.Marshal(apiKey)
+	if err != nil {
+		return fmt.Errorf("failed to marshal API key: %w", err)
+	}
+
+	err = r.client.Set(ctx, hashKey, string(apiKeyData), 0) // No TTL update
+	if err != nil {
+		monitoring.RecordCacheOperation("update_api_key", "error")
+		return fmt.Errorf("failed to update API key: %w", err)
+	}
+
+	monitoring.RecordCacheOperation("update_api_key", "success")
+	return nil
+}
+
+// RevokeAPIKey revokes an API key by marking it inactive
+func (r *ValkeyRBACRepository) RevokeAPIKey(ctx context.Context, tenantID, keyID string) error {
+	apiKey, err := r.GetAPIKeyByID(ctx, tenantID, keyID)
+	if err != nil {
+		return fmt.Errorf("failed to get API key: %w", err)
+	}
+
+	apiKey.IsActive = false
+	apiKey.UpdatedAt = time.Now()
+
+	return r.UpdateAPIKey(ctx, apiKey)
+}
+
+// ValidateAPIKey validates an API key hash and returns the key if valid
+func (r *ValkeyRBACRepository) ValidateAPIKey(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
+	apiKey, err := r.GetAPIKeyByHash(ctx, tenantID, keyHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API key: %w", err)
+	}
+
+	if apiKey == nil {
+		return nil, fmt.Errorf("API key not found")
+	}
+
+	// Check if active
+	if !apiKey.IsActive {
+		return nil, fmt.Errorf("API key is revoked")
+	}
+
+	// Check expiry
+	if apiKey.IsExpired() {
+		return nil, fmt.Errorf("API key is expired")
+	}
+
+	// Update last used timestamp
+	apiKey.UpdateLastUsed()
+	if err := r.UpdateAPIKey(ctx, apiKey); err != nil {
+		// Log but don't fail validation
+		monitoring.RecordCacheOperation("update_api_key_last_used", "error")
+	}
+
+	return apiKey, nil
 }
 
 // NoOpCacheRepository is a simple no-op implementation of CacheRepository for when caching is disabled

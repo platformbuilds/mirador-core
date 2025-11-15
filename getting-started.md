@@ -57,7 +57,7 @@ Key endpoints once the service comes up:
 - OpenAPI spec: http://localhost:8010/api/openapi.yaml
 - Prometheus metrics: http://localhost:8010/metrics
 
-Authentication is disabled in the local compose file (`AUTH_ENABLED=false`). All requests run as the `default` tenant unless you set an `X-Tenant-ID` header.
+Authentication is disabled in the local compose file (`AUTH_ENABLED=false`). All requests run as the `default` tenant unless you set an `X-Tenant-ID` header. For testing authentication flows, enable auth and use API keys for programmatic access.
 
 ### Building natively vs. using published images
 The compose file builds a native binary for your host architecture. To pull a published image instead, comment out the `build:` block, set `image: platformbuilds/mirador-core:<tag>`, and rerun `docker compose`.
@@ -152,9 +152,23 @@ Remove the Docker volumes (`vmdata`, `vldata`, `vtdata`) if you want a clean sla
 
 ## 9. Query Your Data with the Unified API
 
-Once data is flowing, use the unified query API to explore it.
+Once data is flowing, use the unified query API to explore it. **Note**: If authentication is enabled, you must use API keys for programmatic access.
 
-### 9.1 Check Unified API Health
+### 9.1 Enable Authentication (Optional)
+
+To test authentication flows:
+
+1. Set `AUTH_ENABLED=true` in `mirador-core-docker-compose.yaml`
+2. Restart the service: `docker compose down && docker compose up -d --build`
+3. Login to get an API key:
+```bash
+curl -X POST http://localhost:8010/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "aarvee", "password": "ChangeMe123!"}'
+```
+4. Use the returned `api_key` (starts with `mrk_`) for all API calls
+
+### 9.2 Check Unified API Health
 
 ```bash
 curl http://localhost:8010/api/v1/unified/health
@@ -175,6 +189,7 @@ curl http://localhost:8010/api/v1/unified/metadata
 ```bash
 curl -X POST http://localhost:8010/api/v1/unified/query \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{
     "query": {
       "id": "metrics-query-1",
@@ -195,6 +210,7 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
 ```bash
 curl -X POST http://localhost:8010/api/v1/unified/query \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{
     "query": {
       "id": "logs-query-1",
@@ -210,6 +226,7 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
 ```bash
 curl -X POST http://localhost:8010/api/v1/unified/query \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{
     "query": {
       "id": "traces-query-1",
@@ -229,6 +246,7 @@ Find relationships between logs, metrics, and traces:
 ```bash
 curl -X POST http://localhost:8010/api/v1/unified/query \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{
     "query": {
       "id": "correlation-1",
@@ -244,6 +262,7 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
 ```bash
 curl -X POST http://localhost:8010/api/v1/unified/query \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{
     "query": {
       "id": "correlation-2",
@@ -257,6 +276,7 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
 ```bash
 curl -X POST http://localhost:8010/api/v1/unified/query \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{
     "query": {
       "id": "correlation-3",
@@ -272,6 +292,7 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
 ```bash
 curl -X POST http://localhost:8010/api/v1/unified/query \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{
     "query": {
       "type": "metrics",
@@ -288,6 +309,7 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
 ```bash
 curl -X POST http://localhost:8010/api/v1/unified/query \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{
     "query": {
       "type": "logs",
@@ -335,18 +357,21 @@ http://localhost:8010/swagger-ui/
 1. **Find error logs:**
 ```bash
 curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{"query": {"type": "logs", "query": "_time:1h level:error service:myapp"}}'
 ```
 
 2. **Correlate with metrics:**
 ```bash
 curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{"query": {"type": "correlation", "query": "logs:service:myapp error WITHIN 5m OF metrics:service:myapp"}}'
 ```
 
 3. **Find related traces:**
 ```bash
 curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{"query": {"type": "traces", "query": "service:myapp status:error"}}'
 ```
 
@@ -355,18 +380,21 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
 1. **Check latency metrics:**
 ```bash
 curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{"query": {"type": "metrics", "query": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))"}}'
 ```
 
 2. **Find slow requests in logs:**
 ```bash
 curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{"query": {"type": "logs", "query": "_time:1h duration:>5000"}}'
 ```
 
 3. **Correlate with traces:**
 ```bash
 curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{"query": {"type": "correlation", "query": "logs:duration:>5000 WITHIN 1m OF traces:operation:GET"}}'
 ```
 
@@ -377,18 +405,22 @@ Create a dashboard that queries all three data types:
 ```bash
 # Query 1: Service health (metrics)
 curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{"query": {"type": "metrics", "query": "up", "cache_options": {"enabled": true, "ttl": "30s"}}}'
 
 # Query 2: Recent errors (logs)
 curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{"query": {"type": "logs", "query": "_time:5m level:error", "cache_options": {"enabled": true, "ttl": "30s"}}}'
 
 # Query 3: Active traces (traces)
 curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{"query": {"type": "traces", "query": "_time:5m", "cache_options": {"enabled": true, "ttl": "30s"}}}'
 
 # Query 4: Cross-engine correlation
 curl -X POST http://localhost:8010/api/v1/unified/query \
+  -H "Authorization: Bearer $API_KEY" \
   -d '{"query": {"type": "correlation", "query": "logs:error WITHIN 2m OF traces:status:error"}}'
 ```
 
