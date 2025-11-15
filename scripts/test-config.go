@@ -1,6 +1,4 @@
 // config-validation-test.go - Simple test script to validate API key configuration loading
-//
-//nolint:depguard,mnd // This is a utility script that needs to import internal packages
 
 package main
 
@@ -9,8 +7,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/spf13/viper"
+
+	"github.com/platformbuilds/mirador-core/internal/config"
 )
 
 const (
