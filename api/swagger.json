@@ -1,19 +1,19 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "Mirador Core is a comprehensive observability and analytics platform that provides KPI definitions, layouts, dashboards, and user preferences for monitoring and analyzing system metrics.",
-        "title": "Mirador Core API",
+        "description": "MIRADOR-CORE is a comprehensive observability and analytics platform that provides unified query access, KPI definitions, layouts, dashboards, and RBAC management for monitoring and analyzing system metrics, logs, and traces.",
+        "title": "MIRADOR-CORE API",
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
-            "name": "PLATFORMBUILDS Team",
-            "url": "https://github.com/platformbuilds/mirador-core",
-            "email": "support@platformbuilds.com"
+            "name": "PlatformBuilds Team",
+            "url": "https://github.com/miradorstack/mirador-core",
+            "email": "support@miradorstack.com"
         },
         "license": {
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "8.0.0"
+        "version": "9.0.0"
     },
     "host": "localhost:8010",
     "basePath": "/api/v1",

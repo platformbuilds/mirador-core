@@ -14,75 +14,97 @@ This guide will help you get MIRADOR-CORE up and running quickly.
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/platformbuilds/mirador-core.git
+git clone https://github.com/miradorstack/mirador-core.git
 cd mirador-core
 ```
 
-### 2. Start Containerized Development Environment
+### 2. Setup Development Environment
 
-MIRADOR-CORE uses containerized development to ensure consistency across all environments:
+Install dependencies and generate required code:
+
+```bash
+# Install tools, generate protobuf code, and download dependencies
+make setup
+```
+
+### 3. Start Development Stack
+
+MIRADOR-CORE uses containerized development to ensure consistency:
 
 ```bash
 # Start the complete development stack (containers only)
 make localdev-up
+
+# Wait for services to be ready
+make localdev-wait
 ```
 
 This command starts all required services in containers:
-- **VictoriaMetrics** (metrics storage)
-- **VictoriaLogs** (logs storage)
-- **VictoriaTraces** (traces storage)
-- **Valkey** (caching)
-- **Weaviate** (vector database)
-- **MIRADOR-CORE** (main application)
+- **VictoriaMetrics** (metrics): `localhost:8481`
+- **VictoriaLogs** (logs): `localhost:9428`
+- **VictoriaTraces** (traces): `localhost:10428`
+- **Weaviate** (vector database): `localhost:8080`
+- **Valkey** (caching): `localhost:6379`
 
-### 3. Verify the Environment
+### 4. Seed Sample Data
 
 ```bash
-# Wait for services to be ready
-make localdev-wait
+# Seed synthetic OpenTelemetry data
+make localdev-seed-otel
 
-# Check health endpoint
-curl http://localhost:8010/api/v1/health
-
-# Check readiness
-curl http://localhost:8010/api/v1/ready
+# Seed default dashboard and KPIs
+make localdev-seed-data
 ```
 
-### 4. Run Tests (Optional)
+### 5. Start Development Server
 
 ```bash
-# Run full E2E test suite
-make localdev-test
+# Start development server (auto-rebuilds on changes)
+make dev
+```
 
-# Or run API tests only
+The server runs at `http://localhost:8010` with:
+- **API Documentation**: http://localhost:8010/swagger/
+- **Health Checks**: http://localhost:8010/health
+- **Metrics Endpoint**: http://localhost:8010/metrics
+
+### 6. Run Tests
+
+```bash
+# Unit tests with race detection and coverage
+make test
+
+# Code quality checks
+make lint
+make fmt
+make vuln
+
+# Full E2E pipeline (complete testing)
+make localdev
+
+# API tests only
 make localdev-test-api-only
 ```
 
-### 5. Tear Down Development Environment
+### 7. Clean Up
 
 ```bash
 # Stop all services and clean up
 make localdev-down
 ```
 
-## Alternative: Local Development (Not Recommended)
+## Development Environment Details
 
-> ⚠️ **Container-only development is strongly recommended** for consistency and to avoid environment-specific issues.
+The local development stack provides:
+- Full VictoriaMetrics ecosystem integration
+- Comprehensive testing with synthetic data
+- Hot-reload development server
+- Race detection and coverage analysis
+- E2E testing with actual service dependencies
 
-If you must develop locally (not recommended):
-
-```bash
-# Install Go dependencies (local only)
-go mod download
-
-# Generate protobuf files (local only)
-make proto
-
-# Run server locally (requires local dependencies)
-make dev
-```
-
-However, this approach requires manual setup of all dependencies and may lead to environment inconsistencies.
+**Environment Variables** (automatically configured by `make localdev-up`):
+- `BASE_URL`: Base URL for the running app (default: `http://localhost:8010`)
+- `E2E_BASE_URL`: Used by tests for endpoint validation
 
 ## Production Deployment
 
@@ -93,23 +115,32 @@ However, this approach requires manual setup of all dependencies and may lead to
 helm repo add mirador https://platformbuilds.github.io/mirador-core
 helm repo update
 
-# Install with default configuration
+# Install with production configuration
 helm install mirador-core mirador/mirador-core \
   --namespace mirador-system \
   --create-namespace \
+  --set image.tag=v9.0.0 \
   --set vm.endpoints="vm-cluster:8481" \
-  --set vl.endpoints="vl-cluster:9428"
+  --set vl.endpoints="vl-cluster:9428" \
+  --set vt.endpoints="vt-cluster:10428" \
+  --set replicaCount=3
 ```
 
 ### Using Docker
 
 ```bash
-# Build and run
-make docker-build
-docker run -p 8010:8010 \
+# Build multi-architecture images
+make dockerx-build
+
+# Run with production settings
+docker run -d \
+  --name mirador-core \
+  -p 8010:8010 \
   -e VM_ENDPOINTS="vm-cluster:8481" \
   -e VL_ENDPOINTS="vl-cluster:9428" \
-  platformbuilds/mirador-core:latest
+  -e VT_ENDPOINTS="vt-cluster:10428" \
+  -e RBAC_ENABLED=true \
+  platformbuilds/mirador-core:v9.0.0
 ```
 
 ## Configuration

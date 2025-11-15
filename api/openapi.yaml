@@ -2,10 +2,10 @@ openapi: 3.0.3
 info:
   title: MIRADOR-CORE API
   description: Advanced Observability Platform REST API
-  version: 7.0.0
+  version: 9.0.0
   contact:
-    name: Platformbuilds Team
-    email: rv@platformbuilds.org
+    name: PlatformBuilds Team
+    email: support@miradorstack.com
 
 servers:
   - url: "{scheme}://{host}{basePath}"
@@ -856,6 +856,151 @@ components:
           type: string
           format: date-time
           description: Timestamp of last health check
+
+    # UQL (Unified Query Language) Schemas
+    UQLQueryRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          $ref: '#/components/schemas/UnifiedQuery'
+      description: Request wrapper for UQL queries
+
+    UQLValidateRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          description: UQL query string to validate
+          example: "SELECT service, count(*) FROM logs:error WHERE level='error' GROUP BY service"
+
+    UQLValidateResponse:
+      type: object
+      required: [valid, query]
+      properties:
+        valid:
+          type: boolean
+          description: Whether the UQL query syntax is valid
+        query:
+          type: string
+          description: Original query string
+        parsed_query:
+          type: object
+          description: Parsed query structure (if valid)
+          properties:
+            type:
+              type: string
+              enum: [select, correlation, aggregation, join]
+            engines:
+              type: array
+              items:
+                type: string
+              description: Engines involved in the query
+            fields:
+              type: array
+              items:
+                type: string
+              description: Selected fields (for SELECT queries)
+            from:
+              type: string
+              description: Data source specification
+            where:
+              type: string
+              description: Filter conditions
+            group_by:
+              type: array
+              items:
+                type: string
+              description: Grouping fields
+        warnings:
+          type: array
+          items:
+            type: string
+          description: Non-fatal warnings about the query
+        error:
+          type: string
+          description: Error message (if invalid)
+
+    UQLExplainRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          $ref: '#/components/schemas/UnifiedQuery'
+      description: Request wrapper for UQL query explanation
+
+    UQLExplainResponse:
+      type: object
+      required: [query, plan]
+      properties:
+        query:
+          type: string
+          description: Original UQL query string
+        plan:
+          $ref: '#/components/schemas/QueryPlan'
+          description: Detailed execution plan
+        optimizations:
+          type: object
+          description: Applied optimizations
+          properties:
+            predicate_pushdown:
+              type: boolean
+            query_rewrites:
+              type: integer
+            index_usage:
+              type: array
+              items:
+                type: string
+        estimated_cost:
+          type: object
+          description: Performance estimates
+          properties:
+            execution_time_ms:
+              type: integer
+            memory_usage_mb:
+              type: integer
+            io_operations:
+              type: integer
+        error:
+          type: string
+          description: Error message if explanation failed
+
+    QueryPlan:
+      type: object
+      required: [steps]
+      properties:
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/QueryPlanStep'
+          description: Sequential execution steps
+
+    QueryPlanStep:
+      type: object
+      required: [type, description, engine]
+      properties:
+        type:
+          type: string
+          enum: [parse, optimize, translate, execute, aggregate, correlate]
+          description: Type of execution step
+        description:
+          type: string
+          description: Human-readable step description
+        engine:
+          type: string
+          description: Engine responsible for this step
+        cost:
+          type: integer
+          description: Estimated execution cost
+        parallel:
+          type: boolean
+          description: Whether this step can run in parallel
+        dependencies:
+          type: array
+          items:
+            type: string
+          description: Steps that must complete before this one
 
 security:
   - BearerAuth: []
@@ -4089,4 +4234,153 @@ paths:
                   error:
                     type: string
                     description: Error message
+                required: [error]
+
+  # UQL (Unified Query Language) Endpoints
+  /uql/query:
+    post:
+      tags: [uql]
+      summary: Execute UQL query
+      description: |
+        Execute a UQL (Unified Query Language) query with advanced parsing, optimization, and translation.
+        UQL provides SQL-like syntax for querying across metrics, logs, and traces with correlation capabilities.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UQLQueryRequest'
+            examples:
+              select_query:
+                summary: SELECT query across logs
+                value:
+                  query:
+                    id: "uql-select-1"
+                    query: "SELECT service, level FROM logs:error WHERE level='error' LIMIT 10"
+                    tenant_id: "tenant-123"
+              correlation_query:
+                summary: Cross-engine correlation
+                value:
+                  query:
+                    id: "uql-correlation-1"
+                    query: "logs:error WITHIN 5m OF metrics:cpu_usage > 80"
+                    tenant_id: "tenant-123"
+      responses:
+        '200':
+          description: UQL query executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnifiedQueryResponse'
+        '400':
+          description: Invalid UQL query syntax
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  details:
+                    type: string
+                required: [error]
+        '500':
+          description: UQL query execution failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  details:
+                    type: string
+                  query_id:
+                    type: string
+                required: [error]
+
+  /uql/validate:
+    post:
+      tags: [uql]
+      summary: Validate UQL syntax
+      description: |
+        Validate UQL query syntax without execution. Returns parsed query structure and validation results.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UQLValidateRequest'
+            examples:
+              valid_query:
+                summary: Valid SELECT query
+                value:
+                  query: "SELECT service, count(*) FROM logs:error WHERE level='error' GROUP BY service"
+              correlation_query:
+                summary: Valid correlation query
+                value:
+                  query: "logs:error AND metrics:high_latency"
+      responses:
+        '200':
+          description: UQL validation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UQLValidateResponse'
+        '400':
+          description: Invalid request format
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required: [error]
+
+  /uql/explain:
+    post:
+      tags: [uql]
+      summary: Explain UQL execution plan
+      description: |
+        Generate and return the execution plan for a UQL query including optimization steps,
+        engine routing decisions, and performance estimates.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UQLExplainRequest'
+            examples:
+              complex_query:
+                summary: Complex correlation query
+                value:
+                  query:
+                    id: "uql-explain-1"
+                    query: "logs:error WITHIN 5m OF metrics:cpu_usage > 80"
+                    tenant_id: "tenant-123"
+      responses:
+        '200':
+          description: Query execution plan generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UQLExplainResponse'
+        '400':
+          description: Invalid UQL query for explanation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  details:
+                    type: string
                 required: [error]
