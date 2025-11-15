@@ -249,18 +249,21 @@ mirador:
           description: "Global administrator with full system access"
           permissions:
             - "*"  # All permissions
+            - "apikey.global_admin"
         - name: "tenant_admin"
           description: "Tenant administrator with full tenant access"
           permissions:
             - "tenant.*"
             - "rbac.*"
             - "users.*"
+            - "apikey.admin"
         - name: "viewer"
           description: "Read-only access to metrics, logs, and traces"
           permissions:
             - "metrics.read"
             - "logs.read"
             - "traces.read"
+            - "apikey.manage"
         - name: "analyst"
           description: "Analyst with read and query access"
           permissions:
@@ -269,6 +272,7 @@ mirador:
             - "traces.*"
             - "rca.read"
             - "predict.read"
+            - "apikey.manage"
 
   cache:
     # Cache nodes for Valkey/Redis. Leave empty when using the embedded Bitnami
@@ -321,6 +325,36 @@ mirador:
     rbac_schema:
       enabled: true
       auto_migrate: true  # Automatically create RBAC schema classes on startup
+
+  # API Key Management Configuration
+  api_keys:
+    enabled: true
+    # Default limits applied system-wide unless overridden
+    default_limits:
+      max_keys_per_user: 10
+      max_keys_per_tenant_admin: 25
+      max_keys_per_global_admin: 100
+    # Tenant-specific limit overrides
+    tenant_limits: []
+      # Example:
+      # - tenant_id: "production"
+      #   max_keys_per_user: 20
+      #   max_keys_per_tenant_admin: 50
+      #   max_keys_per_global_admin: 150
+    # Global system-wide overrides (optional)
+    global_limits_override: null
+      # Example:
+      # max_keys_per_user: 15
+      # max_keys_per_tenant_admin: 35
+      # max_keys_per_global_admin: 200
+      # max_total_keys: 5000
+    # Permission settings
+    allow_tenant_override: true   # Allow tenant admins to override limits
+    allow_admin_override: true    # Allow global admins to override limits
+    # Expiry settings
+    max_expiry_days: 365         # Maximum days for API key expiry
+    min_expiry_days: 1           # Minimum days for API key expiry
+    enforce_expiry: false        # Require expiry date on all new keys
 
 # Bleve storage configuration
 bleveStorage:

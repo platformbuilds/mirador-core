@@ -5816,5 +5816,395 @@
         "failures_table": "test-failures-table.md"
       }
     }
+  },
+  {
+    "name": "Validate Default Tenant Exists",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/tenants/PLATFORMBUILDS",
+    "status": 403,
+    "success": false,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:06Z",
+    "error": "Expected status 200, got 403"
+  },
+  {
+    "name": "Validate Default Admin User Exists",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/users/aarvee",
+    "status": 403,
+    "success": false,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:06Z",
+    "error": "Expected status 200, got 403"
+  },
+  {
+    "name": "Validate Global Admin Role Exists",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/roles?name=global_admin",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:06Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Validate Tenant Admin Role Exists",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/roles?name=tenant_admin",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:06Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Validate Tenant Editor Role Exists",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/roles?name=tenant_editor",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:06Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Validate Tenant Guest Role Exists",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/roles?name=tenant_guest",
+    "status": 404,
+    "success": false,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:06Z",
+    "error": "Expected status 200, got 404"
+  },
+  {
+    "name": "Validate Admin Tenant-User Association",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/tenants/PLATFORMBUILDS/users/aarvee",
+    "status": 403,
+    "success": false,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:06Z",
+    "error": "Expected status 200, got 403"
+  },
+  {
+    "name": "Invalid Login Credentials",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/auth/login",
+    "status": 401,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:06Z",
+    "error": ""
+  },
+  {
+    "name": "Get Current User Info (Not Implemented)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/auth/me",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:06Z",
+    "error": ""
+  },
+  {
+    "name": "List All Tenants (Requires Global Admin)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/tenants",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:06Z",
+    "error": ""
+  },
+  {
+    "name": "Get Current Tenant (Requires Tenant Admin)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/tenants/PLATFORMBUILDS",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:06Z",
+    "error": ""
+  },
+  {
+    "name": "Create Test Tenant (Requires Global Admin)",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/tenants",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "Update Test Tenant (Requires Tenant Admin)",
+    "method": "PUT",
+    "url": "http://localhost:8010/api/v1/tenants/e2e-test-tenant-1763131597",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "List Tenant Users (Requires Tenant Admin)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/tenants/PLATFORMBUILDS/users",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "List All Users (Requires Global Admin)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/users",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "Get Admin User (Requires Global Admin)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/users/aarvee",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "Create Test User (Requires Global Admin)",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/users",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "Update Test User (Requires Global Admin)",
+    "method": "PUT",
+    "url": "http://localhost:8010/api/v1/users/e2e-test-user-1763131597",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "List All Roles",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/roles",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "Get Global Admin Role (Not Implemented)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/roles/global_admin",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "List All Permissions",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/permissions",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "Create Role Binding (Not Implemented)",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/rbac/bindings",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "List Role Bindings (Not Implemented)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/rbac/bindings",
+    "status": 404,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "Access Different Tenant Data (Should Fail)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/tenants/PLATFORMBUILDS",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "Create Tenant-User Association in Test Tenant (Requires Tenant Admin)",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/tenants/e2e-test-tenant-1763131597/users",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "Verify Tenant-User Association in Test Tenant (Requires Tenant Admin)",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/tenants/e2e-test-tenant-1763131597/users/e2e-test-user-1763131597",
+    "status": 403,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "Health Check",
+    "method": "GET",
+    "url": "http://localhost:8010/health",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "API Health Check",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/health",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "Readiness Check",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/ready",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:07Z",
+    "error": ""
+  },
+  {
+    "name": "OpenAPI Spec",
+    "method": "GET",
+    "url": "http://localhost:8010/api/openapi.json",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 1000,
+    "timestamp": "2025-11-14T14:47:08Z",
+    "error": ""
+  },
+  {
+    "name": "Get Unified Query Metadata",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/unified/metadata",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:08Z",
+    "error": ""
+  },
+  {
+    "name": "Get Unified Query Engine Health",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/unified/health",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:08Z",
+    "error": ""
+  },
+  {
+    "name": "Get Unified Query Statistics",
+    "method": "GET",
+    "url": "http://localhost:8010/api/v1/unified/stats",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:08Z",
+    "error": ""
+  },
+  {
+    "name": "Unified Query: Metrics",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/unified/query",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:08Z",
+    "error": ""
+  },
+  {
+    "name": "Unified Query: Metrics Range",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/unified/query",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:08Z",
+    "error": ""
+  },
+  {
+    "name": "Unified Query: Logs",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/unified/query",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:08Z",
+    "error": ""
+  },
+  {
+    "name": "Unified Query: Logs Histogram",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/unified/query",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:08Z",
+    "error": ""
+  },
+  {
+    "name": "Unified Query: Traces",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/unified/query",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:08Z",
+    "error": ""
+  },
+  {
+    "name": "Unified Search",
+    "method": "POST",
+    "url": "http://localhost:8010/api/v1/unified/search",
+    "status": 200,
+    "success": true,
+    "response_time_ms": 0,
+    "timestamp": "2025-11-14T14:47:08Z",
+    "error": ""
   }
 ]

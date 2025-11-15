@@ -377,25 +377,25 @@ func (s *RBACBootstrapService) BootstrapDefaultRoles(ctx context.Context, defaul
 		{
 			name:        "global_admin",
 			description: "Global administrator with full system access",
-			permissions: []string{"*.admin", "rbac.admin", "tenant.admin", "user.admin"},
+			permissions: []string{"*.admin", "rbac.admin", "tenant.admin", "user.admin", "apikey.global_admin"},
 			isSystem:    true,
 		},
 		{
 			name:        "tenant_admin",
 			description: "Tenant administrator with tenant-level management",
-			permissions: []string{"tenant.admin", "rbac.admin", "user.admin", "dashboard.admin"},
+			permissions: []string{"tenant.admin", "rbac.admin", "user.admin", "dashboard.admin", "apikey.admin"},
 			isSystem:    true,
 		},
 		{
 			name:        "tenant_editor",
 			description: "Tenant editor with read/write access",
-			permissions: []string{"dashboard.create", "dashboard.update", "dashboard.read", "kpi.create", "kpi.update", "kpi.read"},
+			permissions: []string{"dashboard.create", "dashboard.update", "dashboard.read", "kpi.create", "kpi.update", "kpi.read", "apikey.manage"},
 			isSystem:    true,
 		},
 		{
 			name:        "tenant_guest",
 			description: "Tenant guest with read-only access",
-			permissions: []string{"dashboard.read", "kpi.read"},
+			permissions: []string{"dashboard.read", "kpi.read", "apikey.manage"},
 			isSystem:    true,
 		},
 	}

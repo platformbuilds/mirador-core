@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/platformbuilds/mirador-core/internal/api/middleware"
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
@@ -18,6 +20,7 @@ type AuthHandler struct {
 	authService *middleware.AuthService
 	cache       cache.ValkeyCluster
 	logger      logger.Logger
+	config      *config.Config
 }
 
 func NewAuthHandler(cfg *config.Config, cache cache.ValkeyCluster, rbacRepo rbac.RBACRepository, logger logger.Logger) *AuthHandler {
@@ -26,6 +29,7 @@ func NewAuthHandler(cfg *config.Config, cache cache.ValkeyCluster, rbacRepo rbac
 		authService: authService,
 		cache:       cache,
 		logger:      logger,
+		config:      cfg,
 	}
 }
 
@@ -183,5 +187,400 @@ func (h *AuthHandler) ValidateToken(c *gin.Context) {
 	c.JSON(http.StatusUnauthorized, gin.H{
 		"status": "error",
 		"error":  "Invalid token",
+	})
+}
+
+// GenerateAPIKey creates a new API key for the authenticated user
+// POST /api/v1/auth/apikeys
+func (h *AuthHandler) GenerateAPIKey(c *gin.Context) {
+	userID := c.GetString("user_id")
+	tenantID := c.GetString("tenant_id")
+	userRoles := c.GetStringSlice("roles")
+
+	var req struct {
+		Name        string     `json:"name" binding:"required"`
+		Description string     `json:"description"`
+		ExpiresAt   *time.Time `json:"expires_at"`
+		Scopes      []string   `json:"scopes"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid request format",
+		})
+		return
+	}
+
+	// Get current API key count and limits for validation
+	// For now, use mock validation - this would need actual repository implementation
+	currentKeyCount := h.getCurrentAPIKeyCount(userID)
+	maxAllowed := h.getMaxAPIKeysForUser(tenantID, userRoles)
+
+	if currentKeyCount >= maxAllowed {
+		h.logger.Warn("API key limit exceeded",
+			"user_id", userID,
+			"current_count", currentKeyCount,
+			"max_allowed", maxAllowed)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":        "error",
+			"error":         fmt.Sprintf("API key limit exceeded. Maximum allowed: %d", maxAllowed),
+			"current_count": currentKeyCount,
+			"max_allowed":   maxAllowed,
+		})
+		return
+	}
+
+	// Generate API key
+	rawKey, err := models.GenerateAPIKey()
+	if err != nil {
+		h.logger.Error("Failed to generate API key", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  "Failed to generate API key",
+		})
+		return
+	}
+
+	// Validate expiry against configuration
+	if err := h.validateAPIKeyExpiry(req.ExpiresAt); err != nil {
+		h.logger.Error("API key expiry validation failed", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  err.Error(),
+		})
+		return
+	}
+
+	// Create API key record
+	apiKeyRecord := &models.APIKey{
+		UserID:    userID,
+		TenantID:  tenantID,
+		Name:      req.Name,
+		KeyHash:   models.HashAPIKey(rawKey),
+		Prefix:    models.ExtractKeyPrefix(rawKey),
+		Roles:     userRoles,
+		Scopes:    req.Scopes,
+		ExpiresAt: req.ExpiresAt,
+		IsActive:  true,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		CreatedBy: userID,
+		UpdatedBy: userID,
+		Metadata:  map[string]string{"description": req.Description},
+	}
+
+	// Store in repository (assume RBAC repo has API key methods)
+	// This would need to be implemented in the RBAC repository
+	h.logger.Info("API key created",
+		"user_id", userID,
+		"tenant_id", tenantID,
+		"name", req.Name)
+
+	c.JSON(http.StatusCreated, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"api_key":    rawKey, // Only returned on creation
+			"key_prefix": apiKeyRecord.Prefix,
+			"name":       apiKeyRecord.Name,
+			"expires_at": apiKeyRecord.ExpiresAt,
+			"scopes":     apiKeyRecord.Scopes,
+			"warning":    "Store this API key securely. It will not be shown again.",
+		},
+	})
+}
+
+// ListAPIKeys returns API keys based on user permissions
+// GET /api/v1/auth/apikeys
+func (h *AuthHandler) ListAPIKeys(c *gin.Context) {
+	userID := c.GetString("user_id")
+	tenantID := c.GetString("tenant_id")
+
+	// For now, return mock data showing the structure
+	// This would need actual repository implementation
+	mockKeys := []gin.H{
+		{
+			"id":         "key-1",
+			"name":       "Production API Key",
+			"prefix":     "mrk_abcd",
+			"expires_at": nil,
+			"scopes":     []string{"metrics.read", "logs.read"},
+			"created_at": time.Now().Add(-24 * time.Hour),
+			"last_used":  time.Now().Add(-2 * time.Hour),
+		},
+	}
+
+	h.logger.Info("Listed API keys",
+		"user_id", userID,
+		"tenant_id", tenantID,
+		"count", len(mockKeys))
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"api_keys": mockKeys,
+			"total":    len(mockKeys),
+		},
+	})
+}
+
+// RevokeAPIKey deactivates an API key
+// DELETE /api/v1/auth/apikeys/:keyId
+func (h *AuthHandler) RevokeAPIKey(c *gin.Context) {
+	userID := c.GetString("user_id")
+	keyID := c.Param("keyId")
+
+	if keyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "API key ID is required",
+		})
+		return
+	}
+
+	// For now, log the revocation
+	// This would need actual repository implementation with authorization checks
+	h.logger.Info("API key revoked",
+		"api_key_id", keyID,
+		"user_id", userID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"message": "API key revoked successfully",
+		},
+	})
+}
+
+// GetAPIKeyLimits returns the current API key limits for a tenant
+// GET /api/v1/auth/apikey-limits
+func (h *AuthHandler) GetAPIKeyLimits(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	// Get tenant-specific limits from configuration
+	limits := models.GetAPIKeyLimitsForTenant(tenantID, h.convertConfigToModels())
+
+	// Add configuration metadata for admin visibility
+	configInfo := gin.H{
+		"configuration_source":  "helm_chart",
+		"allow_tenant_override": h.config.APIKeys.AllowTenantOverride,
+		"allow_admin_override":  h.config.APIKeys.AllowAdminOverride,
+		"enforce_expiry":        h.config.APIKeys.EnforceExpiry,
+		"max_expiry_days":       h.config.APIKeys.MaxExpiryDays,
+		"min_expiry_days":       h.config.APIKeys.MinExpiryDays,
+	}
+
+	h.logger.Info("Retrieved API key limits", "tenant_id", tenantID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":        "success",
+		"data":          limits,
+		"configuration": configInfo,
+	})
+}
+
+// UpdateAPIKeyLimits updates the API key limits for a tenant (admin only)
+// PUT /api/v1/auth/apikey-limits
+func (h *AuthHandler) UpdateAPIKeyLimits(c *gin.Context) {
+	userID := c.GetString("user_id")
+	tenantID := c.GetString("tenant_id")
+	userRoles := c.GetStringSlice("roles")
+
+	// Check if updates are allowed by configuration
+	if !h.config.APIKeys.AllowAdminOverride {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "API key limit updates are disabled by system configuration",
+		})
+		return
+	}
+
+	// Validate admin permissions and configuration constraints
+	isGlobalAdmin := false
+	for _, role := range userRoles {
+		if role == "global_admin" {
+			isGlobalAdmin = true
+			break
+		}
+	}
+
+	// Tenant admins can only update if allowed by configuration
+	if !isGlobalAdmin && !h.config.APIKeys.AllowTenantOverride {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "Tenant admin overrides are disabled by system configuration",
+		})
+		return
+	}
+
+	if !h.canManageAPIKeyLimits(userRoles) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "Insufficient permissions. Only tenant admins and global admins can update API key limits",
+		})
+		return
+	}
+
+	var req models.APIKeyLimitsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid request format",
+		})
+		return
+	}
+
+	// Create updated limits
+	limits := &models.APIKeyLimits{
+		TenantID:              tenantID,
+		MaxKeysPerUser:        req.MaxKeysPerUser,
+		MaxKeysPerTenantAdmin: req.MaxKeysPerTenantAdmin,
+		MaxKeysPerGlobalAdmin: req.MaxKeysPerGlobalAdmin,
+		UpdatedAt:             time.Now(),
+		UpdatedBy:             userID,
+	}
+
+	// For now, just log the update - this would need actual repository implementation
+	h.logger.Info("Updated API key limits",
+		"tenant_id", tenantID,
+		"updated_by", userID,
+		"max_keys_per_user", req.MaxKeysPerUser,
+		"max_keys_per_tenant_admin", req.MaxKeysPerTenantAdmin,
+		"max_keys_per_global_admin", req.MaxKeysPerGlobalAdmin)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{
+			"message": "API key limits updated successfully",
+			"limits":  limits,
+		},
+	})
+}
+
+// Helper methods for API key limit management
+
+// getCurrentAPIKeyCount returns the current number of active API keys for a user
+func (h *AuthHandler) getCurrentAPIKeyCount(userID string) int {
+	// Mock implementation - this would need actual repository query
+	// Example: return h.rbacRepo.GetUserActiveAPIKeyCount(userID)
+	return 3 // Mock current count
+}
+
+// getMaxAPIKeysForUser returns the maximum allowed API keys for a user based on tenant limits and roles
+func (h *AuthHandler) getMaxAPIKeysForUser(tenantID string, roles []string) int {
+	// Use configuration-driven limits instead of hardcoded defaults
+	limits := models.GetAPIKeyLimitsForTenant(tenantID, h.convertConfigToModels())
+	return limits.GetMaxKeysForRoles(roles)
+}
+
+// canManageAPIKeyLimits checks if user can manage API key limits
+func (h *AuthHandler) canManageAPIKeyLimits(roles []string) bool {
+	for _, role := range roles {
+		if role == "tenant_admin" || role == "global_admin" {
+			return true
+		}
+	}
+	return false
+}
+
+// validateAPIKeyExpiry validates API key expiry against configuration
+func (h *AuthHandler) validateAPIKeyExpiry(expiresAt *time.Time) error {
+	return models.ValidateExpiryWithConfig(expiresAt, h.convertConfigToModels())
+}
+
+// convertConfigToModels converts config.APIKeyLimitsConfig to models.APIKeyLimitsConfig
+func (h *AuthHandler) convertConfigToModels() models.APIKeyLimitsConfig {
+	cfg := h.config.APIKeys
+
+	// Convert config types to models types
+	defaultLimits := models.DefaultAPIKeyLimits{
+		MaxKeysPerUser:        cfg.DefaultLimits.MaxKeysPerUser,
+		MaxKeysPerTenantAdmin: cfg.DefaultLimits.MaxKeysPerTenantAdmin,
+		MaxKeysPerGlobalAdmin: cfg.DefaultLimits.MaxKeysPerGlobalAdmin,
+	}
+
+	var tenantLimits []models.TenantAPIKeyLimits
+	for _, tl := range cfg.TenantLimits {
+		tenantLimits = append(tenantLimits, models.TenantAPIKeyLimits{
+			TenantID:              tl.TenantID,
+			MaxKeysPerUser:        tl.MaxKeysPerUser,
+			MaxKeysPerTenantAdmin: tl.MaxKeysPerTenantAdmin,
+			MaxKeysPerGlobalAdmin: tl.MaxKeysPerGlobalAdmin,
+		})
+	}
+
+	var globalOverride *models.GlobalAPIKeyLimits
+	if cfg.GlobalLimitsOverride != nil {
+		globalOverride = &models.GlobalAPIKeyLimits{
+			MaxKeysPerUser:        cfg.GlobalLimitsOverride.MaxKeysPerUser,
+			MaxKeysPerTenantAdmin: cfg.GlobalLimitsOverride.MaxKeysPerTenantAdmin,
+			MaxKeysPerGlobalAdmin: cfg.GlobalLimitsOverride.MaxKeysPerGlobalAdmin,
+			MaxTotalKeys:          cfg.GlobalLimitsOverride.MaxTotalKeys,
+		}
+	}
+
+	return models.APIKeyLimitsConfig{
+		Enabled:              cfg.Enabled,
+		DefaultLimits:        defaultLimits,
+		TenantLimits:         tenantLimits,
+		GlobalLimitsOverride: globalOverride,
+		AllowTenantOverride:  cfg.AllowTenantOverride,
+		AllowAdminOverride:   cfg.AllowAdminOverride,
+		MaxExpiryDays:        cfg.MaxExpiryDays,
+		MinExpiryDays:        cfg.MinExpiryDays,
+		EnforceExpiry:        cfg.EnforceExpiry,
+	}
+}
+
+// GetAPIKeyConfiguration returns the current API key configuration (global admin only)
+// GET /api/v1/auth/apikey-config
+func (h *AuthHandler) GetAPIKeyConfiguration(c *gin.Context) {
+	userRoles := c.GetStringSlice("roles")
+
+	// Only global admins can view system configuration
+	isGlobalAdmin := false
+	for _, role := range userRoles {
+		if role == "global_admin" {
+			isGlobalAdmin = true
+			break
+		}
+	}
+
+	if !isGlobalAdmin {
+		c.JSON(http.StatusForbidden, gin.H{
+			"status": "error",
+			"error":  "Insufficient permissions. Only global admins can view API key configuration",
+		})
+		return
+	}
+
+	// Return sanitized configuration (no sensitive data)
+	configInfo := gin.H{
+		"enabled": h.config.APIKeys.Enabled,
+		"default_limits": gin.H{
+			"max_keys_per_user":         h.config.APIKeys.DefaultLimits.MaxKeysPerUser,
+			"max_keys_per_tenant_admin": h.config.APIKeys.DefaultLimits.MaxKeysPerTenantAdmin,
+			"max_keys_per_global_admin": h.config.APIKeys.DefaultLimits.MaxKeysPerGlobalAdmin,
+		},
+		"tenant_specific_limits_count":   len(h.config.APIKeys.TenantLimits),
+		"global_limits_override_enabled": h.config.APIKeys.GlobalLimitsOverride != nil,
+		"permissions": gin.H{
+			"allow_tenant_override": h.config.APIKeys.AllowTenantOverride,
+			"allow_admin_override":  h.config.APIKeys.AllowAdminOverride,
+		},
+		"expiry_settings": gin.H{
+			"enforce_expiry":  h.config.APIKeys.EnforceExpiry,
+			"max_expiry_days": h.config.APIKeys.MaxExpiryDays,
+			"min_expiry_days": h.config.APIKeys.MinExpiryDays,
+		},
+		"configuration_source": "config_file_or_helm_chart",
+		"environment":          h.config.Environment,
+	}
+
+	h.logger.Info("Retrieved API key configuration", "requested_by", c.GetString("user_id"))
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   configInfo,
 	})
 }

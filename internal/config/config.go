@@ -19,6 +19,7 @@ type Config struct {
 	Uploads      UploadsConfig      `mapstructure:"uploads" yaml:"uploads"`
 	Search       SearchConfig       `mapstructure:"search" yaml:"search"`
 	UnifiedQuery UnifiedQueryConfig `mapstructure:"unified_query" yaml:"unified_query"`
+	APIKeys      APIKeyLimitsConfig `mapstructure:"api_keys" yaml:"api_keys"`
 }
 
 // DatabaseConfig handles VictoriaMetrics ecosystem configuration
@@ -308,4 +309,40 @@ type UnifiedQueryConfig struct {
 	MaxCacheTTL       time.Duration `mapstructure:"max_cache_ttl" yaml:"max_cache_ttl"`
 	DefaultLimit      int           `mapstructure:"default_limit" yaml:"default_limit"`
 	EnableCorrelation bool          `mapstructure:"enable_correlation" yaml:"enable_correlation"`
+}
+
+// APIKeyLimitsConfig holds configuration for API key limits
+type APIKeyLimitsConfig struct {
+	Enabled              bool                 `mapstructure:"enabled" yaml:"enabled"`
+	DefaultLimits        DefaultAPIKeyLimits  `mapstructure:"default_limits" yaml:"default_limits"`
+	TenantLimits         []TenantAPIKeyLimits `mapstructure:"tenant_limits" yaml:"tenant_limits"`
+	GlobalLimitsOverride *GlobalAPIKeyLimits  `mapstructure:"global_limits_override" yaml:"global_limits_override"`
+	AllowTenantOverride  bool                 `mapstructure:"allow_tenant_override" yaml:"allow_tenant_override"`
+	AllowAdminOverride   bool                 `mapstructure:"allow_admin_override" yaml:"allow_admin_override"`
+	MaxExpiryDays        int                  `mapstructure:"max_expiry_days" yaml:"max_expiry_days"`
+	MinExpiryDays        int                  `mapstructure:"min_expiry_days" yaml:"min_expiry_days"`
+	EnforceExpiry        bool                 `mapstructure:"enforce_expiry" yaml:"enforce_expiry"`
+}
+
+// DefaultAPIKeyLimits holds system-wide default limits
+type DefaultAPIKeyLimits struct {
+	MaxKeysPerUser        int `mapstructure:"max_keys_per_user" yaml:"max_keys_per_user"`
+	MaxKeysPerTenantAdmin int `mapstructure:"max_keys_per_tenant_admin" yaml:"max_keys_per_tenant_admin"`
+	MaxKeysPerGlobalAdmin int `mapstructure:"max_keys_per_global_admin" yaml:"max_keys_per_global_admin"`
+}
+
+// TenantAPIKeyLimits holds tenant-specific limits
+type TenantAPIKeyLimits struct {
+	TenantID              string `mapstructure:"tenant_id" yaml:"tenant_id"`
+	MaxKeysPerUser        int    `mapstructure:"max_keys_per_user" yaml:"max_keys_per_user"`
+	MaxKeysPerTenantAdmin int    `mapstructure:"max_keys_per_tenant_admin" yaml:"max_keys_per_tenant_admin"`
+	MaxKeysPerGlobalAdmin int    `mapstructure:"max_keys_per_global_admin" yaml:"max_keys_per_global_admin"`
+}
+
+// GlobalAPIKeyLimits holds system-wide override limits
+type GlobalAPIKeyLimits struct {
+	MaxKeysPerUser        int `mapstructure:"max_keys_per_user" yaml:"max_keys_per_user"`
+	MaxKeysPerTenantAdmin int `mapstructure:"max_keys_per_tenant_admin" yaml:"max_keys_per_tenant_admin"`
+	MaxKeysPerGlobalAdmin int `mapstructure:"max_keys_per_global_admin" yaml:"max_keys_per_global_admin"`
+	MaxTotalKeys          int `mapstructure:"max_total_keys" yaml:"max_total_keys"`
 }

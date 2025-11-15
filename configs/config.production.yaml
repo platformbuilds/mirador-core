@@ -164,3 +164,21 @@ unified_query:
 uploads:
   # Bulk CSV upload limit (bytes); default 5 MiB.
   bulk_max_bytes: 5242880
+
+# API Key Management Configuration (Production)
+api_keys:
+  enabled: true
+  # Production defaults - more restrictive for security
+  default_limits:
+    max_keys_per_user: 5
+    max_keys_per_tenant_admin: 15
+    max_keys_per_global_admin: 50
+  tenant_limits: []
+  global_limits_override: null
+  # More restrictive in production
+  allow_tenant_override: false  # Disable tenant overrides in production
+  allow_admin_override: true
+  # Longer maximum expiry for production keys
+  max_expiry_days: 730  # 2 years maximum
+  min_expiry_days: 7
+  enforce_expiry: true  # Require expiry in production
