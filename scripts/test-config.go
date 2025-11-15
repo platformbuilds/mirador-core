@@ -1,4 +1,6 @@
 // config-validation-test.go - Simple test script to validate API key configuration loading
+//
+//nolint:depguard,mnd // This is a utility script that needs to import internal packages
 
 package main
 
@@ -11,11 +13,18 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	// MinArgsRequired represents the minimum number of command line arguments required
+	MinArgsRequired = 2
+	// ExitCodeError represents the exit code for errors
+	ExitCodeError = 1
+)
+
 func main() {
-	if len(os.Args) < 2 {
+	if len(os.Args) < MinArgsRequired {
 		fmt.Println("Usage: go run config-validation-test.go <config-file>")
 		fmt.Println("Example: go run config-validation-test.go configs/config.yaml")
-		os.Exit(1)
+		os.Exit(ExitCodeError)
 	}
 
 	configFile := os.Args[1]

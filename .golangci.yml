@@ -216,6 +216,12 @@ linters:
           - unparam
         path: tools/
       - linters:
+          - depguard
+          - err113
+          - gocritic
+          - mnd
+        path: scripts/
+      - linters:
           - dupl
         path: internal/repo/rbac/weaviate_repository\.go
       - linters:
