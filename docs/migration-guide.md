@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide helps you migrate from using separate engine-specific APIs (VictoriaMetrics, VictoriaLogs, VictoriaTraces) to the unified query API introduced in Mirador Core v7.0.0. The unified API provides intelligent routing, cross-engine correlation, and a consistent interface across all observability data types.
+This guide helps you migrate from using separate engine-specific APIs (VictoriaMetrics, VictoriaLogs, VictoriaTraces) to the unified query API introduced in Mirador Core. The unified API provides intelligent routing, cross-engine correlation, and a consistent interface across all observability data types.
 
 ## Table of Contents
 
@@ -54,7 +54,7 @@ This guide helps you migrate from using separate engine-specific APIs (VictoriaM
 We recommend a **phased migration approach** rather than a "big bang" cutover:
 
 #### Phase 1: Parallel Operation (Weeks 1-2)
-- Deploy v7.0.0 alongside existing implementation
+- Deploy alongside existing implementation
 - Add unified API calls in new features
 - Keep existing engine-specific calls unchanged
 - Monitor performance and validate results
@@ -79,7 +79,7 @@ We recommend a **phased migration approach** rather than a "big bang" cutover:
 ### Migration Timeline
 
 ```
-Week 1-2:  Deploy v7.0.0, parallel operation
+Week 1-2:  Deploy, parallel operation
 Week 3-4:  Migrate metrics queries
 Week 5-6:  Migrate logs and traces queries
 Week 7:    Migrate correlation/complex queries
@@ -119,17 +119,17 @@ Week 9+:   Cleanup and optimization
 
 ### Step 1: Update Dependencies
 
-Update your Mirador Core client or SDK to v7.0.0+:
+Update your Mirador Core client or SDK:
 
 ```bash
 # Go
-go get github.com/platformbuilds/mirador-core-go-client@v7.0.0
+go get github.com/platformbuilds/mirador-core-go-client
 
 # Python
-pip install mirador-core-client>=7.0.0
+pip install mirador-core-client
 
 # Node.js
-npm install @mirador/core-client@^7.0.0
+npm install @mirador/core-client
 ```
 
 ### Step 2: Update Configuration

@@ -1,7 +1,7 @@
 {
   "dashboard": {
     "id": null,
-    "title": "Mirador Core v7.0.0 - Correlation Engine Performance",
+    "title": "Mirador Core - Correlation Engine Performance",
     "tags": ["mirador-core", "correlation-engine", "performance"],
     "timezone": "browser",
     "panels": [

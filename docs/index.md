@@ -5,6 +5,7 @@
 :caption: Contents:
 
 getting-started
+user-journeys
 unified-query-architecture
 uql-language-guide
 unified-query-operations

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide provides comprehensive operational procedures for managing the unified query platform in Mirador Core v7.0.0+. It covers monitoring, scaling, troubleshooting, and maintaining high availability of the unified observability system.
+This guide provides comprehensive operational procedures for managing the unified query platform in Mirador Core. It covers monitoring, scaling, troubleshooting, and maintaining high availability of the unified observability system.
 
 ## Table of Contents
 
@@ -909,7 +909,7 @@ Perform zero-downtime updates:
 # Update to new version
 kubectl set image deployment/mirador-core \
   -n mirador-system \
-  mirador-core=platformbuilds/mirador-core:v7.1.0
+  mirador-core=platformbuilds/mirador-core
 
 # Monitor rollout
 kubectl rollout status deployment/mirador-core -n mirador-system
@@ -997,7 +997,7 @@ Regular security scans:
 
 ```bash
 # Scan container images
-trivy image platformbuilds/mirador-core:v7.0.0
+trivy image platformbuilds/mirador-core
 
 # Scan Kubernetes manifests
 kubectl scan deployment/mirador-core -n mirador-system

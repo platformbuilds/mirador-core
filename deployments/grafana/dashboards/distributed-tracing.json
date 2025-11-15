@@ -1,7 +1,7 @@
 {
   "dashboard": {
     "id": null,
-    "title": "Mirador Core v7.0.0 - Distributed Tracing",
+    "title": "Mirador Core - Distributed Tracing",
     "tags": ["mirador-core", "tracing", "opentelemetry"],
     "timezone": "browser",
     "panels": [
