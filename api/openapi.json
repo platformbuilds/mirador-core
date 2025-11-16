@@ -289,9 +289,6 @@
                         "user_id": {
                           "type": "string"
                         },
-                        "tenant_id": {
-                          "type": "string"
-                        },
                         "roles": {
                           "type": "array",
                           "items": {
@@ -489,9 +486,6 @@
                           ]
                         },
                         "user_id": {
-                          "type": "string"
-                        },
-                        "tenant_id": {
                           "type": "string"
                         },
                         "roles": {
@@ -889,7 +883,7 @@
     "/api/v1/auth/apikey-limits": {
       "get": {
         "summary": "Get API key limits",
-        "description": "Retrieve the current API key limits and configuration for the authenticated tenant",
+        "description": "Retrieve the current API key limits and configuration",
         "tags": [
           "api-keys"
         ],
@@ -922,9 +916,6 @@
                         "configuration_source": {
                           "type": "string"
                         },
-                        "allow_tenant_override": {
-                          "type": "boolean"
-                        },
                         "allow_admin_override": {
                           "type": "boolean"
                         },
@@ -948,7 +939,7 @@
       },
       "put": {
         "summary": "Update API key limits",
-        "description": "Update API key limits for a tenant (requires tenant admin or global admin role)",
+        "description": "Update API key limits (requires admin role)",
         "tags": [
           "api-keys"
         ],
@@ -1079,7 +1070,7 @@
                             "max_keys_per_user": {
                               "type": "integer"
                             },
-                            "max_keys_per_tenant_admin": {
+                            "max_keys_per_admin": {
                               "type": "integer"
                             },
                             "max_keys_per_global_admin": {
@@ -1087,7 +1078,7 @@
                             }
                           }
                         },
-                        "tenant_specific_limits_count": {
+                        "admin_limits_count": {
                           "type": "integer"
                         },
                         "global_limits_override_enabled": {
@@ -1096,9 +1087,6 @@
                         "permissions": {
                           "type": "object",
                           "properties": {
-                            "allow_tenant_override": {
-                              "type": "boolean"
-                            },
                             "allow_admin_override": {
                               "type": "boolean"
                             }
@@ -1156,7 +1144,7 @@
     "/api/v1/rbac/roles": {
       "get": {
         "summary": "Get roles",
-        "description": "Retrieve all roles for the tenant",
+        "description": "Retrieve all roles",
         "tags": [
           "rbac"
         ],
@@ -1352,7 +1340,7 @@
     "/api/v1/rbac/permissions": {
       "get": {
         "summary": "Get permissions",
-        "description": "Retrieve all permissions for the tenant",
+        "description": "Retrieve all permissions",
         "tags": [
           "rbac"
         ],
@@ -1542,7 +1530,7 @@
     "/api/v1/rbac/groups": {
       "get": {
         "summary": "Get groups",
-        "description": "Retrieve all groups for the tenant",
+        "description": "Retrieve all groups",
         "tags": [
           "rbac"
         ],
@@ -1910,7 +1898,7 @@
     "/api/v1/rbac/role-bindings": {
       "get": {
         "summary": "Get role bindings",
-        "description": "Retrieve all role bindings for the tenant",
+        "description": "Retrieve all role bindings",
         "tags": [
           "rbac"
         ],
@@ -2113,14 +2101,6 @@
           }
         ],
         "parameters": [
-          {
-            "name": "tenant_id",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID (optional, defaults to request context)"
-          },
           {
             "name": "tags",
             "in": "query",
@@ -2545,14 +2525,6 @@
           }
         ],
         "parameters": [
-          {
-            "name": "tenant_id",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID (optional, defaults to request context)"
-          },
           {
             "name": "limit",
             "in": "query",
@@ -5568,7 +5540,7 @@
     "/api/v1/rbac/audit": {
       "get": {
         "summary": "Get audit events",
-        "description": "Get RBAC audit events for the tenant",
+        "description": "Get RBAC audit events",
         "tags": [
           "rbac-audit"
         ],
@@ -5922,1001 +5894,6 @@
           },
           "500": {
             "description": "Failed to retrieve audit events",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/tenants": {
-      "get": {
-        "summary": "List tenants",
-        "description": "List all tenants (global admin only)",
-        "tags": [
-          "tenants"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 50
-            },
-            "description": "Maximum number of results"
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "default": 0
-            },
-            "description": "Pagination offset"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Tenants listed successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to list tenants",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "Create tenant",
-        "description": "Create a new tenant (global admin only)",
-        "tags": [
-          "tenants"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Tenant"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Tenant created successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/Tenant"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid tenant data",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to create tenant",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/tenants/{tenantId}": {
-      "get": {
-        "summary": "Get tenant",
-        "description": "Get tenant details (tenant admin or global admin)",
-        "tags": [
-          "tenants"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Tenant retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/Tenant"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Tenant not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to retrieve tenant",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update tenant",
-        "description": "Update tenant details (tenant admin or global admin)",
-        "tags": [
-          "tenants"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Tenant"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Tenant updated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/Tenant"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid tenant data",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Tenant not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to update tenant",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete tenant",
-        "description": "Delete a tenant (global admin only)",
-        "tags": [
-          "tenants"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Tenant deleted successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Tenant not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to delete tenant",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/tenants/{tenantId}/users": {
-      "get": {
-        "summary": "List tenant users",
-        "description": "List users in a tenant (tenant admin)",
-        "tags": [
-          "tenants"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 50
-            },
-            "description": "Maximum number of results"
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "default": 0
-            },
-            "description": "Pagination offset"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Tenant users listed successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to list tenant users",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "Create tenant user",
-        "description": "Add a user to a tenant (tenant admin)",
-        "tags": [
-          "tenants"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TenantUser"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Tenant user created successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/TenantUser"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid user data",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to create tenant user",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/tenants/{tenantId}/users/{userId}": {
-      "get": {
-        "summary": "Get tenant user",
-        "description": "Get user details in tenant (tenant admin)",
-        "tags": [
-          "tenants"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID"
-          },
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "User ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Tenant user retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/TenantUser"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Tenant user not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to retrieve tenant user",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update tenant user",
-        "description": "Update user details in tenant (tenant admin)",
-        "tags": [
-          "tenants"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID"
-          },
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "User ID"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TenantUser"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Tenant user updated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/TenantUser"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid user data",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Tenant user not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to update tenant user",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete tenant user",
-        "description": "Remove a user from tenant (tenant admin)",
-        "tags": [
-          "tenants"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID"
-          },
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "User ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Tenant user deleted successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Tenant user not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to delete tenant user",
             "content": {
               "application/json": {
                 "schema": {
@@ -7803,7 +6780,7 @@
     "/api/v1/auth/config": {
       "post": {
         "summary": "Create AuthConfig",
-        "description": "Create authentication configuration for tenant (tenant admin only)",
+        "description": "Create authentication configuration (admin only)",
         "tags": [
           "auth-config"
         ],
@@ -7891,12 +6868,10 @@
             }
           }
         }
-      }
-    },
-    "/api/v1/auth/config/{tenantId}": {
+      },
       "get": {
         "summary": "Get AuthConfig",
-        "description": "Get authentication configuration for tenant (tenant admin only)",
+        "description": "Get authentication configuration (admin only)",
         "tags": [
           "auth-config"
         ],
@@ -7906,17 +6881,6 @@
           },
           {
             "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID"
           }
         ],
         "responses": {
@@ -7988,7 +6952,7 @@
       },
       "put": {
         "summary": "Update AuthConfig",
-        "description": "Update authentication configuration for tenant (tenant admin only)",
+        "description": "Update authentication configuration (admin only)",
         "tags": [
           "auth-config"
         ],
@@ -7998,17 +6962,6 @@
           },
           {
             "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID"
           }
         ],
         "requestBody": {
@@ -8105,7 +7058,7 @@
       },
       "delete": {
         "summary": "Delete AuthConfig",
-        "description": "Delete authentication configuration for tenant (tenant admin only)",
+        "description": "Delete authentication configuration (admin only)",
         "tags": [
           "auth-config"
         ],
@@ -8115,17 +7068,6 @@
           },
           {
             "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID"
           }
         ],
         "responses": {
@@ -9005,9 +7947,6 @@
                   "query": {
                     "type": "string"
                   },
-                  "tenantId": {
-                    "type": "string"
-                  },
                   "limit": {
                     "type": "integer",
                     "default": 50
@@ -9084,9 +8023,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "tenantId": {
-                    "type": "string"
-                  },
                   "fullSync": {
                     "type": "boolean",
                     "default": false
@@ -9209,182 +8145,6 @@
         }
       }
     },
-    "/api/v1/metrics/sync/{tenantId}": {
-      "post": {
-        "summary": "Start sync for tenant",
-        "description": "Start metrics metadata synchronization for a specific tenant",
-        "tags": [
-          "metrics-sync"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Sync started successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "started"
-                    },
-                    "syncId": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to start sync",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/metrics/sync/{tenantId}/state": {
-      "get": {
-        "summary": "Get sync state",
-        "description": "Get current synchronization state for a tenant",
-        "tags": [
-          "metrics-sync"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Sync state retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to retrieve sync state",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/metrics/sync/{tenantId}/status": {
-      "get": {
-        "summary": "Get sync status",
-        "description": "Get synchronization status for a tenant",
-        "tags": [
-          "metrics-sync"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tenantId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Tenant ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Sync status retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to retrieve sync status",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/metrics/sync/config": {
       "put": {
         "summary": "Update sync config",
@@ -9470,15 +8230,12 @@
           "id": {
             "type": "string"
           },
-          "tenantId": {
-            "type": "string"
-          },
           "maxKeysPerUser": {
             "type": "integer",
             "minimum": 1,
             "maximum": 100
           },
-          "maxKeysPerTenantAdmin": {
+          "maxKeysPerAdmin": {
             "type": "integer",
             "minimum": 1,
             "maximum": 200
@@ -9508,7 +8265,7 @@
         "type": "object",
         "required": [
           "maxKeysPerUser",
-          "maxKeysPerTenantAdmin",
+          "maxKeysPerAdmin",
           "maxKeysPerGlobalAdmin"
         ],
         "properties": {
@@ -9517,7 +8274,7 @@
             "minimum": 1,
             "maximum": 100
           },
-          "maxKeysPerTenantAdmin": {
+          "maxKeysPerAdmin": {
             "type": "integer",
             "minimum": 1,
             "maximum": 200
@@ -9592,9 +8349,6 @@
               "team",
               "org"
             ]
-          },
-          "tenantId": {
-            "type": "string"
           },
           "createdAt": {
             "type": "string",
@@ -9674,9 +8428,6 @@
           "isDefault": {
             "type": "boolean"
           },
-          "tenantId": {
-            "type": "string"
-          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -9732,9 +8483,6 @@
           "description": {
             "type": "string"
           },
-          "tenantId": {
-            "type": "string"
-          },
           "permissions": {
             "type": "array",
             "items": {
@@ -9774,9 +8522,6 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
-          },
-          "tenantId": {
             "type": "string"
           },
           "resource": {
@@ -9878,9 +8623,6 @@
             "type": "string"
           },
           "description": {
-            "type": "string"
-          },
-          "tenantId": {
             "type": "string"
           },
           "members": {
@@ -10055,193 +8797,6 @@
           }
         }
       },
-      "Tenant": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "deployments": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TenantDeployment"
-            }
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "active",
-              "suspended",
-              "pending_deletion"
-            ]
-          },
-          "adminEmail": {
-            "type": "string"
-          },
-          "adminName": {
-            "type": "string"
-          },
-          "quotas": {
-            "$ref": "#/components/schemas/TenantQuotas"
-          },
-          "features": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "metadata": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "isSystem": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdBy": {
-            "type": "string"
-          },
-          "updatedBy": {
-            "type": "string"
-          }
-        }
-      },
-      "TenantDeployment": {
-        "type": "object",
-        "properties": {
-          "environment": {
-            "type": "string"
-          },
-          "metricsEndpoint": {
-            "type": "string"
-          },
-          "logsEndpoint": {
-            "type": "string"
-          },
-          "tracesEndpoint": {
-            "type": "string"
-          },
-          "priority": {
-            "type": "integer"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "TenantQuotas": {
-        "type": "object",
-        "properties": {
-          "maxUsers": {
-            "type": "integer"
-          },
-          "maxDashboards": {
-            "type": "integer"
-          },
-          "maxKPIs": {
-            "type": "integer"
-          },
-          "storageLimitGB": {
-            "type": "integer"
-          },
-          "apiRateLimit": {
-            "type": "integer"
-          }
-        }
-      },
-      "TenantUser": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "tenantId": {
-            "type": "string"
-          },
-          "userId": {
-            "type": "string"
-          },
-          "tenantRole": {
-            "type": "string",
-            "enum": [
-              "tenant_admin",
-              "tenant_editor",
-              "tenant_guest"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "active",
-              "invited",
-              "suspended",
-              "removed"
-            ]
-          },
-          "invitedBy": {
-            "type": "string"
-          },
-          "invitedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "acceptedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "additionalPermissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "metadata": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdBy": {
-            "type": "string"
-          },
-          "updatedBy": {
-            "type": "string"
-          }
-        }
-      },
       "User": {
         "type": "object",
         "properties": {
@@ -10260,9 +8815,8 @@
           "globalRole": {
             "type": "string",
             "enum": [
-              "global_admin",
-              "global_tenant_admin",
-              "tenant_user"
+              "admin",
+              "user"
             ]
           },
           "passwordHash": {
@@ -10400,9 +8954,6 @@
             },
             "writeOnly": true
           },
-          "tenantId": {
-            "type": "string"
-          },
           "roles": {
             "type": "array",
             "items": {
@@ -10468,9 +9019,6 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
-          },
-          "tenantId": {
             "type": "string"
           },
           "defaultBackend": {
@@ -10679,7 +9227,7 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-API-Key",
-        "description": "API key for authentication. API keys are generated via the API key endpoints and are tenant/user scoped."
+        "description": "API key for authentication. API keys are generated via the API key endpoints."
       },
       "BearerAuth": {
         "type": "apiKey",

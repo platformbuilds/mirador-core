@@ -2,6 +2,12 @@ package models
 
 import "time"
 
+// DefaultTenantID is the single tenant ID used in single-tenant mode
+const DefaultTenantID = "default"
+
+// UnknownTenantID represents an unknown or unset tenant
+const UnknownTenantID = "unknown"
+
 // RedAnchor represents anomaly score pattern for RCA
 type RedAnchor struct {
 	Service   string    `json:"service"`

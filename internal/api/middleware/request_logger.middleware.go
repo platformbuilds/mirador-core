@@ -16,6 +16,7 @@ import (
 const (
 	UnknownUserID    = "unknown"
 	UnknownSessionID = "unknown"
+	UnknownTenantID  = "unknown"
 )
 
 // RequestLogger logs HTTP requests for MIRADOR-CORE observability

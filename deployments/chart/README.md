@@ -210,7 +210,7 @@ valkey:
 # The chart will set REDIS_PASSWORD from that Secret automatically.
 ```
 
-To manage app credentials in a single Secret created by this chart, set `secrets.create: true` and fill `secrets.data.JWT_SECRET`, `LDAP_PASSWORD`, `SMTP_PASSWORD`, `REDIS_PASSWORD`, `VM_PASSWORD`.
+To manage app credentials in a single Secret created by this chart, set `secrets.create: true` and fill `LDAP_PASSWORD`, `SMTP_PASSWORD`, `REDIS_PASSWORD`, `VM_PASSWORD`.
  
 ## Production Setup Checklist
  
@@ -378,7 +378,7 @@ serviceMonitor:
 By default the chart creates a ConfigMap with a production-ready example config.
 You can override with your own file using `config.existingConfigMap` and set `env.CONFIG_PATH=/etc/mirador/config.yaml`.
 
-Secrets such as JWT, LDAP, Redis, or SMTP are expected via environment variables or mounted secrets; wire them via `envFrom` or `env.extra`.
+Secrets such as LDAP, Redis, or SMTP are expected via environment variables or mounted secrets; wire them via `envFrom` or `env.extra`.
 
 ## Notes
 
@@ -412,94 +412,3 @@ image:
   tag: v2.1.3 # multi-arch manifest
   pullPolicy: IfNotPresent
 ```
-
-## RBAC Bootstrap and Authentication (v8.0.0+)
-
-### RBAC Features
-
-Mirador Core v8.0.0 introduces comprehensive Role-Based Access Control (RBAC) with automatic bootstrap of default admin users, tenants, and roles.
-
-#### Default Configuration
-
-By default, RBAC bootstrap is **enabled** and will create:
-- A default admin user (`admin` / `ChangeMe123!`)
-- A default tenant (`default`)
-- Default roles: `global_admin`, `tenant_admin`, `viewer`, `analyst`
-
-**⚠️ SECURITY WARNING:** Change the default admin password immediately after first deployment!
-
-#### Quick Start with RBAC
-
-```bash
-# Deploy with default RBAC configuration
-helm upgrade --install mirador-core ./chart \
-  -n mirador --create-namespace \
-  --set mirador.weaviate.enabled=true \
-  --set weaviate.enabled=true
-
-# Access the system with default credentials (change immediately!)
-curl -X POST http://mirador-core.mirador:8010/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"ChangeMe123!"}'
-```
-
-#### Customize Admin Credentials
-
-Override via Helm values:
-
-```yaml
-secrets:
-  create: true
-  data:
-    ADMIN_PASSWORD: "YourSecurePassword123!"
-
-mirador:
-  auth:
-    rbac:
-      bootstrap:
-        admin_user:
-          email: "admin@yourcompany.com"
-```
-
-#### Authentication Backends
-
-##### LDAP/AD Integration
-
-```yaml
-mirador:
-  auth:
-    ldap:
-      enabled: true
-      url: "ldap://ldap.company.com:389"
-      base_dn: "dc=company,dc=com"
-```
-
-##### OAuth 2.0 / OIDC
-
-```yaml
-mirador:
-  auth:
-    oauth:
-      enabled: true
-      provider: "okta"
-      client_id: "your-client-id"
-```
-
-#### Weaviate Requirement
-
-RBAC features **require** Weaviate:
-
-```yaml
-weaviate:
-  enabled: true
-  persistence:
-    enabled: true
-
-mirador:
-  weaviate:
-    enabled: true
-    rbac_schema:
-      enabled: true
-```
-
-See full RBAC documentation in the chart values.yaml file.

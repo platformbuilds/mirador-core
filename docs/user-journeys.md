@@ -5,7 +5,6 @@
 ### Preconditions
 - **Base URL**: The MIRADOR-CORE API server URL (e.g., `http://localhost:8010` for local development, or production URL)
 - **Credentials**: Valid username and password from LDAP/AD or SSO system
-- **Tenant Information**: Optional tenant ID (defaults to "PLATFORMBUILDS" if not provided)
 - **Environment**: Ensure the server is running and accessible
 
 ### Step-by-Step Flow
@@ -17,7 +16,6 @@
 
 **Required Headers**:
 - `Content-Type: application/json`
-- `x-tenant-id: <tenant-id>` (optional, defaults to "PLATFORMBUILDS")
 
 **Request Body**:
 ```json
@@ -33,7 +31,6 @@
 ```bash
 curl -X POST http://localhost:8010/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -H "x-tenant-id: PLATFORMBUILDS" \
   -d '{
     "username": "john.doe",
     "password": "secure-password",
@@ -51,7 +48,6 @@ curl -X POST http://localhost:8010/api/v1/auth/login \
     "api_key": "mrk_1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef12",
     "key_prefix": "mrk_1a2b",
     "user_id": "john.doe",
-    "tenant_id": "PLATFORMBUILDS",
     "roles": ["mirador-user", "mirador-admin"],
     "expires_at": "2025-11-16T10:30:00Z",
     "warning": "Store this API key securely. It will not be shown again."
@@ -65,7 +61,6 @@ curl -X POST http://localhost:8010/api/v1/auth/login \
 - API keys start with the "mrk_" prefix (MIRADOR Key identifier) for easy identification
 - Tokens expire after 24 hours of inactivity
 - RBAC roles are extracted from LDAP group memberships
-- Tenant ID is determined from LDAP OU or defaults to "PLATFORMBUILDS"
 
 ### Error Handling & Best Practices
 
@@ -81,17 +76,6 @@ curl -X POST http://localhost:8010/api/v1/auth/login \
 }
 ```
 - **Client Action**: Prompt user to re-enter credentials
-
-**Missing or Invalid Tenant**:
-- **Status Code**: `400 Bad Request`
-- **Response**:
-```json
-{
-  "status": "error",
-  "error":  "Tenant context required"
-}
-```
-- **Client Action**: Verify tenant ID or use default
 
 **API Key/Token Expired**:
 - **Status Code**: `401 Unauthorized`
@@ -227,7 +211,6 @@ curl -X POST http://localhost:8010/api/v1/auth/login \
     "valid": true,
     "type": "api_key",
     "user_id": "john.doe",
-    "tenant_id": "PLATFORMBUILDS",
     "roles": ["mirador-user"]
   }
 }
@@ -257,12 +240,8 @@ All unified query endpoints require valid authentication. For **programmatic API
 **🛡️ REQUIRED: RBAC Permissions**
 All unified query endpoints require the `unified.read` permission. Users must have this permission assigned through their roles.
 
-**🏢 REQUIRED: Tenant Context**
-Requests must include a valid tenant ID, either from authentication or explicitly specified.
-
 ### Preconditions
 - **Valid API Key**: API key obtained from authentication (starts with `mrk_` prefix for MIRADOR Key identification)
-- **Tenant Context**: Valid tenant ID from authentication
 - **Authorization Header**: `Authorization: Bearer <api_key>` or `X-API-Key: <api_key>`
 - **RBAC Permission**: User must have `unified.read` permission
 - **Base URL**: Same as authentication endpoint
@@ -285,7 +264,6 @@ Requests must include a valid tenant ID, either from authentication or explicitl
     "id": "unique-query-id",
     "type": "metrics|logs|traces|correlation",
     "query": "query-string-appropriate-for-type",
-    "tenant_id": "tenant-from-auth",
     "start_time": "2025-11-15T00:00:00Z",
     "end_time": "2025-11-15T01:00:00Z",
     "timeout": "30s",
@@ -315,7 +293,6 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
       "id": "metrics-query-001",
       "type": "metrics",
       "query": "http_requests_total{job=\"api\"}",
-      "tenant_id": "PLATFORMBUILDS",
       "start_time": "2025-11-15T00:00:00Z",
       "end_time": "2025-11-15T01:00:00Z",
       "timeout": "30s",
@@ -376,7 +353,6 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
       "id": "logs-query-001",
       "type": "logs",
       "query": "service.name:api AND level:error",
-      "tenant_id": "PLATFORMBUILDS",
       "start_time": "2025-11-15T00:00:00Z",
       "end_time": "2025-11-15T01:00:00Z",
       "timeout": "30s",
@@ -391,7 +367,6 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
 - Query types: `metrics` (MetricsQL/PromQL), `logs` (Lucene), `traces` (Jaeger filters), `correlation` (cross-engine)
 - Time ranges are optional but recommended for performance
 - Cache options help reduce latency for repeated queries
-- Tenant isolation ensures data separation between tenants
 - RBAC permissions are enforced based on user roles (requires "unified.read" permission)
 
 ### End-to-End Narrative

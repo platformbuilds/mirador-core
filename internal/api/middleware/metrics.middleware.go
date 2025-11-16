@@ -26,7 +26,7 @@ func MetricsMiddleware() gin.HandlerFunc {
 		statusCode := strconv.Itoa(c.Writer.Status())
 		tenantID := c.GetString("tenant_id")
 		if tenantID == "" {
-			tenantID = UnknownTenantID
+			tenantID = "unknown"
 		}
 
 		// Update Prometheus metrics

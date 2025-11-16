@@ -12,189 +12,10 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
-	"github.com/platformbuilds/mirador-core/internal/repo/rbac"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
-
-// mockRBACRepositoryForServerCoverTest implements RBACRepository for testing
-type mockRBACRepositoryForServerCoverTest struct{}
-
-func (m *mockRBACRepositoryForServerCoverTest) CreateRole(ctx context.Context, role *models.Role) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetRole(ctx context.Context, tenantID, roleName string) (*models.Role, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) ListRoles(ctx context.Context, tenantID string) ([]*models.Role, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) UpdateRole(ctx context.Context, role *models.Role) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) DeleteRole(ctx context.Context, tenantID, roleName string) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) AssignUserRoles(ctx context.Context, tenantID, userID string, roles []string) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetUserRoles(ctx context.Context, tenantID, userID string) ([]string, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) RemoveUserRoles(ctx context.Context, tenantID, userID string, roles []string) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetUserGroups(ctx context.Context, tenantID, userID string) ([]string, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) CreatePermission(ctx context.Context, permission *models.Permission) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetPermission(ctx context.Context, tenantID, permissionID string) (*models.Permission, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) ListPermissions(ctx context.Context, tenantID string) ([]*models.Permission, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) UpdatePermission(ctx context.Context, permission *models.Permission) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) DeletePermission(ctx context.Context, tenantID, permissionID string) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) CreateRoleBinding(ctx context.Context, binding *models.RoleBinding) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetRoleBindings(ctx context.Context, tenantID string, filters rbac.RoleBindingFilters) ([]*models.RoleBinding, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) UpdateRoleBinding(ctx context.Context, binding *models.RoleBinding) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) DeleteRoleBinding(ctx context.Context, tenantID, bindingID string) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) CreateGroup(ctx context.Context, group *models.Group) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetGroup(ctx context.Context, tenantID, groupName string) (*models.Group, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) ListGroups(ctx context.Context, tenantID string) ([]*models.Group, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) UpdateGroup(ctx context.Context, group *models.Group) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) DeleteGroup(ctx context.Context, tenantID, groupName string) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) AddUsersToGroup(ctx context.Context, tenantID, groupName string, userIDs []string) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) RemoveUsersFromGroup(ctx context.Context, tenantID, groupName string, userIDs []string) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetGroupMembers(ctx context.Context, tenantID, groupName string) ([]string, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) LogAuditEvent(ctx context.Context, event *models.AuditLog) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetAuditEvents(ctx context.Context, tenantID string, filters rbac.AuditFilters) ([]*models.AuditLog, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) CreateTenant(ctx context.Context, tenant *models.Tenant) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetTenant(ctx context.Context, tenantID string) (*models.Tenant, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) ListTenants(ctx context.Context, filters rbac.TenantFilters) ([]*models.Tenant, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) UpdateTenant(ctx context.Context, tenant *models.Tenant) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) DeleteTenant(ctx context.Context, tenantID string) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) CreateUser(ctx context.Context, user *models.User) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetUser(ctx context.Context, userID string) (*models.User, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) ListUsers(ctx context.Context, filters rbac.UserFilters) ([]*models.User, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) UpdateUser(ctx context.Context, user *models.User) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) DeleteUser(ctx context.Context, userID string) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) CreateTenantUser(ctx context.Context, tenantUser *models.TenantUser) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetTenantUser(ctx context.Context, tenantID, userID string) (*models.TenantUser, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) ListTenantUsers(ctx context.Context, tenantID string, filters rbac.TenantUserFilters) ([]*models.TenantUser, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) UpdateTenantUser(ctx context.Context, tenantUser *models.TenantUser) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) DeleteTenantUser(ctx context.Context, tenantID, userID string) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) CreateMiradorAuth(ctx context.Context, auth *models.MiradorAuth) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetMiradorAuth(ctx context.Context, userID string) (*models.MiradorAuth, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) UpdateMiradorAuth(ctx context.Context, auth *models.MiradorAuth) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) DeleteMiradorAuth(ctx context.Context, userID string) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) CreateAuthConfig(ctx context.Context, config *models.AuthConfig) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetAuthConfig(ctx context.Context, tenantID string) (*models.AuthConfig, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) UpdateAuthConfig(ctx context.Context, config *models.AuthConfig) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) DeleteAuthConfig(ctx context.Context, tenantID string) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) CreateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetAPIKeyByHash(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) GetAPIKeyByID(ctx context.Context, tenantID, keyID string) (*models.APIKey, error) {
-	return nil, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) ListAPIKeys(ctx context.Context, tenantID, userID string) ([]*models.APIKey, error) {
-	return []*models.APIKey{}, nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) UpdateAPIKey(ctx context.Context, apiKey *models.APIKey) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) RevokeAPIKey(ctx context.Context, tenantID, keyID string) error {
-	return nil
-}
-func (m *mockRBACRepositoryForServerCoverTest) ValidateAPIKey(ctx context.Context, tenantID, keyHash string) (*models.APIKey, error) {
-	return nil, nil
-}
 
 // stubSchemaRepo is a minimal implementation to make schema routes register.
 type stubSchemaRepo struct{}
@@ -319,14 +140,14 @@ func (stubSchemaRepo) DeleteDashboard(tenantID, id string) error {
 	return nil
 }
 
-func TestServer_AuthOn_And_SchemaRegistered(t *testing.T) {
+func TestServer_AuthDisabled_And_SchemaRegistered(t *testing.T) {
 	// Ensure switching gin mode for production path does not leak globally
 	prev := gin.Mode()
 	defer gin.SetMode(prev)
 
 	log := logger.New("error")
 	cfg := &config.Config{Environment: "production", Port: 0}
-	cfg.Auth.Enabled = true
+	cfg.Auth.Enabled = false
 	cfg.UnifiedQuery.Enabled = false
 
 	vms := &services.VictoriaMetricsServices{
@@ -337,10 +158,7 @@ func TestServer_AuthOn_And_SchemaRegistered(t *testing.T) {
 	grpc := &clients.GRPCClients{}
 	cch := cache.NewNoopValkeyCache(log)
 
-	// mockRBACRepositoryForServerCoverTest implements RBACRepository for testing
-	mockRBACRepo := &mockRBACRepositoryForServerCoverTest{}
-
-	s := NewServer(cfg, log, cch, grpc, vms, stubSchemaRepo{}, mockRBACRepo)
+	s := NewServer(cfg, log, cch, grpc, vms, stubSchemaRepo{})
 	ts := httptest.NewServer(s.router)
 	defer ts.Close()
 
@@ -353,13 +171,13 @@ func TestServer_AuthOn_And_SchemaRegistered(t *testing.T) {
 		t.Fatalf("health status=%d", resp.StatusCode)
 	}
 
-	// Protected endpoint should be unauthorized without token
+	// Protected endpoint should be accessible without auth (auth disabled)
 	r2, err := http.Get(ts.URL + "/api/v1/logs/streams")
 	if err != nil {
 		t.Fatalf("logs streams: %v", err)
 	}
-	if r2.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("expected 401, got %d", r2.StatusCode)
+	if r2.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", r2.StatusCode)
 	}
 
 	// Schema routes registered (not invoked here due to auth)

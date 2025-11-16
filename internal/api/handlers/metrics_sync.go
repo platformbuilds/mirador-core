@@ -25,13 +25,9 @@ func NewMetricsSyncHandler(synchronizer services.MetricsMetadataSynchronizer, lo
 	}
 }
 
-// HandleSyncNow triggers an immediate sync for a tenant
+// HandleSyncNow triggers an immediate sync for the default tenant
 func (h *MetricsSyncHandler) HandleSyncNow(c *gin.Context) {
-	tenantID := c.Param("tenantId")
-	if tenantID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tenantId parameter is required"})
-		return
-	}
+	tenantID := "default" // Single-tenant system uses default tenant
 
 	// Parse forceFull parameter
 	forceFullStr := c.DefaultQuery("forceFull", "false")
@@ -56,13 +52,9 @@ func (h *MetricsSyncHandler) HandleSyncNow(c *gin.Context) {
 	})
 }
 
-// HandleGetSyncState returns the current sync state for a tenant
+// HandleGetSyncState returns the current sync state for the default tenant
 func (h *MetricsSyncHandler) HandleGetSyncState(c *gin.Context) {
-	tenantID := c.Param("tenantId")
-	if tenantID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tenantId parameter is required"})
-		return
-	}
+	tenantID := "default" // Single-tenant system uses default tenant
 
 	state, err := h.synchronizer.GetSyncState(tenantID)
 	if err != nil {
@@ -76,11 +68,7 @@ func (h *MetricsSyncHandler) HandleGetSyncState(c *gin.Context) {
 
 // HandleGetSyncStatus returns the status of the current/last sync operation
 func (h *MetricsSyncHandler) HandleGetSyncStatus(c *gin.Context) {
-	tenantID := c.Param("tenantId")
-	if tenantID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tenantId parameter is required"})
-		return
-	}
+	tenantID := "default" // Single-tenant system uses default tenant
 
 	status, err := h.synchronizer.GetSyncStatus(tenantID)
 	if err != nil {

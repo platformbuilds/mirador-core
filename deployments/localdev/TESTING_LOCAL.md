@@ -1,6 +1,6 @@
 **Overview**
 - Purpose: Spins up a local development stack (VictoriaMetrics, VictoriaLogs, VictoriaTraces, Weaviate, Valkey, OTEL Collector), starts MIRADOR‑CORE, then pumps synthetic OpenTelemetry data and runs end‑to‑end API tests with a report.
-- Scope: Local developer validation with auth disabled by default.
+- Scope: Local developer validation of observability API functionality.
 
 **What It Sets Up**
 - Docker Compose (`deployments/localdev/docker-compose.yaml`) with services:
@@ -62,7 +62,6 @@
 **Customization**
 - Change base URL: `make localdev BASE_URL=http://127.0.0.1:8010`
 - Keep stack up after tests: run individual targets (`localdev-up`, `localdev-wait`, `localdev-seed-otel`, `localdev-test`) and skip `localdev-down`.
-- Auth: To test auth flows, enable in compose env and provide tokens/sessions.
 
 **Troubleshooting**
 - Ports busy: change host ports in `deployments/localdev/docker-compose.yaml`.

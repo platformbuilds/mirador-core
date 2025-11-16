@@ -52,7 +52,6 @@ The collection is organized into folders based on API functionality:
 - **Rca** - Root cause analysis operations
 - **Config** - Configuration management
 - **Sessions** - Session management
-- **Tenants** - Multi-tenant management (admin only)
 - **Users** - User management (admin only)
 - **Ws** - WebSocket streams
 - **Unified** - Unified query engine
