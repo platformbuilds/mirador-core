@@ -144,12 +144,14 @@ Response:
       "kind": "business",
       "unit": "%",
       "format": "0.00",
-      "query": {...},
-      "thresholds": [...],
+      "query": "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m]) * 100",
+      "thresholds": [
+        {"level": "warning", "value": 5.0},
+        {"level": "critical", "value": 10.0}
+      ],
       "tags": ["reliability", "slo"],
       "ownerUserId": "user123",
-      "visibility": "team",
-      "tenantId": "tenant1"
+      "visibility": "team"
     }
   ],
   "total": 1

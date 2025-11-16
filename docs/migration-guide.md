@@ -806,7 +806,7 @@ curl https://mirador-core/api/v1/unified/metadata
 ### Getting Help
 
 - **Documentation**: https://miradorstack.readthedocs.io/
-- **API Reference**: [API Reference](api-reference.md)
+- **API Reference**: [OpenAPI Specification](../api/openapi.yaml)
 - **Community**: https://github.com/platformbuilds/mirador-core/discussions
 - **Support**: Open an issue on GitHub
 
@@ -1144,4 +1144,4 @@ After completing migration:
 
 Migrating to the unified query API provides significant benefits in terms of simplicity, performance, and new capabilities. By following this guide's gradual migration approach, you can safely transition your applications while maintaining backward compatibility and the ability to rollback if needed.
 
-For specific migration scenarios not covered in this guide, please consult the [API Reference](api-reference.md) or reach out to the community for assistance.
+For specific migration scenarios not covered in this guide, please consult the [OpenAPI Specification](../api/openapi.yaml) or reach out to the community for assistance.

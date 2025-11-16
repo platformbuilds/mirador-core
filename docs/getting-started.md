@@ -208,6 +208,6 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
 
 ## Next Steps
 
-- [API Reference](api-reference.md) - Learn about all available endpoints
+- [OpenAPI Specification](../api/openapi.yaml) - Learn about all available endpoints
 - [Configuration](configuration.md) - Detailed configuration options
 - [Deployment](deployment.md) - Production deployment guides
