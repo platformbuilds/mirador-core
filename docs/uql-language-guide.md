@@ -65,7 +65,7 @@ UQL supports translation to multiple query languages:
 
 ### Basic SELECT Query
 
-```sql
+```text
 SELECT service, level, message
 FROM logs:error
 WHERE level = 'error' AND service = 'api'
@@ -74,7 +74,7 @@ LIMIT 100
 
 ### Aggregation Query
 
-```sql
+```text
 SELECT service, count(*) as error_count
 FROM logs:error
 WHERE timestamp > now() - 1h
@@ -84,13 +84,13 @@ ORDER BY error_count DESC
 
 ### Correlation Query
 
-```sql
+```text
 logs:error WITHIN 5m OF metrics:cpu_usage > 80
 ```
 
 ### Advanced Correlation with Multiple Engines
 
-```sql
+```text
 logs:service:api:error NEAR 10m OF traces:service:api AND metrics:api_errors > 5
 ```
 
@@ -114,7 +114,7 @@ Combine data from multiple sources with time-based and label-based joins, suppor
 
 ### Enhanced Syntax
 
-```sql
+```text
 SELECT [DISTINCT] [TOP n] field1, field2, ... [AS alias]
 FROM datasource[:filter][:subfilter]
 [WHERE conditions]
@@ -127,7 +127,7 @@ FROM datasource[:filter][:subfilter]
 
 ### Advanced Field Selection
 
-```sql
+```text
 -- Select specific fields with aliases
 SELECT service as svc, level, message
 FROM logs
@@ -149,7 +149,7 @@ ORDER BY errors DESC
 
 The FROM clause supports hierarchical filtering for precise data targeting:
 
-```sql
+```text
 -- Basic data source
 FROM logs
 FROM metrics
@@ -170,7 +170,7 @@ FROM traces:service:payment:operation:charge
 
 UQL supports complex filtering with multiple operators and functions:
 
-```sql
+```text
 -- Comparison operators
 WHERE level = 'error'
 WHERE response_time > 1000
@@ -198,7 +198,7 @@ WHERE (level = 'error' OR level = 'fatal') AND service = 'api' AND response_time
 
 Control query execution behavior:
 
-```sql
+```text
 -- Timeout control
 SELECT * FROM logs:error WITH (timeout = '30s')
 
@@ -213,7 +213,7 @@ SELECT * FROM traces WITH (engine = 'jaeger', max_spans = 1000)
 
 ### Enhanced Syntax
 
-```sql
+```text
 SELECT field1, aggregate_function(field2) [AS alias], ...
 FROM datasource
 [WHERE conditions]
@@ -240,7 +240,7 @@ GROUP BY field1, field2, ... [WITH ROLLUP|CUBE]
 
 ### Advanced Grouping
 
-```sql
+```text
 -- ROLLUP for subtotals
 SELECT service, level, count(*)
 FROM logs
@@ -259,7 +259,7 @@ GROUP BY hour, service
 
 ### Window Functions
 
-```sql
+```text
 -- Moving averages
 SELECT service, timestamp, error_count,
        avg(error_count) OVER (PARTITION BY service ORDER BY timestamp ROWS 5 PRECEDING) as moving_avg
@@ -284,7 +284,7 @@ FROM (
 
 ### Advanced Correlation Syntax
 
-```sql
+```text
 query1 correlation_operator [time_window] OF query2
 query1 [AND|OR|NOT] query2
 (query1) [AND|OR|NOT] (query2)
@@ -295,7 +295,7 @@ query1 [AND|OR|NOT] query2
 #### WITHIN Operator
 Find events within a flexible time window:
 
-```sql
+```text
 -- Errors within 5 minutes of high CPU (either direction)
 logs:error WITHIN 5m OF metrics:cpu_usage > 80
 
@@ -306,7 +306,7 @@ logs:exception WITHIN 10m OF (metrics:memory_usage > 90 OR metrics:disk_usage > 
 #### NEAR Operator
 Events occurring near each other regardless of order:
 
-```sql
+```text
 -- Errors near CPU spikes
 logs:error NEAR 5m OF metrics:cpu_usage > 80
 
@@ -317,7 +317,7 @@ logs:service:api:error NEAR 2m OF traces:service:api AND metrics:api_errors > 0
 #### BEFORE Operator
 Events that occur before other events:
 
-```sql
+```text
 -- Errors before CPU spikes
 logs:error BEFORE 5m OF metrics:cpu_usage > 80
 
@@ -328,7 +328,7 @@ logs:warn BEFORE 2m OF logs:error
 #### AFTER Operator
 Events that occur after other events:
 
-```sql
+```text
 -- Recovery after errors
 logs:recovery AFTER 10m OF logs:error
 
@@ -340,7 +340,7 @@ metrics:cpu_usage < 50 AFTER 5m OF logs:restart
 
 Correlate events with matching metadata:
 
-```sql
+```text
 -- Same service across domains
 logs:service:api AND metrics:service:api
 
@@ -353,7 +353,7 @@ logs:namespace:production:service:api AND metrics:namespace:production:service:a
 
 ### Advanced Correlation Patterns
 
-```sql
+```text
 -- Sequential events
 logs:start BEFORE 1m OF logs:process BEFORE 1m OF logs:complete
 
@@ -371,7 +371,7 @@ logs:error WITHIN 10m OF metrics:cpu_usage > 80 AND NOT logs:maintenance
 
 ### Enhanced JOIN Syntax
 
-```sql
+```text
 SELECT fields
 FROM datasource1 [alias1]
 join_type JOIN datasource2 [alias2] ON condition
@@ -389,7 +389,7 @@ join_type JOIN datasource2 [alias2] ON condition
 
 ### Time-Based JOINs
 
-```sql
+```text
 -- Join within time windows
 SELECT l.message, m.cpu_usage, l.timestamp as log_time, m.timestamp as metric_time
 FROM logs:error l
@@ -406,7 +406,7 @@ LEFT JOIN traces t ON l.trace_id = t.id
 
 ### Label-Based JOINs
 
-```sql
+```text
 -- Join by service labels
 SELECT l.message, m.value, t.operation
 FROM logs l
@@ -423,7 +423,7 @@ JOIN metrics m ON l.labels['deployment'] = m.labels['deployment']
 
 ### Advanced JOIN Features
 
-```sql
+```text
 -- JOIN with hints
 SELECT l.message, m.cpu_usage
 FROM logs:error l
@@ -444,7 +444,7 @@ WHERE m.cpu_usage > 80
 
 Advanced log querying with full-text search and structured filtering:
 
-```sql
+```text
 FROM logs                          -- All logs
 FROM logs:error                    -- Logs containing 'error'
 FROM logs:service:api              -- Logs from 'api' service
@@ -458,7 +458,7 @@ FROM logs:container:nginx          -- Logs from nginx containers
 
 Time-series metrics with advanced aggregation:
 
-```sql
+```text
 FROM metrics                       -- All metrics
 FROM metrics:cpu_usage             -- CPU usage metrics
 FROM metrics:http_requests_total   -- HTTP request counters
@@ -471,7 +471,7 @@ FROM metrics:disk_usage            -- Disk usage metrics
 
 Distributed tracing with service and operation filtering:
 
-```sql
+```text
 FROM traces                        -- All traces
 FROM traces:service:checkout       -- Checkout service traces
 FROM traces:operation:payment      -- Payment operation traces
@@ -484,7 +484,7 @@ FROM traces:tags:error=true        -- Traces with error tags
 
 Pre-computed correlation data:
 
-```sql
+```text
 FROM correlations                  -- All correlations
 FROM correlations:service:api      -- API service correlations
 FROM correlations:error            -- Error correlations
@@ -579,7 +579,7 @@ FROM correlations:anomaly          -- Anomaly correlations
 
 Correlations can span multiple data engines with automatic routing:
 
-```sql
+```text
 -- Cross-engine correlation
 logs:service:api:error NEAR 5m OF metrics:service:api:cpu_usage > 80 AND traces:service:api:status:error
 
@@ -591,7 +591,7 @@ logs:engine:elasticsearch NEAR 10m OF metrics:engine:victoriametrics AND traces:
 
 Define complex event sequences:
 
-```sql
+```text
 -- Error escalation pattern
 logs:level:warn BEFORE 5m OF logs:level:error BEFORE 10m OF logs:level:fatal
 
@@ -606,7 +606,7 @@ logs:error BEFORE 30m OF logs:recovery AFTER 5m OF metrics:restart
 
 Correlations with conditional logic:
 
-```sql
+```text
 -- Conditional based on service load
 logs:error WITHIN 5m OF (metrics:cpu_usage > 80 AND metrics:request_rate > 1000)
 
@@ -621,7 +621,7 @@ logs:timeout WITHIN 1m OF (metrics:response_time > 5000 OR traces:duration > 100
 
 Include contextual information in correlations:
 
-```sql
+```text
 -- Correlation with user context
 logs:user:123:error WITHIN 10m OF traces:user:123:operation:checkout
 
@@ -649,7 +649,7 @@ UQL employs a sophisticated multi-pass optimization strategy:
 
 Queries are automatically routed to optimal data engines:
 
-```sql
+```text
 -- Automatic routing to VictoriaLogs
 SELECT * FROM logs WHERE message CONTAINS 'error'
 
@@ -664,7 +664,7 @@ logs:error NEAR 5m OF metrics:cpu_usage > 80
 
 Complex queries are executed in parallel across engines:
 
-```sql
+```text
 -- Parallel execution of correlation
 logs:service:api NEAR 10m OF metrics:service:api AND traces:service:api
 
@@ -676,7 +676,7 @@ SELECT service, count(*) FROM logs:error GROUP BY service
 
 Optimized query plans are cached for repeated executions:
 
-```sql
+```text
 -- First execution: full optimization
 SELECT service, count(*) FROM logs:error WHERE timestamp > now() - 1h GROUP BY service
 
@@ -688,7 +688,7 @@ SELECT service, count(*) FROM logs:error WHERE timestamp > now() - 1h GROUP BY s
 
 Query optimization adapts based on runtime statistics:
 
-```sql
+```text
 -- Adaptive join algorithm selection
 SELECT l.message, m.cpu_usage
 FROM logs l
@@ -734,7 +734,7 @@ JOIN metrics m ON l.service = m.service
 
 ### Error Analysis
 
-```sql
+```text
 -- Recent errors by service with trends
 SELECT service, level, count(*) as count,
        count(*) / lag(count(*)) OVER (PARTITION BY service ORDER BY date_trunc('hour', timestamp)) as trend
@@ -749,7 +749,7 @@ logs:service:api:error NEAR 5m OF metrics:service:api:response_time > 5000
 
 ### Performance Monitoring
 
-```sql
+```text
 -- Response time analysis with percentiles
 SELECT endpoint,
        count(*) as requests,
@@ -768,7 +768,7 @@ metrics:cpu_usage > 80 NEAR 2m OF metrics:memory_usage > 85 AND logs:service:api
 
 ### Service Health Dashboard
 
-```sql
+```text
 -- Comprehensive service health
 SELECT service,
        count(*) as total_requests,
@@ -786,7 +786,7 @@ ORDER BY error_rate DESC, p95_response DESC
 
 ### Incident Investigation
 
-```sql
+```text
 -- Timeline analysis with multi-domain correlation
 SELECT timestamp, level, message, service, 'log' as source
 FROM logs
@@ -804,7 +804,7 @@ logs:service:api:error WITHIN 5m OF traces:service:api:operation:checkout:status
 
 ### Capacity Planning
 
-```sql
+```text
 -- Peak usage pattern analysis
 SELECT date_trunc('hour', timestamp) as hour,
        max(cpu_usage) as peak_cpu,
@@ -831,7 +831,7 @@ ORDER BY avg_cpu DESC
 
 ### Advanced Analytics
 
-```sql
+```text
 -- Anomaly detection with statistical analysis
 SELECT service, timestamp, cpu_usage,
        (cpu_usage - avg(cpu_usage) OVER (PARTITION BY service ORDER BY timestamp ROWS 24 PRECEDING)) /
@@ -995,7 +995,7 @@ curl -X POST http://localhost:8080/api/v1/uql/validate -d '{"query": "SELECT * F
 
 UQL supports custom user-defined functions:
 
-```sql
+```text
 -- Register custom function
 CREATE FUNCTION error_severity(message TEXT) RETURNS INTEGER AS $$
   CASE
@@ -1018,7 +1018,7 @@ ORDER BY severity DESC;
 
 Complex queries with common table expressions:
 
-```sql
+```text
 WITH error_summary AS (
   SELECT service, count(*) as error_count
   FROM logs:error
@@ -1042,7 +1042,7 @@ ORDER BY e.error_count DESC;
 
 Handle hierarchical data and recursive relationships:
 
-```sql
+```text
 WITH RECURSIVE service_dependencies AS (
   -- Base case: services with no dependencies
   SELECT service, ARRAY[]::TEXT[] as dependency_path
@@ -1063,7 +1063,7 @@ SELECT * FROM service_dependencies;
 
 Reusable query templates with parameters:
 
-```sql
+```text
 -- Define template
 CREATE TEMPLATE service_health AS
 SELECT service,

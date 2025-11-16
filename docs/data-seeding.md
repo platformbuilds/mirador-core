@@ -20,11 +20,8 @@ Use the `schemactl` tool to seed data:
 # Build the tool
 go build -o bin/schemactl cmd/schemactl/main.go
 
-# Seed data for default tenant
-./bin/schemactl -mode=seed -tenant=default
-
-# Seed data for a specific tenant
-./bin/schemactl -mode=seed -tenant=my-tenant
+# Seed default data
+./bin/schemactl -mode=seed
 ```
 
 ### Environment Variables
@@ -35,7 +32,6 @@ Configure Weaviate connection:
 export WEAVIATE_HOST=localhost
 export WEAVIATE_PORT=8080
 export WEAVIATE_SCHEME=http
-export WEAVIATE_API_KEY=your-api-key  # if authentication is enabled
 ```
 
 ### Makefile Integration
@@ -141,16 +137,9 @@ The seeding system checks for existing data and skips creation if items already 
 
 - Ensure Weaviate is running and accessible
 - Check WEAVIATE_HOST and WEAVIATE_PORT environment variables
-- Verify API key if authentication is enabled
 
 ### Schema Mismatches
 
 - Ensure Weaviate schema is up to date
 - Run `go run cmd/server/main.go` first to initialize schema
 - Check Weaviate logs for schema validation errors
-
-### Permission Issues
-
-- Verify tenant permissions for data creation
-- Check RBAC settings if authentication is enabled
-- Ensure system user has appropriate permissions

@@ -10,7 +10,7 @@ The Unified Query Engine is the core component of MIRADOR-CORE that provides int
 
 The `UnifiedQueryEngine` interface defines the contract for unified query operations:
 
-```go
+```text
 type UnifiedQueryEngine interface {
     // ExecuteQuery executes a unified query across the appropriate engines
     ExecuteQuery(ctx context.Context, query *models.UnifiedQuery) (*models.UnifiedResult, error)
@@ -47,7 +47,7 @@ The router uses sophisticated pattern matching and metadata analysis:
 
 #### Advanced Routing Features
 
-```go
+```text
 type QueryRouter struct {
     // Pattern-based routing with regex matching
     patterns map[QueryType][]*regexp.Regexp
@@ -65,7 +65,7 @@ type QueryRouter struct {
 
 #### Example Routing Decisions
 
-```go
+```text
 // Metrics query - routes to VictoriaMetrics with instant/range detection
 "rate(http_requests_total[5m])" → QueryTypeMetrics (Range)
 
@@ -133,7 +133,7 @@ Engine-Specific Queries
 
 The `CorrelationEngine` provides advanced cross-engine correlation capabilities:
 
-```go
+```text
 type CorrelationEngine struct {
     // Service graph analysis
     serviceGraph *ServiceGraphAnalyzer
@@ -201,7 +201,7 @@ type CorrelationEngine struct {
 
 The engine supports sophisticated parallel execution patterns:
 
-```go
+```text
 func (e *UnifiedQueryEngine) executeParallelQuery(ctx context.Context, queries map[QueryType]string) (*UnifiedResult, error) {
     // Create execution context with timeout
     execCtx, cancel := context.WithTimeout(ctx, e.config.Timeout)
@@ -233,7 +233,7 @@ func (e *UnifiedQueryEngine) executeParallelQuery(ctx context.Context, queries m
 
 The core query model supporting all engine types and advanced features:
 
-```go
+```text
 type UnifiedQuery struct {
     ID          string                    `json:"id"`
     Type        QueryType                 `json:"type"`
@@ -253,7 +253,7 @@ type UnifiedQuery struct {
 
 Advanced UQL query representation:
 
-```go
+```text
 type UQLQuery struct {
     RawQuery    string
     AST         *QueryAST
@@ -271,7 +271,7 @@ type UQLQuery struct {
 
 The unified response format with comprehensive metadata:
 
-```go
+```text
 type UnifiedResult struct {
     QueryID       string                    `json:"query_id"`
     Type          QueryType                 `json:"type"`
@@ -300,7 +300,7 @@ The unified query engine implements sophisticated caching:
 
 ### Valkey Cluster Integration
 
-```go
+```text
 type ValkeyCache struct {
     cluster *redis.ClusterClient
     ttl     time.Duration
@@ -327,7 +327,7 @@ func (c *ValkeyCache) Set(ctx context.Context, key string, value interface{}, tt
 
 ### Comprehensive Health Checks
 
-```go
+```text
 type EngineHealthStatus struct {
     OverallHealth string                     `json:"overall_health"`
     EngineHealth  map[QueryType]string       `json:"engine_health"`
@@ -339,7 +339,7 @@ type EngineHealthStatus struct {
 
 ### Health Check Implementation
 
-```go
+```text
 func (e *UnifiedQueryEngine) HealthCheck(ctx context.Context) (*EngineHealthStatus, error) {
     status := &EngineHealthStatus{
         EngineHealth: make(map[QueryType]string),
@@ -409,7 +409,7 @@ The unified query engine handles various error scenarios with graceful degradati
   "error": "Query execution failed",
   "details": "VictoriaMetrics service unavailable",
   "query_id": "query-12345",
-  "partial_results": {...},
+  "partial_results": {"metrics": [], "logs": []},
   "degraded_engines": ["metrics"],
   "retry_after": 30
 }
@@ -433,7 +433,7 @@ The unified query engine handles various error scenarios with graceful degradati
 
 ### Query Optimization
 
-```go
+```text
 type UQLOptimizer struct {
     passes []OptimizationPass
     stats  *OptimizationStats
@@ -466,7 +466,7 @@ func (o *UQLOptimizer) Optimize(query *UQLQuery) error {
 
 Integration with comprehensive HTTP handlers:
 
-```go
+```text
 type UnifiedQueryHandler struct {
     engine *UnifiedQueryEngine
     logger logger.Logger
@@ -528,7 +528,7 @@ unified_query:
 
 ### Comprehensive Metrics
 
-```go
+```text
 // Prometheus metrics
 unified_query_requests_total{engine="metrics", status="success"} counter
 unified_query_duration_seconds{engine="metrics", quantile="0.95"} histogram
@@ -569,7 +569,7 @@ unified_uql_translate_duration_seconds{engine="promql"} histogram
 
 The architecture supports easy extension through plugin interfaces:
 
-```go
+```text
 type EnginePlugin interface {
     Name() string
     SupportsQuery(query string) bool
