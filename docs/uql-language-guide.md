@@ -1087,5 +1087,5 @@ EXECUTE service_health (
 
 UQL provides a powerful, unified interface for complex observability data analysis through its sophisticated compilation pipeline, multi-engine support, and advanced correlation capabilities. By understanding the compilation process, optimization features, and best practices outlined in this guide, you can construct efficient queries that provide deep insights across your entire observability stack.
 
-For more advanced use cases, consult the [API Reference](api-reference.md), [Correlation Engine Documentation](correlation-engine.md), and [Unified Query Architecture](unified-query-architecture.md).</content>
+For more advanced use cases, consult the [OpenAPI Specification](../api/openapi.yaml), [Correlation Engine Documentation](correlation-engine.md), and [Unified Query Architecture](unified-query-architecture.md).</content>
 <parameter name="filePath">/Users/aarvee/repos/github/public/mirador-core/docs/uql-language-guide.md

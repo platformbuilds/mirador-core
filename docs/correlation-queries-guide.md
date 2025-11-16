@@ -456,6 +456,6 @@ curl -X POST http://localhost:8080/api/v1/unified/correlation \
 
 For additional help:
 - Check the [Correlation Engine Documentation](../docs/correlation-engine.md)
-- Review [API Reference](../docs/api-reference.md)
+- Review [OpenAPI Specification](../api/openapi.yaml)
 - Contact the platform team for advanced use cases</content>
 <parameter name="filePath">/Users/aarvee/repos/github/public/mirador-core/docs/correlation-queries-guide.md
