@@ -17,10 +17,6 @@ serviceAccount:
   name: ""
   annotations: {}
 
-rbac:
-  create: true
-  clusterWide: true
-
 podAnnotations:
   prometheus.io/scrape: "true"
   prometheus.io/port: "8010"
@@ -118,12 +114,10 @@ envFrom: [] # e.g., [{ secretRef: { name: my-secrets } }]
 # expects as environment variables. If you already manage secrets, keep create=false
 # and reference them via `envFrom` above.
 secrets:
-  create: true  # Enable secrets creation for RBAC bootstrap
+  create: true  # Enable secrets creation
   name: "" # defaults to <release>-mirador-env when create=true
   data:
     # Keys consumed by MIRADOR-CORE (see internal/config/secrets.go):
-    # JWT_SECRET: Secret key for signing JWT tokens (auto-generated if empty)
-    JWT_SECRET: ""
     # LDAP_PASSWORD: Password for LDAP bind DN
     LDAP_PASSWORD: ""
     # SMTP_PASSWORD: Password for SMTP authentication
@@ -132,8 +126,6 @@ secrets:
     REDIS_PASSWORD: ""
     # VM_PASSWORD: Password for VictoriaMetrics authentication
     VM_PASSWORD: ""
-    # ADMIN_PASSWORD: Default admin user password (overrides auth.rbac.bootstrap.admin_user.password)
-    ADMIN_PASSWORD: ""
 
 config:
   enabled: true
@@ -196,84 +188,6 @@ mirador:
       rules_path: "/etc/mirador/alert-rules.yaml"
       timeout: 30000
 
-  auth:
-    enabled: true
-    # JWT authentication settings
-    jwt:
-      secret: ""  # Set via secrets.data.JWT_SECRET or environment variable
-      expiry_min: 1440  # Token expiration in minutes (24 hours)
-    # LDAP/AD authentication settings
-    ldap:
-      enabled: false
-      url: "ldap://ldap.company.com"
-      base_dn: "dc=company,dc=com"
-      bind_dn: "cn=admin,dc=company,dc=com"
-      bind_password: ""  # Set via secrets.data.LDAP_PASSWORD
-      user_search_filter: "(uid={0})"
-      group_search_filter: "(memberUid={0})"
-    # OAuth 2.0 / OIDC settings
-    oauth:
-      enabled: false
-      provider: ""  # e.g., "okta", "auth0", "keycloak"
-      client_id: ""
-      client_secret: ""
-      issuer_url: ""
-      redirect_url: ""
-    # SAML settings
-    saml:
-      enabled: false
-      idp_metadata_url: ""
-      sp_entity_id: ""
-      sp_acs_url: ""
-    # RBAC (Role-Based Access Control)
-    rbac:
-      enabled: true
-      # Bootstrap configuration - creates default admin user and roles on first startup
-      bootstrap:
-        enabled: true
-        # Default admin user credentials (change immediately after first login)
-        admin_user:
-          user_id: "admin"
-          username: "admin"
-          email: "admin@mirador.local"
-          password: "ChangeMe123!"  # Override via secrets.data.ADMIN_PASSWORD
-          global_role: "global_admin"
-        # Default tenant configuration
-        default_tenant:
-          tenant_id: "default"
-          name: "Default Tenant"
-          description: "Default tenant for initial setup"
-      # Default roles created on bootstrap
-      default_roles:
-        - name: "global_admin"
-          description: "Global administrator with full system access"
-          permissions:
-            - "*"  # All permissions
-            - "apikey.global_admin"
-        - name: "tenant_admin"
-          description: "Tenant administrator with full tenant access"
-          permissions:
-            - "tenant.*"
-            - "rbac.*"
-            - "users.*"
-            - "apikey.admin"
-        - name: "viewer"
-          description: "Read-only access to metrics, logs, and traces"
-          permissions:
-            - "metrics.read"
-            - "logs.read"
-            - "traces.read"
-            - "apikey.manage"
-        - name: "analyst"
-          description: "Analyst with read and query access"
-          permissions:
-            - "metrics.*"
-            - "logs.*"
-            - "traces.*"
-            - "rca.read"
-            - "predict.read"
-            - "apikey.manage"
-
   cache:
     # Cache nodes for Valkey/Redis. Leave empty when using the embedded Bitnami
     # Valkey subchart (valkey.enabled=true); the chart will auto-wire the
@@ -313,48 +227,14 @@ mirador:
         disk_cache_ratio: 0.5    # Disk cache ratio (0.0-1.0)
         max_concurrent_queries: 50  # Maximum concurrent queries
 
-  # Weaviate connection for schema/semantic features and RBAC storage
+  # Weaviate connection for schema/semantic features
   weaviate:
-    enabled: true  # Required for RBAC feature
+    enabled: true
     scheme: http
     host: weaviate.mirador.svc.cluster.local
     port: 8080
     api_key: ""
     use_official: false
-    # RBAC schema initialization
-    rbac_schema:
-      enabled: true
-      auto_migrate: true  # Automatically create RBAC schema classes on startup
-
-  # API Key Management Configuration
-  api_keys:
-    enabled: true
-    # Default limits applied system-wide unless overridden
-    default_limits:
-      max_keys_per_user: 10
-      max_keys_per_tenant_admin: 25
-      max_keys_per_global_admin: 100
-    # Tenant-specific limit overrides
-    tenant_limits: []
-      # Example:
-      # - tenant_id: "production"
-      #   max_keys_per_user: 20
-      #   max_keys_per_tenant_admin: 50
-      #   max_keys_per_global_admin: 150
-    # Global system-wide overrides (optional)
-    global_limits_override: null
-      # Example:
-      # max_keys_per_user: 15
-      # max_keys_per_tenant_admin: 35
-      # max_keys_per_global_admin: 200
-      # max_total_keys: 5000
-    # Permission settings
-    allow_tenant_override: true   # Allow tenant admins to override limits
-    allow_admin_override: true    # Allow global admins to override limits
-    # Expiry settings
-    max_expiry_days: 365         # Maximum days for API key expiry
-    min_expiry_days: 1           # Minimum days for API key expiry
-    enforce_expiry: false        # Require expiry date on all new keys
 
 # Bleve storage configuration
 bleveStorage:

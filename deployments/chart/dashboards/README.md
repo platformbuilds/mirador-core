@@ -11,7 +11,7 @@ Provides comprehensive monitoring of Bleve search operations including:
 
 - **Index Operations Rate**: Real-time indexing throughput
 - **Search Operation Duration**: P95 and P50 search latencies
-- **Storage Usage by Tenant**: Memory and disk usage per tenant
+- **Storage Usage**: Memory and disk usage patterns
 - **Cluster Health**: Active nodes and leadership changes
 - **Query Performance Heatmap**: Performance distribution by query type
 
@@ -57,8 +57,8 @@ kubectl apply -f deployments/chart/templates/grafana-dashboard.yaml
 |--------|------|-------------|
 | `bleve_index_operations_total` | Counter | Total number of index operations |
 | `bleve_search_operation_duration` | Histogram | Search operation duration in seconds |
-| `bleve_storage_memory_bytes` | Gauge | Memory usage by tenant |
-| `bleve_storage_disk_bytes` | Gauge | Disk usage by tenant |
+| `bleve_storage_memory_bytes` | Gauge | Memory usage |
+| `bleve_storage_disk_bytes` | Gauge | Disk usage |
 | `bleve_cluster_nodes` | Gauge | Number of active cluster nodes |
 | `bleve_leadership_changes_total` | Counter | Total leadership changes |
 

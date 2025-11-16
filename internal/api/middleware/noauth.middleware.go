@@ -15,15 +15,16 @@ func NoAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tenant := c.GetHeader("X-Tenant-ID")
 		if strings.TrimSpace(tenant) == "" {
-			tenant = DefaultTenantID
+			tenant = models.DefaultTenantID
 		}
 
 		// Create a dummy session for consistency with AuthMiddleware
+		// For single-tenant, give admin-like permissions for testing
 		session := &models.UserSession{
 			ID:           "anonymous-session",
 			UserID:       "anonymous",
 			TenantID:     tenant,
-			Roles:        []string{"viewer"},
+			Roles:        []string{"global_admin"}, // Give full permissions for testing
 			CreatedAt:    time.Now(),
 			LastActivity: time.Now(),
 			Settings:     make(map[string]interface{}),
@@ -32,7 +33,7 @@ func NoAuthMiddleware() gin.HandlerFunc {
 		c.Set("session", session)
 		c.Set("tenant_id", tenant)
 		c.Set("user_id", "anonymous")
-		c.Set("user_roles", []string{"viewer"})
+		c.Set("user_roles", []string{"global_admin"}) // Give full permissions for testing
 		c.Set("session_id", "anonymous-session")
 		c.Next()
 	}

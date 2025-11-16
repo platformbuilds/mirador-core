@@ -44,7 +44,7 @@ echo ""
 # Step 2: Test unified query (Metrics)
 echo "Step 2: Testing unified metrics query..."
 METRICS_QUERY_RESPONSE=$(curl -s -X POST "$BASE_URL/api/v1/unified/query" \
-  -H "Authorization: Bearer $SESSION_TOKEN" \
+  -H "X-API-Key: $API_KEY" \
   -H "x-tenant-id: $TENANT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -79,7 +79,7 @@ echo ""
 # Step 3: Test unified query (Logs)
 echo "Step 3: Testing unified logs query..."
 LOGS_QUERY_RESPONSE=$(curl -s -X POST "$BASE_URL/api/v1/unified/query" \
-  -H "Authorization: Bearer $SESSION_TOKEN" \
+  -H "X-API-Key: $API_KEY" \
   -H "x-tenant-id: $TENANT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -138,7 +138,7 @@ echo ""
 # Step 5: Test unified health check
 echo "Step 5: Checking unified query health..."
 HEALTH_RESPONSE=$(curl -s -X GET "$BASE_URL/api/v1/unified/health" \
-  -H "Authorization: Bearer $SESSION_TOKEN" \
+  -H "X-API-Key: $API_KEY" \
   -H "x-tenant-id: $TENANT")
 
 if echo "$HEALTH_RESPONSE" | jq -e '.overall_health == "healthy"' > /dev/null; then

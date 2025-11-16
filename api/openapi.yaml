@@ -1,7 +1,7 @@
 openapi: "3.0.3"
 info:
   title: MIRADOR-CORE API
-  description: Mirador Core is a comprehensive observability and analytics platform that provides KPI definitions, layouts, dashboards, user preferences, metrics, logs, traces, and RBAC management for monitoring and analyzing system metrics.
+  description: Mirador Core is a comprehensive observability and analytics platform that provides KPI definitions, layouts, dashboards, user preferences, metrics, logs, traces, and unified queries for monitoring and analyzing system metrics.
   version: "8.0.0"
   contact:
     name: Platform Builds Team
@@ -30,10 +30,6 @@ servers:
 externalDocs:
   description: OpenAPI
   url: https://swagger.io/resources/open-api/
-
-security:
-  - ApiKeyAuth: []
-  - BearerAuth: []
 
 paths:
   # Health and system endpoints
@@ -150,1167 +146,6 @@ paths:
               schema:
                 type: string
 
-  # Authentication endpoints
-  /api/v1/auth/login:
-    post:
-      summary: User login
-      description: Authenticate a user with username and password, returns session token and API key
-      tags:
-        - authentication
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - username
-                - password
-              properties:
-                username:
-                  type: string
-                  example: "user@example.com"
-                password:
-                  type: string
-                  example: "password123"
-                totp_code:
-                  type: string
-                  example: "123456"
-                remember_me:
-                  type: boolean
-                  default: false
-      responses:
-        "200":
-          description: Login successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: object
-                    properties:
-                      session_token:
-                        type: string
-                      api_key:
-                        type: string
-                      key_prefix:
-                        type: string
-                      user_id:
-                        type: string
-                      tenant_id:
-                        type: string
-                      roles:
-                        type: array
-                        items:
-                          type: string
-                      expires_at:
-                        type: string
-                        format: date-time
-                      warning:
-                        type: string
-        "400":
-          description: Invalid request format
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-        "401":
-          description: Authentication failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-        "500":
-          description: Session creation failed or API key generation failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-
-  /api/v1/auth/logout:
-    post:
-      summary: User logout
-      description: Invalidate the current user session
-      tags:
-        - authentication
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Logout successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: object
-                    properties:
-                      logged_out:
-                        type: boolean
-                        example: true
-        "400":
-          description: No active session
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-
-  /api/v1/auth/validate:
-    post:
-      summary: Validate token
-      description: Validate a session token, API key, or JWT token and return user information
-      tags:
-        - authentication
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - token
-              properties:
-                token:
-                  type: string
-                  example: "mrk_abc123..."
-      responses:
-        "200":
-          description: Token is valid
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: object
-                    properties:
-                      valid:
-                        type: boolean
-                        example: true
-                      type:
-                        type: string
-                        enum: [api_key, session, jwt]
-                      user_id:
-                        type: string
-                      tenant_id:
-                        type: string
-                      roles:
-                        type: array
-                        items:
-                          type: string
-                      scopes:
-                        type: array
-                        items:
-                          type: string
-        "400":
-          description: Invalid request format
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-        "401":
-          description: Invalid token or expired session
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-
-  # API Key management
-  /api/v1/auth/apikeys:
-    get:
-      summary: List API keys
-      description: Retrieve all API keys for the authenticated user
-      tags:
-        - api-keys
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      responses:
-        "200":
-          description: API keys retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: object
-                    properties:
-                      api_keys:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                            name:
-                              type: string
-                            prefix:
-                              type: string
-                            expires_at:
-                              type: string
-                              format: date-time
-                              nullable: true
-                            scopes:
-                              type: array
-                              items:
-                                type: string
-                            created_at:
-                              type: string
-                              format: date-time
-                            last_used:
-                              type: string
-                              format: date-time
-                              nullable: true
-                            is_active:
-                              type: boolean
-                      total:
-                        type: integer
-        "500":
-          description: Failed to retrieve API keys
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-    post:
-      summary: Generate API key
-      description: Create a new API key for the authenticated user with specified name, description, and scopes
-      tags:
-        - api-keys
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - name
-              properties:
-                name:
-                  type: string
-                  example: "My API Key"
-                description:
-                  type: string
-                  example: "For development"
-                expires_at:
-                  type: string
-                  format: date-time
-                  nullable: true
-                scopes:
-                  type: array
-                  items:
-                    type: string
-                  example: ["read", "write"]
-      responses:
-        "201":
-          description: API key created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: object
-                    properties:
-                      api_key:
-                        type: string
-                      key_prefix:
-                        type: string
-                      name:
-                        type: string
-                      expires_at:
-                        type: string
-                        format: date-time
-                        nullable: true
-                      scopes:
-                        type: array
-                        items:
-                          type: string
-                      warning:
-                        type: string
-        "400":
-          description: Invalid request format or API key limit exceeded
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-        "500":
-          description: Failed to generate or create API key
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-
-  /api/v1/auth/apikeys/{keyId}:
-    delete:
-      summary: Revoke API key
-      description: Deactivate an API key by its ID
-      tags:
-        - api-keys
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: keyId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: API key ID
-      responses:
-        "200":
-          description: API key revoked successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: object
-                    properties:
-                      message:
-                        type: string
-                        example: "API key revoked successfully"
-        "400":
-          description: API key ID is required
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-        "500":
-          description: Failed to revoke API key
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-
-  /api/v1/auth/apikey-limits:
-    get:
-      summary: Get API key limits
-      description: Retrieve the current API key limits and configuration for the authenticated tenant
-      tags:
-        - api-keys
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      responses:
-        "200":
-          description: API key limits retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/APIKeyLimits'
-                  configuration:
-                    type: object
-                    properties:
-                      configuration_source:
-                        type: string
-                      allow_tenant_override:
-                        type: boolean
-                      allow_admin_override:
-                        type: boolean
-                      enforce_expiry:
-                        type: boolean
-                      max_expiry_days:
-                        type: integer
-                      min_expiry_days:
-                        type: integer
-    put:
-      summary: Update API key limits
-      description: Update API key limits for a tenant (requires tenant admin or global admin role)
-      tags:
-        - api-keys
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/APIKeyLimitsRequest'
-      responses:
-        "200":
-          description: API key limits updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: object
-                    properties:
-                      message:
-                        type: string
-                        example: "API key limits updated successfully"
-                      limits:
-                        $ref: '#/components/schemas/APIKeyLimits'
-        "400":
-          description: Invalid request format
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-        "403":
-          description: Insufficient permissions or updates disabled by configuration
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-
-  /api/v1/auth/apikey-config:
-    get:
-      summary: Get API key configuration
-      description: Retrieve the current API key configuration (global admin only)
-      tags:
-        - api-keys
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      responses:
-        "200":
-          description: API key configuration retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: object
-                    properties:
-                      enabled:
-                        type: boolean
-                      default_limits:
-                        type: object
-                        properties:
-                          max_keys_per_user:
-                            type: integer
-                          max_keys_per_tenant_admin:
-                            type: integer
-                          max_keys_per_global_admin:
-                            type: integer
-                      tenant_specific_limits_count:
-                        type: integer
-                      global_limits_override_enabled:
-                        type: boolean
-                      permissions:
-                        type: object
-                        properties:
-                          allow_tenant_override:
-                            type: boolean
-                          allow_admin_override:
-                            type: boolean
-                      expiry_settings:
-                        type: object
-                        properties:
-                          enforce_expiry:
-                            type: boolean
-                          max_expiry_days:
-                            type: integer
-                          min_expiry_days:
-                            type: integer
-                      configuration_source:
-                        type: string
-                      environment:
-                        type: string
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-
-  # RBAC endpoints
-  /api/v1/rbac/roles:
-    get:
-      summary: Get roles
-      description: Retrieve all roles for the tenant
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Roles retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Role'
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-    post:
-      summary: Create role
-      description: Create a new role
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Role'
-      responses:
-        "201":
-          description: Role created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/Role'
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-
-  /api/v1/rbac/users/{userId}/roles:
-    get:
-      summary: Get user roles
-      description: Get roles assigned to a user
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: User ID
-      responses:
-        "200":
-          description: User roles retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: array
-                    items:
-                      type: string
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  error:
-                    type: string
-
-  /api/v1/rbac/permissions:
-    get:
-      summary: Get permissions
-      description: Retrieve all permissions for the tenant
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Permissions retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Permission'
-    post:
-      summary: Create permission
-      description: Create a new permission
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Permission'
-      responses:
-        "201":
-          description: Permission created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/Permission'
-
-  /api/v1/rbac/permissions/{permissionId}:
-    put:
-      summary: Update permission
-      description: Update an existing permission
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: permissionId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Permission ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Permission'
-      responses:
-        "200":
-          description: Permission updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/Permission'
-    delete:
-      summary: Delete permission
-      description: Delete a permission
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: permissionId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Permission ID
-      responses:
-        "200":
-          description: Permission deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-
-  /api/v1/rbac/groups:
-    get:
-      summary: Get groups
-      description: Retrieve all groups for the tenant
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Groups retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Group'
-    post:
-      summary: Create group
-      description: Create a new group
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Group'
-      responses:
-        "201":
-          description: Group created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/Group'
-
-  /api/v1/rbac/groups/{groupName}:
-    put:
-      summary: Update group
-      description: Update an existing group
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: groupName
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Group name
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Group'
-      responses:
-        "200":
-          description: Group updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/Group'
-    delete:
-      summary: Delete group
-      description: Delete a group
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: groupName
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Group name
-      responses:
-        "200":
-          description: Group deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-
-  /api/v1/rbac/groups/{groupName}/users:
-    put:
-      summary: Add users to group
-      description: Add users to a group
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: groupName
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Group name
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                userIds:
-                  type: array
-                  items:
-                    type: string
-      responses:
-        "200":
-          description: Users added to group successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-    delete:
-      summary: Remove users from group
-      description: Remove users from a group
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: groupName
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Group name
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                userIds:
-                  type: array
-                  items:
-                    type: string
-      responses:
-        "200":
-          description: Users removed from group successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-
-  /api/v1/rbac/groups/{groupName}/members:
-    get:
-      summary: Get group members
-      description: Get members of a group
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: groupName
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Group name
-      responses:
-        "200":
-          description: Group members retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: array
-                    items:
-                      type: string
-
-  /api/v1/rbac/role-bindings:
-    get:
-      summary: Get role bindings
-      description: Retrieve all role bindings for the tenant
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Role bindings retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/RoleBinding'
-    post:
-      summary: Create role binding
-      description: Create a new role binding
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RoleBinding'
-      responses:
-        "201":
-          description: Role binding created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/RoleBinding'
-
-  /api/v1/rbac/role-bindings/{bindingId}:
-    put:
-      summary: Update role binding
-      description: Update an existing role binding
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: bindingId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Role binding ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RoleBinding'
-      responses:
-        "200":
-          description: Role binding updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/RoleBinding'
-    delete:
-      summary: Delete role binding
-      description: Delete a role binding
-      tags:
-        - rbac
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: bindingId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Role binding ID
-      responses:
-        "200":
-          description: Role binding deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-
   # KPI endpoints
   /api/v1/kpi/defs:
     get:
@@ -1318,15 +153,7 @@ paths:
       description: Retrieve a paginated list of KPI definitions with optional filtering by tags
       tags:
         - kpi-definitions
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
-        - name: tenant_id
-          in: query
-          schema:
-            type: string
-          description: Tenant ID (optional, defaults to request context)
         - name: tags
           in: query
           schema:
@@ -1381,9 +208,6 @@ paths:
       description: Create a new KPI definition or update an existing one. If ID is not provided, a new UUID will be generated.
       tags:
         - kpi-definitions
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -1428,9 +252,6 @@ paths:
       description: Delete a KPI definition by its ID. Requires confirmation via query parameter.
       tags:
         - kpi-definitions
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -1482,9 +303,6 @@ paths:
       description: Retrieve the layout configuration for all KPIs in a specific dashboard
       tags:
         - kpi-layouts
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
         - name: dashboard
           in: query
@@ -1528,9 +346,6 @@ paths:
       description: Update the layout configuration for multiple KPIs in a dashboard
       tags:
         - kpi-layouts
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -1582,15 +397,7 @@ paths:
       description: Retrieve a paginated list of dashboards
       tags:
         - dashboards
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
-        - name: tenant_id
-          in: query
-          schema:
-            type: string
-          description: Tenant ID (optional, defaults to request context)
         - name: limit
           in: query
           schema:
@@ -1636,9 +443,6 @@ paths:
       description: Create a new dashboard. If ID is not provided, a new UUID will be generated.
       tags:
         - dashboards
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -1677,9 +481,6 @@ paths:
       description: Update an existing dashboard by ID
       tags:
         - dashboards
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -1732,9 +533,6 @@ paths:
       description: Delete a dashboard by its ID. Cannot delete the default dashboard. Requires confirmation.
       tags:
         - dashboards
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -1786,9 +584,6 @@ paths:
       description: Execute a PromQL query against VictoriaMetrics
       tags:
         - metrics
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -1836,9 +631,6 @@ paths:
       description: Execute a PromQL range query against VictoriaMetrics
       tags:
         - metrics
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -1891,9 +683,6 @@ paths:
       description: Get available metric names from VictoriaMetrics
       tags:
         - metrics
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: Metric names retrieved successfully
@@ -1925,9 +714,6 @@ paths:
       description: Get time series data for metrics
       tags:
         - metrics
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
         - name: match[]
           in: query
@@ -1974,9 +760,6 @@ paths:
       description: Get label names and values from VictoriaMetrics
       tags:
         - metrics
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -2018,9 +801,6 @@ paths:
       description: Get values for a specific label
       tags:
         - metrics
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
         - name: name
           in: path
@@ -2078,9 +858,6 @@ paths:
       description: Execute a LogsQL query against VictoriaLogs
       tags:
         - logs
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -2132,9 +909,6 @@ paths:
       description: Get available log streams from VictoriaLogs
       tags:
         - logs
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: Log streams retrieved successfully
@@ -2159,9 +933,6 @@ paths:
       description: Get available log fields from VictoriaLogs
       tags:
         - logs
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: Log fields retrieved successfully
@@ -2186,9 +957,6 @@ paths:
       description: Export logs based on query
       tags:
         - logs
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -2240,9 +1008,6 @@ paths:
       description: Store a JSON log event in VictoriaLogs (for AI engines)
       tags:
         - logs
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -2287,9 +1052,6 @@ paths:
       description: Get histogram data for logs over time
       tags:
         - logs
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
         - name: query
           in: query
@@ -2337,9 +1099,6 @@ paths:
       description: Get facet data for logs
       tags:
         - logs
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
         - name: query
           in: query
@@ -2382,9 +1141,6 @@ paths:
       description: Search logs with advanced filtering
       tags:
         - logs
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -2430,9 +1186,6 @@ paths:
       description: Stream live logs via WebSocket
       tags:
         - logs
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
         - name: query
           in: query
@@ -2459,9 +1212,6 @@ paths:
       description: Get list of services from traces
       tags:
         - traces
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: Services retrieved successfully
@@ -2486,9 +1236,6 @@ paths:
       description: Get operations for a specific service
       tags:
         - traces
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
         - name: service
           in: path
@@ -2520,9 +1267,6 @@ paths:
       description: Get a specific trace by ID
       tags:
         - traces
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
         - name: traceId
           in: path
@@ -2563,9 +1307,6 @@ paths:
       description: Get flamegraph data for a trace
       tags:
         - traces
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
         - name: traceId
           in: path
@@ -2597,9 +1338,6 @@ paths:
       description: Search traces with filters
       tags:
         - traces
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -2652,9 +1390,6 @@ paths:
       description: Search traces and return flamegraph data
       tags:
         - traces
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -2697,9 +1432,6 @@ paths:
       description: Get list of active correlations from RCA engine
       tags:
         - rca
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: Active correlations retrieved successfully
@@ -2724,9 +1456,6 @@ paths:
       description: Start an RCA investigation for a service or component
       tags:
         - rca
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -2785,9 +1514,6 @@ paths:
       description: Get known failure patterns from RCA engine
       tags:
         - rca
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: Failure patterns retrieved successfully
@@ -2812,9 +1538,6 @@ paths:
       description: Generate service dependency graph for RCA analysis
       tags:
         - rca
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -2857,9 +1580,6 @@ paths:
       description: Store a correlation result back to VictoriaLogs
       tags:
         - rca
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -2895,9 +1615,6 @@ paths:
       description: Get configured data sources
       tags:
         - config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: Data sources retrieved successfully
@@ -2920,9 +1637,6 @@ paths:
       description: Add a new data source configuration
       tags:
         - config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -2966,9 +1680,6 @@ paths:
       description: Get configured integrations
       tags:
         - config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: Integrations retrieved successfully
@@ -2994,9 +1705,6 @@ paths:
       description: Get user preferences and UI state
       tags:
         - config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: User preferences retrieved successfully
@@ -3019,9 +1727,6 @@ paths:
       description: Create user preferences
       tags:
         - config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -3054,9 +1759,6 @@ paths:
       description: Update user preferences
       tags:
         - config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -3089,9 +1791,6 @@ paths:
       description: Delete user preferences
       tags:
         - config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: User preferences deleted successfully
@@ -3120,9 +1819,6 @@ paths:
       description: Get runtime feature flags
       tags:
         - config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: Feature flags retrieved successfully
@@ -3145,9 +1841,6 @@ paths:
       description: Update runtime feature flags
       tags:
         - config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -3180,9 +1873,6 @@ paths:
       description: Reset feature flags to defaults
       tags:
         - config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: Feature flags reset successfully
@@ -3211,9 +1901,6 @@ paths:
       description: Get configured gRPC endpoints
       tags:
         - config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: gRPC endpoints retrieved successfully
@@ -3236,9 +1923,6 @@ paths:
       description: Update gRPC endpoint configurations
       tags:
         - config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -3271,9 +1955,6 @@ paths:
       description: Reset gRPC endpoints to defaults
       tags:
         - config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: gRPC endpoints reset successfully
@@ -3302,9 +1983,6 @@ paths:
       description: Get list of active user sessions
       tags:
         - sessions
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: Active sessions retrieved successfully
@@ -3338,9 +2016,6 @@ paths:
       description: Invalidate a user session
       tags:
         - sessions
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -3388,9 +2063,6 @@ paths:
       description: Get sessions for a specific user
       tags:
         - sessions
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       parameters:
         - name: userId
           in: path
@@ -3425,1604 +2097,6 @@ paths:
                   error:
                     type: string
 
-  # RBAC Audit endpoints
-  /api/v1/rbac/audit:
-    get:
-      summary: Get audit events
-      description: Get RBAC audit events for the tenant
-      tags:
-        - rbac-audit
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: subjectId
-          in: query
-          schema:
-            type: string
-          description: Filter by subject ID
-        - name: action
-          in: query
-          schema:
-            type: string
-          description: Filter by action
-        - name: start
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: Start time
-        - name: end
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: End time
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 1000
-            default: 100
-          description: Maximum number of results
-      responses:
-        "200":
-          description: Audit events retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to retrieve audit events
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/rbac/audit/{eventId}:
-    get:
-      summary: Get audit event
-      description: Get a specific audit event by ID
-      tags:
-        - rbac-audit
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: eventId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Audit event ID
-      responses:
-        "200":
-          description: Audit event retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: Audit event not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to retrieve audit event
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/rbac/audit/summary:
-    get:
-      summary: Get audit summary
-      description: Get summary statistics for audit events
-      tags:
-        - rbac-audit
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: start
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: Start time
-        - name: end
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: End time
-      responses:
-        "200":
-          description: Audit summary retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to retrieve audit summary
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/rbac/audit/subject/{subjectId}:
-    get:
-      summary: Get audit events by subject
-      description: Get audit events for a specific subject
-      tags:
-        - rbac-audit
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: subjectId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Subject ID
-        - name: start
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: Start time
-        - name: end
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: End time
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 1000
-            default: 100
-          description: Maximum number of results
-      responses:
-        "200":
-          description: Audit events retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to retrieve audit events
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # Tenant management (global admin only)
-  /api/v1/tenants:
-    get:
-      summary: List tenants
-      description: List all tenants (global admin only)
-      tags:
-        - tenants
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 50
-          description: Maximum number of results
-        - name: offset
-          in: query
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
-          description: Pagination offset
-      responses:
-        "200":
-          description: Tenants listed successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to list tenants
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    post:
-      summary: Create tenant
-      description: Create a new tenant (global admin only)
-      tags:
-        - tenants
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Tenant'
-      responses:
-        "201":
-          description: Tenant created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/Tenant'
-        "400":
-          description: Invalid tenant data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to create tenant
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/tenants/{tenantId}:
-    get:
-      summary: Get tenant
-      description: Get tenant details (tenant admin or global admin)
-      tags:
-        - tenants
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tenant ID
-      responses:
-        "200":
-          description: Tenant retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/Tenant'
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: Tenant not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to retrieve tenant
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    put:
-      summary: Update tenant
-      description: Update tenant details (tenant admin or global admin)
-      tags:
-        - tenants
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tenant ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Tenant'
-      responses:
-        "200":
-          description: Tenant updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/Tenant'
-        "400":
-          description: Invalid tenant data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: Tenant not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to update tenant
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    delete:
-      summary: Delete tenant
-      description: Delete a tenant (global admin only)
-      tags:
-        - tenants
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tenant ID
-      responses:
-        "200":
-          description: Tenant deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: Tenant not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to delete tenant
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # Tenant user management
-  /api/v1/tenants/{tenantId}/users:
-    get:
-      summary: List tenant users
-      description: List users in a tenant (tenant admin)
-      tags:
-        - tenants
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tenant ID
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 50
-          description: Maximum number of results
-        - name: offset
-          in: query
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
-          description: Pagination offset
-      responses:
-        "200":
-          description: Tenant users listed successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to list tenant users
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    post:
-      summary: Create tenant user
-      description: Add a user to a tenant (tenant admin)
-      tags:
-        - tenants
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tenant ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TenantUser'
-      responses:
-        "201":
-          description: Tenant user created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/TenantUser'
-        "400":
-          description: Invalid user data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to create tenant user
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/tenants/{tenantId}/users/{userId}:
-    get:
-      summary: Get tenant user
-      description: Get user details in tenant (tenant admin)
-      tags:
-        - tenants
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tenant ID
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: User ID
-      responses:
-        "200":
-          description: Tenant user retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/TenantUser'
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: Tenant user not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to retrieve tenant user
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    put:
-      summary: Update tenant user
-      description: Update user details in tenant (tenant admin)
-      tags:
-        - tenants
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tenant ID
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: User ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TenantUser'
-      responses:
-        "200":
-          description: Tenant user updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/TenantUser'
-        "400":
-          description: Invalid user data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: Tenant user not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to update tenant user
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    delete:
-      summary: Delete tenant user
-      description: Remove a user from tenant (tenant admin)
-      tags:
-        - tenants
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tenant ID
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: User ID
-      responses:
-        "200":
-          description: Tenant user deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: Tenant user not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to delete tenant user
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # User management (global admin only)
-  /api/v1/users:
-    get:
-      summary: List users
-      description: List all users (global admin only)
-      tags:
-        - users
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 50
-          description: Maximum number of results
-        - name: offset
-          in: query
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
-          description: Pagination offset
-      responses:
-        "200":
-          description: Users listed successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to list users
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    post:
-      summary: Create user
-      description: Create a new user (global admin only)
-      tags:
-        - users
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateUserRequest'
-      responses:
-        "201":
-          description: User created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/User'
-        "400":
-          description: Invalid user data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to create user
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/users/{id}:
-    get:
-      summary: Get user
-      description: Get user details (global admin only)
-      tags:
-        - users
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: User ID
-      responses:
-        "200":
-          description: User retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/User'
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: User not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to retrieve user
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    put:
-      summary: Update user
-      description: Update user details (global admin only)
-      tags:
-        - users
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: User ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateUserRequest'
-      responses:
-        "200":
-          description: User updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/User'
-        "400":
-          description: Invalid user data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: User not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to update user
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    delete:
-      summary: Delete user
-      description: Delete a user (global admin only)
-      tags:
-        - users
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: User ID
-      responses:
-        "200":
-          description: User deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: User not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to delete user
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # MiradorAuth management (global admin only)
-  /api/v1/auth/users:
-    post:
-      summary: Create MiradorAuth
-      description: Create local authentication credentials (global admin only)
-      tags:
-        - auth-users
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MiradorAuth'
-      responses:
-        "201":
-          description: MiradorAuth created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/MiradorAuth'
-        "400":
-          description: Invalid auth data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to create MiradorAuth
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/auth/users/{userId}:
-    get:
-      summary: Get MiradorAuth
-      description: Get local authentication credentials (global admin only)
-      tags:
-        - auth-users
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: User ID
-      responses:
-        "200":
-          description: MiradorAuth retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/MiradorAuth'
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: MiradorAuth not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to retrieve MiradorAuth
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    put:
-      summary: Update MiradorAuth
-      description: Update local authentication credentials (global admin only)
-      tags:
-        - auth-users
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: User ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MiradorAuth'
-      responses:
-        "200":
-          description: MiradorAuth updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/MiradorAuth'
-        "400":
-          description: Invalid auth data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: MiradorAuth not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to update MiradorAuth
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    delete:
-      summary: Delete MiradorAuth
-      description: Delete local authentication credentials (global admin only)
-      tags:
-        - auth-users
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: User ID
-      responses:
-        "200":
-          description: MiradorAuth deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: MiradorAuth not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to delete MiradorAuth
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # AuthConfig management (tenant admin only)
-  /api/v1/auth/config:
-    post:
-      summary: Create AuthConfig
-      description: Create authentication configuration for tenant (tenant admin only)
-      tags:
-        - auth-config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthConfig'
-      responses:
-        "201":
-          description: AuthConfig created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/AuthConfig'
-        "400":
-          description: Invalid config data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to create AuthConfig
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/auth/config/{tenantId}:
-    get:
-      summary: Get AuthConfig
-      description: Get authentication configuration for tenant (tenant admin only)
-      tags:
-        - auth-config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tenant ID
-      responses:
-        "200":
-          description: AuthConfig retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/AuthConfig'
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: AuthConfig not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to retrieve AuthConfig
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    put:
-      summary: Update AuthConfig
-      description: Update authentication configuration for tenant (tenant admin only)
-      tags:
-        - auth-config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tenant ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthConfig'
-      responses:
-        "200":
-          description: AuthConfig updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    $ref: '#/components/schemas/AuthConfig'
-        "400":
-          description: Invalid config data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: AuthConfig not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to update AuthConfig
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    delete:
-      summary: Delete AuthConfig
-      description: Delete authentication configuration for tenant (tenant admin only)
-      tags:
-        - auth-config
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tenant ID
-      responses:
-        "200":
-          description: AuthConfig deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "404":
-          description: AuthConfig not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to delete AuthConfig
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
   # WebSocket streams
   /api/v1/ws/metrics:
     get:
@@ -5030,9 +2104,6 @@ paths:
       description: WebSocket stream for real-time metrics data
       tags:
         - websockets
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "101":
           description: WebSocket upgrade successful
@@ -5061,9 +2132,6 @@ paths:
       description: WebSocket stream for real-time alerts
       tags:
         - websockets
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "101":
           description: WebSocket upgrade successful
@@ -5093,9 +2161,6 @@ paths:
       description: Execute a unified query across metrics, logs, and traces
       tags:
         - unified-query
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -5149,9 +2214,6 @@ paths:
       description: Execute correlation analysis across multiple data sources
       tags:
         - unified-query
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -5203,9 +2265,6 @@ paths:
       description: Get metadata about available unified query capabilities
       tags:
         - unified-query
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: Metadata retrieved successfully
@@ -5230,9 +2289,6 @@ paths:
       description: Check health of unified query engine
       tags:
         - unified-query
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: Engine is healthy
@@ -5272,9 +2328,6 @@ paths:
       description: Search across all data sources
       tags:
         - unified-query
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -5326,9 +2379,6 @@ paths:
       description: Get statistics about unified query usage
       tags:
         - unified-query
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: Statistics retrieved successfully
@@ -5354,9 +2404,6 @@ paths:
       description: Execute a query using Unified Query Language
       tags:
         - uql
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -5402,9 +2449,6 @@ paths:
       description: Validate a UQL query syntax and semantics
       tags:
         - uql
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -5456,9 +2500,6 @@ paths:
       description: Get execution plan for a UQL query
       tags:
         - uql
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -5509,9 +2550,6 @@ paths:
       description: Search for metrics metadata using Bleve
       tags:
         - metrics-metadata
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -5520,8 +2558,6 @@ paths:
               type: object
               properties:
                 query:
-                  type: string
-                tenantId:
                   type: string
                 limit:
                   type: integer
@@ -5559,9 +2595,6 @@ paths:
       description: Trigger manual sync of metrics metadata
       tags:
         - metrics-metadata
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -5569,8 +2602,6 @@ paths:
             schema:
               type: object
               properties:
-                tenantId:
-                  type: string
                 fullSync:
                   type: boolean
                   default: false
@@ -5612,9 +2643,6 @@ paths:
       description: Check health of metrics metadata system
       tags:
         - metrics-metadata
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       responses:
         "200":
           description: System is healthy
@@ -5643,123 +2671,12 @@ paths:
                   error:
                     type: string
 
-  # Metrics Metadata Synchronization
-  /api/v1/metrics/sync/{tenantId}:
-    post:
-      summary: Start sync for tenant
-      description: Start metrics metadata synchronization for a specific tenant
-      tags:
-        - metrics-sync
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tenant ID
-      responses:
-        "200":
-          description: Sync started successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: started
-                  syncId:
-                    type: string
-        "500":
-          description: Failed to start sync
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/metrics/sync/{tenantId}/state:
-    get:
-      summary: Get sync state
-      description: Get current synchronization state for a tenant
-      tags:
-        - metrics-sync
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tenant ID
-      responses:
-        "200":
-          description: Sync state retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve sync state
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/metrics/sync/{tenantId}/status:
-    get:
-      summary: Get sync status
-      description: Get synchronization status for a tenant
-      tags:
-        - metrics-sync
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Tenant ID
-      responses:
-        "200":
-          description: Sync status retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve sync status
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
   /api/v1/metrics/sync/config:
     put:
       summary: Update sync config
       description: Update metrics metadata synchronization configuration
       tags:
         - metrics-sync
-      security:
-        - ApiKeyAuth: []
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -5799,57 +2716,6 @@ paths:
 
 components:
   schemas:
-    # API Key schemas
-    APIKeyLimits:
-      type: object
-      properties:
-        id:
-          type: string
-        tenantId:
-          type: string
-        maxKeysPerUser:
-          type: integer
-          minimum: 1
-          maximum: 100
-        maxKeysPerTenantAdmin:
-          type: integer
-          minimum: 1
-          maximum: 200
-        maxKeysPerGlobalAdmin:
-          type: integer
-          minimum: 1
-          maximum: 500
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        createdBy:
-          type: string
-        updatedBy:
-          type: string
-
-    APIKeyLimitsRequest:
-      type: object
-      required:
-        - maxKeysPerUser
-        - maxKeysPerTenantAdmin
-        - maxKeysPerGlobalAdmin
-      properties:
-        maxKeysPerUser:
-          type: integer
-          minimum: 1
-          maximum: 100
-        maxKeysPerTenantAdmin:
-          type: integer
-          minimum: 1
-          maximum: 200
-        maxKeysPerGlobalAdmin:
-          type: integer
-          minimum: 1
-          maximum: 500
-
     # KPI schemas
     KPIDefinition:
       type: object
@@ -5889,8 +2755,6 @@ components:
         visibility:
           type: string
           enum: ["private", "team", "org"]
-        tenantId:
-          type: string
         createdAt:
           type: string
           format: date-time
@@ -5945,8 +2809,6 @@ components:
           enum: ["private", "team", "org"]
         isDefault:
           type: boolean
-        tenantId:
-          type: string
         createdAt:
           type: string
           format: date-time
@@ -5978,363 +2840,7 @@ components:
         nextOffset:
           type: integer
 
-    # RBAC schemas
-    Role:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        tenantId:
-          type: string
-        permissions:
-          type: array
-          items:
-            type: string
-        isSystem:
-          type: boolean
-        parentRoles:
-          type: array
-          items:
-            type: string
-        metadata:
-          type: object
-          additionalProperties: true
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        createdBy:
-          type: string
-        updatedBy:
-          type: string
-
-    Permission:
-      type: object
-      properties:
-        id:
-          type: string
-        tenantId:
-          type: string
-        resource:
-          type: string
-        action:
-          type: string
-        scope:
-          type: string
-        description:
-          type: string
-        resourcePattern:
-          type: string
-        conditions:
-          $ref: '#/components/schemas/PermissionConditions'
-        isSystem:
-          type: boolean
-        metadata:
-          type: object
-          additionalProperties: true
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        createdBy:
-          type: string
-        updatedBy:
-          type: string
-
-    PermissionConditions:
-      type: object
-      properties:
-        timeBased:
-          $ref: '#/components/schemas/TimeBasedCondition'
-        ipBased:
-          type: array
-          items:
-            type: string
-        attributeBased:
-          $ref: '#/components/schemas/AttributeBasedCondition'
-
-    TimeBasedCondition:
-      type: object
-      properties:
-        allowedHours:
-          type: array
-          items:
-            type: string
-        allowedDays:
-          type: array
-          items:
-            type: string
-
-    AttributeBasedCondition:
-      type: object
-      properties:
-        department:
-          type: array
-          items:
-            type: string
-        clearanceLevel:
-          type: string
-
-    Group:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        tenantId:
-          type: string
-        members:
-          type: array
-          items:
-            type: string
-        roles:
-          type: array
-          items:
-            type: string
-        parentGroups:
-          type: array
-          items:
-            type: string
-        isSystem:
-          type: boolean
-        maxMembers:
-          type: integer
-        memberSyncEnabled:
-          type: boolean
-        externalId:
-          type: string
-        metadata:
-          type: object
-          additionalProperties: true
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        createdBy:
-          type: string
-        updatedBy:
-          type: string
-
-    RoleBinding:
-      type: object
-      properties:
-        id:
-          type: string
-        subjectType:
-          type: string
-          enum: ["user", "group"]
-        subjectId:
-          type: string
-        roleId:
-          type: string
-        scope:
-          type: string
-        resourceId:
-          type: string
-        expiresAt:
-          type: string
-          format: date-time
-          nullable: true
-        notBefore:
-          type: string
-          format: date-time
-          nullable: true
-        precedence:
-          type: string
-          enum: ["allow", "deny"]
-        conditions:
-          $ref: '#/components/schemas/RoleBindingConditions'
-        justification:
-          type: string
-        approvedBy:
-          type: string
-        approvedAt:
-          type: string
-          format: date-time
-          nullable: true
-        metadata:
-          type: object
-          additionalProperties: true
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        createdBy:
-          type: string
-        updatedBy:
-          type: string
-
-    RoleBindingConditions:
-      type: object
-      properties:
-        ipRanges:
-          type: array
-          items:
-            type: string
-        timeWindows:
-          type: array
-          items:
-            $ref: '#/components/schemas/TimeWindowCondition'
-        deviceTypes:
-          type: array
-          items:
-            type: string
-        riskLevels:
-          type: array
-          items:
-            type: string
-
-    TimeWindowCondition:
-      type: object
-      properties:
-        daysOfWeek:
-          type: array
-          items:
-            type: string
-        startTime:
-          type: string
-        endTime:
-          type: string
-
-    # Tenant and User schemas
-    Tenant:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        displayName:
-          type: string
-        description:
-          type: string
-        deployments:
-          type: array
-          items:
-            $ref: '#/components/schemas/TenantDeployment'
-        status:
-          type: string
-          enum: ["active", "suspended", "pending_deletion"]
-        adminEmail:
-          type: string
-        adminName:
-          type: string
-        quotas:
-          $ref: '#/components/schemas/TenantQuotas'
-        features:
-          type: array
-          items:
-            type: string
-        metadata:
-          type: object
-          additionalProperties: true
-        tags:
-          type: array
-          items:
-            type: string
-        isSystem:
-          type: boolean
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        createdBy:
-          type: string
-        updatedBy:
-          type: string
-
-    TenantDeployment:
-      type: object
-      properties:
-        environment:
-          type: string
-        metricsEndpoint:
-          type: string
-        logsEndpoint:
-          type: string
-        tracesEndpoint:
-          type: string
-        priority:
-          type: integer
-        tags:
-          type: array
-          items:
-            type: string
-
-    TenantQuotas:
-      type: object
-      properties:
-        maxUsers:
-          type: integer
-        maxDashboards:
-          type: integer
-        maxKPIs:
-          type: integer
-        storageLimitGB:
-          type: integer
-        apiRateLimit:
-          type: integer
-
-    TenantUser:
-      type: object
-      properties:
-        id:
-          type: string
-        tenantId:
-          type: string
-        userId:
-          type: string
-        tenantRole:
-          type: string
-          enum: ["tenant_admin", "tenant_editor", "tenant_guest"]
-        status:
-          type: string
-          enum: ["active", "invited", "suspended", "removed"]
-        invitedBy:
-          type: string
-        invitedAt:
-          type: string
-          format: date-time
-          nullable: true
-        acceptedAt:
-          type: string
-          format: date-time
-          nullable: true
-        additionalPermissions:
-          type: array
-          items:
-            type: string
-        metadata:
-          type: object
-          additionalProperties: true
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        createdBy:
-          type: string
-        updatedBy:
-          type: string
-
+    # User schemas
     User:
       type: object
       properties:
@@ -6348,7 +2854,7 @@ components:
           type: string
         globalRole:
           type: string
-          enum: ["global_admin", "global_tenant_admin", "tenant_user"]
+          enum: ["admin", "user"]
         passwordHash:
           type: string
           writeOnly: true
@@ -6416,230 +2922,5 @@ components:
           type: string
           format: email
 
-    # Auth schemas
-    MiradorAuth:
-      type: object
-      properties:
-        id:
-          type: string
-        userId:
-          type: string
-        username:
-          type: string
-        email:
-          type: string
-        passwordHash:
-          type: string
-          writeOnly: true
-        salt:
-          type: string
-          writeOnly: true
-        totpSecret:
-          type: string
-          writeOnly: true
-        totpEnabled:
-          type: boolean
-        backupCodes:
-          type: array
-          items:
-            type: string
-          writeOnly: true
-        tenantId:
-          type: string
-        roles:
-          type: array
-          items:
-            type: string
-        groups:
-          type: array
-          items:
-            type: string
-        isActive:
-          type: boolean
-        passwordChangedAt:
-          type: string
-          format: date-time
-          nullable: true
-        passwordExpiresAt:
-          type: string
-          format: date-time
-          nullable: true
-        lastLoginAt:
-          type: string
-          format: date-time
-          nullable: true
-        failedLoginCount:
-          type: integer
-        lockedUntil:
-          type: string
-          format: date-time
-          nullable: true
-        requirePasswordChange:
-          type: boolean
-        metadata:
-          type: object
-          additionalProperties: true
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        createdBy:
-          type: string
-        updatedBy:
-          type: string
 
-    AuthConfig:
-      type: object
-      properties:
-        id:
-          type: string
-        tenantId:
-          type: string
-        defaultBackend:
-          type: string
-          enum: ["local", "saml", "oidc", "ldap"]
-        enabledBackends:
-          type: array
-          items:
-            type: string
-        backendConfigs:
-          $ref: '#/components/schemas/AuthBackendConfigs'
-        passwordPolicy:
-          $ref: '#/components/schemas/PasswordPolicy'
-        require2FA:
-          type: boolean
-        totpIssuer:
-          type: string
-        sessionTimeoutMinutes:
-          type: integer
-        maxConcurrentSessions:
-          type: integer
-        allowRememberMe:
-          type: boolean
-        rememberMeDays:
-          type: integer
-        metadata:
-          type: object
-          additionalProperties: true
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        createdBy:
-          type: string
-        updatedBy:
-          type: string
 
-    AuthBackendConfigs:
-      type: object
-      properties:
-        saml:
-          $ref: '#/components/schemas/SAMLConfig'
-        oidc:
-          $ref: '#/components/schemas/OIDCConfig'
-        ldap:
-          $ref: '#/components/schemas/LDAPConfig'
-
-    SAMLConfig:
-      type: object
-      properties:
-        entityId:
-          type: string
-        acsUrl:
-          type: string
-        metadataUrl:
-          type: string
-        signingCert:
-          type: string
-        encryptionCert:
-          type: string
-        nameIdFormat:
-          type: string
-        attributeMapping:
-          type: object
-          additionalProperties:
-            type: string
-
-    OIDCConfig:
-      type: object
-      properties:
-        clientId:
-          type: string
-        clientSecret:
-          type: string
-          writeOnly: true
-        issuerUrl:
-          type: string
-        redirectUrl:
-          type: string
-        scopes:
-          type: array
-          items:
-            type: string
-        attributeMapping:
-          type: object
-          additionalProperties:
-            type: string
-
-    LDAPConfig:
-      type: object
-      properties:
-        host:
-          type: string
-        port:
-          type: integer
-        useTls:
-          type: boolean
-        bindDn:
-          type: string
-        bindPassword:
-          type: string
-          writeOnly: true
-        baseDn:
-          type: string
-        userFilter:
-          type: string
-        groupFilter:
-          type: string
-        attributeMapping:
-          type: object
-          additionalProperties:
-            type: string
-
-    PasswordPolicy:
-      type: object
-      properties:
-        minLength:
-          type: integer
-        requireUppercase:
-          type: boolean
-        requireLowercase:
-          type: boolean
-        requireNumbers:
-          type: boolean
-        requireSymbols:
-          type: boolean
-        maxAgeDays:
-          type: integer
-        preventReuseCount:
-          type: integer
-        lockoutThreshold:
-          type: integer
-        lockoutDurationMinutes:
-          type: integer
-
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: API key for authentication. API keys are generated via the API key endpoints and are tenant/user scoped.
-    BearerAuth:
-      type: apiKey
-      in: header
-      name: Authorization
-      description: Type "Bearer" followed by a space and JWT token. Used for UI/web flows.

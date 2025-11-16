@@ -123,7 +123,7 @@ help:
 
 
 
-localdev: localdev-up localdev-wait bootstrap localdev-seed-otel localdev-seed-data localdev-test localdev-down
+localdev: localdev-up localdev-wait localdev-seed-otel localdev-seed-data localdev-test localdev-down
 	@echo "Localdev E2E completed. Reports under localdev/."
 
 .PHONY: openapi-json openapi-validate
@@ -139,14 +139,12 @@ swag:
 	@python3 tools/validate_openapi.py
 	@echo "✅ OpenAPI files validated successfully"
 
-localdev-up: bootstrap
+localdev-up:
 	mkdir -p localdev
 	# Pull images only if missing (prevents re-pulling on every run)
 	docker-compose -f deployments/localdev/docker-compose.yaml up -d --build
 	@echo "⏳ Waiting for services to be ready..."
 	@deployments/localdev/scripts/wait-for-url.sh $(BASE_URL)/ready 120 2
-	@echo "🔐 Running RBAC bootstrap..."
-	@./bin/bootstrap
 
 localdev-wait:
 	@deployments/localdev/scripts/wait-for-url.sh $(BASE_URL)/ready 120 2
@@ -253,11 +251,6 @@ dev: proto
 	@echo "Make sure you have the VictoriaMetrics ecosystem running!"
 	@echo "Run 'docker-compose up -d' to start dependencies."
 	go run cmd/server/main.go
-
-# Build bootstrap tool for RBAC initialization
-bootstrap: proto
-	@echo "🔨 Building RBAC bootstrap tool..."
-	go build -o bin/bootstrap cmd/bootstrap/main.go
 
 # Alias to dev
 run: dev

@@ -57,7 +57,7 @@ Key endpoints once the service comes up:
 - OpenAPI spec: http://localhost:8010/api/openapi.yaml
 - Prometheus metrics: http://localhost:8010/metrics
 
-Authentication is disabled in the local compose file (`AUTH_ENABLED=false`). All requests run as the `default` tenant unless you set an `X-Tenant-ID` header. For testing authentication flows, enable auth and use API keys for programmatic access.
+Authentication is disabled in the local compose file (`AUTH_ENABLED=false`). All requests run anonymously. For testing authentication flows, enable auth and use API keys for programmatic access.
 
 ### Building natively vs. using published images
 The compose file builds a native binary for your host architecture. To pull a published image instead, comment out the `build:` block, set `image: platformbuilds/mirador-core:<tag>`, and rerun `docker compose`.

@@ -48,7 +48,7 @@ Run a single-node Valkey and MIRADOR-CORE. MIRADOR-CORE will look for Victoria e
 
 Cross-platform note (Apple Silicon, ARM64, x86_64): All localdev images are multi-arch. The compose files do not pin `platform` so Docker will pull the native image for your host automatically (arm64 on Apple Silicon, amd64 on Intel/AMD). If you need to force a specific platform, you may add a `platform:` line to a local override compose file.
 
-Auth in localdev: Authentication is disabled by default (AUTH_ENABLED=false). Requests run as `anonymous` on tenant `default` unless you set `X-Tenant-ID`. To test auth flows, remove `AUTH_ENABLED=false` from `mirador-core-docker-compose.yaml` and seed a session or use JWT.
+MIRADOR-CORE is a pure observability engine that assumes external authentication and authorization. All requests are processed without internal auth checks - security should be handled by external proxies, API gateways, or service mesh.
 
 ```bash
 cd public/mirador-core/deployments/localdev

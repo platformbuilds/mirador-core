@@ -166,10 +166,6 @@ services:
       # Valkey (Redis-compatible)
       - VALKEY_CACHE_NODES=valkey:6379
       - CACHE_TTL=300
-
-      # Auth + RBAC (dev)
-      - JWT_SECRET=development-secret-key-not-for-production
-      - RBAC_ENABLED=true
     healthcheck:
       test: ["CMD", "/mirador-core", "healthcheck"]
       interval: 10s
