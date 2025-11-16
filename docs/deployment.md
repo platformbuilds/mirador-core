@@ -171,7 +171,7 @@ services:
 
 ### PostgreSQL
 
-```sql
+```text
 -- Create database and user
 CREATE DATABASE mirador_core;
 CREATE USER mirador_user WITH ENCRYPTED PASSWORD 'secure_password';

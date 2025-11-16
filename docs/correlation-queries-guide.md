@@ -8,7 +8,7 @@ Correlation queries allow you to find relationships between data from different 
 
 ### Basic Correlation Query
 
-```sql
+```text
 logs:error AND metrics:high_latency
 ```
 
@@ -16,7 +16,7 @@ This query finds error logs that correlate with high latency metrics based on sh
 
 ### Time-Window Correlation
 
-```sql
+```text
 logs:exception WITHIN 5m OF metrics:cpu_usage > 80
 ```
 
@@ -90,7 +90,7 @@ traces:service:api operation:auth  # Combined service and operation
 
 Combines queries that must both be true:
 
-```sql
+```text
 logs:error AND metrics:cpu_usage > 80
 ```
 
@@ -103,7 +103,7 @@ logs:error AND metrics:cpu_usage > 80
 
 Combines queries where either can be true:
 
-```sql
+```text
 (logs:error OR logs:warn) AND metrics:memory_usage > 90
 ```
 
@@ -116,7 +116,7 @@ Combines queries where either can be true:
 
 Correlates events within a time window:
 
-```sql
+```text
 logs:exception WITHIN 5m OF metrics:cpu_usage > 80
 ```
 
@@ -141,7 +141,7 @@ logs:exception WITHIN 5m OF metrics:cpu_usage > 80
 - API timeouts and database errors
 - Microservice communication issues
 
-```sql
+```text
 logs:timeout WITHIN 30s OF metrics:http_requests_total
 ```
 
@@ -150,7 +150,7 @@ logs:timeout WITHIN 30s OF metrics:http_requests_total
 - Resource exhaustion scenarios
 - Batch processing problems
 
-```sql
+```text
 logs:memory_error WITHIN 5m OF metrics:memory_usage > 90
 ```
 
@@ -159,7 +159,7 @@ logs:memory_error WITHIN 5m OF metrics:memory_usage > 90
 - Long-running process issues
 - Capacity planning insights
 
-```sql
+```text
 logs:deployment WITHIN 1h OF metrics:error_rate > 5
 ```
 
@@ -169,7 +169,7 @@ logs:deployment WITHIN 1h OF metrics:error_rate > 5
 
 Correlate across all three data sources:
 
-```sql
+```text
 logs:service:checkout AND traces:service:checkout AND metrics:http_requests > 1000
 ```
 
@@ -177,7 +177,7 @@ logs:service:checkout AND traces:service:checkout AND metrics:http_requests > 10
 
 Use parentheses for complex logic:
 
-```sql
+```text
 (logs:error OR logs:exception) WITHIN 10m OF (metrics:cpu_usage > 80 OR metrics:memory_usage > 90)
 ```
 
@@ -185,7 +185,7 @@ Use parentheses for complex logic:
 
 Focus on specific services:
 
-```sql
+```text
 logs:service:payment error AND traces:service:payment AND metrics:payment_errors_total > 0
 ```
 
@@ -193,7 +193,7 @@ logs:service:payment error AND traces:service:payment AND metrics:payment_errors
 
 Correlate application issues with infrastructure:
 
-```sql
+```text
 logs:pod:web-123 crash WITHIN 2m OF metrics:node_cpu{node="k8s-node-01"} > 95
 ```
 
@@ -210,7 +210,7 @@ logs:pod:web-123 crash WITHIN 2m OF metrics:node_cpu{node="k8s-node-01"} > 95
 
 ### Step 3: Write Basic Queries
 
-```sql
+```text
 logs:connection error
 metrics:cpu_usage > 80
 ```
@@ -219,7 +219,7 @@ metrics:cpu_usage > 80
 
 **Time-based correlation** - errors might occur when CPU is already high
 
-```sql
+```text
 logs:"connection error" WITHIN 5m OF metrics:cpu_usage > 80
 ```
 
@@ -227,7 +227,7 @@ logs:"connection error" WITHIN 5m OF metrics:cpu_usage > 80
 
 **Add service context:**
 
-```sql
+```text
 logs:service:api "connection error" WITHIN 5m OF metrics:cpu_usage{service="api"} > 80
 ```
 
@@ -242,7 +242,7 @@ logs:service:api "connection error" WITHIN 5m OF metrics:cpu_usage{service="api"
 
 ### Performance Issues
 
-```sql
+```text
 -- Slow requests with high CPU
 logs:response_time > 5000 WITHIN 1m OF metrics:cpu_usage > 70
 
@@ -255,7 +255,7 @@ logs:"connection timeout" WITHIN 2m OF metrics:db_connections_active > 50
 
 ### Error Analysis
 
-```sql
+```text
 -- Application errors with infrastructure issues
 logs:level:error WITHIN 10m OF metrics:disk_usage > 90
 
@@ -268,7 +268,7 @@ logs:status:500 WITHIN 5m OF traces:operation:api_call
 
 ### Incident Investigation
 
-```sql
+```text
 -- Deployment issues
 logs:deployment WITHIN 30m OF metrics:error_rate > 10
 
@@ -281,7 +281,7 @@ logs:unauthorized WITHIN 5m OF traces:operation:login
 
 ### Business Logic Correlation
 
-```sql
+```text
 -- Payment failures with checkout service
 logs:service:checkout payment_failed WITHIN 2m OF traces:service:payment
 
@@ -326,7 +326,7 @@ logs:login_failed WITHIN 1m OF metrics:auth_attempts_total > 100
 - Engine services not responding
 
 **Solutions:**
-```sql
+```text
 -- Expand time window
 logs:error WITHIN 1h OF metrics:cpu_usage > 50
 
@@ -345,7 +345,7 @@ logs:error AND metrics:cpu_usage
 - Generic search terms
 
 **Solutions:**
-```sql
+```text
 -- Reduce time window
 logs:error WITHIN 1m OF metrics:cpu_usage > 80
 

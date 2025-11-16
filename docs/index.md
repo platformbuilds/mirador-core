@@ -13,9 +13,13 @@ correlation-engine
 correlation-queries-guide
 monitoring-observability
 testing
+integration-testing-guide
+load-testing-guide
+phase-6-integration-tests
+data-seeding
+schema-api-migration-guide
 migration-guide
 readthedocs-integration
-api-reference
 deployment
 configuration
 ```

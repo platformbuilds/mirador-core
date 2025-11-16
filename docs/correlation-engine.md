@@ -178,8 +178,8 @@ Content-Type: application/json
         "id": "correlation-123_time_window_1",
         "timestamp": "2025-10-30T10:15:30Z",
         "engines": {
-          "logs": {...},
-          "metrics": {...}
+          "logs": {"query": "error logs", "count": 15},
+          "metrics": {"query": "cpu_usage > 80", "count": 8}
         },
         "confidence": 0.85,
         "metadata": {
