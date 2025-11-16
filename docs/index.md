@@ -12,14 +12,6 @@ unified-query-operations
 correlation-engine
 correlation-queries-guide
 monitoring-observability
-testing
-integration-testing-guide
-load-testing-guide
-phase-6-integration-tests
-data-seeding
-schema-api-migration-guide
-migration-guide
-readthedocs-integration
 deployment
 configuration
 ```
@@ -42,18 +34,19 @@ MIRADOR-CORE is an advanced observability platform that provides unified access 
 MIRADOR-CORE acts as a unified query layer on top of the VictoriaMetrics ecosystem:
 
 ```
-┌─────────────────┐    ┌─────────────────┐
-│  MIRADOR-CORE   │────│  VictoriaLogs   │
-│                 │    │  (Logs)         │
-│  Query Router   │────│                 │
-│  API Gateway    │    └─────────────────┘
-│  Schema Store   │
-│                 │    ┌─────────────────┐
-│  AI Engines     │────│  VictoriaTraces │
-│  (RCA/Predict)  │    │  (Traces)       │
-└─────────────────┘    └─────────────────┘
+┌─────────────────--┐    ┌─────────────────┐
+│  MIRADOR-CORE     │───>│  VictoriaLogs   │
+│                   │    │  (Logs)         │
+│  Query Router     │    │                 │
+│  API Gateway      │    └─────────────────┘
+│  Schema Store     │
+│                   │    ┌─────────────────┐
+│  AI Engines       │───>│  VictoriaTraces │
+│  (RCA/Correlate)  │    │  (Traces)       │
+└─────────────────--┘    └─────────────────┘
          │
          │
+         v
     ┌─────────────────┐
     │ VictoriaMetrics │
     │  (Metrics)      │
@@ -69,8 +62,7 @@ MIRADOR-CORE acts as a unified query layer on top of the VictoriaMetrics ecosyst
 
 ## Support
 
-- **Documentation**: https://mirador-core.readthedocs.io/
-- **API Reference**: https://mirador-core.github.io/api/
+- **Documentation**: https://miradorstack.readthedocs.io/
 - **GitHub Issues**: Bug reports and feature requests
 - **Community Forum**: General questions and community help
 
