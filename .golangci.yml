@@ -64,6 +64,14 @@ linters:
         - style
     gocyclo:
       min-complexity: 15
+    depguard:
+      rules:
+        Main:
+          deny:
+            - pkg: "github.com/platformbuilds/mirador-core/pkg/logger"
+              desc: "Logger should not be imported from pkg; use internal/logging instead"
+            - pkg: "github.com/platformbuilds/mirador-core/internal/models"
+              desc: "Models should not be imported directly in certain packages"
     govet:
       enable:
         - shadow
@@ -154,6 +162,21 @@ linters:
       - linters:
           - depguard
           - err113
+          - exhaustive
+          - goconst
+          - gocritic
+          - gocyclo
+          - govet
+          - ineffassign
+          - mnd
+          - nolintlint
+          - predeclared
+          - staticcheck
+          - unparam
+        path: internal/rca/
+      - linters:
+          - depguard
+          - err113
           - errcheck
           - goconst
           - gocritic
@@ -209,6 +232,13 @@ linters:
           - gosec
           - mnd
         path: cmd/
+      - linters:
+          - exhaustive
+          - goconst
+          - mnd
+          - unparam
+          - unused
+        path: cmd/otel-fintrans-simulator/
       - linters:
           - gocyclo
           - gosec
