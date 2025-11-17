@@ -192,6 +192,11 @@ func (sg *ServiceGraph) IsUpstream(from, to ServiceNode) bool {
 		return false
 	}
 
+	// Acquire read lock for the duration of the path search to ensure
+	// the graph structure doesn't change while traversing.
+	sg.mu.RLock()
+	defer sg.mu.RUnlock()
+
 	visited := make(map[ServiceNode]bool)
 	return sg.hasPath(from, to, visited)
 }
