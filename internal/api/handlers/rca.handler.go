@@ -10,6 +10,7 @@ import (
 
 	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/rca"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
@@ -22,6 +23,7 @@ type RCAHandler struct {
 	cache              cache.ValkeyCluster
 	logger             logger.Logger
 	featureFlagService *services.RuntimeFeatureFlagService
+	rcaEngine          services.RCAEngine
 }
 
 func NewRCAHandler(
@@ -30,6 +32,7 @@ func NewRCAHandler(
 	serviceGraph services.ServiceGraphFetcher,
 	cache cache.ValkeyCluster,
 	logger logger.Logger,
+	rcaEngine services.RCAEngine,
 ) *RCAHandler {
 	return &RCAHandler{
 		rcaClient:          rcaClient,
@@ -37,6 +40,7 @@ func NewRCAHandler(
 		serviceGraph:       serviceGraph,
 		cache:              cache,
 		logger:             logger,
+		rcaEngine:          rcaEngine,
 		featureFlagService: services.NewRuntimeFeatureFlagService(cache, logger),
 	}
 }
@@ -329,4 +333,211 @@ func (h *RCAHandler) GetServiceGraph(c *gin.Context) {
 		"window":       data.Window,
 		"edges":        data.Edges,
 	})
+}
+
+// POST /api/v1/unified/rca - Phase 4: Full RCA Engine endpoint
+// Accepts an RCARequest and returns an RCAIncident JSON structure
+func (h *RCAHandler) HandleComputeRCA(c *gin.Context) {
+	var request models.RCARequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		h.logger.Error("Failed to parse RCA request", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  fmt.Sprintf("Invalid request format: %v", err),
+		})
+		return
+	}
+
+	// Validate required fields
+	if request.ImpactService == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "impactService is required",
+		})
+		return
+	}
+
+	// Parse time window
+	tStart, err := time.Parse(time.RFC3339, request.TimeStart)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  fmt.Sprintf("Invalid timeStart format: %v", err),
+		})
+		return
+	}
+
+	tEnd, err := time.Parse(time.RFC3339, request.TimeEnd)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  fmt.Sprintf("Invalid timeEnd format: %v", err),
+		})
+		return
+	}
+
+	if !tStart.Before(tEnd) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "timeStart must be before timeEnd",
+		})
+		return
+	}
+
+	// Set defaults
+	if request.ImpactMetric == "" {
+		request.ImpactMetric = "error_rate"
+	}
+	if request.MetricDirection == "" {
+		request.MetricDirection = "higher_is_worse"
+	}
+	if request.Severity == 0 {
+		request.Severity = 0.7 // default medium-high severity
+	}
+	if request.ImpactSummary == "" {
+		request.ImpactSummary = fmt.Sprintf("Incident on %s (metric: %s)", request.ImpactService, request.ImpactMetric)
+	}
+
+	// Build IncidentContext
+	tPeak := tStart.Add(tEnd.Sub(tStart) / 2) // Use midpoint as peak
+	incidentContext := &rca.IncidentContext{
+		ID:            fmt.Sprintf("incident_%d", time.Now().UnixNano()),
+		ImpactService: request.ImpactService,
+		ImpactSignal: rca.ImpactSignal{
+			ServiceName: request.ImpactService,
+			MetricName:  request.ImpactMetric,
+			Direction:   request.MetricDirection,
+			Labels:      make(map[string]string),
+			Threshold:   0.0,
+		},
+		TimeBounds: rca.IncidentTimeWindow{
+			TStart: tStart,
+			TPeak:  tPeak,
+			TEnd:   tEnd,
+		},
+		ImpactSummary: request.ImpactSummary,
+		Severity:      request.Severity,
+		CreatedAt:     time.Now().UTC(),
+	}
+
+	// Build RCAOptions
+	opts := rca.DefaultRCAOptions()
+	if request.MaxChains > 0 {
+		opts.MaxChains = request.MaxChains
+	}
+	if request.MaxStepsPerChain > 0 {
+		opts.MaxStepsPerChain = request.MaxStepsPerChain
+	}
+	if request.MinScoreThreshold > 0 {
+		opts.MinScoreThreshold = request.MinScoreThreshold
+	}
+
+	// Call RCA engine
+	rcaIncident, err := h.rcaEngine.ComputeRCA(c.Request.Context(), incidentContext, opts)
+	if err != nil {
+		h.logger.Error("RCA computation failed", "incident_id", incidentContext.ID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  fmt.Sprintf("RCA computation failed: %v", err),
+		})
+		return
+	}
+
+	// Convert to DTO
+	dto := h.convertRCAIncidentToDTO(rcaIncident)
+
+	// Return response
+	response := models.RCAResponse{
+		Status:    "success",
+		Data:      dto,
+		Timestamp: time.Now().UTC(),
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// convertRCAIncidentToDTO converts internal RCAIncident to DTO for JSON serialization
+func (h *RCAHandler) convertRCAIncidentToDTO(ri *rca.RCAIncident) *models.RCAIncidentDTO {
+	if ri == nil {
+		return nil
+	}
+
+	dto := &models.RCAIncidentDTO{
+		GeneratedAt: ri.GeneratedAt,
+		Score:       ri.Score,
+		Notes:       ri.Notes,
+		Chains:      make([]*models.RCAChainDTO, 0),
+	}
+
+	// Convert impact
+	if ri.Impact != nil {
+		dto.Impact = &models.IncidentContextDTO{
+			ID:            ri.Impact.ID,
+			ImpactService: ri.Impact.ImpactService,
+			MetricName:    ri.Impact.ImpactSignal.MetricName,
+			TimeStartStr:  ri.Impact.TimeBounds.TStart.Format(time.RFC3339),
+			TimeEndStr:    ri.Impact.TimeBounds.TEnd.Format(time.RFC3339),
+			ImpactSummary: ri.Impact.ImpactSummary,
+			Severity:      float64(ri.Impact.Severity),
+		}
+	}
+
+	// Convert root cause
+	if ri.RootCause != nil {
+		dto.RootCause = h.convertRCAStepToDTO(ri.RootCause)
+	}
+
+	// Convert chains
+	for _, chain := range ri.Chains {
+		chainDTO := &models.RCAChainDTO{
+			Score:        chain.Score,
+			Rank:         chain.Rank,
+			ImpactPath:   chain.ImpactPath,
+			DurationHops: chain.DurationHops,
+			Steps:        make([]*models.RCAStepDTO, 0),
+		}
+
+		for _, step := range chain.Steps {
+			stepDTO := h.convertRCAStepToDTO(step)
+			if stepDTO != nil {
+				chainDTO.Steps = append(chainDTO.Steps, stepDTO)
+			}
+		}
+
+		dto.Chains = append(dto.Chains, chainDTO)
+	}
+
+	return dto
+}
+
+// convertRCAStepToDTO converts an RCAStep to DTO
+func (h *RCAHandler) convertRCAStepToDTO(step *rca.RCAStep) *models.RCAStepDTO {
+	if step == nil {
+		return nil
+	}
+
+	dto := &models.RCAStepDTO{
+		WhyIndex:  step.WhyIndex,
+		Service:   step.Service,
+		Component: step.Component,
+		TimeStart: step.TimeRange.Start,
+		TimeEnd:   step.TimeRange.End,
+		Ring:      step.Ring.String(),
+		Direction: string(step.Direction),
+		Distance:  step.Distance,
+		Summary:   step.Summary,
+		Score:     step.Score,
+		Evidence:  make([]*models.EvidenceRefDTO, 0),
+	}
+
+	for _, ev := range step.Evidence {
+		evDTO := &models.EvidenceRefDTO{
+			Type:    ev.Type,
+			ID:      ev.ID,
+			Details: ev.Details,
+		}
+		dto.Evidence = append(dto.Evidence, evDTO)
+	}
+
+	return dto
 }

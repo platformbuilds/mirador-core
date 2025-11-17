@@ -72,7 +72,7 @@ func TestRCA_and_OpenRoutes(t *testing.T) {
 	logs := services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log)
 
 	// RCA
-	rh := NewRCAHandler(&fakeRCA{}, logs, nil, cch, log)
+	rh := NewRCAHandler(&fakeRCA{}, logs, nil, cch, log, nil)
 	r := gin.New()
 	r.Use(func(c *gin.Context) { c.Set("tenant_id", "t1"); c.Next() })
 	r.POST("/rca/investigate", rh.StartInvestigation)
@@ -101,7 +101,7 @@ func TestRCA_ServiceGraph_Success(t *testing.T) {
 		}},
 	}}
 
-	rh := NewRCAHandler(&fakeRCA{}, logs, sg, cch, log)
+	rh := NewRCAHandler(&fakeRCA{}, logs, sg, cch, log, nil)
 	r := gin.New()
 	r.Use(func(c *gin.Context) { c.Set("tenant_id", "tenant-1"); c.Next() })
 	r.POST("/rca/service-graph", rh.GetServiceGraph)
@@ -147,7 +147,7 @@ func TestRCA_ServiceGraph_Errors(t *testing.T) {
 	cch := cache.NewNoopValkeyCache(log)
 	logs := services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log)
 
-	rh := NewRCAHandler(&fakeRCA{}, logs, nil, cch, log)
+	rh := NewRCAHandler(&fakeRCA{}, logs, nil, cch, log, nil)
 	r := gin.New()
 	r.Use(func(c *gin.Context) { c.Set("tenant_id", "tenant-err"); c.Next() })
 	r.POST("/rca/service-graph", rh.GetServiceGraph)
@@ -161,7 +161,7 @@ func TestRCA_ServiceGraph_Errors(t *testing.T) {
 	}
 
 	sg := &stubServiceGraph{}
-	rh = NewRCAHandler(&fakeRCA{}, logs, sg, cch, log)
+	rh = NewRCAHandler(&fakeRCA{}, logs, sg, cch, log, nil)
 	r = gin.New()
 	r.Use(func(c *gin.Context) { c.Set("tenant_id", "tenant-err"); c.Next() })
 	r.POST("/rca/service-graph", rh.GetServiceGraph)
