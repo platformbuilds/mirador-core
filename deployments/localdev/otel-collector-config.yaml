@@ -6,43 +6,125 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 
+connectors:
+  spanmetrics:
+    namespace: traces.span.metrics
+    resource_metrics_key_attributes:
+      - service.name
+      - telemetry.sdk.language
+      - telemetry.sdk.name
+    metrics_flush_interval: 15s
+
+  servicegraph:
+    store:
+      ttl: 60s
+      max_items: 1000000
+    #cache_loop: 10s
+    #store_expiration_loop: 5s
+    #virtual_node_peer_attributes: [db.system, db.operation, messaging.system, service.name]
+    #virtual_node_extra_label: true
+    metrics_flush_interval: 1s
+
 exporters:
   prometheusremotewrite:
-    endpoint: http://victoriametrics:8428/prometheus/api/v1/write
+    endpoint: http://victoriametrics:8428/api/v1/write
+
   otlphttp/logs:
-    logs_endpoint: http://victorialogs:9428/insert/opentelemetry/v1/logs
+    logs_endpoint: http://victoriologs:9428/insert/opentelemetry/v1/logs
+  
+  elasticsearch:
+    endpoint: http://victorialogs:9428/insert/elasticsearch
+    headers:
+      VL-Msg-Field: Body
+
   otlphttp/traces:
     traces_endpoint: http://victoriatraces:10428/insert/opentelemetry/v1/traces
+
+  debug:
+    verbosity: detailed
 
 processors:
   batch:
     send_batch_size: 1024
-    timeout: 5s
+    timeout: 2s
+
   memory_limiter:
     check_interval: 1s
-    limit_mib: 256
-    spike_limit_mib: 64
+    limit_mib: 2048
+    spike_limit_mib: 1024
+
   resource:
     attributes:
       - key: service.namespace
         action: upsert
         value: localdev
 
+  # Isolation Forest processor — config aligned with sample in README
+  # (older schema: training_window, update_frequency, min_samples, features as map)
+  isolationforest:
+    # core algorithm parameters
+    forest_size: 150           # trees per forest
+    subsample_size: 512        # rows per tree
+    contamination_rate: 0.05   # 5% expected outliers
+    threshold: 0.0             # 0 ⇒ let contamination_rate drive the cut-off
+    mode: enrich               # enrich + filter (see README)
+    training_window: 15s       # window of data kept for training
+    update_frequency: 30s      # retrain every 5 minutes
+    min_samples: 50            # wait until this many points seen
+
+    # where to write results on each data point
+    score_attribute: iforest_anomaly_score
+    classification_attribute: iforest_is_anomaly
+
+    # which numeric features the model should look at
+    features:
+      traces: [duration]       # span duration (µs / ns)
+      metrics: [value]         # numeric metric value
+      logs: [severity_number]  # log severity enum or similar numeric attribute
+
+    # performance guard-rails (optional)
+    performance:
+      max_memory_mb: 512
+      batch_size: 100
+      parallel_workers: 8
+
 service:
   telemetry:
     logs:
-      level: info
+      level: debug
+
   pipelines:
-    metrics:
-      receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [prometheusremotewrite]
-    logs:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [otlphttp/logs]
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [memory_limiter, resource]
       exporters: [otlphttp/traces]
 
+    traces/spanmetrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource]
+      exporters: [spanmetrics]
+
+    traces/servicegraph:
+      receivers: [otlp]
+      processors: [resource]
+      exporters: [servicegraph]
+
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, isolationforest]
+      exporters: [prometheusremotewrite]
+
+    metrics/spanmetrics:
+      receivers: [spanmetrics]
+      processors: [memory_limiter, resource, isolationforest]
+      exporters: [prometheusremotewrite, debug]
+
+    metrics/servicegraph:
+      receivers: [servicegraph]
+      processors: []
+      exporters: [prometheusremotewrite, debug]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource]
+      exporters: [otlphttp/logs, elasticsearch]

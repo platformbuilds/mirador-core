@@ -333,3 +333,55 @@ func (h *UnifiedQueryHandler) HandleUnifiedStats(c *gin.Context) {
 
 	c.JSON(http.StatusOK, stats)
 }
+
+// HandleFailureDetection detects component failures in the financial transaction system
+func (h *UnifiedQueryHandler) HandleFailureDetection(c *gin.Context) {
+	var req models.FailureDetectionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Failed to bind failure detection request", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Execute failure detection
+	result, err := h.unifiedEngine.DetectComponentFailures(c.Request.Context(), req.TimeRange, req.Components)
+	if err != nil {
+		h.logger.Error("Failed to detect component failures", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failure detection failed",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// HandleTransactionFailureCorrelation correlates failures for specific transaction IDs
+func (h *UnifiedQueryHandler) HandleTransactionFailureCorrelation(c *gin.Context) {
+	var req models.TransactionFailureCorrelationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Failed to bind transaction failure correlation request", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Execute transaction failure correlation
+	result, err := h.unifiedEngine.CorrelateTransactionFailures(c.Request.Context(), req.TransactionIDs, req.TimeRange)
+	if err != nil {
+		h.logger.Error("Failed to correlate transaction failures", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Transaction failure correlation failed",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
