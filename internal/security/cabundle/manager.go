@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/utils/fswatcher" //nolint:depguard // centralize fsnotify usage behind internal wrapper
+	"github.com/platformbuilds/mirador-core/internal/utils/fswatcher"
 )
 
 // Manager watches an optional CA bundle file and exposes a certificate pool built from it.
