@@ -49,7 +49,7 @@ help:
 	"  localdev                  Full local E2E: up → wait → seed OTEL → seed data → test → down." \
 	"  localdev-up               Start localdev compose stack in background." \
 	"  localdev-wait             Wait for readiness at $(BASE_URL)/ready." \
-	"  localdev-seed-otel        Seed synthetic OTEL metrics/logs/traces via telemetrygen." \
+	"  localdev-seed-otel        Seed synthetic OTEL metrics/logs/traces via financial transaction simulator." \
 	"  localdev-seed-data        Seed default dashboard and sample KPIs in Weaviate." \
 	"  localdev-test             Run E2E tests against a running localdev server."
 	"  localdev-test-all-api     Run comprehensive E2E pipeline (code quality + API tests)."
@@ -181,11 +181,9 @@ localdev-test-code-only:
 	@./localtesting/e2e-tests.sh --code-tests-only
 
 localdev-seed-otel:
-	@echo "Seeding synthetic OpenTelemetry data via telemetrygen..."
-	@command -v telemetrygen >/dev/null 2>&1 || { echo "Installing telemetrygen..."; go install github.com/open-telemetry/opentelemetry-collector-contrib/cmd/telemetrygen@latest; }
-	telemetrygen metrics --otlp-endpoint localhost:4317 --otlp-insecure --duration 10s --rate 200 || true
-	telemetrygen logs --otlp-endpoint localhost:4317 --otlp-insecure --duration 10s --rate 20 || true
-	telemetrygen traces --otlp-endpoint localhost:4317 --otlp-insecure --duration 10s --rate 10 || true
+	@echo "Seeding synthetic OpenTelemetry data via financial transaction simulator..."
+	@go build -o bin/otel-fintrans-simulator ./cmd/otel-fintrans-simulator
+	OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 OTEL_EXPORTER_OTLP_INSECURE=true ./bin/otel-fintrans-simulator --transactions 50000 --concurrency 250 --failure-mode mixed --failure-rate 0.35
 
 localdev-seed-data:
 	@echo "Seeding default dashboard and sample KPIs in Weaviate..."

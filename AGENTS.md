@@ -84,6 +84,31 @@ make localdev-wait
 make localdev-seed-otel
 ```
 
+Seeds synthetic OpenTelemetry traces, metrics, and logs using a comprehensive financial transaction simulator. This generates realistic telemetry from a multi-service ecosystem including:
+
+- **API Gateway**: Entry point for transaction requests
+- **TPS (Transaction Processing Service)**: Core business logic with 22 detailed processing steps
+- **KeyDB**: High-performance key-value storage operations
+- **Cassandra**: Distributed database operations for transaction persistence
+- **Kafka Producer/Consumer**: Asynchronous messaging for transaction events
+
+**Key Features:**
+- **Currency Handling**: All amounts use INR currency in paise units (integer values)
+- **Failure Injection**: Configurable failure modes (none, component-specific, mixed) with adjustable failure rates
+- **Correlation**: Rich correlation attributes across all telemetry types for testing Mirador Core's correlation engine
+- **Realistic Latencies**: Service-appropriate delays and error scenarios
+- **Span Kinds**: Proper OpenTelemetry span kinds reflecting the distributed architecture:
+  - API Gateway receives requests (SERVER), calls TPS (CLIENT), consumes from Kafka (CONSUMER), writes to Cassandra (CLIENT)
+  - TPS receives requests (SERVER), processes internally (INTERNAL), produces to Kafka (PRODUCER)
+
+**Default Configuration:**
+- 500 transactions
+- Mixed failure mode (20% failure rate)
+- 10 concurrent transactions
+- OTLP gRPC export to localhost:4317
+
+**Documentation:** See `dev/otel-fintrans-simulator.md` for detailed usage, telemetry schema, and configuration options.
+
 **Seed Sample Data:**
 ```bash
 make localdev-seed-data

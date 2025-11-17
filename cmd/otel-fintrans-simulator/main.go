@@ -1,0 +1,713 @@
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"log"
+	"math/rand"
+	"sync"
+	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/log/global"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/propagation"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+)
+
+const (
+	currencyINR = "INR"
+)
+
+type FailureMode string
+
+const (
+	FailureModeNone       FailureMode = "none"
+	FailureModeKafka      FailureMode = "kafka"
+	FailureModeCassandra  FailureMode = "cassandra"
+	FailureModeKeyDB      FailureMode = "keydb"
+	FailureModeAPIGateway FailureMode = "api-gateway"
+	FailureModeTPS        FailureMode = "tps"
+	FailureModeMixed      FailureMode = "mixed"
+)
+
+type Simulator struct {
+	tracer         trace.Tracer
+	meter          metric.Meter
+	logger         *zap.Logger
+	transactions   int
+	failureMode    FailureMode
+	failureRate    float64
+	minAmountPaise int64
+	maxAmountPaise int64
+	concurrency    int
+
+	// Metric instruments
+	transactionsTotal       metric.Int64Counter
+	transactionsFailedTotal metric.Int64Counter
+	dbOpsTotal              metric.Int64Counter
+	kafkaProduceTotal       metric.Int64Counter
+	kafkaConsumeTotal       metric.Int64Counter
+	transactionLatency      metric.Float64Histogram
+	dbLatency               metric.Float64Histogram
+	transactionAmountSum    metric.Int64Counter
+	transactionAmountCount  metric.Int64UpDownCounter
+}
+
+type TransactionResult struct {
+	TransactionID string
+	AmountPaise   int64
+	CustomerID    string
+	Channel       string
+	FinalStatus   string
+	ErrorReason   string
+}
+
+func main() {
+	var (
+		transactions   = flag.Int("transactions", 100, "Number of transactions to simulate")
+		failureModeStr = flag.String("failure-mode", "mixed", "Failure mode: none, kafka, cassandra, keydb, api-gateway, tps, mixed")
+		failureRate    = flag.Float64("failure-rate", 0.1, "Failure rate (0.0-1.0)")
+		minAmountPaise = flag.Int64("min-amount-paisa", 10000, "Minimum transaction amount in paise (₹100.00)")
+		maxAmountPaise = flag.Int64("max-amount-paisa", 1000000, "Maximum transaction amount in paise (₹10,000.00)")
+		otlpEndpoint   = flag.String("otlp-endpoint", "localhost:4317", "OTLP endpoint")
+		otlpInsecure   = flag.Bool("otlp-insecure", true, "Use insecure OTLP connection")
+		concurrency    = flag.Int("concurrency", 10, "Number of concurrent transactions")
+	)
+	flag.Parse()
+
+	failureMode := FailureMode(*failureModeStr)
+	if failureMode != FailureModeNone && failureMode != FailureModeKafka &&
+		failureMode != FailureModeCassandra && failureMode != FailureModeKeyDB &&
+		failureMode != FailureModeAPIGateway && failureMode != FailureModeTPS &&
+		failureMode != FailureModeMixed {
+		log.Fatalf("Invalid failure mode: %s", failureMode)
+	}
+
+	if *failureRate < 0 || *failureRate > 1 {
+		log.Fatalf("Failure rate must be between 0.0 and 1.0")
+	}
+
+	// Initialize OpenTelemetry
+	ctx := context.Background()
+	shutdown, err := initOTel(ctx, *otlpEndpoint, *otlpInsecure)
+	if err != nil {
+		log.Fatalf("Failed to initialize OpenTelemetry: %v", err)
+	}
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			log.Printf("Failed to shutdown OpenTelemetry: %v", err)
+		}
+	}()
+
+	// Create simulator
+	sim := &Simulator{
+		tracer:         otel.Tracer("fintrans-simulator"),
+		meter:          otel.Meter("fintrans-simulator"),
+		logger:         zap.NewNop(), // Will be set after OTel init
+		transactions:   *transactions,
+		failureMode:    failureMode,
+		failureRate:    *failureRate,
+		minAmountPaise: *minAmountPaise,
+		maxAmountPaise: *maxAmountPaise,
+		concurrency:    *concurrency,
+	}
+
+	// Initialize metrics
+	if err := sim.initMetrics(ctx); err != nil {
+		log.Fatalf("Failed to initialize metrics: %v", err)
+	}
+
+	// Initialize logger with OTel bridge
+	sim.initLogger()
+
+	log.Printf("Starting financial transaction simulator with %d transactions, concurrency: %d, failure mode: %s, rate: %.2f",
+		*transactions, *concurrency, failureMode, *failureRate)
+
+	// Run simulation
+	sim.runSimulation(ctx)
+
+	log.Println("Simulation completed")
+}
+
+func initOTel(ctx context.Context, endpoint string, insecureConn bool) (func(context.Context) error, error) {
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
+			semconv.ServiceName("fintrans-simulator"),
+			semconv.ServiceVersion("1.0.0"),
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create resource: %w", err)
+	}
+
+	opts := []grpc.DialOption{}
+	if insecureConn {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+
+	// Trace exporter
+	traceExporter, err := otlptracegrpc.New(ctx,
+		otlptracegrpc.WithEndpoint(endpoint),
+		otlptracegrpc.WithDialOption(opts...),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create trace exporter: %w", err)
+	}
+
+	tracerProvider := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(traceExporter),
+		sdktrace.WithResource(res),
+	)
+	otel.SetTracerProvider(tracerProvider)
+
+	// Metric exporter
+	metricExporter, err := otlpmetricgrpc.New(ctx,
+		otlpmetricgrpc.WithEndpoint(endpoint),
+		otlpmetricgrpc.WithDialOption(opts...),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create metric exporter: %w", err)
+	}
+
+	meterProvider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter)),
+		sdkmetric.WithResource(res),
+	)
+	otel.SetMeterProvider(meterProvider)
+
+	// Log exporter
+	logExporter, err := otlploggrpc.New(ctx,
+		otlploggrpc.WithEndpoint(endpoint),
+		otlploggrpc.WithDialOption(opts...),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create log exporter: %w", err)
+	}
+
+	logProvider := sdklog.NewLoggerProvider(
+		sdklog.WithProcessor(sdklog.NewBatchProcessor(logExporter)),
+		sdklog.WithResource(res),
+	)
+	global.SetLoggerProvider(logProvider)
+
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	return func(ctx context.Context) error {
+		var errs []error
+		if err := tracerProvider.Shutdown(ctx); err != nil {
+			errs = append(errs, err)
+		}
+		if err := meterProvider.Shutdown(ctx); err != nil {
+			errs = append(errs, err)
+		}
+		if err := logProvider.Shutdown(ctx); err != nil {
+			errs = append(errs, err)
+		}
+		if len(errs) > 0 {
+			return fmt.Errorf("shutdown errors: %v", errs)
+		}
+		return nil
+	}, nil
+}
+
+func (s *Simulator) initMetrics(ctx context.Context) error {
+	var err error
+
+	s.transactionsTotal, err = s.meter.Int64Counter("transactions_total",
+		metric.WithDescription("Total number of transactions"))
+	if err != nil {
+		return err
+	}
+
+	s.transactionsFailedTotal, err = s.meter.Int64Counter("transactions_failed_total",
+		metric.WithDescription("Total number of failed transactions"))
+	if err != nil {
+		return err
+	}
+
+	s.dbOpsTotal, err = s.meter.Int64Counter("db_ops_total",
+		metric.WithDescription("Total database operations"))
+	if err != nil {
+		return err
+	}
+
+	s.kafkaProduceTotal, err = s.meter.Int64Counter("kafka_produce_total",
+		metric.WithDescription("Total Kafka produce operations"))
+	if err != nil {
+		return err
+	}
+
+	s.kafkaConsumeTotal, err = s.meter.Int64Counter("kafka_consume_total",
+		metric.WithDescription("Total Kafka consume operations"))
+	if err != nil {
+		return err
+	}
+
+	s.transactionLatency, err = s.meter.Float64Histogram("transaction_latency_seconds",
+		metric.WithDescription("Transaction processing latency"))
+	if err != nil {
+		return err
+	}
+
+	s.dbLatency, err = s.meter.Float64Histogram("db_latency_seconds",
+		metric.WithDescription("Database operation latency"))
+	if err != nil {
+		return err
+	}
+
+	s.transactionAmountSum, err = s.meter.Int64Counter("transaction_amount_paisa_sum",
+		metric.WithDescription("Sum of transaction amounts in paise"))
+	if err != nil {
+		return err
+	}
+
+	s.transactionAmountCount, err = s.meter.Int64UpDownCounter("transaction_amount_paisa_count",
+		metric.WithDescription("Count of transactions for amount metrics"))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Simulator) initLogger() {
+	// Create a logger that outputs to OTel
+	// We'll use a no-op logger for now since OTel handles the logging
+	s.logger = zap.NewNop()
+}
+
+func (s *Simulator) runSimulation(ctx context.Context) {
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, s.concurrency) // Limit concurrency
+
+	for i := 0; i < s.transactions; i++ {
+		wg.Add(1)
+		go func(txID int) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			s.simulateTransaction(ctx, fmt.Sprintf("tx-%06d", txID))
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+func (s *Simulator) simulateTransaction(ctx context.Context, transactionID string) {
+	start := time.Now()
+
+	// Generate transaction details
+	amountPaise := s.minAmountPaise + rand.Int63n(s.maxAmountPaise-s.minAmountPaise+1)
+	customerID := fmt.Sprintf("cust-%04d", rand.Intn(10000))
+	channel := []string{"mobile", "web", "api"}[rand.Intn(3)]
+
+	// Determine if this transaction should fail
+	shouldFail := rand.Float64() < s.failureRate
+	var failureComponent string
+	if shouldFail {
+		switch s.failureMode {
+		case FailureModeKafka:
+			failureComponent = "kafka"
+		case FailureModeCassandra:
+			failureComponent = "cassandra"
+		case FailureModeKeyDB:
+			failureComponent = "keydb"
+		case FailureModeAPIGateway:
+			failureComponent = "api-gateway"
+		case FailureModeTPS:
+			failureComponent = "tps"
+		case FailureModeMixed:
+			components := []string{"kafka", "cassandra", "keydb", "api-gateway", "tps"}
+			failureComponent = components[rand.Intn(len(components))]
+		}
+	}
+
+	// Start root span for API Gateway
+	ctx, rootSpan := s.tracer.Start(ctx, "api-gateway.receive_transaction",
+		trace.WithSpanKind(trace.SpanKindServer),
+		trace.WithAttributes(
+			attribute.String("transaction_id", transactionID),
+			attribute.String("customer_id", customerID),
+			attribute.String("channel", channel),
+			attribute.Int64("amount_paisa", amountPaise),
+			attribute.String("currency", currencyINR),
+		))
+	defer rootSpan.End()
+
+	// Log API Gateway request received
+	s.logger.Info("Transaction request received",
+		zap.String("transaction_id", transactionID),
+		zap.String("service_name", "api-gateway"),
+		zap.Int64("amount_paisa", amountPaise),
+		zap.String("currency", currencyINR),
+		zap.String("severity", "INFO"),
+	)
+
+	// Simulate API Gateway auth check
+	if failureComponent == "api-gateway" && shouldFail {
+		rootSpan.SetStatus(codes.Error, "Auth validation failed")
+		rootSpan.SetAttributes(
+			attribute.String("final_status", "error"),
+			attribute.String("error_type", "auth_failure"),
+		)
+		s.transactionsFailedTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("service_name", "api-gateway")))
+		s.logger.Error("Auth validation failed",
+			zap.String("transaction_id", transactionID),
+			zap.String("service_name", "api-gateway"),
+			zap.Int64("amount_paisa", amountPaise),
+			zap.String("currency", currencyINR),
+			zap.String("severity", "ERROR"),
+			zap.String("failure_reason", "auth_failure"),
+		)
+		return
+	}
+
+	// Call TPS
+	ctx, tpsClientSpan := s.tracer.Start(ctx, "api-gateway.call_tps",
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("transaction_id", transactionID),
+			attribute.String("service_name", "api-gateway"),
+			attribute.String("peer.service", "tps"),
+		))
+	result := s.simulateTPS(ctx, transactionID, amountPaise, customerID, failureComponent, shouldFail)
+	tpsClientSpan.End()
+
+	// API Gateway consumes from Kafka and writes to Cassandra
+	if result.FinalStatus == "success" {
+		s.simulateAPIGatewayKafkaConsumer(ctx, transactionID, amountPaise, failureComponent == "kafka" && shouldFail)
+	}
+
+	// Update root span
+	rootSpan.SetAttributes(
+		attribute.String("final_status", result.FinalStatus),
+	)
+	if result.FinalStatus == "error" {
+		rootSpan.SetStatus(codes.Error, result.ErrorReason)
+	}
+
+	// Record final metrics
+	s.transactionsTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("service_name", "api-gateway")))
+	s.transactionAmountSum.Add(ctx, result.AmountPaise, metric.WithAttributes(attribute.String("currency", currencyINR)))
+	s.transactionAmountCount.Add(ctx, 1, metric.WithAttributes(attribute.String("currency", currencyINR)))
+
+	if result.FinalStatus == "error" {
+		s.transactionsFailedTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("service_name", "api-gateway")))
+	}
+
+	duration := time.Since(start).Seconds()
+	s.transactionLatency.Record(ctx, duration, metric.WithAttributes(attribute.String("service_name", "api-gateway")))
+}
+
+func (s *Simulator) simulateTPS(ctx context.Context, transactionID string, amountPaise int64, customerID string, failureComponent string, shouldFail bool) TransactionResult {
+	ctx, span := s.tracer.Start(ctx, "tps.process_transaction",
+		trace.WithSpanKind(trace.SpanKindServer),
+		trace.WithAttributes(
+			attribute.String("transaction_id", transactionID),
+			attribute.String("service_name", "tps"),
+		))
+	defer span.End()
+
+	result := TransactionResult{
+		TransactionID: transactionID,
+		AmountPaise:   amountPaise,
+		CustomerID:    customerID,
+		FinalStatus:   "success",
+	}
+
+	// Simulate 22 TPS steps
+	for step := 1; step <= 22; step++ {
+		stepCtx, stepSpan := s.tracer.Start(ctx, fmt.Sprintf("tps.step_%02d", step),
+			trace.WithSpanKind(trace.SpanKindInternal),
+			trace.WithAttributes(
+				attribute.String("transaction_id", transactionID),
+				attribute.String("service_name", "tps"),
+				attribute.Int("step_number", step),
+			))
+
+		// Simulate different operations based on step
+		switch {
+		case step <= 5:
+			// Auth and validation steps - use Cassandra
+			if err := s.simulateCassandraOp(stepCtx, transactionID, "auth_lookup", failureComponent == "cassandra" && shouldFail); err != nil {
+				result.FinalStatus = "error"
+				result.ErrorReason = "cassandra_auth_failure"
+				stepSpan.SetStatus(codes.Error, err.Error())
+				s.logger.Error("TPS step failed",
+					zap.String("transaction_id", transactionID),
+					zap.String("service_name", "tps"),
+					zap.Int("step_number", step),
+					zap.Int64("amount_paisa", amountPaise),
+					zap.String("currency", currencyINR),
+					zap.String("severity", "ERROR"),
+					zap.String("failure_reason", "cassandra_auth_failure"),
+				)
+				stepSpan.End()
+				return result
+			}
+		case step <= 15:
+			// Processing steps - use KeyDB for state
+			if err := s.simulateKeyDBOp(stepCtx, transactionID, fmt.Sprintf("state_update_%d", step), failureComponent == "keydb" && shouldFail); err != nil {
+				result.FinalStatus = "error"
+				result.ErrorReason = "keydb_state_failure"
+				stepSpan.SetStatus(codes.Error, err.Error())
+				s.logger.Error("TPS step failed",
+					zap.String("transaction_id", transactionID),
+					zap.String("service_name", "tps"),
+					zap.Int("step_number", step),
+					zap.Int64("amount_paisa", amountPaise),
+					zap.String("currency", currencyINR),
+					zap.String("severity", "ERROR"),
+					zap.String("failure_reason", "keydb_state_failure"),
+				)
+				stepSpan.End()
+				return result
+			}
+		case step == 16:
+			// Final validation - use Cassandra
+			if err := s.simulateCassandraOp(stepCtx, transactionID, "final_validation", failureComponent == "cassandra" && shouldFail); err != nil {
+				result.FinalStatus = "error"
+				result.ErrorReason = "cassandra_validation_failure"
+				stepSpan.SetStatus(codes.Error, err.Error())
+				stepSpan.End()
+				return result
+			}
+		case step >= 17 && step <= 20:
+			// Internal processing
+			time.Sleep(time.Duration(10+rand.Intn(20)) * time.Millisecond)
+		case step == 21:
+			// Produce to Kafka
+			if err := s.simulateKafkaProduce(stepCtx, transactionID, amountPaise, failureComponent == "kafka" && shouldFail); err != nil {
+				result.FinalStatus = "error"
+				result.ErrorReason = "kafka_produce_failure"
+				stepSpan.SetStatus(codes.Error, err.Error())
+				s.logger.Error("TPS step failed",
+					zap.String("transaction_id", transactionID),
+					zap.String("service_name", "tps"),
+					zap.Int("step_number", step),
+					zap.Int64("amount_paisa", amountPaise),
+					zap.String("currency", currencyINR),
+					zap.String("severity", "ERROR"),
+					zap.String("failure_reason", "kafka_produce_failure"),
+				)
+				stepSpan.End()
+				return result
+			}
+		case step == 22:
+			// Final commit
+			time.Sleep(time.Duration(5+rand.Intn(10)) * time.Millisecond)
+		}
+
+		stepSpan.End()
+	}
+
+	return result
+}
+
+func (s *Simulator) simulateCassandraOp(ctx context.Context, transactionID, operation string, shouldFail bool) error {
+	ctx, span := s.tracer.Start(ctx, "cassandra."+operation,
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("transaction_id", transactionID),
+			attribute.String("service_name", "cassandra-client"),
+			attribute.String("db.system", "cassandra"),
+			attribute.String("db.operation", operation),
+		))
+	defer span.End()
+
+	start := time.Now()
+
+	if shouldFail {
+		span.SetStatus(codes.Error, "Cassandra operation failed")
+		s.logger.Error("Cassandra operation failed",
+			zap.String("transaction_id", transactionID),
+			zap.String("service_name", "cassandra-client"),
+			zap.String("severity", "ERROR"),
+			zap.String("failure_reason", "cassandra_timeout"),
+		)
+		return fmt.Errorf("cassandra operation failed")
+	}
+
+	// Simulate latency
+	time.Sleep(time.Duration(20+rand.Intn(30)) * time.Millisecond)
+	duration := time.Since(start).Seconds()
+
+	s.dbOpsTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("db_system", "cassandra")))
+	s.dbLatency.Record(ctx, duration, metric.WithAttributes(attribute.String("db_system", "cassandra")))
+
+	return nil
+}
+
+func (s *Simulator) simulateKeyDBOp(ctx context.Context, transactionID, operation string, shouldFail bool) error {
+	ctx, span := s.tracer.Start(ctx, "keydb."+operation,
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("transaction_id", transactionID),
+			attribute.String("service_name", "keydb-client"),
+			attribute.String("db.system", "redis"),
+			attribute.String("db.operation", operation),
+		))
+	defer span.End()
+
+	start := time.Now()
+
+	if shouldFail {
+		span.SetStatus(codes.Error, "KeyDB operation failed")
+		s.logger.Error("KeyDB operation failed",
+			zap.String("transaction_id", transactionID),
+			zap.String("service_name", "keydb-client"),
+			zap.String("severity", "ERROR"),
+			zap.String("failure_reason", "keydb_connection_error"),
+		)
+		return fmt.Errorf("keydb operation failed")
+	}
+
+	// Simulate latency
+	time.Sleep(time.Duration(5+rand.Intn(15)) * time.Millisecond)
+	duration := time.Since(start).Seconds()
+
+	s.dbOpsTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("db_system", "redis")))
+	s.dbLatency.Record(ctx, duration, metric.WithAttributes(attribute.String("db_system", "redis")))
+
+	return nil
+}
+
+func (s *Simulator) simulateKafkaProduce(ctx context.Context, transactionID string, amountPaise int64, shouldFail bool) error {
+	ctx, span := s.tracer.Start(ctx, "kafka.produce",
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(
+			attribute.String("transaction_id", transactionID),
+			attribute.String("service_name", "kafka-producer"),
+			attribute.String("messaging.system", "kafka"),
+			attribute.String("messaging.operation", "produce"),
+			attribute.String("messaging.destination", "transaction-log"),
+		))
+	defer span.End()
+
+	start := time.Now()
+
+	if shouldFail {
+		span.SetStatus(codes.Error, "Kafka produce failed")
+		return fmt.Errorf("kafka produce failed")
+	}
+
+	// Simulate latency
+	time.Sleep(time.Duration(10+rand.Intn(20)) * time.Millisecond)
+	duration := time.Since(start).Seconds()
+
+	s.kafkaProduceTotal.Add(ctx, 1)
+	s.dbLatency.Record(ctx, duration, metric.WithAttributes(attribute.String("operation", "kafka_produce")))
+
+	return nil
+}
+
+func (s *Simulator) simulateKafkaConsumer(ctx context.Context, transactionID string, amountPaise int64, shouldFail bool) {
+	ctx, span := s.tracer.Start(ctx, "kafka.consume",
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithAttributes(
+			attribute.String("transaction_id", transactionID),
+			attribute.String("service_name", "kafka-consumer"),
+			attribute.String("messaging.system", "kafka"),
+			attribute.String("messaging.operation", "consume"),
+			attribute.String("messaging.destination", "transaction-log"),
+		))
+	defer span.End()
+
+	start := time.Now()
+
+	if shouldFail {
+		span.SetStatus(codes.Error, "Kafka consume failed")
+		return
+	}
+
+	// Simulate processing delay
+	time.Sleep(time.Duration(50+rand.Intn(100)) * time.Millisecond)
+
+	// Write final state to Cassandra
+	if err := s.simulateCassandraOp(ctx, transactionID, "final_state_write", false); err != nil {
+		span.SetStatus(codes.Error, "Final state write failed")
+		return
+	}
+
+	duration := time.Since(start).Seconds()
+	s.kafkaConsumeTotal.Add(ctx, 1)
+	s.dbLatency.Record(ctx, duration, metric.WithAttributes(attribute.String("operation", "kafka_consume")))
+}
+
+func (s *Simulator) simulateAPIGatewayKafkaConsumer(ctx context.Context, transactionID string, amountPaise int64, shouldFail bool) {
+	// API Gateway consumes from Kafka
+	ctx, consumerSpan := s.tracer.Start(ctx, "api-gateway.kafka_consume",
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithAttributes(
+			attribute.String("transaction_id", transactionID),
+			attribute.String("service_name", "api-gateway"),
+			attribute.String("messaging.system", "kafka"),
+			attribute.String("messaging.operation", "consume"),
+			attribute.String("messaging.destination", "transaction-log"),
+		))
+	defer consumerSpan.End()
+
+	start := time.Now()
+
+	if shouldFail {
+		consumerSpan.SetStatus(codes.Error, "Kafka consume failed")
+		return
+	}
+
+	// Simulate processing delay
+	time.Sleep(time.Duration(50+rand.Intn(100)) * time.Millisecond)
+
+	// API Gateway writes final state to Cassandra
+	if err := s.simulateAPIGatewayCassandraWrite(ctx, transactionID, "final_state_write", false); err != nil {
+		consumerSpan.SetStatus(codes.Error, "Final state write failed")
+		return
+	}
+
+	duration := time.Since(start).Seconds()
+	s.kafkaConsumeTotal.Add(ctx, 1)
+	s.dbLatency.Record(ctx, duration, metric.WithAttributes(attribute.String("operation", "kafka_consume")))
+}
+
+func (s *Simulator) simulateAPIGatewayCassandraWrite(ctx context.Context, transactionID, operation string, shouldFail bool) error {
+	ctx, span := s.tracer.Start(ctx, "api-gateway.cassandra_write",
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("transaction_id", transactionID),
+			attribute.String("service_name", "api-gateway"),
+			attribute.String("db.system", "cassandra"),
+			attribute.String("db.operation", operation),
+		))
+	defer span.End()
+
+	start := time.Now()
+
+	if shouldFail {
+		span.SetStatus(codes.Error, "Cassandra write failed")
+		return fmt.Errorf("cassandra write failed")
+	}
+
+	// Simulate latency
+	time.Sleep(time.Duration(20+rand.Intn(30)) * time.Millisecond)
+	duration := time.Since(start).Seconds()
+
+	s.dbOpsTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("db_system", "cassandra")))
+	s.dbLatency.Record(ctx, duration, metric.WithAttributes(attribute.String("db_system", "cassandra")))
+
+	return nil
+}
