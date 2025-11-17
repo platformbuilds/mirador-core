@@ -17,6 +17,7 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
+	"github.com/platformbuilds/mirador-core/internal/rca"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/internal/tracing"
@@ -280,7 +281,7 @@ func (s *Server) setupRoutes() {
 
 	// AI RCA-ENGINE endpoints (correlation with red anchors pattern)
 	rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
-	rcaHandler := handlers.NewRCAHandler(s.grpcClients.RCAEngine, s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger)
+	rcaHandler := handlers.NewRCAHandler(s.grpcClients.RCAEngine, s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, nil)
 	rcaGroup := v1.Group("/rca")
 	{
 		rcaGroup.GET("/correlations", rcaHandler.GetActiveCorrelations)
@@ -377,6 +378,24 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup) {
 	// Create unified query handler
 	unifiedHandler := handlers.NewUnifiedQueryHandler(unifiedEngine, s.logger)
 
+	// Phase 4: Create RCA Engine
+	// Create an empty service graph (will be enhanced from metrics in production)
+	serviceGraph := rca.NewServiceGraph()
+
+	// Create a mock anomaly events provider (no-op for now)
+	anomalyProvider := &noOpAnomalyProvider{}
+
+	// Create anomaly collector and candidate cause service
+	incidentAnomalyCollector := rca.NewIncidentAnomalyCollector(
+		anomalyProvider,
+		serviceGraph,
+		s.logger,
+	)
+	candidateCauseService := rca.NewCandidateCauseService(incidentAnomalyCollector, s.logger)
+
+	// Create RCA engine
+	rcaEngine := rca.NewRCAEngine(candidateCauseService, serviceGraph, s.logger)
+
 	// Register unified query routes without RBAC protection
 	unifiedGroup := router.Group("/unified")
 	{
@@ -388,6 +407,13 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup) {
 		unifiedGroup.GET("/health", unifiedHandler.HandleHealthCheck)
 		unifiedGroup.POST("/search", unifiedHandler.HandleUnifiedSearch)
 		unifiedGroup.GET("/stats", unifiedHandler.HandleUnifiedStats)
+		// Phase 4: RCA endpoint
+		unifiedGroup.POST("/rca", func(c *gin.Context) {
+			// Create a temporary RCA handler just for this endpoint
+			rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
+			rcaHandler := handlers.NewRCAHandler(s.grpcClients.RCAEngine, s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngine)
+			rcaHandler.HandleComputeRCA(c)
+		})
 	}
 
 	// Register UQL routes without RBAC protection
@@ -399,6 +425,19 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup) {
 	}
 
 	s.logger.Info("Unified query engine initialized and routes registered")
+}
+
+// noOpAnomalyProvider is a minimal implementation of AnomalyEventsProvider for Phase 4
+type noOpAnomalyProvider struct{}
+
+func (p *noOpAnomalyProvider) GetAnomalies(
+	ctx context.Context,
+	startTime time.Time,
+	endTime time.Time,
+	services []string,
+) ([]*rca.AnomalyEvent, error) {
+	// Return empty list; in production, this would query VictoriaMetrics/VictoriaLogs
+	return make([]*rca.AnomalyEvent, 0), nil
 }
 
 func (s *Server) Start(ctx context.Context) error {
