@@ -3,6 +3,9 @@ package services
 import (
 	"context"
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,6 +28,12 @@ type CorrelationEngine interface {
 
 	// GetCorrelationExamples returns example correlation queries
 	GetCorrelationExamples() []string
+
+	// DetectComponentFailures detects component failures in the financial transaction system
+	DetectComponentFailures(ctx context.Context, timeRange models.TimeRange, components []models.FailureComponent) (*models.FailureCorrelationResult, error)
+
+	// CorrelateTransactionFailures correlates failures for specific transaction IDs
+	CorrelateTransactionFailures(ctx context.Context, transactionIDs []string, timeRange models.TimeRange) (*models.FailureCorrelationResult, error)
 }
 
 // MetricsService interface for metrics operations
@@ -40,6 +49,7 @@ type LogsService interface {
 // TracesService interface for traces operations
 type TracesService interface {
 	GetOperations(ctx context.Context, service, tenantID string) ([]string, error)
+	SearchTraces(ctx context.Context, request *models.TraceSearchRequest) (*models.TraceSearchResult, error)
 }
 
 // CorrelationEngineImpl implements the CorrelationEngine interface
@@ -84,14 +94,18 @@ func (ce *CorrelationEngineImpl) ExecuteCorrelation(ctx context.Context, query *
 
 	// Validate the query
 	if err := ce.ValidateCorrelationQuery(query); err != nil {
-		ce.tracer.RecordError(corrSpan, err)
+		if ce.tracer != nil {
+			ce.tracer.RecordError(corrSpan, err)
+		}
 		return nil, fmt.Errorf("invalid correlation query: %w", err)
 	}
 
-	ce.logger.Info("Executing correlation query",
-		"query_id", query.ID,
-		"raw_query", query.RawQuery,
-		"expressions", len(query.Expressions))
+	if ce.logger != nil {
+		ce.logger.Info("Executing correlation query",
+			"query_id", query.ID,
+			"raw_query", query.RawQuery,
+			"expressions", len(query.Expressions))
+	}
 
 	// Execute expressions in parallel
 	results, err := ce.executeExpressionsParallel(corrCtx, query)
@@ -116,10 +130,12 @@ func (ce *CorrelationEngineImpl) ExecuteCorrelation(ctx context.Context, query *
 		Summary:      summary,
 	}
 
-	ce.logger.Info("Correlation query completed",
-		"query_id", query.ID,
-		"correlations_found", len(correlations),
-		"execution_time_ms", time.Since(start).Milliseconds())
+	if ce.logger != nil {
+		ce.logger.Info("Correlation query completed",
+			"query_id", query.ID,
+			"correlations_found", len(correlations),
+			"execution_time_ms", time.Since(start).Milliseconds())
+	}
 
 	// Record successful correlation metrics
 	correlationType := "time_window"
@@ -166,9 +182,11 @@ func (ce *CorrelationEngineImpl) executeExpressionsParallel(ctx context.Context,
 				errorOnce.Do(func() {
 					firstError = err
 				})
-				ce.logger.Error("Failed to execute engine query",
-					"engine", engine,
-					"error", err)
+				if ce.logger != nil {
+					ce.logger.Error("Failed to execute engine query",
+						"engine", engine,
+						"error", err)
+				}
 				return
 			}
 
@@ -424,8 +442,10 @@ func (ce *CorrelationEngineImpl) correlateByTimeWindow(
 
 	// For time-window correlation, we expect exactly 2 expressions
 	if len(query.Expressions) != 2 {
-		ce.logger.Warn("Time-window correlation requires exactly 2 expressions",
-			"expressions_count", len(query.Expressions))
+		if ce.logger != nil {
+			ce.logger.Warn("Time-window correlation requires exactly 2 expressions",
+				"expressions_count", len(query.Expressions))
+		}
 		return correlations
 	}
 
@@ -436,9 +456,11 @@ func (ce *CorrelationEngineImpl) correlateByTimeWindow(
 	result2, exists2 := results[expr2.Engine]
 
 	if !exists1 || !exists2 {
-		ce.logger.Warn("Missing results for time-window correlation",
-			"expr1_engine", expr1.Engine, "has_result1", exists1,
-			"expr2_engine", expr2.Engine, "has_result2", exists2)
+		if ce.logger != nil {
+			ce.logger.Warn("Missing results for time-window correlation",
+				"expr1_engine", expr1.Engine, "has_result1", exists1,
+				"expr2_engine", expr2.Engine, "has_result2", exists2)
+		}
 		return correlations
 	}
 
@@ -575,6 +597,94 @@ func (ce *CorrelationEngineImpl) GetCorrelationExamples() []string {
 	return models.CorrelationQueryExamples
 }
 
+// DetectComponentFailures detects component failures in the financial transaction system
+func (ce *CorrelationEngineImpl) DetectComponentFailures(ctx context.Context, timeRange models.TimeRange, components []models.FailureComponent) (*models.FailureCorrelationResult, error) {
+	start := time.Now()
+	if ce.logger != nil {
+		ce.logger.Info("Detecting component failures",
+			"time_range", timeRange,
+			"components", components)
+	}
+
+	// Query for error signals across all engines
+	errorSignals, err := ce.queryErrorSignals(ctx, timeRange)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query error signals: %w", err)
+	}
+
+	// Group signals by transaction_id and component
+	incidentGroups := ce.groupSignalsByTransactionAndComponent(errorSignals, components)
+
+	// Create failure incidents
+	var incidents []models.FailureIncident
+	for _, group := range incidentGroups {
+		incident := ce.createFailureIncident(group, timeRange)
+		if incident != nil {
+			incidents = append(incidents, *incident)
+		}
+	}
+
+	// Create summary
+	summary := ce.createFailureSummary(incidents, timeRange)
+
+	result := &models.FailureCorrelationResult{
+		Incidents: incidents,
+		Summary:   *summary,
+	}
+
+	if ce.logger != nil {
+		ce.logger.Info("Component failure detection completed",
+			"incidents_found", len(incidents),
+			"execution_time_ms", time.Since(start).Milliseconds())
+	}
+
+	return result, nil
+}
+
+// CorrelateTransactionFailures correlates failures for specific transaction IDs
+func (ce *CorrelationEngineImpl) CorrelateTransactionFailures(ctx context.Context, transactionIDs []string, timeRange models.TimeRange) (*models.FailureCorrelationResult, error) {
+	start := time.Now()
+	if ce.logger != nil {
+		ce.logger.Info("Correlating transaction failures",
+			"transaction_ids", transactionIDs,
+			"time_range", timeRange)
+	}
+
+	// Query for error signals for specific transactions
+	errorSignals, err := ce.queryErrorSignalsForTransactions(ctx, transactionIDs, timeRange)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query error signals for transactions: %w", err)
+	}
+
+	// Group signals by transaction_id
+	incidentGroups := ce.groupSignalsByTransaction(errorSignals)
+
+	// Create failure incidents
+	var incidents []models.FailureIncident
+	for _, group := range incidentGroups {
+		incident := ce.createFailureIncidentForTransaction(group, timeRange)
+		if incident != nil {
+			incidents = append(incidents, *incident)
+		}
+	}
+
+	// Create summary
+	summary := ce.createFailureSummary(incidents, timeRange)
+
+	result := &models.FailureCorrelationResult{
+		Incidents: incidents,
+		Summary:   *summary,
+	}
+
+	if ce.logger != nil {
+		ce.logger.Info("Transaction failure correlation completed",
+			"incidents_found", len(incidents),
+			"execution_time_ms", time.Since(start).Milliseconds())
+	}
+
+	return result, nil
+}
+
 // timeWindowCorrelation represents a correlation found within a time window
 type timeWindowCorrelation struct {
 	Timestamp  time.Time
@@ -595,7 +705,9 @@ func (ce *CorrelationEngineImpl) extractDataPointsWithTimestamps(result *models.
 	case models.QueryTypeTraces:
 		dataPoints = ce.extractTracesDataPoints(result)
 	default:
-		ce.logger.Warn("Unsupported engine for timestamp extraction", "engine", engine)
+		if ce.logger != nil {
+			ce.logger.Warn("Unsupported engine for timestamp extraction", "engine", engine)
+		}
 	}
 
 	return dataPoints
@@ -800,7 +912,9 @@ func (ce *CorrelationEngineImpl) extractLabelsFromResult(result *models.UnifiedR
 	case models.QueryTypeMetrics:
 		return ce.extractLabelsFromMetricsResult(result)
 	default:
-		ce.logger.Warn("Unsupported engine for label extraction", "engine", engine)
+		if ce.logger != nil {
+			ce.logger.Warn("Unsupported engine for label extraction", "engine", engine)
+		}
 		return nil
 	}
 }
@@ -823,6 +937,18 @@ func (ce *CorrelationEngineImpl) extractLabelsFromLogsResult(result *models.Unif
 					if strValue, ok := value.(string); ok {
 						dataLabels.Labels[field] = strValue
 					}
+				}
+			}
+
+			// Also handle alternative common keys produced by OTLP receivers
+			if v, exists := log["service.name"]; exists {
+				if s, ok := v.(string); ok {
+					dataLabels.Labels["service"] = s
+				}
+			}
+			if v, exists := log["serviceName"]; exists {
+				if s, ok := v.(string); ok {
+					dataLabels.Labels["service"] = s
 				}
 			}
 
@@ -863,6 +989,27 @@ func (ce *CorrelationEngineImpl) extractLabelsFromTracesResult(result *models.Un
 			}
 			if operation, exists := trace["operationName"].(string); exists {
 				dataLabels.Labels["operation"] = operation
+			}
+
+			// Some trace responses embed service info under processes (e.g., processes: {p1: {serviceName: "..."}})
+			if procs, ok := trace["processes"].(map[string]interface{}); ok {
+				for _, p := range procs {
+					if pm, ok := p.(map[string]interface{}); ok {
+						if svc, exists := pm["serviceName"].(string); exists {
+							dataLabels.Labels["service"] = svc
+							break
+						}
+					}
+				}
+			}
+
+			// Try to extract operation name from first span if present
+			if spans, ok := trace["spans"].([]interface{}); ok && len(spans) > 0 {
+				if firstSpan, ok := spans[0].(map[string]interface{}); ok {
+					if op, exists := firstSpan["operationName"].(string); exists {
+						dataLabels.Labels["operation"] = op
+					}
+				}
 			}
 
 			// Extract tags
@@ -1139,6 +1286,713 @@ func (crm *CorrelationResultMerger) mergeCorrelationGroup(group []models.Correla
 	merged.Metadata["merge_timestamp"] = time.Now()
 
 	return merged
+}
+
+// queryErrorSignals queries for error signals across logs, metrics, and traces
+func (ce *CorrelationEngineImpl) queryErrorSignals(ctx context.Context, timeRange models.TimeRange) ([]models.FailureSignal, error) {
+	var allSignals []models.FailureSignal
+
+	// Query logs for errors
+	logSignals, err := ce.queryErrorLogs(ctx, timeRange)
+	if err != nil {
+		if ce.logger != nil {
+			ce.logger.Warn("Failed to query error logs", "error", err)
+		}
+	} else {
+		allSignals = append(allSignals, logSignals...)
+	}
+
+	// Query traces for error spans
+	traceSignals, err := ce.queryErrorTraces(ctx, timeRange)
+	if err != nil {
+		if ce.logger != nil {
+			ce.logger.Warn("Failed to query error traces", "error", err)
+		}
+	} else {
+		allSignals = append(allSignals, traceSignals...)
+	}
+
+	// Query metrics for error counters
+	metricSignals, err := ce.queryErrorMetrics(ctx, timeRange)
+	if err != nil {
+		if ce.logger != nil {
+			ce.logger.Warn("Failed to query error metrics", "error", err)
+		}
+	} else {
+		allSignals = append(allSignals, metricSignals...)
+	}
+
+	return allSignals, nil
+}
+
+// queryErrorLogs queries logs for error signals
+func (ce *CorrelationEngineImpl) queryErrorLogs(ctx context.Context, timeRange models.TimeRange) ([]models.FailureSignal, error) {
+	if ce.logsService == nil {
+		return nil, nil
+	}
+
+	// Query for logs with ERROR severity and failure-related attributes
+	logsQuery := &models.LogsQLQueryRequest{
+		Query:    `severity:ERROR OR level:ERROR`,
+		Start:    timeRange.Start.UnixMilli(),
+		End:      timeRange.End.UnixMilli(),
+		Limit:    10000, // High limit for failure detection
+		TenantID: "",
+	}
+
+	result, err := ce.logsService.ExecuteQuery(ctx, logsQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	var signals []models.FailureSignal
+	for _, log := range result.Logs {
+		signal := models.FailureSignal{
+			Type:   "log",
+			Engine: models.QueryTypeLogs,
+			Data:   log,
+		}
+
+		// Extract timestamp
+		if ts, exists := log["timestamp"]; exists {
+			if t, err := ce.parseTimestamp(ts); err == nil {
+				signal.Timestamp = t
+			}
+		}
+
+		// Extract anomaly score if present
+		if score, exists := log["iforest_anomaly_score"]; exists {
+			if s, ok := score.(float64); ok {
+				signal.AnomalyScore = &s
+			}
+		}
+
+		signals = append(signals, signal)
+	}
+
+	return signals, nil
+}
+
+// queryErrorTraces queries traces for error spans
+func (ce *CorrelationEngineImpl) queryErrorTraces(ctx context.Context, timeRange models.TimeRange) ([]models.FailureSignal, error) {
+	if ce.tracesService == nil {
+		return nil, nil
+	}
+
+	var signals []models.FailureSignal
+
+	// First, try to search for traces with error-related tags
+	searchRequests := []*models.TraceSearchRequest{
+		{
+			Start:    models.FlexibleTime{Time: timeRange.Start},
+			End:      models.FlexibleTime{Time: timeRange.End},
+			Tags:     "error=true", // Search for traces with error=true tag
+			Limit:    1000,         // Limit results for performance
+			TenantID: "",
+		},
+		{
+			Start:    models.FlexibleTime{Time: timeRange.Start},
+			End:      models.FlexibleTime{Time: timeRange.End},
+			Tags:     "error.status=error", // Search for traces with error.status=error tag
+			Limit:    1000,
+			TenantID: "",
+		},
+		{
+			Start:    models.FlexibleTime{Time: timeRange.Start},
+			End:      models.FlexibleTime{Time: timeRange.End},
+			Tags:     "error", // Search for any traces containing error in tags
+			Limit:    1000,
+			TenantID: "",
+		},
+	}
+
+	// Also try searching for specific services that might have errors
+	services := []string{"api-gateway", "tps", "keydb-client", "kafka-producer", "kafka-consumer", "cassandra-client"}
+	for _, service := range services {
+		searchRequests = append(searchRequests, &models.TraceSearchRequest{
+			Service:  service,
+			Start:    models.FlexibleTime{Time: timeRange.Start},
+			End:      models.FlexibleTime{Time: timeRange.End},
+			Limit:    500,
+			TenantID: "",
+		})
+	}
+
+	// Execute searches and collect results
+	allTraces := make(map[string]map[string]interface{})
+	for _, searchRequest := range searchRequests {
+		result, err := ce.tracesService.SearchTraces(ctx, searchRequest)
+		if err != nil {
+			if ce.logger != nil {
+				ce.logger.Warn("Failed to search traces", "error", err, "tags", searchRequest.Tags, "service", searchRequest.Service)
+			}
+			continue
+		}
+
+		// Collect unique traces
+		for _, traceData := range result.Traces {
+			if traceID, exists := traceData["traceId"].(string); exists {
+				allTraces[traceID] = traceData
+			}
+		}
+	}
+
+	// Process collected traces for error spans
+	for _, traceData := range allTraces {
+		errorSpans := ce.extractErrorSpansFromTrace(traceData)
+		for _, span := range errorSpans {
+			signal := models.FailureSignal{
+				Type:   "trace",
+				Engine: models.QueryTypeTraces,
+				Data:   span,
+			}
+
+			// Extract timestamp from span
+			if startTime, exists := span["startTime"]; exists {
+				if t, err := ce.parseTimestamp(startTime); err == nil {
+					signal.Timestamp = t
+				}
+			}
+
+			// Extract anomaly score if present
+			if score, exists := span["iforest_anomaly_score"]; exists {
+				if s, ok := score.(float64); ok {
+					signal.AnomalyScore = &s
+				} else if strScore, ok := score.(string); ok {
+					if s, err := strconv.ParseFloat(strScore, 64); err == nil {
+						signal.AnomalyScore = &s
+					}
+				}
+			}
+
+			signals = append(signals, signal)
+		}
+	}
+
+	// If no error spans found through search, try fallback approach
+	if len(signals) == 0 {
+		if ce.logger != nil {
+			ce.logger.Info("No error spans found through search, trying fallback approach")
+		}
+		return ce.queryErrorTracesFallback(ctx, timeRange)
+	}
+
+	return signals, nil
+}
+
+// extractErrorSpansFromTrace extracts spans with error status from a trace
+func (ce *CorrelationEngineImpl) extractErrorSpansFromTrace(traceData map[string]interface{}) []map[string]interface{} {
+	var errorSpans []map[string]interface{}
+
+	// Check if spans exist in the trace
+	spansInterface, exists := traceData["spans"]
+	if !exists {
+		return errorSpans
+	}
+
+	// Convert spans to slice of maps
+	spans, ok := spansInterface.([]interface{})
+	if !ok {
+		return errorSpans
+	}
+
+	// Process each span
+	for _, spanInterface := range spans {
+		span, ok := spanInterface.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Check if span has error status
+		isError := false
+
+		// Check tags for error indicators
+		if tags, exists := span["tags"].(map[string]interface{}); exists {
+			if errorTag, exists := tags["error"]; exists {
+				if errorStr, ok := errorTag.(string); ok && errorStr == "true" {
+					isError = true
+				} else if errorBool, ok := errorTag.(bool); ok && errorBool {
+					isError = true
+				}
+			}
+			if errorStatus, exists := tags["error.status"]; exists {
+				if statusStr, ok := errorStatus.(string); ok && statusStr == "error" {
+					isError = true
+				}
+			}
+		}
+
+		// Check span status
+		if status, exists := span["status"].(map[string]interface{}); exists {
+			if statusCode, exists := status["code"]; exists {
+				if codeStr, ok := statusCode.(string); ok && strings.ToLower(codeStr) == "error" {
+					isError = true
+				} else if codeInt, ok := statusCode.(int); ok && codeInt != 0 {
+					isError = true
+				}
+			}
+		}
+
+		// If span is an error, add it to the results
+		if isError {
+			// Enrich span with trace-level information
+			enrichedSpan := make(map[string]interface{})
+			for k, v := range span {
+				enrichedSpan[k] = v
+			}
+
+			// Add trace-level metadata
+			if traceID, exists := traceData["traceId"]; exists {
+				enrichedSpan["traceId"] = traceID
+			}
+			if serviceName, exists := traceData["serviceName"]; exists {
+				enrichedSpan["serviceName"] = serviceName
+			}
+			if operationName, exists := traceData["operationName"]; exists {
+				enrichedSpan["operationName"] = operationName
+			}
+
+			errorSpans = append(errorSpans, enrichedSpan)
+		}
+	}
+
+	return errorSpans
+}
+
+// queryErrorTracesFallback is the old implementation for services that don't support SearchTraces
+func (ce *CorrelationEngineImpl) queryErrorTracesFallback(ctx context.Context, timeRange models.TimeRange) ([]models.FailureSignal, error) {
+	// For traces, we can only use GetOperations, so we'll query for operations that might indicate errors
+	// This is a simplified implementation - in practice, we'd need a more sophisticated traces service
+	services := []string{"api-gateway", "tps", "keydb-client", "kafka-producer", "kafka-consumer", "cassandra-client"}
+
+	var signals []models.FailureSignal
+	for _, service := range services {
+		operations, err := ce.tracesService.GetOperations(ctx, service, "")
+		if err != nil {
+			continue // Skip services that fail
+		}
+
+		// Create signals for services that have operations (simplified approach)
+		if len(operations) > 0 {
+			signal := models.FailureSignal{
+				Type:      "trace",
+				Engine:    models.QueryTypeTraces,
+				Timestamp: timeRange.Start, // Use start time as representative
+				Data: map[string]interface{}{
+					"service":    service,
+					"operations": operations,
+					"query":      fmt.Sprintf("service:%s", service),
+				},
+			}
+			signals = append(signals, signal)
+		}
+	}
+
+	return signals, nil
+}
+
+// queryErrorMetrics queries metrics for error counters
+func (ce *CorrelationEngineImpl) queryErrorMetrics(ctx context.Context, timeRange models.TimeRange) ([]models.FailureSignal, error) {
+	if ce.metricsService == nil {
+		return nil, nil
+	}
+
+	// Query for error-related metrics using instant query
+	metricsQuery := &models.MetricsQLQueryRequest{
+		Query:    `up == 0 or transactions_failed_total > 0`,
+		TenantID: "",
+	}
+
+	result, err := ce.metricsService.ExecuteQuery(ctx, metricsQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	var signals []models.FailureSignal
+	// Parse metrics result and create signals for error metrics
+	if result.Data != nil {
+		signal := models.FailureSignal{
+			Type:      "metric",
+			Engine:    models.QueryTypeMetrics,
+			Timestamp: time.Now(), // Use current time for instant query
+			Data: map[string]interface{}{
+				"metric_data": result.Data,
+				"query":       metricsQuery.Query,
+			},
+		}
+		signals = append(signals, signal)
+	}
+
+	return signals, nil
+}
+
+// queryErrorSignalsForTransactions queries error signals for specific transactions
+func (ce *CorrelationEngineImpl) queryErrorSignalsForTransactions(ctx context.Context, transactionIDs []string, timeRange models.TimeRange) ([]models.FailureSignal, error) {
+	var allSignals []models.FailureSignal
+
+	// Build transaction ID filter
+	txFilter := strings.Join(transactionIDs, " OR ")
+	txQuery := fmt.Sprintf(`transaction_id:(%s)`, txFilter)
+
+	// Query logs for specific transactions
+	logsQuery := &models.LogsQLQueryRequest{
+		Query:    fmt.Sprintf(`(%s) AND (severity:ERROR OR level:ERROR)`, txQuery),
+		Start:    timeRange.Start.UnixMilli(),
+		End:      timeRange.End.UnixMilli(),
+		Limit:    5000,
+		TenantID: "",
+	}
+
+	if ce.logsService != nil {
+		result, err := ce.logsService.ExecuteQuery(ctx, logsQuery)
+		if err == nil {
+			for _, log := range result.Logs {
+				signal := models.FailureSignal{
+					Type:   "log",
+					Engine: models.QueryTypeLogs,
+					Data:   log,
+				}
+				if ts, exists := log["timestamp"]; exists {
+					if t, err := ce.parseTimestamp(ts); err == nil {
+						signal.Timestamp = t
+					}
+				}
+				allSignals = append(allSignals, signal)
+			}
+		}
+	}
+
+	return allSignals, nil
+}
+
+// groupSignalsByTransactionAndComponent groups signals by transaction ID and component
+func (ce *CorrelationEngineImpl) groupSignalsByTransactionAndComponent(signals []models.FailureSignal, targetComponents []models.FailureComponent) map[string]map[models.FailureComponent][]models.FailureSignal {
+	groups := make(map[string]map[models.FailureComponent][]models.FailureSignal)
+
+	// Create component filter set
+	componentFilter := make(map[models.FailureComponent]bool)
+	for _, comp := range targetComponents {
+		componentFilter[comp] = true
+	}
+
+	for _, signal := range signals {
+		txID := ce.extractTransactionID(signal)
+		component := ce.extractFailureComponent(signal)
+
+		if txID == "" || component == "" {
+			continue
+		}
+
+		// Filter by target components if specified
+		if len(targetComponents) > 0 {
+			if _, ok := componentFilter[models.FailureComponent(component)]; !ok {
+				continue
+			}
+		}
+
+		if groups[txID] == nil {
+			groups[txID] = make(map[models.FailureComponent][]models.FailureSignal)
+		}
+		groups[txID][models.FailureComponent(component)] = append(groups[txID][models.FailureComponent(component)], signal)
+	}
+
+	return groups
+}
+
+// groupSignalsByTransaction groups signals by transaction ID
+func (ce *CorrelationEngineImpl) groupSignalsByTransaction(signals []models.FailureSignal) map[string][]models.FailureSignal {
+	groups := make(map[string][]models.FailureSignal)
+
+	for _, signal := range signals {
+		txID := ce.extractTransactionID(signal)
+		if txID != "" {
+			groups[txID] = append(groups[txID], signal)
+		}
+	}
+
+	return groups
+}
+
+// extractTransactionID extracts transaction_id from a signal
+func (ce *CorrelationEngineImpl) extractTransactionID(signal models.FailureSignal) string {
+	if txID, exists := signal.Data["transaction_id"]; exists {
+		if s, ok := txID.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+// extractFailureComponent extracts the failing component from a signal
+func (ce *CorrelationEngineImpl) extractFailureComponent(signal models.FailureSignal) string {
+	// Check service.name first
+	if service, exists := signal.Data["service.name"]; exists {
+		if s, ok := service.(string); ok {
+			return ce.mapServiceToComponent(s)
+		}
+	}
+
+	// Check service
+	if service, exists := signal.Data["service"]; exists {
+		if s, ok := service.(string); ok {
+			return ce.mapServiceToComponent(s)
+		}
+	}
+
+	// Check failure_mode
+	if failureMode, exists := signal.Data["failure_mode"]; exists {
+		if s, ok := failureMode.(string); ok {
+			return s
+		}
+	}
+
+	return ""
+}
+
+// mapServiceToComponent maps service names to failure components
+func (ce *CorrelationEngineImpl) mapServiceToComponent(service string) string {
+	switch strings.ToLower(service) {
+	case "api-gateway":
+		return "api-gateway"
+	case "tps":
+		return "tps"
+	case "keydb", "keydb-client":
+		return "keydb"
+	case "kafka", "kafka-producer", "kafka-consumer":
+		return "kafka"
+	case "cassandra", "cassandra-client":
+		return "cassandra"
+	default:
+		return service
+	}
+}
+
+// createFailureIncident creates a failure incident from a group of signals
+func (ce *CorrelationEngineImpl) createFailureIncident(group map[models.FailureComponent][]models.FailureSignal, timeRange models.TimeRange) *models.FailureIncident {
+	if len(group) == 0 {
+		return nil
+	}
+
+	// Find the component with the most signals (primary component)
+	var primaryComponent models.FailureComponent
+	maxSignals := 0
+	var allSignals []models.FailureSignal
+	var affectedTxIDs []string
+	servicesInvolved := make(map[string]bool)
+	failureModes := make(map[string]bool)
+	var anomalyScores []float64
+
+	for component, signals := range group {
+		if len(signals) > maxSignals {
+			maxSignals = len(signals)
+			primaryComponent = component
+		}
+		allSignals = append(allSignals, signals...)
+
+		// Extract transaction IDs and other metadata
+		for _, signal := range signals {
+			if txID := ce.extractTransactionID(signal); txID != "" {
+				affectedTxIDs = append(affectedTxIDs, txID)
+			}
+
+			if service := ce.extractFailureComponent(signal); service != "" {
+				servicesInvolved[service] = true
+			}
+
+			if failureMode, exists := signal.Data["failure_mode"]; exists {
+				if s, ok := failureMode.(string); ok {
+					failureModes[s] = true
+				}
+			}
+
+			if signal.AnomalyScore != nil {
+				anomalyScores = append(anomalyScores, *signal.AnomalyScore)
+			}
+		}
+	}
+
+	// Remove duplicates from transaction IDs
+	affectedTxIDs = ce.removeDuplicates(affectedTxIDs)
+
+	// Convert services map to slice
+	var services []string
+	for service := range servicesInvolved {
+		services = append(services, service)
+	}
+
+	// Determine failure mode (most common)
+	var failureMode string
+	maxCount := 0
+	for mode := range failureModes {
+		// Count how many signals have this failure mode
+		count := 0
+		for _, signals := range group {
+			for _, signal := range signals {
+				if fm, exists := signal.Data["failure_mode"]; exists {
+					if s, ok := fm.(string); ok && s == mode {
+						count++
+					}
+				}
+			}
+		}
+		if count > maxCount {
+			maxCount = count
+			failureMode = mode
+		}
+	}
+
+	// Calculate average anomaly score
+	var avgAnomalyScore float64
+	if len(anomalyScores) > 0 {
+		sum := 0.0
+		for _, score := range anomalyScores {
+			sum += score
+		}
+		avgAnomalyScore = sum / float64(len(anomalyScores))
+	}
+
+	// Determine severity based on signal count and anomaly score
+	severity := ce.calculateSeverity(len(allSignals), avgAnomalyScore)
+
+	// Calculate confidence based on signal consistency and anomaly detection
+	confidence := ce.calculateFailureConfidence(allSignals, primaryComponent)
+
+	return &models.FailureIncident{
+		IncidentID:             fmt.Sprintf("incident_%s_%d", primaryComponent, time.Now().Unix()),
+		TimeRange:              timeRange,
+		PrimaryComponent:       primaryComponent,
+		AffectedTransactionIDs: affectedTxIDs,
+		ServicesInvolved:       services,
+		FailureMode:            failureMode,
+		Signals:                allSignals,
+		AnomalyScore:           avgAnomalyScore,
+		Severity:               severity,
+		Confidence:             confidence,
+	}
+}
+
+// createFailureIncidentForTransaction creates a failure incident for a specific transaction
+func (ce *CorrelationEngineImpl) createFailureIncidentForTransaction(signals []models.FailureSignal, timeRange models.TimeRange) *models.FailureIncident {
+	if len(signals) == 0 {
+		return nil
+	}
+
+	// Extract transaction ID from first signal
+	txID := ce.extractTransactionID(signals[0])
+	if txID == "" {
+		return nil
+	}
+
+	// Group signals by component
+	componentGroups := make(map[models.FailureComponent][]models.FailureSignal)
+	for _, signal := range signals {
+		component := models.FailureComponent(ce.extractFailureComponent(signal))
+		componentGroups[component] = append(componentGroups[component], signal)
+	}
+
+	// Use the same logic as createFailureIncident
+	return ce.createFailureIncident(componentGroups, timeRange)
+}
+
+// calculateSeverity determines incident severity
+func (ce *CorrelationEngineImpl) calculateSeverity(signalCount int, anomalyScore float64) string {
+	if signalCount >= 10 || anomalyScore > 0.8 {
+		return "critical"
+	}
+	if signalCount >= 5 || anomalyScore > 0.6 {
+		return "high"
+	}
+	if signalCount >= 2 || anomalyScore > 0.4 {
+		return "medium"
+	}
+	return "low"
+}
+
+// calculateFailureConfidence calculates confidence in the failure detection
+func (ce *CorrelationEngineImpl) calculateFailureConfidence(signals []models.FailureSignal, primaryComponent models.FailureComponent) float64 {
+	if len(signals) == 0 {
+		return 0.0
+	}
+
+	// Base confidence on signal count
+	baseConfidence := math.Min(float64(len(signals))*0.1, 0.5)
+
+	// Boost confidence if we have anomaly scores
+	anomalyCount := 0
+	for _, signal := range signals {
+		if signal.AnomalyScore != nil && *signal.AnomalyScore > 0.5 {
+			anomalyCount++
+		}
+	}
+	anomalyBoost := float64(anomalyCount) * 0.1
+
+	// Boost confidence if signals are consistent (same component)
+	consistentSignals := 0
+	for _, signal := range signals {
+		if models.FailureComponent(ce.extractFailureComponent(signal)) == primaryComponent {
+			consistentSignals++
+		}
+	}
+	consistencyBoost := float64(consistentSignals) / float64(len(signals)) * 0.3
+
+	totalConfidence := baseConfidence + anomalyBoost + consistencyBoost
+	return math.Min(totalConfidence, 0.95)
+}
+
+// createFailureSummary creates a summary of failure incidents
+func (ce *CorrelationEngineImpl) createFailureSummary(incidents []models.FailureIncident, timeRange models.TimeRange) *models.FailureSummary {
+	componentsAffected := make(map[models.FailureComponent]int)
+	servicesInvolved := make(map[string]bool)
+	failureModes := make(map[string]int)
+	totalConfidence := 0.0
+	anomalyDetected := false
+
+	for _, incident := range incidents {
+		componentsAffected[incident.PrimaryComponent]++
+		for _, service := range incident.ServicesInvolved {
+			servicesInvolved[service] = true
+		}
+		if incident.FailureMode != "" {
+			failureModes[incident.FailureMode]++
+		}
+		totalConfidence += incident.Confidence
+		if incident.AnomalyScore > 0.5 {
+			anomalyDetected = true
+		}
+	}
+
+	var services []string
+	for service := range servicesInvolved {
+		services = append(services, service)
+	}
+
+	avgConfidence := 0.0
+	if len(incidents) > 0 {
+		avgConfidence = totalConfidence / float64(len(incidents))
+	}
+
+	return &models.FailureSummary{
+		TotalIncidents:     len(incidents),
+		TimeRange:          timeRange,
+		ComponentsAffected: componentsAffected,
+		ServicesInvolved:   services,
+		FailureModes:       failureModes,
+		AverageConfidence:  avgConfidence,
+		AnomalyDetected:    anomalyDetected,
+	}
+}
+
+// removeDuplicates removes duplicate strings from a slice
+func (ce *CorrelationEngineImpl) removeDuplicates(slice []string) []string {
+	keys := make(map[string]bool)
+	var result []string
+	for _, item := range slice {
+		if !keys[item] {
+			keys[item] = true
+			result = append(result, item)
+		}
+	}
+	return result
 }
 
 // startCorrelationSpan starts a tracing span for correlation operations

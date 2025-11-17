@@ -382,6 +382,8 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup) {
 	{
 		unifiedGroup.POST("/query", unifiedHandler.HandleUnifiedQuery)
 		unifiedGroup.POST("/correlation", unifiedHandler.HandleUnifiedCorrelation)
+		unifiedGroup.POST("/failures/detect", unifiedHandler.HandleFailureDetection)
+		unifiedGroup.POST("/failures/correlate", unifiedHandler.HandleTransactionFailureCorrelation)
 		unifiedGroup.GET("/metadata", unifiedHandler.HandleQueryMetadata)
 		unifiedGroup.GET("/health", unifiedHandler.HandleHealthCheck)
 		unifiedGroup.POST("/search", unifiedHandler.HandleUnifiedSearch)

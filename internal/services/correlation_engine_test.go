@@ -42,6 +42,11 @@ func (m *MockVictoriaTracesService) GetOperations(ctx context.Context, service, 
 	return args.Get(0).([]string), args.Error(1)
 }
 
+func (m *MockVictoriaTracesService) SearchTraces(ctx context.Context, request *models.TraceSearchRequest) (*models.TraceSearchResult, error) {
+	args := m.Called(ctx, request)
+	return args.Get(0).(*models.TraceSearchResult), args.Error(1)
+}
+
 type MockValkeyCluster struct {
 	mock.Mock
 }

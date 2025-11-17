@@ -309,3 +309,67 @@ var CorrelationQueryExamples = []string{
 	"logs:exception WITHIN 10m OF traces:status:error",
 	"metrics:http_requests > 1000 AND logs:error",
 }
+
+// FailureComponent represents a component that can fail in the financial transaction system
+type FailureComponent string
+
+const (
+	FailureComponentAPIGateway FailureComponent = "api-gateway"
+	FailureComponentTPS        FailureComponent = "tps"
+	FailureComponentKeyDB      FailureComponent = "keydb"
+	FailureComponentKafka      FailureComponent = "kafka"
+	FailureComponentCassandra  FailureComponent = "cassandra"
+)
+
+// FailureIncident represents a correlated failure incident
+type FailureIncident struct {
+	IncidentID             string           `json:"incident_id"`
+	TimeRange              TimeRange        `json:"time_range"`
+	PrimaryComponent       FailureComponent `json:"primary_component"`
+	AffectedTransactionIDs []string         `json:"affected_transaction_ids"`
+	ServicesInvolved       []string         `json:"services_involved"`
+	FailureMode            string           `json:"failure_mode,omitempty"`
+	FailureReason          string           `json:"failure_reason,omitempty"`
+	Signals                []FailureSignal  `json:"signals"`
+	AnomalyScore           float64          `json:"anomaly_score,omitempty"`
+	Severity               string           `json:"severity"` // "low", "medium", "high", "critical"
+	Confidence             float64          `json:"confidence"`
+}
+
+// FailureSignal represents a signal (log, metric, trace) that contributed to the failure detection
+type FailureSignal struct {
+	Type         string                 `json:"type"` // "log", "metric", "trace"
+	Engine       QueryType              `json:"engine"`
+	Timestamp    time.Time              `json:"timestamp"`
+	Data         map[string]interface{} `json:"data"`
+	AnomalyScore *float64               `json:"anomaly_score,omitempty"`
+}
+
+// FailureCorrelationResult contains the results of failure correlation
+type FailureCorrelationResult struct {
+	Incidents []FailureIncident `json:"incidents"`
+	Summary   FailureSummary    `json:"summary"`
+}
+
+// FailureSummary provides summary statistics for failure incidents
+type FailureSummary struct {
+	TotalIncidents     int                      `json:"total_incidents"`
+	TimeRange          TimeRange                `json:"time_range"`
+	ComponentsAffected map[FailureComponent]int `json:"components_affected"`
+	ServicesInvolved   []string                 `json:"services_involved"`
+	FailureModes       map[string]int           `json:"failure_modes"`
+	AverageConfidence  float64                  `json:"average_confidence"`
+	AnomalyDetected    bool                     `json:"anomaly_detected"`
+}
+
+// FailureDetectionRequest represents a request to detect component failures
+type FailureDetectionRequest struct {
+	TimeRange  TimeRange          `json:"time_range"`
+	Components []FailureComponent `json:"components,omitempty"` // Optional: filter by specific components
+}
+
+// TransactionFailureCorrelationRequest represents a request to correlate failures for specific transactions
+type TransactionFailureCorrelationRequest struct {
+	TransactionIDs []string  `json:"transaction_ids"`
+	TimeRange      TimeRange `json:"time_range"`
+}

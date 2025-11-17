@@ -47,7 +47,7 @@ services:
   # OpenTelemetry Collector
   # ──────────────────────────────────────────────
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: otel/opentelemetry-collector-contrib:0.137.0
     pull_policy: if_not_present
     container_name: otel-collector
     command: ["--config", "/etc/otelcol/config.yaml"]
