@@ -1783,7 +1783,9 @@ func (ce *CorrelationEngineImpl) createFailureIncident(group map[models.FailureC
 	var anomalyScores []float64
 
 	for component, signals := range group {
-		if len(signals) > maxSignals {
+		// Choose the component with the most signals. If there's a tie,
+		// pick the component with the lexicographically smallest name for deterministic results.
+		if len(signals) > maxSignals || (len(signals) == maxSignals && (primaryComponent == "" || string(component) < string(primaryComponent))) {
 			maxSignals = len(signals)
 			primaryComponent = component
 		}
@@ -1820,24 +1822,47 @@ func (ce *CorrelationEngineImpl) createFailureIncident(group map[models.FailureC
 		services = append(services, service)
 	}
 
-	// Determine failure mode (most common)
+	// Determine failure mode. Prefer modes present in the primary component's signals
+	// (more likely to reflect the root cause). If none, fall back to the global most common mode.
 	var failureMode string
 	maxCount := 0
-	for mode := range failureModes {
-		// Count how many signals have this failure mode
-		count := 0
-		for _, signals := range group {
-			for _, signal := range signals {
-				if fm, exists := signal.Data["failure_mode"]; exists {
-					if s, ok := fm.(string); ok && s == mode {
-						count++
-					}
+
+	// Count failure modes within primary component first.
+	if primarySignals, ok := group[primaryComponent]; ok {
+		pmCounts := make(map[string]int)
+		for _, signal := range primarySignals {
+			if fm, exists := signal.Data["failure_mode"]; exists {
+				if s, ok := fm.(string); ok {
+					pmCounts[s]++
 				}
 			}
 		}
-		if count > maxCount {
-			maxCount = count
-			failureMode = mode
+		for mode, count := range pmCounts {
+			if count > maxCount || (count == maxCount && (failureMode == "" || mode < failureMode)) {
+				maxCount = count
+				failureMode = mode
+			}
+		}
+	}
+
+	// Fallback: global most common failure mode across all signals
+	if failureMode == "" {
+		for mode := range failureModes {
+			// Count how many signals have this failure mode
+			count := 0
+			for _, signals := range group {
+				for _, signal := range signals {
+					if fm, exists := signal.Data["failure_mode"]; exists {
+						if s, ok := fm.(string); ok && s == mode {
+							count++
+						}
+					}
+				}
+			}
+			if count > maxCount || (count == maxCount && (failureMode == "" || mode < failureMode)) {
+				maxCount = count
+				failureMode = mode
+			}
 		}
 	}
 
