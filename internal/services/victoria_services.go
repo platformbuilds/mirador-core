@@ -411,7 +411,7 @@ func (s *VictoriaTracesService) getServicesSingleEndpoint(ctx context.Context) (
 }
 
 // GetTrace retrieves a specific trace by ID
-func (s *VictoriaTracesService) GetTrace(ctx context.Context, traceID) (*models.Trace, error) {
+func (s *VictoriaTracesService) GetTrace(ctx context.Context, traceID string) (*models.Trace, error) {
 	if len(s.children) > 0 {
 		services := make([]*VictoriaTracesService, 0, len(s.children)+1)
 		if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 0 }() {

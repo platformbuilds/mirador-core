@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -27,8 +26,6 @@ type CacheMemoryInfo struct {
 	MissRate            float64 `json:"miss_rate"`
 }
 
-const activeSessionsKey = "active_sessions"
-
 type ValkeyCluster interface {
 	// General caching
 	Get(ctx context.Context, key string) ([]byte, error)
@@ -38,12 +35,6 @@ type ValkeyCluster interface {
 	// Distributed locks
 	AcquireLock(ctx context.Context, key string, ttl time.Duration) (bool, error)
 	ReleaseLock(ctx context.Context, key string) error
-
-	// Session management (as shown in diagram)
-	GetSession(ctx context.Context, sessionID string) (*models.UserSession, error)
-	SetSession(ctx context.Context, session *models.UserSession) error
-	InvalidateSession(ctx context.Context, sessionID string) error
-	GetActiveSessions(ctx context.Context) ([]*models.UserSession, error)
 
 	// Query result caching for faster fetch
 	CacheQueryResult(ctx context.Context, queryHash string, result interface{}, ttl time.Duration) error
@@ -155,79 +146,6 @@ func (v *valkeyClusterImpl) Delete(ctx context.Context, key string) error {
 	}
 	monitoring.RecordCacheOperation("delete", "success")
 	return nil
-}
-
-/* --------------------------- session management --------------------------- */
-
-func (v *valkeyClusterImpl) SetSession(ctx context.Context, session *models.UserSession) error {
-	session.LastActivity = time.Now()
-	key := fmt.Sprintf("session:%s", session.ID)
-
-	// Store session with 24h TTL (override default)
-	if err := v.Set(ctx, key, session, 24*time.Hour); err != nil {
-		monitoring.RecordCacheOperation("set_session", "error")
-		return err
-	}
-
-	// Add to active sessions set
-	activeKey := fmt.Sprintf("active_sessions:%s")
-	err := v.client.SAdd(ctx, activeKey, session.ID).Err()
-	if err != nil {
-		monitoring.RecordCacheOperation("set_session", "error")
-		return err
-	}
-	monitoring.RecordCacheOperation("set_session", "success")
-	return nil
-}
-
-func (v *valkeyClusterImpl) GetSession(ctx context.Context, sessionID string) (*models.UserSession, error) {
-	key := fmt.Sprintf("session:%s", sessionID)
-	data, err := v.Get(ctx, key)
-	if err != nil {
-		monitoring.RecordCacheOperation("get_session", "miss")
-		return nil, err
-	}
-
-	var session models.UserSession
-	if err := json.Unmarshal(data, &session); err != nil {
-		monitoring.RecordCacheOperation("get_session", "error")
-		return nil, fmt.Errorf("failed to unmarshal session: %w", err)
-	}
-	monitoring.RecordCacheOperation("get_session", "hit")
-	return &session, nil
-}
-
-func (v *valkeyClusterImpl) InvalidateSession(ctx context.Context, sessionID string) error {
-	// Remove from active sessions set
-	activeKey := fmt.Sprintf("active_sessions:%s")
-	_ = v.client.SRem(ctx, activeKey, sessionID).Err()
-
-	err := v.Delete(ctx, fmt.Sprintf("session:%s", sessionID))
-	if err != nil {
-		monitoring.RecordCacheOperation("invalidate_session", "error")
-		return err
-	}
-	monitoring.RecordCacheOperation("invalidate_session", "success")
-	return nil
-}
-
-func (v *valkeyClusterImpl) GetActiveSessions(ctx context.Context) ([]*models.UserSession, error) {
-	activeKey := fmt.Sprintf("active_sessions:%s")
-	sessionIDs, err := v.client.SMembers(ctx, activeKey).Result()
-	if err != nil {
-		return nil, err
-	}
-
-	sessions := make([]*models.UserSession, 0, len(sessionIDs))
-	for _, sessionID := range sessionIDs {
-		if session, err := v.GetSession(ctx, sessionID); err == nil {
-			sessions = append(sessions, session)
-		} else {
-			// Clean up stale references
-			_ = v.client.SRem(ctx, activeKey, sessionID).Err()
-		}
-	}
-	return sessions, nil
 }
 
 /* --------------------------- query result cache --------------------------- */

@@ -420,7 +420,7 @@ func (h *MetricsQLHandler) buildMetricOnlyDefinitions(ctx context.Context, data 
 	}
 }
 
-func generateQueryHash(query, timeParam) string {
+func generateQueryHash(query, timeParam string) string {
 	data := fmt.Sprintf("%s:%s", query, timeParam)
 	hash := sha256.Sum256([]byte(data))
 	return fmt.Sprintf("%x", hash)

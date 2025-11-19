@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -61,59 +60,6 @@ func (n *noopValkeyCache) Delete(ctx context.Context, key string) error {
 	delete(n.m, key)
 	n.mu.Unlock()
 	return nil
-}
-
-func (n *noopValkeyCache) SetSession(ctx context.Context, session *models.UserSession) error {
-	session.LastActivity = time.Now()
-	if err := n.Set(ctx, "session:"+session.ID, session, 24*time.Hour); err != nil {
-		return err
-	}
-	_ = n.AddToPatternIndex(ctx, fmt.Sprintf("active_sessions:%s"), fmt.Sprintf("session:%s", session.ID))
-	return nil
-}
-func (n *noopValkeyCache) GetSession(ctx context.Context, sessionID string) (*models.UserSession, error) {
-	b, err := n.Get(ctx, "session:"+sessionID)
-	if err != nil {
-		return nil, err
-	}
-	var s models.UserSession
-	if err := json.Unmarshal(b, &s); err != nil {
-		return nil, err
-	}
-	return &s, nil
-}
-func (n *noopValkeyCache) InvalidateSession(ctx context.Context, sessionID string) error {
-	return n.Delete(ctx, "session:"+sessionID)
-}
-func (n *noopValkeyCache) GetActiveSessions(ctx context.Context) ([]*models.UserSession, error) {
-	// Scan all sessions from memory
-	n.mu.RLock()
-	defer n.mu.RUnlock()
-	out := []*models.UserSession{}
-	// Look up by pattern index if present
-	patternKey := fmt.Sprintf("active_sessions:%s")
-	keys, _ := n.GetPatternIndexKeys(ctx, patternKey)
-	if len(keys) > 0 {
-		for _, k := range keys {
-			if v, ok := n.m[k]; ok {
-				var s models.UserSession
-				if json.Unmarshal(v, &s) == nil {
-					out = append(out, &s)
-				}
-			}
-		}
-	} else {
-		// fallback: scan all sessions in-memory
-		for k, v := range n.m {
-			if len(k) >= 8 && k[:8] == "session:" {
-				var s models.UserSession
-				if json.Unmarshal(v, &s) == nil {
-					out = append(out, &s)
-				}
-			}
-		}
-	}
-	return out, nil
 }
 
 func (n *noopValkeyCache) CacheQueryResult(ctx context.Context, queryHash string, result interface{}, ttl time.Duration) error {

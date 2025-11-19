@@ -47,14 +47,12 @@ func (f *fakeRCA) SubmitFeedback(ctx context.Context, req *models.FeedbackReques
 func (f *fakeRCA) HealthCheck() error { return nil }
 
 type stubServiceGraph struct {
-	data       *models.ServiceGraphData
-	err        error
-	lastTenant string
-	lastReq    *models.ServiceGraphRequest
+	data    *models.ServiceGraphData
+	err     error
+	lastReq *models.ServiceGraphRequest
 }
 
-func (s *stubServiceGraph) FetchServiceGraph(ctx context.Context, tenantID string, req *models.ServiceGraphRequest) (*models.ServiceGraphData, error) {
-	s.lastTenant = tenantID
+func (s *stubServiceGraph) FetchServiceGraph(ctx context.Context, req *models.ServiceGraphRequest) (*models.ServiceGraphData, error) {
 	if req != nil {
 		clone := *req
 		s.lastReq = &clone
@@ -71,8 +69,8 @@ func TestRCA_and_OpenRoutes(t *testing.T) {
 	cch := cache.NewNoopValkeyCache(log)
 	logs := services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log)
 
-	// RCA
-	rh := NewRCAHandler(&fakeRCA{}, logs, nil, cch, log, nil)
+	// RCA - now uses local engine, external AI engine calls return "not implemented"
+	rh := NewRCAHandler(logs, nil, cch, log, nil)
 	r := gin.New()
 	r.Use(func(c *gin.Context) { c.Set("default", "t1"); c.Next() })
 	r.POST("/rca/investigate", rh.StartInvestigation)
@@ -82,8 +80,9 @@ func TestRCA_and_OpenRoutes(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/rca/investigate", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Fatalf("rca investigate=%d", w.Code)
+	// External AI engine investigation now returns "not implemented"
+	if w.Code != http.StatusNotImplemented {
+		t.Fatalf("rca investigate should return not implemented, got=%d", w.Code)
 	}
 }
 
@@ -101,7 +100,7 @@ func TestRCA_ServiceGraph_Success(t *testing.T) {
 		}},
 	}}
 
-	rh := NewRCAHandler(&fakeRCA{}, logs, sg, cch, log, nil)
+	rh := NewRCAHandler(logs, sg, cch, log, nil)
 	r := gin.New()
 	r.Use(func(c *gin.Context) { c.Set("default", "tenant-1"); c.Next() })
 	r.POST("/rca/service-graph", rh.GetServiceGraph)
@@ -114,10 +113,6 @@ func TestRCA_ServiceGraph_Success(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("service graph status=%d body=%s", w.Code, w.Body.String())
-	}
-	// MIRADOR-CORE no longer exposes tenant context; system tenant is used internally
-	if sg.lastTenant != "system" {
-		t.Fatalf("expected tenant system, got %s", sg.lastTenant)
 	}
 	if sg.lastReq == nil || sg.lastReq.Start.IsZero() || sg.lastReq.End.IsZero() {
 		t.Fatalf("expected request to propagate start/end")
@@ -148,7 +143,7 @@ func TestRCA_ServiceGraph_Errors(t *testing.T) {
 	cch := cache.NewNoopValkeyCache(log)
 	logs := services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log)
 
-	rh := NewRCAHandler(&fakeRCA{}, logs, nil, cch, log, nil)
+	rh := NewRCAHandler(logs, nil, cch, log, nil)
 	r := gin.New()
 	r.Use(func(c *gin.Context) { c.Set("default", "tenant-err"); c.Next() })
 	r.POST("/rca/service-graph", rh.GetServiceGraph)
@@ -162,7 +157,7 @@ func TestRCA_ServiceGraph_Errors(t *testing.T) {
 	}
 
 	sg := &stubServiceGraph{}
-	rh = NewRCAHandler(&fakeRCA{}, logs, sg, cch, log, nil)
+	rh = NewRCAHandler(logs, sg, cch, log, nil)
 	r = gin.New()
 	r.Use(func(c *gin.Context) { c.Set("default", "tenant-err"); c.Next() })
 	r.POST("/rca/service-graph", rh.GetServiceGraph)

@@ -312,7 +312,7 @@ func (sm *ShardManager) GetShardStats() map[string]interface{} {
 
 		stats[shardID] = shardStats
 	}
-	stats["shardCounts"] = shardCounts
+	// Note: shardCounts is used for internal monitoring but not returned in public API
 
 	return stats
 }

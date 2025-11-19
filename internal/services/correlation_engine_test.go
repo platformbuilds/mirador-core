@@ -76,26 +76,6 @@ func (m *MockValkeyCluster) ReleaseLock(ctx context.Context, key string) error {
 	return args.Error(0)
 }
 
-func (m *MockValkeyCluster) GetSession(ctx context.Context, sessionID string) (*models.UserSession, error) {
-	args := m.Called(ctx, sessionID)
-	return args.Get(0).(*models.UserSession), args.Error(1)
-}
-
-func (m *MockValkeyCluster) SetSession(ctx context.Context, session *models.UserSession) error {
-	args := m.Called(ctx, session)
-	return args.Error(0)
-}
-
-func (m *MockValkeyCluster) InvalidateSession(ctx context.Context, sessionID string) error {
-	args := m.Called(ctx, sessionID)
-	return args.Error(0)
-}
-
-func (m *MockValkeyCluster) GetActiveSessions(ctx context.Context, tenantID string) ([]*models.UserSession, error) {
-	args := m.Called(ctx, tenantID)
-	return args.Get(0).([]*models.UserSession), args.Error(1)
-}
-
 func (m *MockValkeyCluster) CacheQueryResult(ctx context.Context, queryHash string, result interface{}, ttl time.Duration) error {
 	args := m.Called(ctx, queryHash, result, ttl)
 	return args.Error(0)

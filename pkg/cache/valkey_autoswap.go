@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -89,36 +88,6 @@ func (a *autoSwapCache) Set(ctx context.Context, key string, value interface{}, 
 
 func (a *autoSwapCache) Delete(ctx context.Context, key string) error {
 	return a.withCurrent(func(c ValkeyCluster) error { return c.Delete(ctx, key) })
-}
-
-func (a *autoSwapCache) GetSession(ctx context.Context, sessionID string) (*models.UserSession, error) {
-	var out *models.UserSession
-	var retErr error
-	_ = a.withCurrent(func(c ValkeyCluster) error {
-		s, e := c.GetSession(ctx, sessionID)
-		out, retErr = s, e
-		return nil
-	})
-	return out, retErr
-}
-
-func (a *autoSwapCache) SetSession(ctx context.Context, session *models.UserSession) error {
-	return a.withCurrent(func(c ValkeyCluster) error { return c.SetSession(ctx, session) })
-}
-
-func (a *autoSwapCache) InvalidateSession(ctx context.Context, sessionID string) error {
-	return a.withCurrent(func(c ValkeyCluster) error { return c.InvalidateSession(ctx, sessionID) })
-}
-
-func (a *autoSwapCache) GetActiveSessions(ctx context.Context) ([]*models.UserSession, error) {
-	var out []*models.UserSession
-	var retErr error
-	_ = a.withCurrent(func(c ValkeyCluster) error {
-		s, e := c.GetActiveSessions(ctx)
-		out, retErr = s, e
-		return nil
-	})
-	return out, retErr
 }
 
 func (a *autoSwapCache) CacheQueryResult(ctx context.Context, queryHash string, result interface{}, ttl time.Duration) error {

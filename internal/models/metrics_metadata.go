@@ -139,7 +139,7 @@ type MetricMetadataSyncStatus struct {
 }
 
 // NewMetricMetadataDocument creates a new MetricMetadataDocument with default values
-func NewMetricMetadataDocument(metricName) *MetricMetadataDocument {
+func NewMetricMetadataDocument(metricName string) *MetricMetadataDocument {
 	now := time.Now()
 	doc := &MetricMetadataDocument{
 		ID:          metricName,

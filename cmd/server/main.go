@@ -14,7 +14,6 @@ import (
 
 	"github.com/platformbuilds/mirador-core/internal/api"
 	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	storage_weaviate "github.com/platformbuilds/mirador-core/internal/storage/weaviate"
@@ -136,14 +135,6 @@ func main() {
 		}
 	}
 
-	// Initialize gRPC clients for AI engines
-	dynamicConfigService := services.NewDynamicConfigService(valkeyCache, logger)
-	grpcClients, err := clients.NewGRPCClients(cfg, logger, dynamicConfigService)
-	if err != nil {
-		logger.Fatal("Failed to initialize gRPC clients", "error", err)
-	}
-	logger.Info("gRPC clients initialized for AI engines")
-
 	// Initialize VictoriaMetrics services
 	vmServices, err := services.NewVictoriaMetricsServices(cfg.Database, logger)
 	if err != nil {
@@ -176,7 +167,7 @@ func main() {
 	// No legacy DB fallback; expect Weaviate
 
 	// Initialize API server
-	apiServer := api.NewServer(cfg, logger, valkeyCache, grpcClients, vmServices, schemaStore)
+	apiServer := api.NewServer(cfg, logger, valkeyCache, vmServices, schemaStore)
 
 	// Setup graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())

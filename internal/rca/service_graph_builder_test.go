@@ -112,7 +112,7 @@ func TestServiceGraphBuilder_BuildGraph_Basic(t *testing.T) {
 	start := time.Now().UTC().Add(-15 * time.Minute)
 	end := time.Now().UTC()
 
-	graph, err := builder.BuildGraph(context.Background(), "default", start, end)
+	graph, err := builder.BuildGraph(context.Background(), start, end)
 	if err != nil {
 		t.Fatalf("BuildGraph failed: %v", err)
 	}
@@ -192,7 +192,7 @@ func TestServiceGraphBuilder_BuildGraph_WithFailures(t *testing.T) {
 	start := time.Now().UTC().Add(-5 * time.Minute)
 	end := time.Now().UTC()
 
-	graph, err := builder.BuildGraph(context.Background(), "default", start, end)
+	graph, err := builder.BuildGraph(context.Background(), start, end)
 	if err != nil {
 		t.Fatalf("BuildGraph failed: %v", err)
 	}
@@ -219,14 +219,14 @@ func TestServiceGraphBuilder_BuildGraph_InvalidTimeRange(t *testing.T) {
 	builder := NewServiceGraphBuilder(mockQuerier, log)
 
 	// Test with zero times.
-	_, err := builder.BuildGraph(context.Background(), "default", time.Time{}, time.Time{})
+	_, err := builder.BuildGraph(context.Background(), time.Time{}, time.Time{})
 	if err == nil {
 		t.Fatal("Expected error for invalid time range")
 	}
 
 	// Test with end before start.
 	now := time.Now().UTC()
-	_, err = builder.BuildGraph(context.Background(), "default", now.Add(1*time.Hour), now)
+	_, err = builder.BuildGraph(context.Background(), now.Add(1*time.Hour), now)
 	if err == nil {
 		t.Fatal("Expected error for end before start")
 	}
@@ -319,7 +319,7 @@ func TestServiceGraphBuilder_ComplexServiceTopology(t *testing.T) {
 	start := time.Now().UTC().Add(-15 * time.Minute)
 	end := time.Now().UTC()
 
-	graph, err := builder.BuildGraph(context.Background(), "default", start, end)
+	graph, err := builder.BuildGraph(context.Background(), start, end)
 	if err != nil {
 		t.Fatalf("BuildGraph failed: %v", err)
 	}
@@ -408,7 +408,7 @@ func TestServiceGraphBuilder_ResponseParsing(t *testing.T) {
 	start := time.Now().UTC().Add(-5 * time.Minute)
 	end := time.Now().UTC()
 
-	graph, err := builder.BuildGraph(context.Background(), "default", start, end)
+	graph, err := builder.BuildGraph(context.Background(), start, end)
 	if err != nil {
 		t.Fatalf("BuildGraph failed: %v", err)
 	}

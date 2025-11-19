@@ -14,7 +14,6 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/api/handlers"
 	"github.com/platformbuilds/mirador-core/internal/api/middleware"
 	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/internal/rca"
@@ -33,7 +32,6 @@ type Server struct {
 	config                      *config.Config
 	logger                      logger.Logger
 	cache                       cache.ValkeyCluster
-	grpcClients                 *clients.GRPCClients
 	vmServices                  *services.VictoriaMetricsServices
 	schemaRepo                  repo.SchemaStore
 	searchRouter                *search.SearchRouter
@@ -49,7 +47,6 @@ func NewServer(
 	cfg *config.Config,
 	log logger.Logger,
 	valkeyCache cache.ValkeyCluster,
-	grpcClients *clients.GRPCClients,
 	vmServices *services.VictoriaMetricsServices,
 	schemaRepo repo.SchemaStore,
 ) *Server {
@@ -81,7 +78,6 @@ func NewServer(
 		config:         cfg,
 		logger:         log,
 		cache:          valkeyCache,
-		grpcClients:    grpcClients,
 		vmServices:     vmServices,
 		schemaRepo:     schemaRepo,
 		router:         router,
@@ -156,7 +152,7 @@ func (s *Server) setupMiddleware() {
 
 func (s *Server) setupRoutes() {
 	// Create health handler instance
-	healthHandler := handlers.NewHealthHandlerWithCache(s.grpcClients, s.vmServices, s.cache, s.logger)
+	healthHandler := handlers.NewHealthHandlerWithCache(s.vmServices, s.cache, s.logger)
 
 	// Public health endpoints - now using handler instance methods
 	s.router.GET("/health", healthHandler.HealthCheck)
@@ -299,7 +295,7 @@ func (s *Server) setupRoutes() {
 
 	// AI RCA-ENGINE endpoints (correlation with red anchors pattern)
 	rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
-	rcaHandler := handlers.NewRCAHandler(s.grpcClients.RCAEngine, s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints)
+	rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints)
 	rcaGroup := v1.Group("/rca")
 	{
 		rcaGroup.GET("/correlations", rcaHandler.GetActiveCorrelations)
@@ -320,24 +316,6 @@ func (s *Server) setupRoutes() {
 				kpiDefsGroup.POST("", kpiHandler.CreateOrUpdateKPIDefinition)
 				kpiDefsGroup.DELETE("/:id", kpiHandler.DeleteKPIDefinition)
 			}
-
-			// KPI Layouts API
-			kpiLayoutsGroup := v1.Group("/kpi/layouts")
-			{
-				kpiLayoutsGroup.GET("", kpiHandler.GetKPILayouts)
-				kpiLayoutsGroup.POST("/batch", kpiHandler.BatchUpdateKPILayouts)
-			}
-
-			// Dashboard API
-			dashboardGroup := v1.Group("/kpi/dashboards")
-			{
-				dashboardGroup.GET("", kpiHandler.GetDashboards)
-				dashboardGroup.POST("", kpiHandler.CreateDashboard)
-				dashboardGroup.PUT("/:id", kpiHandler.UpdateDashboard)
-				dashboardGroup.DELETE("/:id", kpiHandler.DeleteDashboard)
-			}
-
-			// User Preferences API moved to /config/user-preferences
 		}
 	}
 
@@ -411,7 +389,7 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 		unifiedGroup.POST("/rca", func(c *gin.Context) {
 			// Create a temporary RCA handler just for this endpoint
 			rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
-			rcaHandler := handlers.NewRCAHandler(s.grpcClients.RCAEngine, s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints)
+			rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints)
 			rcaHandler.HandleComputeRCA(c)
 		})
 	}
@@ -497,11 +475,6 @@ func (s *Server) Start(ctx context.Context) error {
 		if err := s.tracerProvider.Shutdown(shutdownCtx); err != nil {
 			s.logger.Error("Failed to shutdown tracer provider", "error", err)
 		}
-	}
-
-	// Close gRPC connections
-	if err := s.grpcClients.Close(); err != nil {
-		s.logger.Error("Failed to close gRPC clients", "error", err)
 	}
 
 	return s.httpServer.Shutdown(shutdownCtx)

@@ -140,8 +140,8 @@ func uuidV5(ns [16]byte, name string) string {
 }
 
 // makeRBACID generates deterministic IDs for RBAC objects
-func makeRBACID(class, parts ...string) string {
-	allParts := append([]string{class}, parts...)
+func makeRBACID(class, parts string) string {
+	allParts := []string{class, parts}
 	return makeID(allParts...)
 }
 

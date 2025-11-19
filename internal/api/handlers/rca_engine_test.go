@@ -75,7 +75,6 @@ func TestHandleComputeRCA_ValidRequest(t *testing.T) {
 	handler := &RCAHandler{
 		logger:             mockLogger,
 		rcaEngine:          mockRCA,
-		rcaClient:          nil,
 		logsService:        nil,
 		serviceGraph:       nil,
 		cache:              nil,

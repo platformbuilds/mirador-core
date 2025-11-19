@@ -1,176 +1,59 @@
 package handlers
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
-	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/services"
-	"github.com/platformbuilds/mirador-core/internal/utils"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type AlertHandler struct {
-	alertClient         *clients.AlertEngineClient
 	integrationsService *services.IntegrationsService
 	cache               cache.ValkeyCluster
 	logger              logger.Logger
 }
 
 func NewAlertHandler(
-	alertClient *clients.AlertEngineClient,
 	integrationsService *services.IntegrationsService,
 	cache cache.ValkeyCluster,
 	logger logger.Logger,
 ) *AlertHandler {
 	return &AlertHandler{
-		alertClient:         alertClient,
 		integrationsService: integrationsService,
 		cache:               cache,
 		logger:              logger,
 	}
 }
 
-// GET /api/v1/alerts - Get active alerts with intelligent clustering
+// GET /api/v1/alerts - Get active alerts (disabled)
 func (h *AlertHandler) GetAlerts(c *gin.Context) {
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
-	severity := c.Query("severity")
-
-	// Try valkey cluster cache first for faster fetch
-	cacheKey := fmt.Sprintf("alerts:%s:%d", severity, limit)
-	if cached, err := h.cache.Get(c.Request.Context(), cacheKey); err == nil {
-		var cachedAlerts []*models.Alert
-		if json.Unmarshal(cached, &cachedAlerts) == nil {
-			c.Header("X-Cache", "HIT")
-			c.JSON(http.StatusOK, gin.H{
-				"status": "success",
-				"data": gin.H{
-					"alerts": cachedAlerts,
-					"total":  len(cachedAlerts),
-				},
-			})
-			return
-		}
-	}
-
-	// Query from ALERT-ENGINE
-	alerts, err := h.alertClient.GetActiveAlerts(c.Request.Context(), &models.AlertQuery{
-		Limit:    limit,
-		Severity: severity,
-	})
-	if err != nil {
-		h.logger.Error("Failed to get alerts", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "error",
-			"error":  "Failed to retrieve alerts",
-		})
-		return
-	}
-
-	// Cache results for faster future access
-	h.cache.Set(c.Request.Context(), cacheKey, alerts, 1*time.Minute)
-
-	c.Header("X-Cache", "MISS")
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data": gin.H{
-			"alerts": alerts,
-			"total":  len(alerts),
-			"summary": gin.H{
-				"critical": utils.CountAlertsBySeverity(alerts, "critical"),
-				"warning":  utils.CountAlertsBySeverity(alerts, "warning"),
-				"info":     utils.CountAlertsBySeverity(alerts, "info"),
-			},
-		},
-		"timestamp": time.Now().Format(time.RFC3339),
+	// Alert functionality via external AI engines has been removed
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"status":  "error",
+		"error":   "Alert retrieval via external AI engines is no longer supported",
+		"message": "Use local monitoring and alerting systems",
 	})
 }
 
-// POST /api/v1/alerts - Create new alert rule
+// POST /api/v1/alerts - Create new alert rule (disabled)
 func (h *AlertHandler) CreateAlert(c *gin.Context) {
-	var alertRule models.AlertRule
-	if err := c.ShouldBindJSON(&alertRule); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  "Invalid alert rule format",
-		})
-		return
-	}
-
-	alertRule.CreatedAt = time.Now()
-
-	// Validate alert rule query syntax
-	if err := h.validateAlertRule(&alertRule); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  fmt.Sprintf("Invalid alert rule: %s", err.Error()),
-		})
-		return
-	}
-
-	// Create alert rule via ALERT-ENGINE
-	createdRule, err := h.alertClient.CreateAlertRule(c.Request.Context(), &alertRule)
-	if err != nil {
-		h.logger.Error("Failed to create alert rule", "rule", alertRule.Name, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "error",
-			"error":  "Failed to create alert rule",
-		})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{
-		"status": "success",
-		"data": gin.H{
-			"rule": createdRule,
-			"id":   createdRule.ID,
-		},
-		"timestamp": time.Now().Format(time.RFC3339),
+	// Alert functionality via external AI engines has been removed
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"status":  "error",
+		"error":   "Alert creation via external AI engines is no longer supported",
+		"message": "Use local monitoring and alerting systems",
 	})
 }
 
-// PUT /api/v1/alerts/:id/acknowledge - Acknowledge alert
+// PUT /api/v1/alerts/:id/acknowledge - Acknowledge alert (disabled)
 func (h *AlertHandler) AcknowledgeAlert(c *gin.Context) {
-	alertID := c.Param("id")
-	userID := c.GetString("user_id")
-
-	ackRequest := models.AlertAcknowledgment{
-		AlertID:        alertID,
-		AcknowledgedBy: userID,
-		AcknowledgedAt: time.Now(),
-		Comment:        c.PostForm("comment"),
-	}
-
-	err := h.alertClient.AcknowledgeAlert(c.Request.Context(), &ackRequest)
-	if err != nil {
-		h.logger.Error("Failed to acknowledge alert", "alertId", alertID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "error",
-			"error":  "Failed to acknowledge alert",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data": gin.H{
-			"acknowledged":   true,
-			"alertId":        alertID,
-			"acknowledgedBy": userID,
-			"acknowledgedAt": ackRequest.AcknowledgedAt,
-		},
+	// Alert functionality via external AI engines has been removed
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"status":  "error",
+		"error":   "Alert acknowledgment via external AI engines is no longer supported",
+		"message": "Use local monitoring and alerting systems",
 	})
-}
-
-func (h *AlertHandler) validateAlertRule(rule *models.AlertRule) error {
-	// Validate MetricsQL/LogsQL query syntax
-	// This would integrate with query validation service
-	return nil
 }
