@@ -21,7 +21,7 @@ type metricsQuerier interface {
 
 // ServiceGraphFetcher exposes the behaviour required by HTTP handlers.
 type ServiceGraphFetcher interface {
-	FetchServiceGraph(ctx context.Context, tenantID string, req *models.ServiceGraphRequest) (*models.ServiceGraphData, error)
+	FetchServiceGraph(ctx context.Context, req *models.ServiceGraphRequest) (*models.ServiceGraphData, error)
 }
 
 // ServiceGraphService aggregates OpenTelemetry service graph metrics emitted by
@@ -41,7 +41,7 @@ func NewServiceGraphService(metrics *VictoriaMetricsService, logger logger.Logge
 // FetchServiceGraph returns the directed service dependency edges observed
 // within the provided time window. It aggregates metrics from all configured
 // VictoriaMetrics sources (leveraging the underlying metrics service).
-func (s *ServiceGraphService) FetchServiceGraph(ctx context.Context, tenantID string, req *models.ServiceGraphRequest) (*models.ServiceGraphData, error) {
+func (s *ServiceGraphService) FetchServiceGraph(ctx context.Context, req *models.ServiceGraphRequest) (*models.ServiceGraphData, error) {
 	if s == nil || s.metrics == nil {
 		return nil, errors.New("service graph metrics client not configured")
 	}
@@ -92,7 +92,7 @@ func (s *ServiceGraphService) FetchServiceGraph(ctx context.Context, tenantID st
 
 	for _, q := range queries {
 		query := fmt.Sprintf("increase(%s%s[%s])", q.metric, selector, rangeSelector)
-		samples, err := s.runInstantVector(ctx, tenantID, query, evalTime)
+		samples, err := s.runInstantVector(ctx, query, evalTime)
 		if err != nil {
 			return nil, fmt.Errorf("query %s failed: %w", q.metric, err)
 		}
@@ -121,8 +121,8 @@ type promSample struct {
 	value  float64
 }
 
-func (s *ServiceGraphService) runInstantVector(ctx context.Context, tenantID, query, evalTime string) ([]promSample, error) {
-	req := &models.MetricsQLQueryRequest{Query: query, TenantID: tenantID}
+func (s *ServiceGraphService) runInstantVector(ctx context.Context, query, evalTime string) ([]promSample, error) {
+	req := &models.MetricsQLQueryRequest{Query: query}
 	if evalTime != "" {
 		req.Time = evalTime
 	}

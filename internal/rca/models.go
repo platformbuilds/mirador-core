@@ -96,6 +96,9 @@ type RCAIncident struct {
 
 	// Notes are optional observations, assumptions, or caveats
 	Notes []string
+
+	// Diagnostics captures warnings about missing labels, dimension detection, IsolationForest tuning issues, etc.
+	Diagnostics *RCADiagnostics
 }
 
 // NewRCAStep creates a new RCAStep with default values.
@@ -148,6 +151,7 @@ func NewRCAIncident(impact *IncidentContext) *RCAIncident {
 		GeneratedAt: time.Now().UTC(),
 		Score:       0.0,
 		Notes:       make([]string, 0),
+		Diagnostics: NewRCADiagnostics(),
 	}
 }
 
@@ -183,9 +187,12 @@ func (ri *RCAIncident) String() string {
 
 // TemplateBasedSummary generates a template-based summary for an RCAStep.
 // This is deterministic and not AI-generated.
-func TemplateBasedSummary(step *RCAStep, impactService string) string {
+// If diagnostics are provided and contain significant issues, the summary may include notes about reduced accuracy.
+func TemplateBasedSummary(step *RCAStep, impactService string, diagnostics ...*RCADiagnostics) string {
+	var baseSummary string
+
 	if step.Service == impactService {
-		return fmt.Sprintf(
+		baseSummary = fmt.Sprintf(
 			"Why %d: %s experienced %s anomalies in the %s (detected %s, severity contributed from %d evidence points)",
 			step.WhyIndex,
 			step.Service,
@@ -194,30 +201,37 @@ func TemplateBasedSummary(step *RCAStep, impactService string) string {
 			step.TimeRange.Start.Format("15:04:05"),
 			len(step.Evidence),
 		)
+	} else {
+		directionStr := "related"
+		if step.Direction == DirectionUpstream {
+			directionStr = "upstream"
+		} else if step.Direction == DirectionSame {
+			directionStr = "same service"
+		}
+
+		distanceStr := "unknown distance"
+		if step.Distance >= 0 {
+			distanceStr = fmt.Sprintf("%d hops away", step.Distance)
+		}
+
+		baseSummary = fmt.Sprintf(
+			"Why %d: %s (%s) at %s showed anomalies in %s (%s, %s). This likely caused failures in %s. Evidence: %d corroborating anomalies.",
+			step.WhyIndex,
+			step.Service,
+			step.Component,
+			step.TimeRange.Start.Format("15:04:05"),
+			step.Ring.String(),
+			directionStr,
+			distanceStr,
+			impactService,
+			len(step.Evidence),
+		)
 	}
 
-	directionStr := "related"
-	if step.Direction == DirectionUpstream {
-		directionStr = "upstream"
-	} else if step.Direction == DirectionSame {
-		directionStr = "same service"
+	// Append diagnostics note if provided and significant
+	if len(diagnostics) > 0 && diagnostics[0] != nil && diagnostics[0].HasSignificantIssues() {
+		baseSummary += " [Note: RCA accuracy may be reduced due to missing metrics labels or configuration issues.]"
 	}
 
-	distanceStr := "unknown distance"
-	if step.Distance >= 0 {
-		distanceStr = fmt.Sprintf("%d hops away", step.Distance)
-	}
-
-	return fmt.Sprintf(
-		"Why %d: %s (%s) at %s showed anomalies in %s (%s, %s). This likely caused failures in %s. Evidence: %d corroborating anomalies.",
-		step.WhyIndex,
-		step.Service,
-		step.Component,
-		step.TimeRange.Start.Format("15:04:05"),
-		step.Ring.String(),
-		directionStr,
-		distanceStr,
-		impactService,
-		len(step.Evidence),
-	)
+	return baseSummary
 }

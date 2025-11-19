@@ -61,7 +61,6 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 
 	start := time.Now()
 	var executionTime time.Duration
-	tenantID := c.GetString("tenant_id")
 
 	var request models.LogsQLQueryRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -86,11 +85,11 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 
 	// Check feature flags for Bleve access
 	if searchEngine == "bleve" {
-		featureFlags := h.config.GetFeatureFlags(tenantID)
+		featureFlags := h.config.GetFeatureFlags()
 		if !featureFlags.BleveSearch || !featureFlags.BleveLogs {
 			c.JSON(http.StatusForbidden, gin.H{
 				"status": "error",
-				"error":  "Bleve search engine is not enabled for this tenant",
+				"error":  "Bleve search engine is not enabled",
 			})
 			return
 		}
@@ -146,7 +145,7 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 	// Check cache for Bleve queries before executing
 	var cacheKey string
 	if searchEngine == "bleve" {
-		cacheKey = h.generateQueryCacheKey(tenantID, &request, searchEngine)
+		cacheKey = h.generateQueryCacheKey(&request, searchEngine)
 		if cachedResult, err := h.getCachedQueryResult(c.Request.Context(), cacheKey); err == nil && cachedResult != nil {
 			// Cache hit - return cached result
 			c.Header("X-Cache", "HIT")
@@ -171,13 +170,11 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 	}
 
 	// Execute LogsQL query
-	request.TenantID = tenantID
 	result, err := h.logsService.ExecuteQuery(c.Request.Context(), &request)
 	if err != nil {
 		executionTime := time.Since(start)
 		h.logger.Error("LogsQL query execution failed",
 			"query", request.Query,
-			"tenant", tenantID,
 			"error", err,
 			"executionTime", executionTime,
 		)
@@ -190,7 +187,7 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 	}
 
 	executionTime = time.Since(start)
-	metrics.QueryExecutionDuration.WithLabelValues("logsql", tenantID).Observe(executionTime.Seconds())
+	metrics.QueryExecutionDuration.WithLabelValues("logsql").Observe(executionTime.Seconds())
 
 	// Cache the result for Bleve queries
 	if searchEngine == "bleve" && cacheKey != "" {
@@ -213,10 +210,9 @@ func (h *LogsQLHandler) ExecuteQuery(c *gin.Context) {
 }
 
 // generateQueryCacheKey generates a cache key for query results
-func (h *LogsQLHandler) generateQueryCacheKey(tenantID string, request *models.LogsQLQueryRequest, searchEngine string) string {
+func (h *LogsQLHandler) generateQueryCacheKey(request *models.LogsQLQueryRequest, searchEngine string) string {
 	// Create a deterministic key based on query parameters
-	key := fmt.Sprintf("bleve_logs:%s:%s:%d:%d:%d",
-		tenantID,
+	key := fmt.Sprintf("bleve_logs:%s:%d:%d:%d",
 		request.Query,
 		request.Start,
 		request.End,
@@ -268,12 +264,11 @@ func (h *LogsQLHandler) cacheQueryResult(ctx context.Context, cacheKey string, r
 
 // GET /api/v1/logs/streams - Get available log streams
 func (h *LogsQLHandler) GetStreams(c *gin.Context) {
-	tenantID := c.GetString("tenant_id")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
 
-	streams, err := h.logsService.GetStreams(c.Request.Context(), tenantID, limit)
+	streams, err := h.logsService.GetStreams(c.Request.Context(), limit)
 	if err != nil {
-		h.logger.Error("Failed to get log streams", "tenant", tenantID, "error", err)
+		h.logger.Error("Failed to get log streams", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
 			"error":  "Failed to retrieve log streams",
@@ -301,16 +296,13 @@ func (h *LogsQLHandler) StoreEvent(c *gin.Context) {
 		return
 	}
 
-	tenantID := c.GetString("tenant_id")
-
 	// Add metadata
 	event["_time"] = time.Now().Format(time.RFC3339)
-	event["tenant_id"] = tenantID
 	event["stored_by"] = "mirador-core"
 
 	// Store in VictoriaLogs
-	if err := h.logsService.StoreJSONEvent(c.Request.Context(), event, tenantID); err != nil {
-		h.logger.Error("Failed to store JSON event", "tenant", tenantID, "error", err)
+	if err := h.logsService.StoreJSONEvent(c.Request.Context(), event); err != nil {
+		h.logger.Error("Failed to store JSON event", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
 			"error":  "Failed to store event",
@@ -323,18 +315,16 @@ func (h *LogsQLHandler) StoreEvent(c *gin.Context) {
 		"data": gin.H{
 			"stored":    true,
 			"timestamp": event["_time"],
-			"tenantId":  tenantID,
 		},
 	})
 }
 
 // GET /api/v1/logs/fields - Get available log fields
 func (h *LogsQLHandler) GetFields(c *gin.Context) {
-	tenantID := c.GetString("tenant_id")
 
-	fields, err := h.logsService.GetFields(c.Request.Context(), tenantID)
+	fields, err := h.logsService.GetFields(c.Request.Context())
 	if err != nil {
-		h.logger.Error("Failed to get log fields", "tenant", tenantID, "error", err)
+		h.logger.Error("Failed to get log fields", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
 			"error":  "Failed to retrieve log fields",
@@ -356,7 +346,6 @@ func (h *LogsQLHandler) GetFields(c *gin.Context) {
 
 // POST /api/v1/logs/export - Export logs in various formats
 func (h *LogsQLHandler) ExportLogs(c *gin.Context) {
-	tenantID := c.GetString("tenant_id")
 
 	var request models.LogExportRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -398,9 +387,6 @@ func (h *LogsQLHandler) ExportLogs(c *gin.Context) {
 		request.End = 0
 	}
 
-	// Set tenant context
-	request.TenantID = tenantID
-
 	// Validate export format
 	if request.Format == "" {
 		request.Format = "json" // Default format
@@ -412,7 +398,6 @@ func (h *LogsQLHandler) ExportLogs(c *gin.Context) {
 		h.logger.Error("Log export failed",
 			"query", request.Query,
 			"format", request.Format,
-			"tenant", tenantID,
 			"error", err,
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{

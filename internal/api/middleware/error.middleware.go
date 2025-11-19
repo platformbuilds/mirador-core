@@ -192,14 +192,6 @@ func logError(log logger.Logger, statusCode int, err error, c *gin.Context) {
 		fields = append(fields, "request_id", requestID)
 	}
 
-	// Add user/tenant context if available
-	if tenantID := c.GetString("tenant_id"); tenantID != "" {
-		fields = append(fields, "tenant_id", tenantID)
-	}
-	if userID := c.GetString("user_id"); userID != "" {
-		fields = append(fields, "user_id", userID)
-	}
-
 	// Log based on severity
 	if statusCode >= 500 {
 		log.Error("HTTP Error", fields...)

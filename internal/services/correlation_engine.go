@@ -48,7 +48,7 @@ type LogsService interface {
 
 // TracesService interface for traces operations
 type TracesService interface {
-	GetOperations(ctx context.Context, service, tenantID string) ([]string, error)
+	GetOperations(ctx context.Context, service string) ([]string, error)
 	SearchTraces(ctx context.Context, request *models.TraceSearchRequest) (*models.TraceSearchResult, error)
 }
 
@@ -243,10 +243,9 @@ func (ce *CorrelationEngineImpl) executeMetricsCorrelationQuery(
 
 	// Create unified query for metrics
 	query := &models.UnifiedQuery{
-		ID:       corrQuery.ID + "_metrics",
-		Type:     models.QueryTypeMetrics,
-		Query:    expr.Query,
-		TenantID: "", // TODO: extract from correlation query
+		ID:    corrQuery.ID + "_metrics",
+		Type:  models.QueryTypeMetrics,
+		Query: expr.Query,
 	}
 
 	if corrQuery.TimeWindow != nil {
@@ -259,8 +258,7 @@ func (ce *CorrelationEngineImpl) executeMetricsCorrelationQuery(
 
 	// Execute the metrics query
 	metricsQuery := &models.MetricsQLQueryRequest{
-		Query:    query.Query,
-		TenantID: query.TenantID,
+		Query: query.Query,
 	}
 
 	result, err := ce.metricsService.ExecuteQuery(ctx, metricsQuery)
@@ -304,10 +302,9 @@ func (ce *CorrelationEngineImpl) executeLogsCorrelationQuery(
 
 	// Create unified query for logs
 	query := &models.UnifiedQuery{
-		ID:       corrQuery.ID + "_logs",
-		Type:     models.QueryTypeLogs,
-		Query:    expr.Query,
-		TenantID: "", // TODO: extract from correlation query
+		ID:    corrQuery.ID + "_logs",
+		Type:  models.QueryTypeLogs,
+		Query: expr.Query,
 	}
 
 	if corrQuery.TimeWindow != nil {
@@ -328,11 +325,10 @@ func (ce *CorrelationEngineImpl) executeLogsCorrelationQuery(
 	}
 
 	logsQuery := &models.LogsQLQueryRequest{
-		Query:    query.Query,
-		Start:    startTime,
-		End:      endTime,
-		Limit:    1000, // TODO: make configurable
-		TenantID: query.TenantID,
+		Query: query.Query,
+		Start: startTime,
+		End:   endTime,
+		Limit: 1000, // TODO: make configurable
 	}
 
 	result, err := ce.logsService.ExecuteQuery(ctx, logsQuery)
@@ -375,10 +371,9 @@ func (ce *CorrelationEngineImpl) executeTracesCorrelationQuery(
 
 	// Create unified query for traces
 	query := &models.UnifiedQuery{
-		ID:       corrQuery.ID + "_traces",
-		Type:     models.QueryTypeTraces,
-		Query:    expr.Query,
-		TenantID: "", // TODO: extract from correlation query
+		ID:    corrQuery.ID + "_traces",
+		Type:  models.QueryTypeTraces,
+		Query: expr.Query,
 	}
 
 	if corrQuery.TimeWindow != nil {
@@ -390,7 +385,7 @@ func (ce *CorrelationEngineImpl) executeTracesCorrelationQuery(
 	}
 
 	// For traces, use GetOperations as a basic implementation
-	operations, err := ce.tracesService.GetOperations(ctx, expr.Query, query.TenantID)
+	operations, err := ce.tracesService.GetOperations(ctx, expr.Query)
 	if err != nil {
 		return nil, err
 	}
@@ -1333,11 +1328,10 @@ func (ce *CorrelationEngineImpl) queryErrorLogs(ctx context.Context, timeRange m
 
 	// Query for logs with ERROR severity and failure-related attributes
 	logsQuery := &models.LogsQLQueryRequest{
-		Query:    `severity:ERROR OR level:ERROR`,
-		Start:    timeRange.Start.UnixMilli(),
-		End:      timeRange.End.UnixMilli(),
-		Limit:    10000, // High limit for failure detection
-		TenantID: "",
+		Query: `severity:ERROR OR level:ERROR`,
+		Start: timeRange.Start.UnixMilli(),
+		End:   timeRange.End.UnixMilli(),
+		Limit: 10000, // High limit for failure detection
 	}
 
 	result, err := ce.logsService.ExecuteQuery(ctx, logsQuery)
@@ -1384,25 +1378,22 @@ func (ce *CorrelationEngineImpl) queryErrorTraces(ctx context.Context, timeRange
 	// First, try to search for traces with error-related tags
 	searchRequests := []*models.TraceSearchRequest{
 		{
-			Start:    models.FlexibleTime{Time: timeRange.Start},
-			End:      models.FlexibleTime{Time: timeRange.End},
-			Tags:     "error=true", // Search for traces with error=true tag
-			Limit:    1000,         // Limit results for performance
-			TenantID: "",
+			Start: models.FlexibleTime{Time: timeRange.Start},
+			End:   models.FlexibleTime{Time: timeRange.End},
+			Tags:  "error=true", // Search for traces with error=true tag
+			Limit: 1000,         // Limit results for performance
 		},
 		{
-			Start:    models.FlexibleTime{Time: timeRange.Start},
-			End:      models.FlexibleTime{Time: timeRange.End},
-			Tags:     "error.status=error", // Search for traces with error.status=error tag
-			Limit:    1000,
-			TenantID: "",
+			Start: models.FlexibleTime{Time: timeRange.Start},
+			End:   models.FlexibleTime{Time: timeRange.End},
+			Tags:  "error.status=error", // Search for traces with error.status=error tag
+			Limit: 1000,
 		},
 		{
-			Start:    models.FlexibleTime{Time: timeRange.Start},
-			End:      models.FlexibleTime{Time: timeRange.End},
-			Tags:     "error", // Search for any traces containing error in tags
-			Limit:    1000,
-			TenantID: "",
+			Start: models.FlexibleTime{Time: timeRange.Start},
+			End:   models.FlexibleTime{Time: timeRange.End},
+			Tags:  "error", // Search for any traces containing error in tags
+			Limit: 1000,
 		},
 	}
 
@@ -1410,11 +1401,10 @@ func (ce *CorrelationEngineImpl) queryErrorTraces(ctx context.Context, timeRange
 	services := []string{"api-gateway", "tps", "keydb-client", "kafka-producer", "kafka-consumer", "cassandra-client"}
 	for _, service := range services {
 		searchRequests = append(searchRequests, &models.TraceSearchRequest{
-			Service:  service,
-			Start:    models.FlexibleTime{Time: timeRange.Start},
-			End:      models.FlexibleTime{Time: timeRange.End},
-			Limit:    500,
-			TenantID: "",
+			Service: service,
+			Start:   models.FlexibleTime{Time: timeRange.Start},
+			End:     models.FlexibleTime{Time: timeRange.End},
+			Limit:   500,
 		})
 	}
 
@@ -1567,7 +1557,7 @@ func (ce *CorrelationEngineImpl) queryErrorTracesFallback(ctx context.Context, t
 
 	var signals []models.FailureSignal
 	for _, service := range services {
-		operations, err := ce.tracesService.GetOperations(ctx, service, "")
+		operations, err := ce.tracesService.GetOperations(ctx, service)
 		if err != nil {
 			continue // Skip services that fail
 		}
@@ -1599,8 +1589,7 @@ func (ce *CorrelationEngineImpl) queryErrorMetrics(ctx context.Context, timeRang
 
 	// Query for error-related metrics using instant query
 	metricsQuery := &models.MetricsQLQueryRequest{
-		Query:    `up == 0 or transactions_failed_total > 0`,
-		TenantID: "",
+		Query: `up == 0 or transactions_failed_total > 0`,
 	}
 
 	result, err := ce.metricsService.ExecuteQuery(ctx, metricsQuery)
@@ -1636,11 +1625,10 @@ func (ce *CorrelationEngineImpl) queryErrorSignalsForTransactions(ctx context.Co
 
 	// Query logs for specific transactions
 	logsQuery := &models.LogsQLQueryRequest{
-		Query:    fmt.Sprintf(`(%s) AND (severity:ERROR OR level:ERROR)`, txQuery),
-		Start:    timeRange.Start.UnixMilli(),
-		End:      timeRange.End.UnixMilli(),
-		Limit:    5000,
-		TenantID: "",
+		Query: fmt.Sprintf(`(%s) AND (severity:ERROR OR level:ERROR)`, txQuery),
+		Start: timeRange.Start.UnixMilli(),
+		End:   timeRange.End.UnixMilli(),
+		Limit: 5000,
 	}
 
 	if ce.logsService != nil {

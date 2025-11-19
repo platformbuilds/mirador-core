@@ -16,7 +16,7 @@ import (
 func TestServer_OpenAPI_AndRootRedirect(t *testing.T) {
 	log := logger.New("error")
 	cfg := &config.Config{Environment: "test", Port: 0}
-	cfg.Auth.Enabled = false
+	// cfg.Auth.Enabled = false // Auth removed, so this line is commented out
 	vms := &services.VictoriaMetricsServices{
 		Metrics: services.NewVictoriaMetricsService(config.VictoriaMetricsConfig{}, log),
 		Logs:    services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log),

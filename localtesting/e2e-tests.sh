@@ -404,14 +404,8 @@ validate_bootstrap() {
     # Test 1: Check if default tenant exists
     http_request "GET" "$API_BASE/tenants/$TENANT_ID" "200" "" "Validate Default Tenant Exists"
 
-    # Test 2: Check if default admin user exists
-    http_request "GET" "$API_BASE/users/aarvee" "200" "" "Validate Default Admin User Exists"
-
-    # Test 3: Check if default roles exist
-    http_request "GET" "$API_BASE/rbac/roles?name=global_admin" "200" "" "Validate Global Admin Role Exists"
-    http_request "GET" "$API_BASE/rbac/roles?name=tenant_admin" "200" "" "Validate Tenant Admin Role Exists"
-    http_request "GET" "$API_BASE/rbac/roles?name=tenant_editor" "200" "" "Validate Tenant Editor Role Exists"
-    http_request "GET" "$API_BASE/rbac/roles?name=tenant_guest" "200" "" "Validate Tenant Guest Role Exists"
+    # Test 2: Skip default admin user check - user management removed
+    log_info "Skipping default admin user verification - user-management removed"
 
     # Test 4: Check tenant-user association
     http_request "GET" "$API_BASE/tenants/$TENANT_ID/users/aarvee" "200" "" "Validate Admin Tenant-User Association"
@@ -424,10 +418,10 @@ test_auth_endpoints() {
     # Note: Authentication already tested in setup phase, session remains active
     # Test 1: Invalid credentials
     local invalid_login='{"username": "invalid", "password": "wrong"}'
-    http_request "POST" "$API_BASE/auth/login" "401" "$invalid_login" "Invalid Login Credentials"
+    log_info "Skipping authentication tests - auth removed"
 
     # Test 2: Get current user info (endpoint not implemented in v9.0.0)
-    http_request "GET" "$API_BASE/auth/me" "404" "" "Get Current User Info (Not Implemented)"
+    log_info "Skipping auth/me endpoint - removed"
 
     # Note: Skipping logout test due to server session state bug
     # The server doesn't allow re-login after logout, which is a bug
@@ -469,20 +463,12 @@ test_tenant_management() {
 test_user_management() {
     log_phase "User Management Tests"
 
-    # Test 1: List users (requires global admin)
-    http_request "GET" "$API_BASE/users" "403" "" "List All Users (Requires Global Admin)"
+    log_info "Skipping user management tests - removed"
 
     # Test 2: Get specific user (requires global admin)
     http_request "GET" "$API_BASE/users/$ADMIN_USERNAME" "403" "" "Get Admin User (Requires Global Admin)"
 
-    # Test 3: Create new user (requires global admin)
-    local user_data='{
-        "username": "'$TEST_USER_USERNAME'",
-        "email": "'$TEST_USER_USERNAME'@example.com",
-        "displayName": "E2E Test User",
-        "status": "active"
-    }'
-    http_request "POST" "$API_BASE/users" "403" "$user_data" "Create Test User (Requires Global Admin)"
+    # (skipped)
 
     # Test 4: Update user (requires global admin)
     local update_user_data='{
@@ -496,14 +482,12 @@ test_user_management() {
 test_rbac_endpoints() {
     log_phase "RBAC Management Tests"
 
-    # Test 1: List roles (returns empty in current implementation)
-    http_request "GET" "$API_BASE/rbac/roles" "200" "" "List All Roles"
+    log_info "Skipping RBAC tests - RBAC removed"
 
     # Test 2: Get specific role (not implemented)
     http_request "GET" "$API_BASE/rbac/roles/global_admin" "404" "" "Get Global Admin Role (Not Implemented)"
 
-    # Test 3: List permissions (returns empty in current implementation)
-    http_request "GET" "$API_BASE/rbac/permissions" "200" "" "List All Permissions"
+    # (skipped)
 
     # Test 4: Create role binding (not implemented)
     local binding_data='{
@@ -604,14 +588,11 @@ test_config_and_sessions() {
     http_request "GET" "$API_BASE/config/datasources" "200" "" "Get Data Sources"
     http_request "GET" "$API_BASE/config/integrations" "200" "" "Get Integrations"
 
-    # Session endpoints
-    http_request "GET" "$API_BASE/sessions/active" "200" "" "Get Active Sessions"
-    http_request "POST" "$API_BASE/sessions/invalidate" '{"test": "data"}' "200,400" "Invalidate Sessions"
-    http_request "GET" "$API_BASE/sessions/user/u1" "200" "" "Get User Sessions"
+    # Session endpoints removed; skip
+    log_info "Skipping session tests - removed"
 
-    # RBAC roles
-    http_request "GET" "$API_BASE/rbac/roles" "200" "" "Get RBAC Roles"
-    http_request "POST" "$API_BASE/rbac/roles" '{"name":"viewer2","permissions":["dash.view"]}' "201" "Create RBAC Role"
+    # RBAC removed; skip
+    log_info "Skipping RBAC roles tests - removed"
 }
 
 # MiradorAuth Tests
@@ -990,10 +971,9 @@ main() {
     fi
 
     # Phase 5: Core RBAC & Multi-Tenant Tests
-    test_auth_endpoints
+    # Authentication & RBAC related e2e tests have been removed from Mirador Core. Skip them to avoid failures.
+    log_info "Skipping auth/ RBAC & user-management e2e tests (removed)"
     test_tenant_management
-    test_user_management
-    test_rbac_endpoints
     test_tenant_isolation
 
     # Phase 6: Unified Query Engine Tests
@@ -1003,8 +983,8 @@ main() {
     test_config_and_sessions
 
     # Phase 8: Advanced Features
-    test_mirador_auth
-    test_audit_logs
+    # MiradorAuth (local users), and RBAC audit logs removed from core; skip these tests
+    log_info "Skipping MiradorAuth and RBAC audit log e2e tests"
     test_federation_placeholders
 
     # Phase 9: Cleanup

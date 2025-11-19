@@ -40,53 +40,6 @@ func GetDefaultConfig() *Config {
 			},
 		},
 
-		Auth: AuthConfig{
-			Enabled:          true,
-			StrictAPIKeyMode: false, // Default to false for backward compatibility
-			LDAP: LDAPConfig{
-				Enabled:           false,
-				UserSearchFilter:  "(&(objectClass=user)(sAMAccountName=%s))",
-				GroupSearchFilter: "(&(objectClass=group)(member=%s))",
-				Attributes: LDAPAttributes{
-					Username:     "sAMAccountName",
-					Email:        "mail",
-					FullName:     "displayName",
-					MemberOf:     "memberOf",
-					GroupName:    "cn",
-					GroupMembers: "member",
-					UserID:       "objectGUID",
-				},
-				Sync: LDAPSyncConfig{
-					Enabled:          false,
-					Interval:         15 * time.Minute,
-					UserSyncEnabled:  true,
-					GroupSyncEnabled: true,
-					PageSize:         1000,
-					MaxRetries:       3,
-					RetryDelay:       30 * time.Second,
-				},
-				StartTLS:      true,
-				TLSSkipVerify: false,
-			},
-			OAuth: OAuthConfig{
-				Enabled: false,
-			},
-			RBAC: RBACConfig{
-				Enabled:   true,
-				AdminRole: "mirador-admin",
-			},
-			JWT: JWTConfig{
-				ExpiryMin: 1440, // 24 hours
-			},
-			APIKeyRateLimit: APIKeyRateLimitConfig{
-				Enabled:              true,
-				MaxRequests:          1000,             // 1000 requests per window
-				WindowDuration:       time.Hour,        // per hour
-				BlockDuration:        15 * time.Minute, // block for 15 minutes
-				EnableAbuseDetection: true,
-			},
-		},
-
 		Cache: CacheConfig{
 			Nodes: []string{"localhost:6379"},
 			TTL:   300,
@@ -96,7 +49,7 @@ func GetDefaultConfig() *Config {
 		CORS: CORSConfig{
 			AllowedOrigins:   []string{"*"},
 			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowedHeaders:   []string{"Content-Type", "Authorization", "X-Tenant-ID"},
+			AllowedHeaders:   []string{"Content-Type", "Authorization"},
 			ExposedHeaders:   []string{"X-Cache", "X-Rate-Limit-Remaining"},
 			AllowCredentials: true,
 			MaxAge:           3600,

@@ -76,10 +76,6 @@ func (h *UnifiedSchemaHandler) UpsertSchemaDefinition(c *gin.Context) {
 	def := req.SchemaDefinition
 	def.Type = schemaType
 
-	if def.TenantID == "" {
-		def.TenantID = c.GetString("tenant_id")
-	}
-
 	if def.ID == "" {
 		def.ID = uuid.New().String()
 	}
@@ -110,10 +106,7 @@ func (h *UnifiedSchemaHandler) GetSchemaDefinition(c *gin.Context) {
 		return
 	}
 
-	tenantID := c.GetString("tenant_id")
-
-	// Use unified KPI-based retrieval for all schema types
-	def, err := h.repo.GetSchemaAsKPI(c.Request.Context(), tenantID, string(schemaType), id)
+	def, err := h.repo.GetSchemaAsKPI(c.Request.Context(), string(schemaType), id)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
@@ -136,13 +129,24 @@ func (h *UnifiedSchemaHandler) ListSchemaDefinitions(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid query parameters"})
 		return
 	}
-
-	if req.TenantID == "" {
-		req.TenantID = c.GetString("tenant_id")
+	// Use KPIRepo listing for unified schema types when available
+	var definitions []*models.SchemaDefinition
+	var total int
+	var err error
+	if kpirepo, ok := h.repo.(repo.KPIRepo); ok {
+		kpis, totalKpis, lerr := kpirepo.ListKPIs(c.Request.Context(), []string{string(schemaType)}, req.Limit, req.Offset)
+		if lerr != nil {
+			err = lerr
+		} else {
+			total = totalKpis
+			definitions = make([]*models.SchemaDefinition, 0, len(kpis))
+			for _, k := range kpis {
+				definitions = append(definitions, kpiToSchemaDefinition(k, schemaType))
+			}
+		}
+	} else {
+		definitions, total, err = h.repo.ListSchemasAsKPIs(c.Request.Context(), string(schemaType), req.Limit, req.Offset)
 	}
-
-	// Use unified KPI-based listing for all schema types
-	definitions, total, err := h.repo.ListSchemasAsKPIs(c.Request.Context(), req.TenantID, string(schemaType), req.Limit, req.Offset)
 	if err != nil {
 		h.logger.Error("schema list failed", "error", err, "type", schemaType)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "list failed"})
@@ -171,16 +175,38 @@ func (h *UnifiedSchemaHandler) DeleteSchemaDefinition(c *gin.Context) {
 		return
 	}
 
-	tenantID := c.GetString("tenant_id")
-
 	q := strings.ToLower(strings.TrimSpace(c.Query("confirm")))
 	if q != "1" && q != "true" && q != "yes" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "confirmation required: add ?confirm=1"})
 		return
 	}
 
-	// Use unified KPI-based deletion for all schema types
-	err := h.repo.DeleteSchemaAsKPI(c.Request.Context(), tenantID, string(schemaType), id)
+	// Delete based on schema type
+	var err error
+	switch schemaType {
+	case models.SchemaTypeLabel:
+		err = h.repo.DeleteLabel(c.Request.Context(), id)
+	case models.SchemaTypeMetric:
+		err = h.repo.DeleteMetric(c.Request.Context(), id)
+	case models.SchemaTypeLogField:
+		err = h.repo.DeleteLogField(c.Request.Context(), id)
+	case models.SchemaTypeTraceService:
+		err = h.repo.DeleteTraceService(c.Request.Context(), id)
+	case models.SchemaTypeTraceOperation:
+		// For trace operations, id is expected to be "service:operation"
+		parts := strings.Split(id, ":")
+		if len(parts) != 2 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "trace operation id must be in format 'service:operation'"})
+			return
+		}
+		err = h.repo.DeleteTraceOperation(c.Request.Context(), parts[0], parts[1])
+	case models.SchemaTypeKPI:
+		err = h.repo.DeleteSchemaAsKPI(c.Request.Context(), id)
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported schema type"})
+		return
+	}
+
 	if err != nil {
 		h.logger.Error("schema delete failed", "error", err, "type", schemaType, "id", id)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "delete failed"})

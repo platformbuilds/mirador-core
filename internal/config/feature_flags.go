@@ -14,8 +14,8 @@ type FeatureFlags struct {
 	BleveTraces          bool `mapstructure:"bleve_traces" yaml:"bleve_traces"`
 }
 
-// GetFeatureFlags returns feature flags for a tenant
-func (c *Config) GetFeatureFlags(tenantID string) *FeatureFlags {
+// GetFeatureFlags returns feature flags for the system
+func (c *Config) GetFeatureFlags() *FeatureFlags {
 	// Default feature flags
 	flags := &FeatureFlags{
 		PredictiveAlerting:   true,
@@ -25,7 +25,7 @@ func (c *Config) GetFeatureFlags(tenantID string) *FeatureFlags {
 		CustomVisualizations: true,
 		ExportFeatures:       true,
 		BetaUI:               false,
-		AdvancedAuth:         c.Auth.RBAC.Enabled,
+		AdvancedAuth:         false, // Auth is handled externally
 		BleveSearch:          c.Search.EnableBleve,
 		BleveLogs:            c.Search.Bleve.LogsEnabled,
 		BleveTraces:          c.Search.Bleve.TracesEnabled,
@@ -58,9 +58,6 @@ func (c *Config) GetFeatureFlags(tenantID string) *FeatureFlags {
 		flags.BleveLogs = false
 		flags.BleveTraces = false
 	}
-
-	// Tenant-specific overrides could be loaded from database
-	// This would be implemented based on business requirements
 
 	return flags
 }

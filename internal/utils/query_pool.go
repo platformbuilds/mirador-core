@@ -42,7 +42,6 @@ func (p *QueryObjectPool) GetUnifiedQuery() *models.UnifiedQuery {
 	query.ID = ""
 	query.Type = ""
 	query.Query = ""
-	query.TenantID = ""
 	query.StartTime = nil
 	query.EndTime = nil
 	query.Timeout = ""

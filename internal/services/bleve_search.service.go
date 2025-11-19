@@ -144,7 +144,7 @@ func (s *BleveSearchService) SearchLogs(ctx context.Context, req *models.LogsSea
 		return nil, fmt.Errorf("logs index not initialized")
 	}
 
-	s.logger.Debug("Searching logs", "query", req.Query, "tenant_id", req.TenantID)
+	s.logger.Debug("Searching logs", "query", req.Query)
 
 	// Build Bleve query
 	bleveQuery := query.NewQueryStringQuery(req.Query)
@@ -194,7 +194,7 @@ func (s *BleveSearchService) SearchTraces(ctx context.Context, req *models.Trace
 		return nil, fmt.Errorf("traces index not initialized")
 	}
 
-	s.logger.Debug("Searching traces", "query", req.Query, "tenant_id", req.TenantID)
+	s.logger.Debug("Searching traces", "query", req.Query)
 
 	// Build Bleve query
 	bleveQuery := query.NewQueryStringQuery(req.Query)
@@ -236,7 +236,7 @@ func (s *BleveSearchService) SearchTraces(ctx context.Context, req *models.Trace
 }
 
 // IndexLog indexes a log document for search
-func (s *BleveSearchService) IndexLog(ctx context.Context, tenantID string, log map[string]any) error {
+func (s *BleveSearchService) IndexLog(ctx context.Context, log map[string]any) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -245,7 +245,7 @@ func (s *BleveSearchService) IndexLog(ctx context.Context, tenantID string, log 
 	}
 
 	// Map log to indexable document
-	docs, err := s.mapper.MapLogs([]map[string]any{log}, tenantID)
+	docs, err := s.mapper.MapLogs([]map[string]any{log})
 	if err != nil {
 		return fmt.Errorf("failed to map log: %w", err)
 	}
@@ -264,7 +264,7 @@ func (s *BleveSearchService) IndexLog(ctx context.Context, tenantID string, log 
 }
 
 // IndexTrace indexes a trace document for search
-func (s *BleveSearchService) IndexTrace(ctx context.Context, tenantID string, trace map[string]interface{}) error {
+func (s *BleveSearchService) IndexTrace(ctx context.Context, trace map[string]interface{}) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -273,7 +273,7 @@ func (s *BleveSearchService) IndexTrace(ctx context.Context, tenantID string, tr
 	}
 
 	// Map trace to indexable document
-	docs, err := s.mapper.MapTraces([]map[string]interface{}{trace}, tenantID)
+	docs, err := s.mapper.MapTraces([]map[string]interface{}{trace})
 	if err != nil {
 		return fmt.Errorf("failed to map trace: %w", err)
 	}
@@ -292,7 +292,7 @@ func (s *BleveSearchService) IndexTrace(ctx context.Context, tenantID string, tr
 }
 
 // BatchIndexLogs indexes multiple log documents in a batch
-func (s *BleveSearchService) BatchIndexLogs(ctx context.Context, tenantID string, logs []map[string]any) error {
+func (s *BleveSearchService) BatchIndexLogs(ctx context.Context, logs []map[string]any) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -301,7 +301,7 @@ func (s *BleveSearchService) BatchIndexLogs(ctx context.Context, tenantID string
 	}
 
 	// Map logs to indexable documents
-	docs, err := s.mapper.MapLogs(logs, tenantID)
+	docs, err := s.mapper.MapLogs(logs)
 	if err != nil {
 		return fmt.Errorf("failed to map logs: %w", err)
 	}
@@ -319,12 +319,12 @@ func (s *BleveSearchService) BatchIndexLogs(ctx context.Context, tenantID string
 		return fmt.Errorf("failed to execute batch: %w", err)
 	}
 
-	s.logger.Debug("Batch indexed logs", "count", len(docs), "tenant_id", tenantID)
+	s.logger.Debug("Batch indexed logs", "count", len(docs))
 	return nil
 }
 
 // BatchIndexTraces indexes multiple trace documents in a batch
-func (s *BleveSearchService) BatchIndexTraces(ctx context.Context, tenantID string, traces []map[string]interface{}) error {
+func (s *BleveSearchService) BatchIndexTraces(ctx context.Context, traces []map[string]interface{}) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -333,7 +333,7 @@ func (s *BleveSearchService) BatchIndexTraces(ctx context.Context, tenantID stri
 	}
 
 	// Map traces to indexable documents
-	docs, err := s.mapper.MapTraces(traces, tenantID)
+	docs, err := s.mapper.MapTraces(traces)
 	if err != nil {
 		return fmt.Errorf("failed to map traces: %w", err)
 	}
@@ -351,12 +351,12 @@ func (s *BleveSearchService) BatchIndexTraces(ctx context.Context, tenantID stri
 		return fmt.Errorf("failed to execute batch: %w", err)
 	}
 
-	s.logger.Debug("Batch indexed traces", "count", len(docs), "tenant_id", tenantID)
+	s.logger.Debug("Batch indexed traces", "count", len(docs))
 	return nil
 }
 
 // DeleteLog deletes a log document from the index
-func (s *BleveSearchService) DeleteLog(ctx context.Context, tenantID, logID string) error {
+func (s *BleveSearchService) DeleteLog(ctx context.Context, logID string) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -368,7 +368,7 @@ func (s *BleveSearchService) DeleteLog(ctx context.Context, tenantID, logID stri
 }
 
 // DeleteTrace deletes a trace document from the index
-func (s *BleveSearchService) DeleteTrace(ctx context.Context, tenantID, traceID string) error {
+func (s *BleveSearchService) DeleteTrace(ctx context.Context, traceID string) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

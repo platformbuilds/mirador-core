@@ -22,7 +22,6 @@ type UnifiedQuery struct {
 	ID        string     `json:"id"`
 	Type      QueryType  `json:"type"`
 	Query     string     `json:"query"`
-	TenantID  string     `json:"tenant_id,omitempty"`
 	StartTime *time.Time `json:"start_time,omitempty"`
 	EndTime   *time.Time `json:"end_time,omitempty"`
 	Timeout   string     `json:"timeout,omitempty"`

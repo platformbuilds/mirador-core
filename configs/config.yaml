@@ -74,33 +74,10 @@ grpc:
     rules_path: "/etc/mirador/alert-rules.yaml"
     timeout: 30000
 
-# Authentication and Authorization
-auth:
-  enabled: true
-  ldap:
-    url: "ldap://ldap.company.com"
-    base_dn: "dc=company,dc=com"
-    username: "cn=mirador,ou=services,dc=company,dc=com"
-    password: "" # Set via environment variable
-    start_tls: false
-    tls_skip_verify: false
-    tls_ca_bundle_path: "" # Optional path to PEM bundle; supports hot reload
-    enabled: true
-    
-  oauth:
-    client_id: "mirador-core"
-    client_secret: "" # Set via environment variable
-    redirect_url: "https://mirador.company.com/auth/callback"
-    issuer: "https://auth.company.com"
-    enabled: false
-    
-  rbac:
-    enabled: true
-    admin_role: "mirador-admin"
-    
-  jwt:
-    secret: "" # Set via environment variable
-    expiry_minutes: 1440 # 24 hours
+# Authentication and Authorization (handled externally - this section is deprecated)
+# Mirador-core is designed to run behind an external API gateway or service mesh
+# that handles authentication and RBAC.
+auth: {}
 
 # Valkey Cluster Caching
 cache:
@@ -124,8 +101,6 @@ cors:
   allowed_headers:
     - "Content-Type"
     - "Authorization"
-    - "X-Tenant-ID"
-    - "X-User-ID"
   exposed_headers:
     - "X-Cache"
     - "X-Rate-Limit-Remaining"

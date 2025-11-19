@@ -37,8 +37,8 @@ type MockVictoriaTracesService struct {
 	mock.Mock
 }
 
-func (m *MockVictoriaTracesService) GetOperations(ctx context.Context, service, tenantID string) ([]string, error) {
-	args := m.Called(ctx, service, tenantID)
+func (m *MockVictoriaTracesService) GetOperations(ctx context.Context, service string) ([]string, error) {
+	args := m.Called(ctx, service)
 	return args.Get(0).([]string), args.Error(1)
 }
 
@@ -229,7 +229,7 @@ func TestCorrelationEngineImpl_ExecuteCorrelation(t *testing.T) {
 		tracesResponse := []string{"checkout", "payment"}
 
 		mockLogs.On("ExecuteQuery", mock.Anything, mock.Anything).Return(logsResponse, nil)
-		mockTraces.On("GetOperations", mock.Anything, "service:checkout", "").Return(tracesResponse, nil)
+		mockTraces.On("GetOperations", mock.Anything, "service:checkout").Return(tracesResponse, nil)
 
 		// Execute correlation
 		result, err := engine.ExecuteCorrelation(ctx, query)

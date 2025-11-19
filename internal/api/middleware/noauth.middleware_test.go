@@ -17,19 +17,19 @@ func TestNoAuthMiddleware_DefaultsAndOverride(t *testing.T) {
 		c.String(200, c.GetString("tenant_id")+","+c.GetString("user_id"))
 	})
 
-	// default tenant
+	// default tenant (tenant removed — no tenant ID injected)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ping", http.NoBody))
-	if w.Code != 200 || w.Body.String() != "default,anonymous" {
+	if w.Code != 200 || w.Body.String() != "default,system" {
 		t.Fatalf("unexpected resp: %d %q", w.Code, w.Body.String())
 	}
 
-	// header override
+	// header override (tenant-less; header ignored)
 	w = httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/ping", http.NoBody)
 	req.Header.Set("X-Tenant-ID", "t1")
 	r.ServeHTTP(w, req)
-	if w.Code != 200 || w.Body.String() != "t1,anonymous" {
+	if w.Code != 200 || w.Body.String() != "t1,system" {
 		t.Fatalf("override resp: %d %q", w.Code, w.Body.String())
 	}
 }

@@ -12,13 +12,13 @@ import (
 // DocumentMapper defines the interface for mapping Mirador data models to indexable documents
 type DocumentMapper interface {
 	// MapLogs converts log entries to indexable documents
-	MapLogs(logs []map[string]any, tenantID string) ([]IndexableDocument, error)
+	MapLogs(logs []map[string]any) ([]IndexableDocument, error)
 
 	// MapTraces converts trace data to indexable documents
-	MapTraces(traces []map[string]interface{}, tenantID string) ([]IndexableDocument, error)
+	MapTraces(traces []map[string]interface{}) ([]IndexableDocument, error)
 
 	// GetIndexName returns the appropriate index name for the data type
-	GetIndexName(dataType string, tenantID string) string
+	GetIndexName(dataType string) string
 }
 
 // IndexableDocument represents a document that can be indexed by Bleve
@@ -73,7 +73,6 @@ func NewBleveDocumentMapper(logger logger.Logger) DocumentMapper {
 // LogDocument represents a log entry in indexable format
 type LogDocument struct {
 	ID        string                 `json:"id"`
-	TenantID  string                 `json:"tenant_id"`
 	Timestamp time.Time              `json:"timestamp"`
 	Level     string                 `json:"level,omitempty"`
 	Message   string                 `json:"message,omitempty"`
@@ -86,7 +85,6 @@ type LogDocument struct {
 // TraceDocument represents a trace in indexable format
 type TraceDocument struct {
 	ID          string                 `json:"id"`
-	TenantID    string                 `json:"tenant_id"`
 	TraceID     string                 `json:"trace_id"`
 	ServiceName string                 `json:"service_name,omitempty"`
 	Operation   string                 `json:"operation,omitempty"`
@@ -111,7 +109,7 @@ type SpanDocument struct {
 }
 
 // MapLogs converts log entries to indexable documents
-func (m *BleveDocumentMapper) MapLogs(logs []map[string]any, tenantID string) ([]IndexableDocument, error) {
+func (m *BleveDocumentMapper) MapLogs(logs []map[string]any) ([]IndexableDocument, error) {
 	// Get pooled slice for documents
 	documents := documentSlicePool.Get().([]IndexableDocument)
 	defer func() {
@@ -121,7 +119,7 @@ func (m *BleveDocumentMapper) MapLogs(logs []map[string]any, tenantID string) ([
 	}()
 
 	for i, logEntry := range logs {
-		doc, err := m.mapLogEntry(logEntry, tenantID, i)
+		doc, err := m.mapLogEntry(logEntry, i)
 		if err != nil {
 			m.logger.Warn("Failed to map log entry", "error", err, "index", i)
 			continue
@@ -136,7 +134,7 @@ func (m *BleveDocumentMapper) MapLogs(logs []map[string]any, tenantID string) ([
 }
 
 // mapLogEntry converts a single log entry to an indexable document
-func (m *BleveDocumentMapper) mapLogEntry(logEntry map[string]any, tenantID string, index int) (IndexableDocument, error) {
+func (m *BleveDocumentMapper) mapLogEntry(logEntry map[string]any, index int) (IndexableDocument, error) {
 	// Extract common log fields
 	timestamp := m.extractTimestamp(logEntry)
 	level := m.extractStringField(logEntry, "level")
@@ -151,7 +149,6 @@ func (m *BleveDocumentMapper) mapLogEntry(logEntry map[string]any, tenantID stri
 		stringBuilderPool.Put(sb)
 	}()
 	sb.WriteString("log_")
-	sb.WriteString(tenantID)
 	sb.WriteByte('_')
 	fmt.Fprintf(sb, "%d_%d", timestamp.UnixNano(), index)
 	id := sb.String()
@@ -186,7 +183,6 @@ func (m *BleveDocumentMapper) mapLogEntry(logEntry map[string]any, tenantID stri
 	// Create new document (don't use pool to avoid data sharing)
 	doc := &LogDocument{
 		ID:        id,
-		TenantID:  tenantID,
 		Timestamp: timestamp,
 		Level:     level,
 		Message:   message,
@@ -203,7 +199,7 @@ func (m *BleveDocumentMapper) mapLogEntry(logEntry map[string]any, tenantID stri
 }
 
 // MapTraces converts trace entries to indexable documents
-func (m *BleveDocumentMapper) MapTraces(traces []map[string]any, tenantID string) ([]IndexableDocument, error) {
+func (m *BleveDocumentMapper) MapTraces(traces []map[string]any) ([]IndexableDocument, error) {
 	// Get pooled slice for documents
 	documents := documentSlicePool.Get().([]IndexableDocument)
 	defer func() {
@@ -213,7 +209,7 @@ func (m *BleveDocumentMapper) MapTraces(traces []map[string]any, tenantID string
 	}()
 
 	for i, traceEntry := range traces {
-		doc, err := m.mapTrace(traceEntry, tenantID)
+		doc, err := m.mapTrace(traceEntry)
 		if err != nil {
 			m.logger.Warn("Failed to map trace entry", "error", err, "index", i)
 			continue
@@ -228,7 +224,7 @@ func (m *BleveDocumentMapper) MapTraces(traces []map[string]any, tenantID string
 }
 
 // mapTrace converts a single trace to an indexable document
-func (m *BleveDocumentMapper) mapTrace(traceData map[string]interface{}, tenantID string) (IndexableDocument, error) {
+func (m *BleveDocumentMapper) mapTrace(traceData map[string]interface{}) (IndexableDocument, error) {
 	traceID, _ := traceData["traceID"].(string)
 	if traceID == "" {
 		return IndexableDocument{}, fmt.Errorf("trace missing traceID")
@@ -272,12 +268,11 @@ func (m *BleveDocumentMapper) mapTrace(traceData map[string]interface{}, tenantI
 		}
 	}
 
-	id := fmt.Sprintf("trace_%s_%s", tenantID, traceID)
+	id := fmt.Sprintf("trace_%s", traceID)
 
 	// Create new document (don't use pool to avoid data sharing)
 	doc := &TraceDocument{
 		ID:          id,
-		TenantID:    tenantID,
 		TraceID:     traceID,
 		ServiceName: serviceName,
 		Operation:   operation,
@@ -294,8 +289,8 @@ func (m *BleveDocumentMapper) mapTrace(traceData map[string]interface{}, tenantI
 }
 
 // GetIndexName returns the appropriate index name
-func (m *BleveDocumentMapper) GetIndexName(dataType string, tenantID string) string {
-	return fmt.Sprintf("mirador_%s_%s", dataType, tenantID)
+func (m *BleveDocumentMapper) GetIndexName(dataType string) string {
+	return fmt.Sprintf("mirador_%s", dataType)
 }
 
 // Helper functions

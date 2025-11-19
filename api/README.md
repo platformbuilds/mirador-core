@@ -40,9 +40,19 @@ The collection automatically includes the appropriate headers for endpoints that
 The collection is organized into folders based on API functionality:
 
 - **System** - Health checks and system status
-- **Authentication** - Login, logout, token validation, API key management
-- **Api Keys** - API key CRUD operations and limits
-- **Rbac** - Role-based access control (roles, permissions, groups, role bindings)
+- **Kpi Definitions** - KPI definition management
+- **Kpi Layouts** - Dashboard layout configuration
+- **Dashboards** - Dashboard CRUD operations
+- **Metrics** - VictoriaMetrics integration (queries, metadata)
+- **Logs** - VictoriaLogs integration (queries, streams, search)
+- **Traces** - Trace data queries and flamegraphs
+- **Rca** - Root cause analysis operations
+- **Config** - Configuration management
+- **Ws** - WebSocket streams
+- **Unified** - Unified query engine
+- **Uql** - Unified Query Language
+
+> NOTE: Authentication, RBAC, and API-key management features were removed from Mirador Core. Use your existing identity provider for auth management and API key issuance.
 - **Kpi Definitions** - KPI definition management
 - **Kpi Layouts** - Dashboard layout configuration
 - **Dashboards** - Dashboard CRUD operations

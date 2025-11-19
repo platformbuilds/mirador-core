@@ -45,13 +45,6 @@ func (h *MetricsSearchHandler) HandleMetricsSearch(c *gin.Context) {
 		return
 	}
 
-	// Set tenant ID from context (middleware should set this)
-	if tenantID, exists := c.Get("tenant_id"); exists {
-		if tid, ok := tenantID.(string); ok && req.TenantID == "" {
-			req.TenantID = tid
-		}
-	}
-
 	// Set default limit if not specified
 	if req.Limit <= 0 {
 		req.Limit = 50
@@ -65,12 +58,11 @@ func (h *MetricsSearchHandler) HandleMetricsSearch(c *gin.Context) {
 	// Execute the search
 	result, err := h.metricsIndexer.SearchMetrics(c.Request.Context(), &req)
 	if err != nil {
-		h.logger.Error("Failed to search metrics", "error", err, "query", req.Query, "tenant", req.TenantID)
+		h.logger.Error("Failed to search metrics", "error", err, "query", req.Query)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     "Metrics search failed",
-			"details":   err.Error(),
-			"query":     req.Query,
-			"tenant_id": req.TenantID,
+			"error":   "Metrics search failed",
+			"details": err.Error(),
+			"query":   req.Query,
 		})
 		return
 	}
@@ -100,13 +92,6 @@ func (h *MetricsSearchHandler) HandleMetricsSync(c *gin.Context) {
 		return
 	}
 
-	// Set tenant ID from context (middleware should set this)
-	if tenantID, exists := c.Get("tenant_id"); exists {
-		if tid, ok := tenantID.(string); ok && req.TenantID == "" {
-			req.TenantID = tid
-		}
-	}
-
 	// Set default time range if not specified (last 24 hours)
 	if req.TimeRange == nil {
 		now := time.Now()
@@ -125,11 +110,10 @@ func (h *MetricsSearchHandler) HandleMetricsSync(c *gin.Context) {
 	// Execute the sync
 	result, err := h.metricsIndexer.SyncMetadata(c.Request.Context(), &req)
 	if err != nil {
-		h.logger.Error("Failed to sync metrics metadata", "error", err, "tenant", req.TenantID)
+		h.logger.Error("Failed to sync metrics metadata", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":     "Metrics metadata sync failed",
-			"details":   err.Error(),
-			"tenant_id": req.TenantID,
+			"error":   "Metrics metadata sync failed",
+			"details": err.Error(),
 		})
 		return
 	}

@@ -19,9 +19,8 @@ const (
 // MetricMetadataDocument represents a metric's metadata for indexing in Bleve
 type MetricMetadataDocument struct {
 	// Core metric information
-	ID         string     `json:"id"`          // Unique identifier (tenant:metric_name)
+	ID         string     `json:"id"`          // Unique identifier (metric_name)
 	MetricName string     `json:"metric_name"` // The metric name (e.g., "http_requests_total")
-	TenantID   string     `json:"tenant_id"`   // Tenant identifier
 	Type       MetricType `json:"type"`        // Metric type (counter, gauge, histogram, summary)
 
 	// Descriptive information
@@ -49,12 +48,11 @@ type MetricMetadataDocument struct {
 
 // MetricMetadataSearchRequest represents a search request for metrics metadata
 type MetricMetadataSearchRequest struct {
-	Query    string            `json:"query"`               // Search query (supports Bleve query syntax)
-	TenantID string            `json:"tenant_id,omitempty"` // Filter by tenant
-	Types    []MetricType      `json:"types,omitempty"`     // Filter by metric types
-	Labels   map[string]string `json:"labels,omitempty"`    // Filter by specific label values
-	Limit    int               `json:"limit,omitempty"`     // Maximum number of results
-	Offset   int               `json:"offset,omitempty"`    // Pagination offset
+	Query  string            `json:"query"`            // Search query (supports Bleve query syntax)
+	Types  []MetricType      `json:"types,omitempty"`  // Filter by metric types
+	Labels map[string]string `json:"labels,omitempty"` // Filter by specific label values
+	Limit  int               `json:"limit,omitempty"`  // Maximum number of results
+	Offset int               `json:"offset,omitempty"` // Pagination offset
 }
 
 // MetricMetadataSearchResult represents the result of a metrics metadata search
@@ -66,7 +64,6 @@ type MetricMetadataSearchResult struct {
 
 // MetricMetadataSyncRequest represents a request to sync metrics metadata
 type MetricMetadataSyncRequest struct {
-	TenantID      string     `json:"tenant_id,omitempty"`  // Tenant to sync (empty for all)
 	ForceFullSync bool       `json:"force_full_sync"`      // Force full resync instead of incremental
 	TimeRange     *TimeRange `json:"time_range,omitempty"` // Time range to scan for metrics
 	BatchSize     int        `json:"batch_size,omitempty"` // Batch size for processing
@@ -74,7 +71,6 @@ type MetricMetadataSyncRequest struct {
 
 // MetricMetadataSyncResult represents the result of a metadata sync operation
 type MetricMetadataSyncResult struct {
-	TenantID         string    `json:"tenant_id"`
 	MetricsProcessed int       `json:"metrics_processed"`
 	MetricsAdded     int       `json:"metrics_added"`
 	MetricsUpdated   int       `json:"metrics_updated"`
@@ -117,7 +113,6 @@ type MetricMetadataSyncConfig struct {
 
 // MetricMetadataSyncState represents the current state of synchronization
 type MetricMetadataSyncState struct {
-	TenantID           string    `json:"tenant_id"`
 	LastSyncTime       time.Time `json:"last_sync_time"`
 	LastFullSyncTime   time.Time `json:"last_full_sync_time"`
 	TotalSyncs         int64     `json:"total_syncs"`
@@ -131,7 +126,6 @@ type MetricMetadataSyncState struct {
 
 // MetricMetadataSyncStatus represents the status of a sync operation
 type MetricMetadataSyncStatus struct {
-	TenantID         string        `json:"tenant_id"`
 	Status           string        `json:"status"` // "running", "completed", "failed"
 	StartTime        time.Time     `json:"start_time"`
 	EndTime          time.Time     `json:"end_time,omitempty"`
@@ -145,12 +139,11 @@ type MetricMetadataSyncStatus struct {
 }
 
 // NewMetricMetadataDocument creates a new MetricMetadataDocument with default values
-func NewMetricMetadataDocument(metricName, tenantID string) *MetricMetadataDocument {
+func NewMetricMetadataDocument(metricName) *MetricMetadataDocument {
 	now := time.Now()
 	doc := &MetricMetadataDocument{
-		ID:          tenantID + ":" + metricName,
+		ID:          metricName,
 		MetricName:  metricName,
-		TenantID:    tenantID,
 		Type:        InferMetricType(metricName),
 		Labels:      make(map[string][]string),
 		LabelNames:  []string{},

@@ -31,7 +31,7 @@ func TestRequestLoggerWithBody_Captures200(t *testing.T) {
 
 func TestIsSensitiveEndpoint(t *testing.T) {
 	cases := map[string]bool{
-		"/api/v1/auth/login":     true,
+		"/api/v1/auth/login":     false,
 		"/api/v1/users/password": true,
 		"/api/v1/config/secrets": true,
 		"/some/other/path":       false,

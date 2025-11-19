@@ -104,8 +104,8 @@ func (v *valkeySingleImpl) SetSession(ctx context.Context, session *models.UserS
 		monitoring.RecordCacheOperation("set_session", "error")
 		return err
 	}
-	tenantKey := fmt.Sprintf("tenant_sessions:%s", session.TenantID)
-	err := v.client.SAdd(ctx, tenantKey, session.ID).Err()
+	activeKey := fmt.Sprintf("active_sessions:%s")
+	err := v.client.SAdd(ctx, activeKey, session.ID).Err()
 	if err != nil {
 		monitoring.RecordCacheOperation("set_session", "error")
 		return err
@@ -131,12 +131,10 @@ func (v *valkeySingleImpl) GetSession(ctx context.Context, sessionID string) (*m
 }
 
 func (v *valkeySingleImpl) InvalidateSession(ctx context.Context, sessionID string) error {
-	sess, err := v.GetSession(ctx, sessionID)
-	if err == nil && sess != nil {
-		tenantKey := fmt.Sprintf("tenant_sessions:%s", sess.TenantID)
-		_ = v.client.SRem(ctx, tenantKey, sessionID).Err()
-	}
-	err = v.Delete(ctx, fmt.Sprintf("session:%s", sessionID))
+	activeKey := fmt.Sprintf("active_sessions:%s")
+	_ = v.client.SRem(ctx, activeKey, sessionID).Err()
+
+	err := v.Delete(ctx, fmt.Sprintf("session:%s", sessionID))
 	if err != nil {
 		monitoring.RecordCacheOperation("invalidate_session", "error")
 		return err
@@ -145,9 +143,9 @@ func (v *valkeySingleImpl) InvalidateSession(ctx context.Context, sessionID stri
 	return nil
 }
 
-func (v *valkeySingleImpl) GetActiveSessions(ctx context.Context, tenantID string) ([]*models.UserSession, error) {
-	tenantKey := fmt.Sprintf("tenant_sessions:%s", tenantID)
-	sessionIDs, err := v.client.SMembers(ctx, tenantKey).Result()
+func (v *valkeySingleImpl) GetActiveSessions(ctx context.Context) ([]*models.UserSession, error) {
+	activeKey := fmt.Sprintf("active_sessions:%s")
+	sessionIDs, err := v.client.SMembers(ctx, activeKey).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +154,7 @@ func (v *valkeySingleImpl) GetActiveSessions(ctx context.Context, tenantID strin
 		if session, err := v.GetSession(ctx, sessionID); err == nil {
 			sessions = append(sessions, session)
 		} else {
-			_ = v.client.SRem(ctx, tenantKey, sessionID).Err()
+			_ = v.client.SRem(ctx, activeKey, sessionID).Err()
 		}
 	}
 	return sessions, nil

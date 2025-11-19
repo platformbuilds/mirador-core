@@ -279,9 +279,27 @@ func (s *Server) setupRoutes() {
 		}
 	}
 
+	// Phase 4: Create RCA Engine for /rca endpoints
+	// Create an empty service graph (will be enhanced from metrics in production)
+	rcaServiceGraphForEngine := rca.NewServiceGraph()
+
+	// Create a mock anomaly events provider (no-op for now)
+	anomalyProviderForEngine := &noOpAnomalyProvider{}
+
+	// Create anomaly collector and candidate cause service
+	incidentAnomalyCollectorForEngine := rca.NewIncidentAnomalyCollector(
+		anomalyProviderForEngine,
+		rcaServiceGraphForEngine,
+		s.logger,
+	)
+	candidateCauseServiceForEngine := rca.NewCandidateCauseService(incidentAnomalyCollectorForEngine, s.logger)
+
+	// Create RCA engine for endpoints
+	rcaEngineForEndpoints := rca.NewRCAEngine(candidateCauseServiceForEngine, rcaServiceGraphForEngine, s.logger)
+
 	// AI RCA-ENGINE endpoints (correlation with red anchors pattern)
 	rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
-	rcaHandler := handlers.NewRCAHandler(s.grpcClients.RCAEngine, s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, nil)
+	rcaHandler := handlers.NewRCAHandler(s.grpcClients.RCAEngine, s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints)
 	rcaGroup := v1.Group("/rca")
 	{
 		rcaGroup.GET("/correlations", rcaHandler.GetActiveCorrelations)
@@ -325,7 +343,7 @@ func (s *Server) setupRoutes() {
 
 	// Unified Query Engine (Phase 1.5: Unified API Implementation)
 	if s.config.UnifiedQuery.Enabled {
-		s.setupUnifiedQueryEngine(v1)
+		s.setupUnifiedQueryEngine(v1, rcaEngineForEndpoints)
 	}
 
 	// Metrics Metadata Discovery API (Phase 2: Metrics Metadata Integration)
@@ -353,7 +371,7 @@ func (s *Server) setupRoutes() {
 }
 
 // setupUnifiedQueryEngine sets up the unified query engine and registers its routes
-func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup) {
+func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEndpoints rca.RCAEngine) {
 	// Create correlation engine
 	correlationEngine := services.NewCorrelationEngine(
 		s.vmServices.Metrics,
@@ -378,24 +396,6 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup) {
 	// Create unified query handler
 	unifiedHandler := handlers.NewUnifiedQueryHandler(unifiedEngine, s.logger)
 
-	// Phase 4: Create RCA Engine
-	// Create an empty service graph (will be enhanced from metrics in production)
-	serviceGraph := rca.NewServiceGraph()
-
-	// Create a mock anomaly events provider (no-op for now)
-	anomalyProvider := &noOpAnomalyProvider{}
-
-	// Create anomaly collector and candidate cause service
-	incidentAnomalyCollector := rca.NewIncidentAnomalyCollector(
-		anomalyProvider,
-		serviceGraph,
-		s.logger,
-	)
-	candidateCauseService := rca.NewCandidateCauseService(incidentAnomalyCollector, s.logger)
-
-	// Create RCA engine
-	rcaEngine := rca.NewRCAEngine(candidateCauseService, serviceGraph, s.logger)
-
 	// Register unified query routes without RBAC protection
 	unifiedGroup := router.Group("/unified")
 	{
@@ -411,7 +411,7 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup) {
 		unifiedGroup.POST("/rca", func(c *gin.Context) {
 			// Create a temporary RCA handler just for this endpoint
 			rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
-			rcaHandler := handlers.NewRCAHandler(s.grpcClients.RCAEngine, s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngine)
+			rcaHandler := handlers.NewRCAHandler(s.grpcClients.RCAEngine, s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints)
 			rcaHandler.HandleComputeRCA(c)
 		})
 	}

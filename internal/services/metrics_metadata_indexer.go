@@ -25,8 +25,8 @@ type MetricsMetadataIndexer interface {
 	// GetHealthStatus returns the health status of the metadata indexer
 	GetHealthStatus(ctx context.Context) (*models.MetricMetadataHealthStatus, error)
 
-	// InvalidateCache invalidates cached metadata for a tenant
-	InvalidateCache(ctx context.Context, tenantID string) error
+	// InvalidateCache invalidates cached metadata
+	InvalidateCache(ctx context.Context) error
 }
 
 // MetricsMetadataIndexerImpl implements the MetricsMetadataIndexer interface
@@ -39,9 +39,7 @@ type MetricsMetadataIndexerImpl struct {
 
 // NewStubMetricsMetadataIndexer creates a stub implementation for development/testing
 func NewStubMetricsMetadataIndexer(logger logger.Logger) MetricsMetadataIndexer {
-	return &StubMetricsMetadataIndexer{
-		logger: logger,
-	}
+	return &StubMetricsMetadataIndexer{logger: logger}
 }
 
 // StubMetricsMetadataIndexer provides stub implementations for metrics metadata operations
@@ -51,10 +49,9 @@ type StubMetricsMetadataIndexer struct {
 
 // SyncMetadata returns a stub sync result
 func (s *StubMetricsMetadataIndexer) SyncMetadata(ctx context.Context, request *models.MetricMetadataSyncRequest) (*models.MetricMetadataSyncResult, error) {
-	s.logger.Info("StubMetricsMetadataIndexer.SyncMetadata called", "tenant_id", request.TenantID)
+	s.logger.Info("StubMetricsMetadataIndexer.SyncMetadata called")
 
 	return &models.MetricMetadataSyncResult{
-		TenantID:         request.TenantID,
 		MetricsProcessed: 0,
 		MetricsAdded:     0,
 		MetricsUpdated:   0,
@@ -89,8 +86,8 @@ func (s *StubMetricsMetadataIndexer) GetHealthStatus(ctx context.Context) (*mode
 }
 
 // InvalidateCache returns nil (no-op)
-func (s *StubMetricsMetadataIndexer) InvalidateCache(ctx context.Context, tenantID string) error {
-	s.logger.Info("StubMetricsMetadataIndexer.InvalidateCache called", "tenant_id", tenantID)
+func (s *StubMetricsMetadataIndexer) InvalidateCache(ctx context.Context) error {
+	s.logger.Info("StubMetricsMetadataIndexer.InvalidateCache called")
 	return nil
 }
 
@@ -110,9 +107,7 @@ func NewMetricsMetadataIndexer(
 }
 func (m *MetricsMetadataIndexerImpl) SyncMetadata(ctx context.Context, request *models.MetricMetadataSyncRequest) (*models.MetricMetadataSyncResult, error) {
 	start := time.Now()
-	result := &models.MetricMetadataSyncResult{
-		TenantID: request.TenantID,
-	}
+	result := &models.MetricMetadataSyncResult{}
 
 	// Check if ShardManager is available
 	if m.shardManager == nil {
@@ -120,12 +115,7 @@ func (m *MetricsMetadataIndexerImpl) SyncMetadata(ctx context.Context, request *
 		return result, fmt.Errorf("Bleve ShardManager not configured")
 	}
 
-	// If no tenant specified, sync all tenants (this would require additional logic)
-	if request.TenantID == "" {
-		return nil, fmt.Errorf("tenant ID is required for metadata sync")
-	}
-
-	m.logger.Info("Starting metrics metadata sync", "tenantID", request.TenantID, "forceFullSync", request.ForceFullSync)
+	m.logger.Info("Starting metrics metadata sync", "forceFullSync", request.ForceFullSync)
 
 	// Extract metrics metadata from VictoriaMetrics
 	metadataDocs, err := m.extractMetricsMetadata(ctx, request)
@@ -146,7 +136,7 @@ func (m *MetricsMetadataIndexerImpl) SyncMetadata(ctx context.Context, request *
 	}
 
 	// Index documents in Bleve
-	if err := m.shardManager.IndexDocuments(indexableDocs, request.TenantID); err != nil {
+	if err := m.shardManager.IndexDocuments(indexableDocs); err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("Failed to index documents: %v", err))
 		return result, fmt.Errorf("failed to index metrics metadata: %w", err)
 	}
@@ -156,7 +146,6 @@ func (m *MetricsMetadataIndexerImpl) SyncMetadata(ctx context.Context, request *
 	result.LastSyncTime = time.Now()
 
 	m.logger.Info("Completed metrics metadata sync",
-		"tenantID", request.TenantID,
 		"metricsProcessed", result.MetricsProcessed,
 		"duration", result.Duration)
 
@@ -194,7 +183,7 @@ func (m *MetricsMetadataIndexerImpl) extractMetricsMetadata(ctx context.Context,
 		// Get or create metadata document for this metric
 		doc, exists := metricsMap[nameStr]
 		if !exists {
-			doc = models.NewMetricMetadataDocument(nameStr, request.TenantID)
+			doc = models.NewMetricMetadataDocument(nameStr)
 			metricsMap[nameStr] = doc
 		}
 
@@ -218,7 +207,6 @@ func (m *MetricsMetadataIndexerImpl) extractMetricsMetadata(ctx context.Context,
 	}
 
 	m.logger.Info("Extracted metrics metadata",
-		"tenantID", request.TenantID,
 		"totalSeries", len(series),
 		"uniqueMetrics", len(allMetadata))
 
@@ -246,7 +234,7 @@ func (m *MetricsMetadataIndexerImpl) SearchMetrics(ctx context.Context, request 
 	searchRequest.SortBy([]string{"-_score", "metric_name"})
 
 	// Execute search
-	searchResult, err := m.shardManager.Search(searchRequest, request.TenantID)
+	searchResult, err := m.shardManager.Search(searchRequest)
 	if err != nil {
 		return nil, fmt.Errorf("Bleve search failed: %w", err)
 	}
@@ -269,7 +257,6 @@ func (m *MetricsMetadataIndexerImpl) SearchMetrics(ctx context.Context, request 
 
 	m.logger.Info("Metrics search completed",
 		"query", request.Query,
-		"tenantID", request.TenantID,
 		"results", len(metrics),
 		"total", searchResult.Total,
 		"queryTime", result.QueryTime)
@@ -279,7 +266,6 @@ func (m *MetricsMetadataIndexerImpl) SearchMetrics(ctx context.Context, request 
 
 // extractMetricNameFromID extracts the metric name from a document ID
 func extractMetricNameFromID(id string) string {
-	// Document ID format: "tenant:metric_name"
 	parts := strings.Split(id, ":")
 	if len(parts) >= 2 {
 		return parts[1]
@@ -333,10 +319,10 @@ func (m *MetricsMetadataIndexerImpl) GetHealthStatus(ctx context.Context) (*mode
 	}, nil
 }
 
-// InvalidateCache invalidates cached metadata for a tenant
-func (m *MetricsMetadataIndexerImpl) InvalidateCache(ctx context.Context, tenantID string) error {
+// InvalidateCache invalidates cached metadata
+func (m *MetricsMetadataIndexerImpl) InvalidateCache(ctx context.Context) error {
 	// For now, just log the operation
 	// TODO: Implement actual cache invalidation
-	m.logger.Info("Cache invalidation requested", "tenantID", tenantID)
+	m.logger.Info("Cache invalidation requested")
 	return nil
 }

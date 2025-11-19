@@ -44,16 +44,12 @@ func (h *MetricHandler) CreateOrUpdateMetric(c *gin.Context) {
 	}
 
 	metric := req.Metric
-	if metric.TenantID == "" {
-		metric.TenantID = c.GetString("tenant_id")
-	}
 
 	// Convert Metric to SchemaDefinition
 	schemaDef := &models.SchemaDefinition{
 		ID:        metric.Metric, // Use metric name as ID
 		Name:      metric.Metric,
 		Type:      models.SchemaTypeMetric,
-		TenantID:  metric.TenantID,
 		Category:  metric.Category,
 		Sentiment: metric.Sentiment,
 		Author:    metric.Author,
@@ -84,9 +80,7 @@ func (h *MetricHandler) GetMetric(c *gin.Context) {
 		return
 	}
 
-	tenantID := c.GetString("tenant_id")
-
-	schemaDef, err := h.repo.GetSchemaAsKPI(context.Background(), tenantID, "metric", metricName)
+	schemaDef, err := h.repo.GetSchemaAsKPI(context.Background(), "metric", metricName)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "metric not found"})
@@ -99,7 +93,6 @@ func (h *MetricHandler) GetMetric(c *gin.Context) {
 
 	// Convert SchemaDefinition back to Metric
 	metric := &models.Metric{
-		TenantID:    schemaDef.TenantID,
 		Metric:      schemaDef.Name,
 		Description: schemaDef.Extensions.Metric.Description,
 		Owner:       schemaDef.Extensions.Metric.Owner,
@@ -121,10 +114,6 @@ func (h *MetricHandler) ListMetrics(c *gin.Context) {
 		return
 	}
 
-	if req.TenantID == "" {
-		req.TenantID = c.GetString("tenant_id")
-	}
-
 	// Set defaults
 	if req.Limit <= 0 {
 		req.Limit = 10
@@ -133,7 +122,23 @@ func (h *MetricHandler) ListMetrics(c *gin.Context) {
 		req.Offset = 0
 	}
 
-	schemaDefs, total, err := h.repo.ListSchemasAsKPIs(context.Background(), req.TenantID, "metric", req.Limit, req.Offset)
+	var schemaDefs []*models.SchemaDefinition
+	var total int
+	var err error
+	if kpirepo, ok := h.repo.(repo.KPIRepo); ok {
+		kpis, totalKpis, lerr := kpirepo.ListKPIs(context.Background(), []string{"metric"}, req.Limit, req.Offset)
+		if lerr != nil {
+			err = lerr
+		} else {
+			total = totalKpis
+			schemaDefs = make([]*models.SchemaDefinition, 0, len(kpis))
+			for _, k := range kpis {
+				schemaDefs = append(schemaDefs, kpiToSchemaDefinition(k, models.SchemaTypeMetric))
+			}
+		}
+	} else {
+		schemaDefs, total, err = h.repo.ListSchemasAsKPIs(context.Background(), "metric", req.Limit, req.Offset)
+	}
 	if err != nil {
 		h.logger.Error("metric list failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list metrics"})
@@ -144,7 +149,6 @@ func (h *MetricHandler) ListMetrics(c *gin.Context) {
 	metrics := make([]*models.Metric, len(schemaDefs))
 	for i, schemaDef := range schemaDefs {
 		metrics[i] = &models.Metric{
-			TenantID:    schemaDef.TenantID,
 			Metric:      schemaDef.Name,
 			Description: schemaDef.Extensions.Metric.Description,
 			Owner:       schemaDef.Extensions.Metric.Owner,
@@ -176,15 +180,14 @@ func (h *MetricHandler) DeleteMetric(c *gin.Context) {
 		return
 	}
 
-	tenantID := c.GetString("tenant_id")
-
 	q := strings.ToLower(strings.TrimSpace(c.Query("confirm")))
 	if q != "1" && q != "true" && q != "yes" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "confirmation required: add ?confirm=1"})
 		return
 	}
 
-	err := h.repo.DeleteSchemaAsKPI(context.Background(), tenantID, "metric", metricName)
+	// Delete as KPI by id (metrics migrated to KPI-backed storage)
+	err := h.repo.DeleteSchemaAsKPI(context.Background(), metricName)
 	if err != nil {
 		h.logger.Error("metric delete failed", "error", err, "metric", metricName)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete metric"})

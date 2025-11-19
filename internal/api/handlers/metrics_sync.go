@@ -25,10 +25,8 @@ func NewMetricsSyncHandler(synchronizer services.MetricsMetadataSynchronizer, lo
 	}
 }
 
-// HandleSyncNow triggers an immediate sync for the default tenant
+// HandleSyncNow triggers an immediate sync
 func (h *MetricsSyncHandler) HandleSyncNow(c *gin.Context) {
-	tenantID := "default" // Single-tenant system uses default tenant
-
 	// Parse forceFull parameter
 	forceFullStr := c.DefaultQuery("forceFull", "false")
 	forceFull, err := strconv.ParseBool(forceFullStr)
@@ -37,11 +35,11 @@ func (h *MetricsSyncHandler) HandleSyncNow(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Triggering immediate sync", "tenantID", tenantID, "forceFull", forceFull)
+	h.logger.Info("Triggering immediate sync", "forceFull", forceFull)
 
-	result, err := h.synchronizer.SyncNow(c.Request.Context(), tenantID, forceFull)
+	result, err := h.synchronizer.SyncNow(c.Request.Context(), forceFull)
 	if err != nil {
-		h.logger.Error("Failed to trigger sync", "tenantID", tenantID, "error", err)
+		h.logger.Error("Failed to trigger sync", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -52,13 +50,12 @@ func (h *MetricsSyncHandler) HandleSyncNow(c *gin.Context) {
 	})
 }
 
-// HandleGetSyncState returns the current sync state for the default tenant
+// HandleGetSyncState returns the current sync state
 func (h *MetricsSyncHandler) HandleGetSyncState(c *gin.Context) {
-	tenantID := "default" // Single-tenant system uses default tenant
 
-	state, err := h.synchronizer.GetSyncState(tenantID)
+	state, err := h.synchronizer.GetSyncState()
 	if err != nil {
-		h.logger.Error("Failed to get sync state", "tenantID", tenantID, "error", err)
+		h.logger.Error("Failed to get sync state", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -68,11 +65,9 @@ func (h *MetricsSyncHandler) HandleGetSyncState(c *gin.Context) {
 
 // HandleGetSyncStatus returns the status of the current/last sync operation
 func (h *MetricsSyncHandler) HandleGetSyncStatus(c *gin.Context) {
-	tenantID := "default" // Single-tenant system uses default tenant
-
-	status, err := h.synchronizer.GetSyncStatus(tenantID)
+	status, err := h.synchronizer.GetSyncStatus()
 	if err != nil {
-		h.logger.Error("Failed to get sync status", "tenantID", tenantID, "error", err)
+		h.logger.Error("Failed to get sync status", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

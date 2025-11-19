@@ -20,7 +20,6 @@ import (
 
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/internal/utils"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -414,13 +413,6 @@ func (s *VictoriaLogsService) ExecuteQueryStream(
 		httpReq.SetBasicAuth(s.username, s.password)
 	}
 
-	if t := strings.TrimSpace(req.TenantID); t != "" {
-		// VictoriaLogs expects numeric AccountID when multitenancy is enabled.
-		if utils.IsUint32String(t) {
-			httpReq.Header.Set("AccountID", t)
-		}
-	}
-
 	resp, err := s.doRequestWithRetry(ctx, httpReq)
 	if err != nil {
 		if ctx.Err() != nil {
@@ -648,7 +640,7 @@ func readErrBody(r io.Reader) string {
 // -------------------------------------------------------------------
 // Existing methods kept intact
 // -------------------------------------------------------------------
-func (s *VictoriaLogsService) StoreJSONEvent(ctx context.Context, event map[string]interface{}, tenantID string) error {
+func (s *VictoriaLogsService) StoreJSONEvent(ctx context.Context, event map[string]interface{}) error {
 	logEntry := map[string]interface{}{
 		"_time": event["_time"],
 		"_msg":  event["_msg"],
@@ -669,9 +661,6 @@ func (s *VictoriaLogsService) StoreJSONEvent(ctx context.Context, event map[stri
 	if s.username != "" {
 		req.SetBasicAuth(s.username, s.password)
 	}
-	if utils.IsUint32String(tenantID) {
-		req.Header.Set("AccountID", tenantID)
-	}
 	resp, err := s.doRequestWithRetry(ctx, req)
 	if err != nil {
 		return fmt.Errorf("failed to store event: %w", err)
@@ -681,7 +670,7 @@ func (s *VictoriaLogsService) StoreJSONEvent(ctx context.Context, event map[stri
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("VictoriaLogs returned status %d", resp.StatusCode)
 	}
-	s.logger.Info("Event stored in VictoriaLogs", "type", event["type"], "tenant", tenantID)
+	s.logger.Info("Event stored in VictoriaLogs", "type", event["type"])
 	return nil
 }
 
@@ -775,10 +764,10 @@ func (s *VictoriaLogsService) healthCheckSelf(ctx context.Context) error {
 }
 
 // GetStreams queries VictoriaLogs for available log streams.
-func (s *VictoriaLogsService) GetStreams(ctx context.Context, tenantID string, limit int) ([]map[string]string, error) {
+func (s *VictoriaLogsService) GetStreams(ctx context.Context, limit int) ([]map[string]string, error) {
 	// Multi-endpoint aggregation when multiple endpoints configured in this service
 	if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 1 }() {
-		return s.getStreamsMultiEndpoint(ctx, tenantID, limit)
+		return s.getStreamsMultiEndpoint(ctx, limit)
 	}
 
 	if len(s.children) > 0 {
@@ -793,7 +782,7 @@ func (s *VictoriaLogsService) GetStreams(ctx context.Context, tenantID string, l
 		}, len(services))
 		for _, svc := range services {
 			go func(svc *VictoriaLogsService) {
-				o, e := svc.GetStreams(ctx, tenantID, limit)
+				o, e := svc.GetStreams(ctx, limit)
 				ch <- struct {
 					out []map[string]string
 					err error
@@ -824,7 +813,7 @@ func (s *VictoriaLogsService) GetStreams(ctx context.Context, tenantID string, l
 	}
 	// VictoriaLogs does not expose a generic "/labels" endpoint. Derive useful
 	// stream labels from available field names and common conventions.
-	fields, err := s.GetFields(ctx, tenantID)
+	fields, err := s.GetFields(ctx)
 	if err != nil {
 		// Fall back to a conservative default list
 		fields = []string{"service", "level", "host"}
@@ -864,7 +853,7 @@ func (s *VictoriaLogsService) GetStreams(ctx context.Context, tenantID string, l
 }
 
 // getStreamsMultiEndpoint aggregates streams from all configured endpoints in this service
-func (s *VictoriaLogsService) getStreamsMultiEndpoint(ctx context.Context, tenantID string, limit int) ([]map[string]string, error) {
+func (s *VictoriaLogsService) getStreamsMultiEndpoint(ctx context.Context, limit int) ([]map[string]string, error) {
 	// Get endpoints safely
 	s.mu.Lock()
 	endpoints := make([]string, len(s.endpoints))
@@ -893,7 +882,7 @@ func (s *VictoriaLogsService) getStreamsMultiEndpoint(ctx context.Context, tenan
 				retries:   s.retries,
 				backoffMS: s.backoffMS,
 			}
-			st, e := tempSvc.getStreamsSingleEndpoint(ctx, tenantID, limit)
+			st, e := tempSvc.getStreamsSingleEndpoint(ctx, limit)
 			ch <- out{st, e}
 		}(endpoint)
 	}
@@ -923,10 +912,10 @@ func (s *VictoriaLogsService) getStreamsMultiEndpoint(ctx context.Context, tenan
 }
 
 // getStreamsSingleEndpoint gets streams from a single endpoint (used by multi-endpoint aggregation)
-func (s *VictoriaLogsService) getStreamsSingleEndpoint(ctx context.Context, tenantID string, limit int) ([]map[string]string, error) {
+func (s *VictoriaLogsService) getStreamsSingleEndpoint(ctx context.Context, limit int) ([]map[string]string, error) {
 	// VictoriaLogs does not expose a generic "/labels" endpoint. Derive useful
 	// stream labels from available field names and common conventions.
-	fields, err := s.GetFields(ctx, tenantID)
+	fields, err := s.GetFields(ctx)
 	if err != nil {
 		// Fall back to a conservative default list
 		fields = []string{"service", "level", "host"}
@@ -966,10 +955,10 @@ func (s *VictoriaLogsService) getStreamsSingleEndpoint(ctx context.Context, tena
 }
 
 // GetFields retrieves available log fields.
-func (s *VictoriaLogsService) GetFields(ctx context.Context, tenantID string) ([]string, error) {
+func (s *VictoriaLogsService) GetFields(ctx context.Context) ([]string, error) {
 	// Multi-endpoint aggregation when multiple endpoints configured in this service
 	if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 1 }() {
-		return s.getFieldsMultiEndpoint(ctx, tenantID)
+		return s.getFieldsMultiEndpoint(ctx)
 	}
 
 	if len(s.children) > 0 {
@@ -984,7 +973,7 @@ func (s *VictoriaLogsService) GetFields(ctx context.Context, tenantID string) ([
 		}, len(services))
 		for _, svc := range services {
 			go func(svc *VictoriaLogsService) {
-				o, e := svc.GetFields(ctx, tenantID)
+				o, e := svc.GetFields(ctx)
 				ch <- struct {
 					out []string
 					err error
@@ -1012,11 +1001,10 @@ func (s *VictoriaLogsService) GetFields(ctx context.Context, tenantID string) ([
 	// { "query": "*", "start": now-10m, "end": now, "limit": 500 }
 	nowMs := time.Now().UnixMilli()
 	req := &models.LogsQLQueryRequest{
-		Query:    "*",
-		Start:    nowMs - 10*60*1000,
-		End:      nowMs,
-		Limit:    500,
-		TenantID: tenantID,
+		Query: "*",
+		Start: nowMs - 10*60*1000,
+		End:   nowMs,
+		Limit: 500,
 	}
 	res, err := s.ExecuteQuery(ctx, req)
 	if err != nil {
@@ -1029,7 +1017,7 @@ func (s *VictoriaLogsService) GetFields(ctx context.Context, tenantID string) ([
 }
 
 // getFieldsMultiEndpoint aggregates fields from all configured endpoints in this service
-func (s *VictoriaLogsService) getFieldsMultiEndpoint(ctx context.Context, tenantID string) ([]string, error) {
+func (s *VictoriaLogsService) getFieldsMultiEndpoint(ctx context.Context) ([]string, error) {
 	// Get endpoints safely
 	s.mu.Lock()
 	endpoints := make([]string, len(s.endpoints))
@@ -1058,7 +1046,7 @@ func (s *VictoriaLogsService) getFieldsMultiEndpoint(ctx context.Context, tenant
 				retries:   s.retries,
 				backoffMS: s.backoffMS,
 			}
-			f, e := tempSvc.getFieldsSingleEndpoint(ctx, tenantID)
+			f, e := tempSvc.getFieldsSingleEndpoint(ctx)
 			ch <- out{f, e}
 		}(endpoint)
 	}
@@ -1083,16 +1071,15 @@ func (s *VictoriaLogsService) getFieldsMultiEndpoint(ctx context.Context, tenant
 }
 
 // getFieldsSingleEndpoint gets fields from a single endpoint (used by multi-endpoint aggregation)
-func (s *VictoriaLogsService) getFieldsSingleEndpoint(ctx context.Context, tenantID string) ([]string, error) {
+func (s *VictoriaLogsService) getFieldsSingleEndpoint(ctx context.Context) ([]string, error) {
 	// Hardcode a query equivalent to:
 	// { "query": "*", "start": now-10m, "end": now, "limit": 500 }
 	nowMs := time.Now().UnixMilli()
 	req := &models.LogsQLQueryRequest{
-		Query:    "*",
-		Start:    nowMs - 10*60*1000,
-		End:      nowMs,
-		Limit:    500,
-		TenantID: tenantID,
+		Query: "*",
+		Start: nowMs - 10*60*1000,
+		End:   nowMs,
+		Limit: 500,
 	}
 	res, err := s.ExecuteQuery(ctx, req)
 	if err != nil {
@@ -1141,9 +1128,6 @@ func (s *VictoriaLogsService) ExportLogs(ctx context.Context, request *models.Lo
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, queryURL, http.NoBody)
 	if err != nil {
 		return nil, err
-	}
-	if utils.IsUint32String(request.TenantID) {
-		req.Header.Set("AccountID", request.TenantID)
 	}
 	// Hint desired response type to VictoriaLogs.
 	if format == "csv" {
@@ -1324,7 +1308,6 @@ func toScalarString(v any) string {
 }
 
 // isUint32 returns true if s parses as base-10 uint32
-// (moved) tenant ID numeric check lives in utils.IsUint32String
 
 // helpers for aggregation
 func toInt(v any) (int, bool) {

@@ -32,7 +32,6 @@ func applyProductionConfig(config *Config) *Config {
 		"https://mirador.company.com",
 		"https://mirador-ui.company.com",
 	}
-	config.Auth.JWT.ExpiryMin = 480 // 8 hours in production
 
 	// Enable all integrations by default in production
 	config.Integrations.Slack.Enabled = true

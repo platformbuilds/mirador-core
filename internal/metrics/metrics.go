@@ -16,7 +16,7 @@ var (
 			Name: "mirador_core_http_requests_total",
 			Help: "Total number of HTTP requests processed",
 		},
-		[]string{"method", "endpoint", "status_code", "tenant_id"},
+		[]string{"method", "endpoint", "status_code"},
 	)
 
 	HTTPRequestDuration = promauto.NewHistogramVec(
@@ -25,7 +25,7 @@ var (
 			Help:    "HTTP request duration in seconds",
 			Buckets: prometheus.DefBuckets,
 		},
-		[]string{"method", "endpoint", "tenant_id"},
+		[]string{"method", "endpoint"},
 	)
 
 	// gRPC Client metrics
@@ -70,7 +70,7 @@ var (
 			Name: "mirador_core_websocket_connections_active",
 			Help: "Number of active WebSocket connections",
 		},
-		[]string{"stream_type", "tenant_id"},
+		[]string{"stream_type"},
 	)
 
 	ActiveSessions = promauto.NewGaugeVec(
@@ -78,7 +78,7 @@ var (
 			Name: "mirador_core_sessions_active",
 			Help: "Number of active user sessions",
 		},
-		[]string{"tenant_id"},
+		[]string{},
 	)
 
 	// Query processing metrics
@@ -88,7 +88,7 @@ var (
 			Help:    "Query execution duration in seconds",
 			Buckets: []float64{0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0},
 		},
-		[]string{"query_type", "tenant_id"}, // metricsql, logsql, traces
+		[]string{"query_type"}, // metricsql, logsql, traces
 	)
 
 	// AI Engine integration metrics
@@ -97,7 +97,7 @@ var (
 			Name: "mirador_core_correlations_found_total",
 			Help: "Total number of correlations found by RCA engine",
 		},
-		[]string{"confidence_level", "tenant_id"},
+		[]string{"confidence_level"},
 	)
 
 	// External integration metrics

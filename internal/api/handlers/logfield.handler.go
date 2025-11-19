@@ -44,16 +44,12 @@ func (h *LogFieldHandler) CreateOrUpdateLogField(c *gin.Context) {
 	}
 
 	logField := req.LogField
-	if logField.TenantID == "" {
-		logField.TenantID = c.GetString("tenant_id")
-	}
 
 	// Convert LogField to SchemaDefinition
 	schemaDef := &models.SchemaDefinition{
 		ID:        logField.Field, // Use field name as ID
 		Name:      logField.Field,
 		Type:      models.SchemaTypeLogField,
-		TenantID:  logField.TenantID,
 		Category:  logField.Category,
 		Sentiment: logField.Sentiment,
 		Author:    logField.Author,
@@ -84,9 +80,7 @@ func (h *LogFieldHandler) GetLogField(c *gin.Context) {
 		return
 	}
 
-	tenantID := c.GetString("tenant_id")
-
-	schemaDef, err := h.repo.GetSchemaAsKPI(context.Background(), tenantID, "log_field", fieldName)
+	schemaDef, err := h.repo.GetSchemaAsKPI(context.Background(), "log_field", fieldName)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "log field not found"})
@@ -99,7 +93,6 @@ func (h *LogFieldHandler) GetLogField(c *gin.Context) {
 
 	// Convert SchemaDefinition back to LogField
 	logField := &models.LogField{
-		TenantID:    schemaDef.TenantID,
 		Field:       schemaDef.Name,
 		Type:        schemaDef.Extensions.LogField.FieldType,
 		Description: schemaDef.Extensions.LogField.Description,
@@ -121,10 +114,6 @@ func (h *LogFieldHandler) ListLogFields(c *gin.Context) {
 		return
 	}
 
-	if req.TenantID == "" {
-		req.TenantID = c.GetString("tenant_id")
-	}
-
 	// Set defaults
 	if req.Limit <= 0 {
 		req.Limit = 10
@@ -133,7 +122,23 @@ func (h *LogFieldHandler) ListLogFields(c *gin.Context) {
 		req.Offset = 0
 	}
 
-	schemaDefs, total, err := h.repo.ListSchemasAsKPIs(context.Background(), req.TenantID, "log_field", req.Limit, req.Offset)
+	var schemaDefs []*models.SchemaDefinition
+	var total int
+	var err error
+	if kpirepo, ok := h.repo.(repo.KPIRepo); ok {
+		kpis, totalKpis, lerr := kpirepo.ListKPIs(context.Background(), []string{"log_field"}, req.Limit, req.Offset)
+		if lerr != nil {
+			err = lerr
+		} else {
+			total = totalKpis
+			schemaDefs = make([]*models.SchemaDefinition, 0, len(kpis))
+			for _, k := range kpis {
+				schemaDefs = append(schemaDefs, kpiToSchemaDefinition(k, models.SchemaTypeLogField))
+			}
+		}
+	} else {
+		schemaDefs, total, err = h.repo.ListSchemasAsKPIs(context.Background(), "log_field", req.Limit, req.Offset)
+	}
 	if err != nil {
 		h.logger.Error("log field list failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list log fields"})
@@ -144,7 +149,6 @@ func (h *LogFieldHandler) ListLogFields(c *gin.Context) {
 	logFields := make([]*models.LogField, len(schemaDefs))
 	for i, schemaDef := range schemaDefs {
 		logFields[i] = &models.LogField{
-			TenantID:    schemaDef.TenantID,
 			Field:       schemaDef.Name,
 			Type:        schemaDef.Extensions.LogField.FieldType,
 			Description: schemaDef.Extensions.LogField.Description,
@@ -176,15 +180,13 @@ func (h *LogFieldHandler) DeleteLogField(c *gin.Context) {
 		return
 	}
 
-	tenantID := c.GetString("tenant_id")
-
 	q := strings.ToLower(strings.TrimSpace(c.Query("confirm")))
 	if q != "1" && q != "true" && q != "yes" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "confirmation required: add ?confirm=1"})
 		return
 	}
 
-	err := h.repo.DeleteSchemaAsKPI(context.Background(), tenantID, "log_field", fieldName)
+	err := h.repo.DeleteLogField(c.Request.Context(), fieldName)
 	if err != nil {
 		h.logger.Error("log field delete failed", "error", err, "field", fieldName)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete log field"})

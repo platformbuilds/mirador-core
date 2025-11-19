@@ -52,7 +52,6 @@ func (c *AlertEngineClient) ProcessAlert(ctx context.Context, alertModel *models
 			Labels:      alertModel.Labels,
 			Annotations: alertModel.Annotations,
 		},
-		TenantId: alertModel.TenantID,
 	}
 
 	response, err := c.client.ProcessAlert(ctx, grpcRequest)
@@ -72,11 +71,9 @@ func (c *AlertEngineClient) ProcessAlert(ctx context.Context, alertModel *models
 	}, nil
 }
 
-// GetAlertRules retrieves alert rules for a tenant
-func (c *AlertEngineClient) GetAlertRules(ctx context.Context, tenantID string) ([]*models.AlertRule, error) {
-	response, err := c.client.GetAlertRules(ctx, &alert.GetAlertRulesRequest{
-		TenantId: tenantID,
-	})
+// GetAlertRules retrieves alert rules
+func (c *AlertEngineClient) GetAlertRules(ctx context.Context) ([]*models.AlertRule, error) {
+	response, err := c.client.GetAlertRules(ctx, &alert.GetAlertRulesRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +89,6 @@ func (c *AlertEngineClient) GetAlertRules(ctx context.Context, tenantID string) 
 			Enabled:     rule.Enabled,
 			Labels:      rule.Labels,
 			Annotations: rule.Annotations,
-			TenantID:    tenantID,
 		}
 	}
 
@@ -111,7 +107,6 @@ func (c *AlertEngineClient) CreateAlertRule(ctx context.Context, rule *models.Al
 			Labels:      rule.Labels,
 			Annotations: rule.Annotations,
 		},
-		TenantId: rule.TenantID,
 	}
 
 	response, err := c.client.CreateAlertRule(ctx, grpcRequest)
@@ -128,12 +123,11 @@ func (c *AlertEngineClient) CreateAlertRule(ctx context.Context, rule *models.Al
 		Enabled:     response.Rule.Enabled,
 		Labels:      response.Rule.Labels,
 		Annotations: response.Rule.Annotations,
-		TenantID:    rule.TenantID,
 		CreatedAt:   time.Now(),
 	}, nil
 }
 
-// GetActiveAlerts retrieves active alerts for a tenant
+// GetActiveAlerts retrieves active alerts
 func (c *AlertEngineClient) GetActiveAlerts(ctx context.Context, query *models.AlertQuery) ([]*models.Alert, error) {
 	// Safely convert limit to int32, capping at MaxInt32
 	var limit int32
@@ -144,7 +138,6 @@ func (c *AlertEngineClient) GetActiveAlerts(ctx context.Context, query *models.A
 	}
 
 	grpcRequest := &alert.GetActiveAlertsRequest{
-		TenantId: query.TenantID,
 		Limit:    limit,
 		Severity: query.Severity,
 	}
@@ -164,7 +157,6 @@ func (c *AlertEngineClient) GetActiveAlerts(ctx context.Context, query *models.A
 			Timestamp:   time.Unix(a.Timestamp, 0),
 			Labels:      a.Labels,
 			Annotations: a.Annotations,
-			TenantID:    query.TenantID,
 		}
 	}
 

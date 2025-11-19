@@ -90,7 +90,6 @@ func NewMockBleveSearchService() *MockBleveSearchService {
 		logDocuments: []mapping.LogDocument{
 			{
 				ID:        "log_test_1",
-				TenantID:  "test-tenant",
 				Timestamp: time.Now().Add(-time.Hour),
 				Level:     "error",
 				Message:   "Database connection failed",
@@ -98,7 +97,6 @@ func NewMockBleveSearchService() *MockBleveSearchService {
 			},
 			{
 				ID:        "log_test_2",
-				TenantID:  "test-tenant",
 				Timestamp: time.Now().Add(-30 * time.Minute),
 				Level:     "info",
 				Message:   "Payment processed successfully",
@@ -237,7 +235,7 @@ func TestBleveSearchE2E(t *testing.T) {
 		lh := NewLogsQLHandler(logsSvc, cch, log, router, testConfig)
 
 		r := gin.New()
-		r.Use(func(c *gin.Context) { c.Set("tenant_id", "test-tenant"); c.Next() })
+		r.Use(func(c *gin.Context) { c.Set("default"); c.Next() })
 		r.POST("/logs/query", lh.ExecuteQuery)
 
 		// Test that Bleve engine is accepted (even if execution fails due to missing infra)
@@ -374,7 +372,7 @@ func TestBleveSearchE2E(t *testing.T) {
 
 		// Test mapping multiple times to verify pooling
 		for i := 0; i < 10; i++ {
-			documents, err := mapper.MapLogs(logData, "test-tenant")
+			documents, err := mapper.MapLogs(logData)
 			if err != nil {
 				t.Fatalf("Document mapping failed for iteration %d: %v", i, err)
 			}
@@ -401,7 +399,7 @@ func TestBleveSearchE2E(t *testing.T) {
 		lh := NewLogsQLHandler(logsSvc, cch, log, router, testConfig)
 
 		r := gin.New()
-		r.Use(func(c *gin.Context) { c.Set("tenant_id", "test-tenant"); c.Next() })
+		r.Use(func(c *gin.Context) { c.Set("default"); c.Next() })
 		r.POST("/logs/query", lh.ExecuteQuery)
 
 		reqBody := models.LogsQLQueryRequest{
@@ -438,7 +436,7 @@ func TestBleveSearchE2E(t *testing.T) {
 		// This focuses on routing and middleware without requiring full Victoria infrastructure
 
 		r := gin.New()
-		r.Use(func(c *gin.Context) { c.Set("tenant_id", "test-tenant"); c.Next() })
+		r.Use(func(c *gin.Context) { c.Set("default"); c.Next() })
 		r.POST("/logs/query", func(c *gin.Context) {
 			// Mock handler that validates Bleve request structure without executing query
 			var request models.LogsQLQueryRequest
@@ -528,7 +526,7 @@ func TestBleveSearchE2E(t *testing.T) {
 		r := gin.New()
 		r.POST("/logs/query", func(c *gin.Context) {
 			// Mock handler that validates multi-tenant Bleve request structure
-			tenantID := c.GetString("tenant_id")
+			tenantID := c.GetString("default")
 			if tenantID == "" {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "Missing tenant_id"})
 				return

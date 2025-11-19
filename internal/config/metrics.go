@@ -24,9 +24,9 @@ var (
 	ActiveFeatureFlags = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "mirador_core_feature_flags_active",
-			Help: "Active feature flags by tenant",
+			Help: "Active feature flags",
 		},
-		[]string{"tenant_id", "feature"},
+		[]string{"feature"},
 	)
 )
 
@@ -44,8 +44,8 @@ func RecordValidationError() {
 	ConfigValidationErrors.Inc()
 }
 
-// UpdateFeatureFlagMetrics updates feature flag metrics for a tenant
-func UpdateFeatureFlagMetrics(tenantID string, flags *FeatureFlags) {
+// UpdateFeatureFlagMetrics updates feature flag metrics
+func UpdateFeatureFlagMetrics(flags *FeatureFlags) {
 	features := map[string]bool{
 		"predictive_alerting":   flags.PredictiveAlerting,
 		"advanced_rca":          flags.AdvancedRCA,
@@ -62,6 +62,6 @@ func UpdateFeatureFlagMetrics(tenantID string, flags *FeatureFlags) {
 		if enabled {
 			value = 1.0
 		}
-		ActiveFeatureFlags.WithLabelValues(tenantID, feature).Set(value)
+		ActiveFeatureFlags.WithLabelValues(feature).Set(value)
 	}
 }

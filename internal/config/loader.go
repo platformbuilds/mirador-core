@@ -166,11 +166,7 @@ func setDefaults(v *viper.Viper) {
 
 	// Auth
 	v.SetDefault("auth.enabled", true)
-	v.SetDefault("auth.ldap.enabled", false)
-	v.SetDefault("auth.oauth.enabled", false)
-	v.SetDefault("auth.rbac.enabled", true)
-	v.SetDefault("auth.rbac.admin_role", "mirador-admin")
-	v.SetDefault("auth.jwt.expiry_minutes", 1440)
+	// Note: Auth is now handled externally (API gateway, service mesh, etc.)
 
 	// Cache (Valkey)
 	v.SetDefault("cache.nodes", []string{"localhost:6379"})
@@ -180,7 +176,7 @@ func setDefaults(v *viper.Viper) {
 	// CORS
 	v.SetDefault("cors.allowed_origins", []string{"*"})
 	v.SetDefault("cors.allowed_methods", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
-	v.SetDefault("cors.allowed_headers", []string{"Content-Type", "Authorization", "X-Tenant-ID"})
+	v.SetDefault("cors.allowed_headers", []string{"Content-Type", "Authorization"})
 	v.SetDefault("cors.exposed_headers", []string{"X-Cache", "X-Rate-Limit-Remaining"})
 	v.SetDefault("cors.allow_credentials", true)
 	v.SetDefault("cors.max_age", 3600)
@@ -281,14 +277,8 @@ func overrideWithEnvVars(v *viper.Viper) {
 			v.Set("auth.enabled", b)
 		}
 	}
-	if rbac := os.Getenv("RBAC_ENABLED"); rbac != "" {
-		if b, err := strconv.ParseBool(rbac); err == nil {
-			v.Set("auth.rbac.enabled", b)
-		}
-	}
-	if jwt := os.Getenv("JWT_SECRET"); jwt != "" {
-		v.Set("auth.jwt.secret", jwt)
-	}
+	// Auth env vars no longer supported - handled externally
+
 	if slack := os.Getenv("SLACK_WEBHOOK_URL"); slack != "" {
 		v.Set("integrations.slack.webhook_url", slack)
 		v.Set("integrations.slack.enabled", true)

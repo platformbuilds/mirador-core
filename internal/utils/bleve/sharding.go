@@ -78,19 +78,19 @@ func NewShardManager(
 }
 
 // InitializeShards creates and initializes all shards
-func (sm *ShardManager) InitializeShards(tenantID string) error {
+func (sm *ShardManager) InitializeShards() error {
 	// Acquire distributed lock for shard initialization
-	lockKey := fmt.Sprintf("bleve:shards:init:%s", tenantID)
+	lockKey := fmt.Sprintf("bleve:shards:init")
 	locked, err := sm.metadata.AcquireLock(context.Background(), lockKey, 10*time.Minute)
 	if err != nil {
 		return fmt.Errorf("failed to acquire shard initialization lock: %w", err)
 	}
 	if !locked {
-		return fmt.Errorf("shard initialization already in progress for tenant %s", tenantID)
+		return fmt.Errorf("shard initialization already in progress")
 	}
 	defer func() {
 		if err := sm.metadata.ReleaseLock(context.Background(), lockKey); err != nil {
-			sm.logger.Warn("Failed to release shard initialization lock", "tenantID", tenantID, "error", err)
+			sm.logger.Warn("Failed to release shard initialization lock", "error", err)
 		}
 	}()
 
@@ -98,8 +98,8 @@ func (sm *ShardManager) InitializeShards(tenantID string) error {
 	defer sm.shardMutex.Unlock()
 
 	for i := 0; i < sm.numShards; i++ {
-		shardID := fmt.Sprintf("tenant_%s_shard_%d", tenantID, i)
-		shardPath := fmt.Sprintf("%s/tenant_%s_%s", sm.basePath, tenantID, shardID) // Create Bleve index for this shard
+		shardID := fmt.Sprintf("shard_%d", i)
+		shardPath := fmt.Sprintf("%s/%s", sm.basePath, shardID) // Create Bleve index for this shard
 		index, err := bleve.New(shardPath, bleve.NewIndexMapping())
 		if err != nil {
 			sm.logger.Error("Failed to create shard index", "shardID", shardID, "error", err)
@@ -119,7 +119,7 @@ func (sm *ShardManager) InitializeShards(tenantID string) error {
 
 	// Store shard metadata
 	shardMetadata := &IndexMetadata{
-		IndexName:   fmt.Sprintf("tenant_%s_shards", tenantID),
+		IndexName:   fmt.Sprintf("shards"),
 		ShardCount:  sm.numShards,
 		ShardNodes:  sm.getShardNodeMap(),
 		CreatedAt:   time.Now(),
@@ -132,26 +132,26 @@ func (sm *ShardManager) InitializeShards(tenantID string) error {
 	}
 
 	// Record shard count metric
-	monitoring.RecordBleveShardCount(tenantID, int64(sm.numShards))
+	monitoring.RecordBleveShardCount(int64(sm.numShards))
 	return nil
 }
 
 // IndexDocuments indexes a batch of documents across appropriate shards
-func (sm *ShardManager) IndexDocuments(documents []mapping.IndexableDocument, tenantID string) error {
+func (sm *ShardManager) IndexDocuments(documents []mapping.IndexableDocument) error {
 	start := time.Now()
 
 	// Acquire distributed lock for indexing operation
-	lockKey := fmt.Sprintf("bleve:indexing:%s", tenantID)
+	lockKey := fmt.Sprintf("bleve:indexing")
 	locked, err := sm.metadata.AcquireLock(context.Background(), lockKey, 5*time.Minute)
 	if err != nil {
 		return fmt.Errorf("failed to acquire indexing lock: %w", err)
 	}
 	if !locked {
-		return fmt.Errorf("indexing operation already in progress for tenant %s", tenantID)
+		return fmt.Errorf("indexing operation already in progress")
 	}
 	defer func() {
 		if err := sm.metadata.ReleaseLock(context.Background(), lockKey); err != nil {
-			sm.logger.Warn("Failed to release indexing lock", "tenantID", tenantID, "error", err)
+			sm.logger.Warn("Failed to release indexing lock", "error", err)
 		}
 	}()
 
@@ -159,7 +159,7 @@ func (sm *ShardManager) IndexDocuments(documents []mapping.IndexableDocument, te
 	shardGroups := make(map[string][]mapping.IndexableDocument)
 
 	for _, doc := range documents {
-		shardID := fmt.Sprintf("tenant_%s_%s", tenantID, sm.shardStrategy.GetShardID(doc.ID, sm.numShards))
+		shardID := fmt.Sprintf("%s", sm.shardStrategy.GetShardID(doc.ID, sm.numShards))
 		shardGroups[shardID] = append(shardGroups[shardID], doc)
 	}
 
@@ -167,13 +167,13 @@ func (sm *ShardManager) IndexDocuments(documents []mapping.IndexableDocument, te
 	for shardID, docs := range shardGroups {
 		if err := sm.indexDocumentsInShard(shardID, docs); err != nil {
 			sm.logger.Error("Failed to index documents in shard", "shardID", shardID, "error", err)
-			monitoring.RecordBleveIndexOperation("batch_index", tenantID, time.Since(start), false)
+			monitoring.RecordBleveIndexOperation("batch_index", time.Since(start), false)
 			return fmt.Errorf("failed to index in shard %s: %w", shardID, err)
 		}
 	}
 
 	sm.logger.Info("Indexed documents across shards", "totalDocs", len(documents), "shardsUsed", len(shardGroups))
-	monitoring.RecordBleveIndexOperation("batch_index", tenantID, time.Since(start), true)
+	monitoring.RecordBleveIndexOperation("batch_index", time.Since(start), true)
 	return nil
 }
 
@@ -204,22 +204,15 @@ func (sm *ShardManager) indexDocumentsInShard(shardID string, documents []mappin
 	return nil
 }
 
-// Search executes a search query across all active shards for a specific tenant
-func (sm *ShardManager) Search(request *bleve.SearchRequest, tenantID string) (*bleve.SearchResult, error) {
+// Search executes a search query across all active shards
+func (sm *ShardManager) Search(request *bleve.SearchRequest) (*bleve.SearchResult, error) {
 	start := time.Now()
 	sm.shardMutex.RLock()
 	defer sm.shardMutex.RUnlock()
 
-	// Execute search on all active shards for this tenant
 	var allResults []*bleve.SearchResult
-	tenantPrefix := fmt.Sprintf("tenant_%s_shard_", tenantID)
 
 	for shardID, shard := range sm.shards {
-		// Only search shards that belong to this tenant
-		if !strings.HasPrefix(shardID, tenantPrefix) {
-			continue
-		}
-
 		if !shard.IsActive {
 			continue
 		}
@@ -227,7 +220,7 @@ func (sm *ShardManager) Search(request *bleve.SearchRequest, tenantID string) (*
 		result, err := shard.Index.Search(request)
 		if err != nil {
 			sm.logger.Warn("Search failed on shard", "shardID", shard.ID, "error", err)
-			monitoring.RecordBleveSearchOperation(tenantID, time.Since(start), 0, false)
+			monitoring.RecordBleveSearchOperation(time.Since(start), 0, false)
 			return nil, fmt.Errorf("search failed on shard %s: %w", shardID, err)
 		}
 		allResults = append(allResults, result)
@@ -235,7 +228,7 @@ func (sm *ShardManager) Search(request *bleve.SearchRequest, tenantID string) (*
 
 	// Merge results from all shards
 	if len(allResults) == 0 {
-		monitoring.RecordBleveSearchOperation(tenantID, time.Since(start), 0, true)
+		monitoring.RecordBleveSearchOperation(time.Since(start), 0, true)
 		return &bleve.SearchResult{}, nil
 	}
 
@@ -278,7 +271,7 @@ func (sm *ShardManager) Search(request *bleve.SearchRequest, tenantID string) (*
 
 	mergedResult.Total = totalHits
 
-	monitoring.RecordBleveSearchOperation(tenantID, time.Since(start), int(totalHits), true)
+	monitoring.RecordBleveSearchOperation(time.Since(start), int(totalHits), true)
 	return mergedResult, nil
 }
 
@@ -288,7 +281,7 @@ func (sm *ShardManager) GetShardStats() map[string]interface{} {
 	defer sm.shardMutex.RUnlock()
 
 	stats := make(map[string]interface{})
-	tenantShardCounts := make(map[string]int)
+	shardCounts := make(map[string]int)
 
 	for shardID, shard := range sm.shards {
 		shardStats := map[string]interface{}{
@@ -307,24 +300,19 @@ func (sm *ShardManager) GetShardStats() map[string]interface{} {
 			// Record document count metric
 			parts := strings.Split(shardID, "_")
 			if len(parts) >= 3 {
-				tenantID := parts[1] // tenant_{tenantID}_shard_{num}
 				shardNum := parts[3]
-				monitoring.RecordBleveIndexHealth(tenantID, shardNum, int64(docCount))
+				monitoring.RecordBleveIndexHealth(shardNum, int64(docCount))
 				// Record storage metrics if storage is available
 				if sm.storage != nil {
-					sm.storage.RecordStorageMetrics(tenantID, shardNum)
+					sm.storage.RecordStorageMetrics(shardNum)
 				}
-				tenantShardCounts[tenantID]++
+				shardCounts[shardNum]++
 			}
 		}
 
 		stats[shardID] = shardStats
 	}
-
-	// Record shard counts for each tenant
-	for tenantID, count := range tenantShardCounts {
-		monitoring.RecordBleveShardCount(tenantID, int64(count))
-	}
+	stats["shardCounts"] = shardCounts
 
 	return stats
 }

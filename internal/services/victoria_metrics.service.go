@@ -110,9 +110,6 @@ func (s *VictoriaMetricsService) ExecuteQuery(ctx context.Context, request *mode
 	urlCluster := fmt.Sprintf("%s/select/0/prometheus/api/v1/query?%s", endpoint, params.Encode())
 	urlSingle := fmt.Sprintf("%s/api/v1/query?%s", endpoint, params.Encode())
 	headers := map[string]string{"Accept": "application/json"}
-	if request.TenantID != "" {
-		headers["AccountID"] = request.TenantID
-	}
 
 	resp, err := s.doRequestWithRetry(ctx, http.MethodGet, urlCluster, nil, headers)
 	if err != nil {
@@ -155,7 +152,7 @@ func (s *VictoriaMetricsService) ExecuteQuery(ctx context.Context, request *mode
 		"endpoint", endpoint,
 		"took", executionTime,
 		"seriesCount", result.SeriesCount,
-		"tenant", request.TenantID,
+		
 	)
 	return result, nil
 }
@@ -302,9 +299,6 @@ func (s *VictoriaMetricsService) executeQuerySingleEndpoint(ctx context.Context,
 	urlCluster := fmt.Sprintf("%s/select/0/prometheus/api/v1/query?%s", endpoint, params.Encode())
 	urlSingle := fmt.Sprintf("%s/api/v1/query?%s", endpoint, params.Encode())
 	headers := map[string]string{"Accept": "application/json"}
-	if request.TenantID != "" {
-		headers["AccountID"] = request.TenantID
-	}
 
 	resp, err := s.doRequestWithRetry(ctx, http.MethodGet, urlCluster, nil, headers)
 	if err != nil {
@@ -347,7 +341,7 @@ func (s *VictoriaMetricsService) executeQuerySingleEndpoint(ctx context.Context,
 		"endpoint", endpoint,
 		"took", executionTime,
 		"seriesCount", result.SeriesCount,
-		"tenant", request.TenantID,
+		
 	)
 	return result, nil
 }
@@ -375,9 +369,6 @@ func (s *VictoriaMetricsService) ExecuteRangeQuery(ctx context.Context, request 
 	urlCluster := fmt.Sprintf("%s/select/0/prometheus/api/v1/query_range?%s", endpoint, params.Encode())
 	urlSingle := fmt.Sprintf("%s/api/v1/query_range?%s", endpoint, params.Encode())
 	headers := map[string]string{"Accept": "application/json"}
-	if request.TenantID != "" {
-		headers["AccountID"] = request.TenantID
-	}
 
 	resp, err := s.doRequestWithRetry(ctx, http.MethodGet, urlCluster, nil, headers)
 	if err != nil {
@@ -542,9 +533,6 @@ func (s *VictoriaMetricsService) executeRangeSingleEndpoint(ctx context.Context,
 	urlCluster := fmt.Sprintf("%s/select/0/prometheus/api/v1/query_range?%s", endpoint, params.Encode())
 	urlSingle := fmt.Sprintf("%s/api/v1/query_range?%s", endpoint, params.Encode())
 	headers := map[string]string{"Accept": "application/json"}
-	if request.TenantID != "" {
-		headers["AccountID"] = request.TenantID
-	}
 
 	resp, err := s.doRequestWithRetry(ctx, http.MethodGet, urlCluster, nil, headers)
 	if err != nil {
@@ -642,9 +630,6 @@ func (s *VictoriaMetricsService) GetSeries(ctx context.Context, request *models.
 	urlCluster := fmt.Sprintf("%s/select/0/prometheus/api/v1/series?%s", endpoint, params.Encode())
 	urlSingle := fmt.Sprintf("%s/api/v1/series?%s", endpoint, params.Encode())
 	headers := map[string]string{"Accept": "application/json"}
-	if request.TenantID != "" {
-		headers["AccountID"] = request.TenantID
-	}
 
 	resp, err := s.doRequestWithRetry(ctx, http.MethodGet, urlCluster, nil, headers)
 	if err != nil {
@@ -753,9 +738,6 @@ func (s *VictoriaMetricsService) getSeriesSingleEndpoint(ctx context.Context, re
 	urlCluster := fmt.Sprintf("%s/select/0/prometheus/api/v1/series?%s", endpoint, params.Encode())
 	urlSingle := fmt.Sprintf("%s/api/v1/series?%s", endpoint, params.Encode())
 	headers := map[string]string{"Accept": "application/json"}
-	if request.TenantID != "" {
-		headers["AccountID"] = request.TenantID
-	}
 
 	resp, err := s.doRequestWithRetry(ctx, http.MethodGet, urlCluster, nil, headers)
 	if err != nil {
@@ -855,9 +837,6 @@ func (s *VictoriaMetricsService) GetLabels(ctx context.Context, request *models.
 	urlCluster := fmt.Sprintf("%s/select/0/prometheus/api/v1/series?%s", strings.TrimSuffix(endpoint, "/"), params.Encode())
 	urlSingle := fmt.Sprintf("%s/api/v1/series?%s", strings.TrimSuffix(endpoint, "/"), params.Encode())
 	headers := map[string]string{"Accept": "application/json"}
-	if request.TenantID != "" {
-		headers["AccountID"] = request.TenantID
-	}
 
 	resp, err := s.doRequestWithRetry(ctx, http.MethodGet, urlCluster, nil, headers)
 	if err != nil {
@@ -973,9 +952,6 @@ func (s *VictoriaMetricsService) getLabelsSingleEndpoint(ctx context.Context, re
 	urlCluster := fmt.Sprintf("%s/select/0/prometheus/api/v1/series?%s", endpoint, params.Encode())
 	urlSingle := fmt.Sprintf("%s/api/v1/series?%s", endpoint, params.Encode())
 	headers := map[string]string{"Accept": "application/json"}
-	if request.TenantID != "" {
-		headers["AccountID"] = request.TenantID
-	}
 
 	resp, err := s.doRequestWithRetry(ctx, http.MethodGet, urlCluster, nil, headers)
 	if err != nil {
@@ -1099,9 +1075,6 @@ func (s *VictoriaMetricsService) GetLabelValues(ctx context.Context, request *mo
 	urlCluster := fmt.Sprintf("%s/select/0/prometheus/api/v1/label/%s/values?%s", endpoint, url.PathEscape(request.Label), params.Encode())
 	urlSingle := fmt.Sprintf("%s/api/v1/label/%s/values?%s", endpoint, url.PathEscape(request.Label), params.Encode())
 	headers := map[string]string{"Accept": "application/json"}
-	if request.TenantID != "" {
-		headers["AccountID"] = request.TenantID
-	}
 
 	resp, err := s.doRequestWithRetry(ctx, http.MethodGet, urlCluster, nil, headers)
 	if err != nil {
@@ -1221,9 +1194,6 @@ func (s *VictoriaMetricsService) getLabelValuesSingleEndpoint(ctx context.Contex
 	urlCluster := fmt.Sprintf("%s/select/0/prometheus/api/v1/label/%s/values?%s", endpoint, request.Label, params.Encode())
 	urlSingle := fmt.Sprintf("%s/api/v1/label/%s/values?%s", endpoint, request.Label, params.Encode())
 	headers := map[string]string{"Accept": "application/json"}
-	if request.TenantID != "" {
-		headers["AccountID"] = request.TenantID
-	}
 
 	resp, err := s.doRequestWithRetry(ctx, http.MethodGet, urlCluster, nil, headers)
 	if err != nil {
