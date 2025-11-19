@@ -24,23 +24,17 @@ func MetricsMiddleware() gin.HandlerFunc {
 		// Record metrics
 		duration := time.Since(start).Seconds()
 		statusCode := strconv.Itoa(c.Writer.Status())
-		tenantID := c.GetString("tenant_id")
-		if tenantID == "" {
-			tenantID = "unknown"
-		}
 
 		// Update Prometheus metrics
 		metrics.HTTPRequestsTotal.WithLabelValues(
 			c.Request.Method,
 			c.FullPath(),
 			statusCode,
-			tenantID,
 		).Inc()
 
 		metrics.HTTPRequestDuration.WithLabelValues(
 			c.Request.Method,
 			c.FullPath(),
-			tenantID,
 		).Observe(duration)
 	}
 }

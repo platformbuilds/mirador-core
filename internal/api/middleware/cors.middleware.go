@@ -33,7 +33,7 @@ func CORSMiddleware(corsConfig config.CORSConfig) gin.HandlerFunc {
 			c.Header("Access-Control-Allow-Headers", strings.Join(corsConfig.AllowedHeaders, ", "))
 		} else {
 			// Default headers for MIRADOR-CORE
-			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, X-Tenant-ID, X-Session-Token")
+			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, X-Session-Token")
 		}
 
 		// Set exposed headers
@@ -41,7 +41,7 @@ func CORSMiddleware(corsConfig config.CORSConfig) gin.HandlerFunc {
 			c.Header("Access-Control-Expose-Headers", strings.Join(corsConfig.ExposedHeaders, ", "))
 		} else {
 			// Default exposed headers for MIRADOR-CORE
-			c.Header("Access-Control-Expose-Headers", "X-Rate-Limit-Limit, X-Rate-Limit-Remaining, X-Rate-Limit-Reset, X-Tenant-ID")
+			c.Header("Access-Control-Expose-Headers", "X-Rate-Limit-Limit, X-Rate-Limit-Remaining, X-Rate-Limit-Reset")
 		}
 
 		// Set credentials

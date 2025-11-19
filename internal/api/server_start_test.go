@@ -15,7 +15,6 @@ import (
 func TestServer_Start_And_Handler(t *testing.T) {
 	log := logger.New("error")
 	cfg := &config.Config{Environment: "development", Port: 0}
-	cfg.Auth.Enabled = false
 	cch := cache.NewNoopValkeyCache(log)
 	vms := &services.VictoriaMetricsServices{
 		Metrics: services.NewVictoriaMetricsService(config.VictoriaMetricsConfig{}, log),
@@ -53,7 +52,6 @@ func TestServer_Start_And_Handler(t *testing.T) {
 func TestServer_Start_Fails(t *testing.T) {
 	log := logger.New("error")
 	cfg := &config.Config{Environment: "test", Port: -1}
-	cfg.Auth.Enabled = false
 	cch := cache.NewNoopValkeyCache(log)
 	vms := &services.VictoriaMetricsServices{
 		Metrics: services.NewVictoriaMetricsService(config.VictoriaMetricsConfig{}, log),

@@ -10,8 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/utils"
-
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/discovery"
 	"github.com/platformbuilds/mirador-core/internal/models"
@@ -75,10 +73,10 @@ func (s *VictoriaTracesService) SetChildren(children []*VictoriaTracesService) {
 }
 
 // GetOperations returns all operations for a specific service from VictoriaTraces
-func (s *VictoriaTracesService) GetOperations(ctx context.Context, serviceName, tenantID string) ([]string, error) {
+func (s *VictoriaTracesService) GetOperations(ctx context.Context, serviceName string) ([]string, error) {
 	// Multi-endpoint aggregation when multiple endpoints configured in this service
 	if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 1 }() {
-		return s.getOperationsMultiEndpoint(ctx, serviceName, tenantID)
+		return s.getOperationsMultiEndpoint(ctx, serviceName)
 	}
 
 	if len(s.children) > 0 {
@@ -93,7 +91,7 @@ func (s *VictoriaTracesService) GetOperations(ctx context.Context, serviceName, 
 		}, len(services))
 		for _, svc := range services {
 			go func(svc *VictoriaTracesService) {
-				o, e := svc.GetOperations(ctx, serviceName, tenantID)
+				o, e := svc.GetOperations(ctx, serviceName)
 				ch <- struct {
 					out []string
 					err error
@@ -129,9 +127,6 @@ func (s *VictoriaTracesService) GetOperations(ctx context.Context, serviceName, 
 		return nil, err
 	}
 
-	if utils.IsUint32String(tenantID) {
-		req.Header.Set("AccountID", tenantID)
-	}
 	if s.username != "" {
 		req.SetBasicAuth(s.username, s.password)
 	}
@@ -158,7 +153,7 @@ func (s *VictoriaTracesService) GetOperations(ctx context.Context, serviceName, 
 }
 
 // getOperationsMultiEndpoint aggregates operations from all configured endpoints in this service
-func (s *VictoriaTracesService) getOperationsMultiEndpoint(ctx context.Context, serviceName, tenantID string) ([]string, error) {
+func (s *VictoriaTracesService) getOperationsMultiEndpoint(ctx context.Context, serviceName string) ([]string, error) {
 	// Get endpoints safely
 	s.mu.Lock()
 	endpoints := make([]string, len(s.endpoints))
@@ -187,7 +182,7 @@ func (s *VictoriaTracesService) getOperationsMultiEndpoint(ctx context.Context, 
 				retries:   s.retries,
 				backoffMS: s.backoffMS,
 			}
-			ops, e := tempSvc.getOperationsSingleEndpoint(ctx, serviceName, tenantID)
+			ops, e := tempSvc.getOperationsSingleEndpoint(ctx, serviceName)
 			ch <- out{ops, e}
 		}(endpoint)
 	}
@@ -213,7 +208,7 @@ func (s *VictoriaTracesService) getOperationsMultiEndpoint(ctx context.Context, 
 }
 
 // getOperationsSingleEndpoint gets operations from a single endpoint (used by multi-endpoint aggregation)
-func (s *VictoriaTracesService) getOperationsSingleEndpoint(ctx context.Context, serviceName, tenantID string) ([]string, error) {
+func (s *VictoriaTracesService) getOperationsSingleEndpoint(ctx context.Context, serviceName string) ([]string, error) {
 	endpoint := s.selectEndpoint()
 	fullURL := fmt.Sprintf("%s/select/jaeger/api/services/%s/operations", endpoint, serviceName)
 
@@ -222,9 +217,6 @@ func (s *VictoriaTracesService) getOperationsSingleEndpoint(ctx context.Context,
 		return nil, err
 	}
 
-	if utils.IsUint32String(tenantID) {
-		req.Header.Set("AccountID", tenantID)
-	}
 	if s.username != "" {
 		req.SetBasicAuth(s.username, s.password)
 	}
@@ -249,10 +241,10 @@ func (s *VictoriaTracesService) getOperationsSingleEndpoint(ctx context.Context,
 
 	return operations.Data, nil
 }
-func (s *VictoriaTracesService) GetServices(ctx context.Context, tenantID string) ([]string, error) {
+func (s *VictoriaTracesService) GetServices(ctx context.Context) ([]string, error) {
 	// Multi-endpoint aggregation when multiple endpoints configured in this service
 	if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 1 }() {
-		return s.getServicesMultiEndpoint(ctx, tenantID)
+		return s.getServicesMultiEndpoint(ctx)
 	}
 
 	if len(s.children) > 0 {
@@ -267,7 +259,7 @@ func (s *VictoriaTracesService) GetServices(ctx context.Context, tenantID string
 		}, len(services))
 		for _, svc := range services {
 			go func(svc *VictoriaTracesService) {
-				o, e := svc.GetServices(ctx, tenantID)
+				o, e := svc.GetServices(ctx)
 				ch <- struct {
 					out []string
 					err error
@@ -303,9 +295,6 @@ func (s *VictoriaTracesService) GetServices(ctx context.Context, tenantID string
 		return nil, err
 	}
 
-	if utils.IsUint32String(tenantID) {
-		req.Header.Set("AccountID", tenantID)
-	}
 	if s.username != "" {
 		req.SetBasicAuth(s.username, s.password)
 	}
@@ -332,7 +321,7 @@ func (s *VictoriaTracesService) GetServices(ctx context.Context, tenantID string
 }
 
 // getServicesMultiEndpoint aggregates services from all configured endpoints in this service
-func (s *VictoriaTracesService) getServicesMultiEndpoint(ctx context.Context, tenantID string) ([]string, error) {
+func (s *VictoriaTracesService) getServicesMultiEndpoint(ctx context.Context) ([]string, error) {
 	// Get endpoints safely
 	s.mu.Lock()
 	endpoints := make([]string, len(s.endpoints))
@@ -361,7 +350,7 @@ func (s *VictoriaTracesService) getServicesMultiEndpoint(ctx context.Context, te
 				retries:   s.retries,
 				backoffMS: s.backoffMS,
 			}
-			svcs, e := tempSvc.getServicesSingleEndpoint(ctx, tenantID)
+			svcs, e := tempSvc.getServicesSingleEndpoint(ctx)
 			ch <- out{svcs, e}
 		}(endpoint)
 	}
@@ -387,7 +376,7 @@ func (s *VictoriaTracesService) getServicesMultiEndpoint(ctx context.Context, te
 }
 
 // getServicesSingleEndpoint gets services from a single endpoint (used by multi-endpoint aggregation)
-func (s *VictoriaTracesService) getServicesSingleEndpoint(ctx context.Context, tenantID string) ([]string, error) {
+func (s *VictoriaTracesService) getServicesSingleEndpoint(ctx context.Context) ([]string, error) {
 	endpoint := s.selectEndpoint()
 	fullURL := fmt.Sprintf("%s/select/jaeger/api/services", endpoint)
 
@@ -396,9 +385,6 @@ func (s *VictoriaTracesService) getServicesSingleEndpoint(ctx context.Context, t
 		return nil, err
 	}
 
-	if utils.IsUint32String(tenantID) {
-		req.Header.Set("AccountID", tenantID)
-	}
 	if s.username != "" {
 		req.SetBasicAuth(s.username, s.password)
 	}
@@ -425,7 +411,7 @@ func (s *VictoriaTracesService) getServicesSingleEndpoint(ctx context.Context, t
 }
 
 // GetTrace retrieves a specific trace by ID
-func (s *VictoriaTracesService) GetTrace(ctx context.Context, traceID, tenantID string) (*models.Trace, error) {
+func (s *VictoriaTracesService) GetTrace(ctx context.Context, traceID) (*models.Trace, error) {
 	if len(s.children) > 0 {
 		services := make([]*VictoriaTracesService, 0, len(s.children)+1)
 		if func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.endpoints) > 0 }() {
@@ -438,7 +424,7 @@ func (s *VictoriaTracesService) GetTrace(ctx context.Context, traceID, tenantID 
 		}, len(services))
 		for _, svc := range services {
 			go func(svc *VictoriaTracesService) {
-				t, e := svc.GetTrace(ctx, traceID, tenantID)
+				t, e := svc.GetTrace(ctx, traceID)
 				ch <- struct {
 					tr  *models.Trace
 					err error
@@ -468,9 +454,6 @@ func (s *VictoriaTracesService) GetTrace(ctx context.Context, traceID, tenantID 
 		return nil, err
 	}
 
-	if utils.IsUint32String(tenantID) {
-		req.Header.Set("AccountID", tenantID)
-	}
 	if s.username != "" {
 		req.SetBasicAuth(s.username, s.password)
 	}
@@ -579,9 +562,6 @@ func (s *VictoriaTracesService) SearchTraces(ctx context.Context, request *model
 		return nil, err
 	}
 
-	if utils.IsUint32String(request.TenantID) {
-		req.Header.Set("AccountID", request.TenantID)
-	}
 	if s.username != "" {
 		req.SetBasicAuth(s.username, s.password)
 	}
@@ -702,9 +682,6 @@ func (s *VictoriaTracesService) searchTracesSingleEndpoint(ctx context.Context, 
 		return nil, err
 	}
 
-	if utils.IsUint32String(request.TenantID) {
-		req.Header.Set("AccountID", request.TenantID)
-	}
 	if s.username != "" {
 		req.SetBasicAuth(s.username, s.password)
 	}
@@ -734,8 +711,6 @@ func (s *VictoriaTracesService) searchTracesSingleEndpoint(ctx context.Context, 
 		SearchTime: 0, // Would be calculated from response time
 	}, nil
 }
-
-// (moved) tenant ID numeric check lives in utils.IsUint32String
 
 // HealthCheck checks VictoriaTraces health
 func (s *VictoriaTracesService) HealthCheck(ctx context.Context) error {

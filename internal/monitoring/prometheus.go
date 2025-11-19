@@ -36,8 +36,8 @@
 // Available Metrics:
 //
 // HTTP Metrics (from existing middleware):
-//   - mirador_core_http_requests_total{method, endpoint, status_code, tenant_id}
-//   - mirador_core_http_request_duration_seconds{method, endpoint, tenant_id}
+//   - mirador_core_http_requests_total{method, endpoint, status_code}
+//   - mirador_core_http_request_duration_seconds{method, endpoint}
 //   - mirador_core_active_connections (from this package)
 //
 // Database Metrics:
@@ -63,15 +63,15 @@
 //   - mirador_core_weaviate_operation_duration_seconds{operation, collection}
 //
 // Bleve Search Metrics:
-//   - mirador_core_bleve_index_operations_total{operation, tenant, status}
-//   - mirador_core_bleve_index_operation_duration_seconds{operation, tenant}
-//   - mirador_core_bleve_search_operations_total{tenant, status}
-//   - mirador_core_bleve_search_operation_duration_seconds{tenant}
-//   - mirador_core_bleve_search_results_total{tenant}
-//   - mirador_core_bleve_index_document_count{tenant, shard}
-//   - mirador_core_bleve_index_shard_count{tenant}
-//   - mirador_core_bleve_storage_memory_usage_bytes{tenant, shard}
-//   - mirador_core_bleve_storage_disk_usage_bytes{tenant, shard}
+//   - mirador_core_bleve_index_operations_total{operation, status}
+//   - mirador_core_bleve_index_operation_duration_seconds{operation}
+//   - mirador_core_bleve_search_operations_total{status}
+//   - mirador_core_bleve_search_operation_duration_seconds{}
+//   - mirador_core_bleve_search_results_total{}
+//   - mirador_core_bleve_index_document_count{shard}
+//   - mirador_core_bleve_index_shard_count{}
+//   - mirador_core_bleve_storage_memory_usage_bytes{shard}
+//   - mirador_core_bleve_storage_disk_usage_bytes{shard}
 //   - mirador_core_bleve_cluster_nodes_total
 //   - mirador_core_bleve_cluster_leadership_changes_total
 //
@@ -105,7 +105,7 @@ var (
 			Name: "mirador_core_http_requests_total",
 			Help: "Total number of HTTP requests",
 		},
-		[]string{"method", "endpoint", "status_code", "tenant_id"},
+		[]string{"method", "endpoint", "status_code"},
 	)
 
 	httpRequestDuration = prometheus.NewHistogramVec(
@@ -114,7 +114,7 @@ var (
 			Help:    "HTTP request duration in seconds",
 			Buckets: prometheus.DefBuckets,
 		},
-		[]string{"method", "endpoint", "tenant_id"},
+		[]string{"method", "endpoint"},
 	)
 
 	// Database operation metrics
@@ -230,7 +230,7 @@ var (
 			Name: "mirador_core_bleve_index_operations_total",
 			Help: "Total number of Bleve index operations",
 		},
-		[]string{"operation", "tenant", "status"}, // operation: index, delete, batch_index
+		[]string{"operation", "status"}, // operation: index, delete, batch_index
 	)
 
 	bleveIndexOperationDuration = prometheus.NewHistogramVec(
@@ -239,7 +239,7 @@ var (
 			Help:    "Bleve index operation duration in seconds",
 			Buckets: []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5},
 		},
-		[]string{"operation", "tenant"},
+		[]string{"operation"},
 	)
 
 	bleveSearchOperationsTotal = prometheus.NewCounterVec(
@@ -247,7 +247,7 @@ var (
 			Name: "mirador_core_bleve_search_operations_total",
 			Help: "Total number of Bleve search operations",
 		},
-		[]string{"tenant", "status"},
+		[]string{"status"},
 	)
 
 	bleveSearchOperationDuration = prometheus.NewHistogramVec(
@@ -256,7 +256,7 @@ var (
 			Help:    "Bleve search operation duration in seconds",
 			Buckets: []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
 		},
-		[]string{"tenant"},
+		[]string{},
 	)
 
 	bleveSearchResultsTotal = prometheus.NewCounterVec(
@@ -264,7 +264,7 @@ var (
 			Name: "mirador_core_bleve_search_results_total",
 			Help: "Total number of search results returned by Bleve",
 		},
-		[]string{"tenant"},
+		[]string{},
 	)
 
 	// Bleve index health metrics
@@ -273,7 +273,7 @@ var (
 			Name: "mirador_core_bleve_index_document_count",
 			Help: "Number of documents in Bleve indexes",
 		},
-		[]string{"tenant", "shard"},
+		[]string{"shard"},
 	)
 
 	bleveIndexShardCount = prometheus.NewGaugeVec(
@@ -281,7 +281,7 @@ var (
 			Name: "mirador_core_bleve_index_shard_count",
 			Help: "Number of shards in Bleve indexes",
 		},
-		[]string{"tenant"},
+		[]string{},
 	)
 
 	// Bleve storage metrics
@@ -290,7 +290,7 @@ var (
 			Name: "mirador_core_bleve_storage_memory_usage_bytes",
 			Help: "Memory usage of Bleve storage in bytes",
 		},
-		[]string{"tenant", "shard"},
+		[]string{"shard"},
 	)
 
 	bleveStorageDiskUsage = prometheus.NewGaugeVec(
@@ -298,7 +298,7 @@ var (
 			Name: "mirador_core_bleve_storage_disk_usage_bytes",
 			Help: "Disk usage of Bleve storage in bytes",
 		},
-		[]string{"tenant", "shard"},
+		[]string{"shard"},
 	)
 
 	// Bleve cluster coordination metrics
@@ -487,12 +487,6 @@ func HTTPMetricsMiddleware() gin.HandlerFunc {
 		// Normalize path for metrics (remove IDs, etc.)
 		endpoint := normalizeEndpoint(path)
 
-		// Get tenant_id from context (set by auth middleware)
-		tenantID := c.GetString("tenant_id")
-		if tenantID == "" {
-			tenantID = "unknown"
-		}
-
 		// Increment active connections
 		activeConnections.Inc()
 		defer activeConnections.Dec()
@@ -503,8 +497,8 @@ func HTTPMetricsMiddleware() gin.HandlerFunc {
 		statusCode := strconv.Itoa(c.Writer.Status())
 		duration := time.Since(start).Seconds()
 
-		httpRequestsTotal.WithLabelValues(method, endpoint, statusCode, tenantID).Inc()
-		httpRequestDuration.WithLabelValues(method, endpoint, tenantID).Observe(duration)
+		httpRequestsTotal.WithLabelValues(method, endpoint, statusCode).Inc()
+		httpRequestDuration.WithLabelValues(method, endpoint).Observe(duration)
 
 		// Record errors
 		if c.Writer.Status() >= httpClientErrorThreshold {
@@ -578,44 +572,44 @@ func RecordWeaviateOperation(operation, collection string, duration time.Duratio
 }
 
 // RecordBleveIndexOperation records Bleve index operation metrics
-func RecordBleveIndexOperation(operation, tenant string, duration time.Duration, success bool) {
+func RecordBleveIndexOperation(operation, duration time.Duration, success bool) {
 	status := "success"
 	if !success {
 		status = "error"
-		errorsTotal.WithLabelValues("bleve_index", tenant).Inc()
+		errorsTotal.WithLabelValues("bleve_index").Inc()
 	}
 
-	bleveIndexOperationsTotal.WithLabelValues(operation, tenant, status).Inc()
-	bleveIndexOperationDuration.WithLabelValues(operation, tenant).Observe(duration.Seconds())
+	bleveIndexOperationsTotal.WithLabelValues(operation, status).Inc()
+	bleveIndexOperationDuration.WithLabelValues(operation).Observe(duration.Seconds())
 }
 
 // RecordBleveSearchOperation records Bleve search operation metrics
-func RecordBleveSearchOperation(tenant string, duration time.Duration, resultCount int, success bool) {
+func RecordBleveSearchOperation(duration time.Duration, resultCount int, success bool) {
 	status := "success"
 	if !success {
 		status = "error"
-		errorsTotal.WithLabelValues("bleve_search", tenant).Inc()
+		errorsTotal.WithLabelValues("bleve_search").Inc()
 	}
 
-	bleveSearchOperationsTotal.WithLabelValues(tenant, status).Inc()
-	bleveSearchOperationDuration.WithLabelValues(tenant).Observe(duration.Seconds())
-	bleveSearchResultsTotal.WithLabelValues(tenant).Add(float64(resultCount))
+	bleveSearchOperationsTotal.WithLabelValues(status).Inc()
+	bleveSearchOperationDuration.WithLabelValues().Observe(duration.Seconds())
+	bleveSearchResultsTotal.WithLabelValues().Add(float64(resultCount))
 }
 
 // RecordBleveIndexHealth records the health metrics for a Bleve index shard
-func RecordBleveIndexHealth(tenantID, shardNum string, docCount int64) {
-	bleveIndexDocumentCount.WithLabelValues(tenantID, shardNum).Set(float64(docCount))
+func RecordBleveIndexHealth(shardNum string, docCount int64) {
+	bleveIndexDocumentCount.WithLabelValues(shardNum).Set(float64(docCount))
 }
 
-// RecordBleveShardCount records the number of shards for a tenant
-func RecordBleveShardCount(tenantID string, shardCount int64) {
-	bleveIndexShardCount.WithLabelValues(tenantID).Set(float64(shardCount))
+// RecordBleveShardCount records the number of shards
+func RecordBleveShardCount(shardCount int64) {
+	bleveIndexShardCount.WithLabelValues().Set(float64(shardCount))
 }
 
 // RecordBleveStorageUsage records Bleve storage usage metrics
-func RecordBleveStorageUsage(tenant, shard string, memoryBytes, diskBytes int64) {
-	bleveStorageMemoryUsage.WithLabelValues(tenant, shard).Set(float64(memoryBytes))
-	bleveStorageDiskUsage.WithLabelValues(tenant, shard).Set(float64(diskBytes))
+func RecordBleveStorageUsage(shard string, memoryBytes, diskBytes int64) {
+	bleveStorageMemoryUsage.WithLabelValues(shard).Set(float64(memoryBytes))
+	bleveStorageDiskUsage.WithLabelValues(shard).Set(float64(diskBytes))
 }
 
 // RecordBleveClusterNodes records the number of nodes in the Bleve cluster

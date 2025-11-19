@@ -245,14 +245,6 @@ func (cs *CorrelationService) storeRequestTrace(c *gin.Context, correlationID, r
 		"headers":        cs.sanitizeHeaders(c.Request.Header),
 	}
 
-	// Add user context if available
-	if userID, exists := c.Get("user_id"); exists {
-		trace["user_id"] = userID
-	}
-	if tenantID, exists := c.Get("tenant_id"); exists {
-		trace["tenant_id"] = tenantID
-	}
-
 	// Store in cache with TTL (1 hour default)
 	cacheKey := fmt.Sprintf("trace:%s", requestID)
 	ctx := c.Request.Context()

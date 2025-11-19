@@ -101,6 +101,31 @@ make localdev-test
 - **REST API**: http://localhost:8010/api/v1/
 - **Swagger UI**: http://localhost:8010/swagger/index.html
 
+### End-to-End (E2E) Pipeline
+
+This repository provides a dedicated E2E pipeline for core API coverage (Config, KPI, UQL, Correlation, RCA). The single entry point is the `make e2e` target, which:
+
+- Starts the `localdev` Docker stack (if not already running)
+- Seeds OpenTelemetry telemetry via `make localdev-seed-otel`
+- Runs Go e2e tests (build tag `e2e`) and API smoke checks
+- Runs `golangci-lint` for code quality validation
+
+Run locally:
+
+```bash
+# Start localdev and wait for readiness
+make localdev-up
+make localdev-wait
+
+# Seed OTEL data (synthetic telemetry)
+make localdev-seed-otel
+
+# Run the E2E pipeline
+make e2e
+```
+
+The Go tests are found in `internal/api/*_e2e_test.go` and run via `go test -tags e2e` to avoid interfering with default unit tests.
+
 ### Building from Source
 
 ```bash

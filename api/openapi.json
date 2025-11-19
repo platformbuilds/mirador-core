@@ -43,14 +43,7 @@
     "description": "OpenAPI",
     "url": "https://swagger.io/resources/open-api/"
   },
-  "security": [
-    {
-      "ApiKeyAuth": []
-    },
-    {
-      "BearerAuth": []
-    }
-  ],
+  "security": [],
   "paths": {
     "/health": {
       "get": {
@@ -71,7 +64,7 @@
                       "type": "string",
                       "example": "mirador-core"
                     },
-                    "status": {
+                        "/api/v1/internal/rbac-roles-deprecated": {
                       "type": "string",
                       "example": "healthy"
                     },
@@ -131,7 +124,7 @@
                       "example": "mirador-core"
                     },
                     "status": {
-                      "type": "string",
+                        },
                       "example": "ready"
                     },
                     "timestamp": {
@@ -223,7 +216,7 @@
         }
       }
     },
-    "/api/v1/auth/login": {
+    
       "post": {
         "summary": "User login",
         "description": "Authenticate a user with username and password, returns session token and API key",
@@ -369,21 +362,14 @@
         }
       }
     },
-    "/api/v1/auth/logout": {
+    
       "post": {
         "summary": "User logout",
         "description": "Invalidate the current user session",
         "tags": [
           "authentication"
         ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [],
         "responses": {
           "200": {
             "description": "Logout successful",
@@ -432,7 +418,7 @@
         }
       }
     },
-    "/api/v1/auth/validate": {
+    
       "post": {
         "summary": "Validate token",
         "description": "Validate a session token, API key, or JWT token and return user information",
@@ -548,21 +534,14 @@
         }
       }
     },
-    "/api/v1/auth/apikeys": {
+    
       "get": {
         "summary": "List API keys",
         "description": "Retrieve all API keys for the authenticated user",
         "tags": [
           "api-keys"
         ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [],
         "responses": {
           "200": {
             "description": "API keys retrieved successfully",
@@ -655,14 +634,7 @@
         "tags": [
           "api-keys"
         ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -787,21 +759,14 @@
         }
       }
     },
-    "/api/v1/auth/apikeys/{keyId}": {
+    
       "delete": {
         "summary": "Revoke API key",
         "description": "Deactivate an API key by its ID",
         "tags": [
           "api-keys"
         ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [],
         "parameters": [
           {
             "name": "keyId",
@@ -880,21 +845,14 @@
         }
       }
     },
-    "/api/v1/auth/apikey-limits": {
+    
       "get": {
         "summary": "Get API key limits",
         "description": "Retrieve the current API key limits and configuration",
         "tags": [
           "api-keys"
         ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [],
         "responses": {
           "200": {
             "description": "API key limits retrieved successfully",
@@ -943,14 +901,7 @@
         "tags": [
           "api-keys"
         ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -1031,21 +982,14 @@
         }
       }
     },
-    "/api/v1/auth/apikey-config": {
+    
       "get": {
         "summary": "Get API key configuration",
         "description": "Retrieve the current API key configuration (global admin only)",
         "tags": [
           "api-keys"
         ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [],
         "responses": {
           "200": {
             "description": "API key configuration retrieved successfully",
@@ -1141,7 +1085,7 @@
         }
       }
     },
-    "/api/v1/rbac/roles": {
+    
       "get": {
         "summary": "Get roles",
         "description": "Retrieve all roles",
@@ -1266,7 +1210,7 @@
         }
       }
     },
-    "/api/v1/rbac/users/{userId}/roles": {
+    
       "get": {
         "summary": "Get user roles",
         "description": "Get roles assigned to a user",
@@ -1337,7 +1281,7 @@
         }
       }
     },
-    "/api/v1/rbac/permissions": {
+    
       "get": {
         "summary": "Get permissions",
         "description": "Retrieve all permissions",
@@ -1424,7 +1368,7 @@
         }
       }
     },
-    "/api/v1/rbac/permissions/{permissionId}": {
+    
       "put": {
         "summary": "Update permission",
         "description": "Update an existing permission",
@@ -1527,7 +1471,7 @@
         }
       }
     },
-    "/api/v1/rbac/groups": {
+    
       "get": {
         "summary": "Get groups",
         "description": "Retrieve all groups",
@@ -1614,7 +1558,7 @@
         }
       }
     },
-    "/api/v1/rbac/groups/{groupName}": {
+    
       "put": {
         "summary": "Update group",
         "description": "Update an existing group",
@@ -1717,7 +1661,7 @@
         }
       }
     },
-    "/api/v1/rbac/groups/{groupName}/users": {
+    
       "put": {
         "summary": "Add users to group",
         "description": "Add users to a group",
@@ -1843,7 +1787,7 @@
         }
       }
     },
-    "/api/v1/rbac/groups/{groupName}/members": {
+    
       "get": {
         "summary": "Get group members",
         "description": "Get members of a group",
@@ -1895,7 +1839,7 @@
         }
       }
     },
-    "/api/v1/rbac/role-bindings": {
+    
       "get": {
         "summary": "Get role bindings",
         "description": "Retrieve all role bindings",
@@ -1982,7 +1926,7 @@
         }
       }
     },
-    "/api/v1/rbac/role-bindings/{bindingId}": {
+    
       "put": {
         "summary": "Update role binding",
         "description": "Update an existing role binding",
@@ -5323,221 +5267,8 @@
         }
       }
     },
-    "/api/v1/sessions/active": {
-      "get": {
-        "summary": "Get active sessions",
-        "description": "Get list of active user sessions",
-        "tags": [
-          "sessions"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Active sessions retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to retrieve sessions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/sessions/invalidate": {
-      "post": {
-        "summary": "Invalidate session",
-        "description": "Invalidate a user session",
-        "tags": [
-          "sessions"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "sessionId"
-                ],
-                "properties": {
-                  "sessionId": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Session invalidated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "success"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to invalidate session",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/sessions/user/{userId}": {
-      "get": {
-        "summary": "Get user sessions",
-        "description": "Get sessions for a specific user",
-        "tags": [
-          "sessions"
-        ],
-        "security": [
-          {
-            "ApiKeyAuth": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "User ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "User sessions retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Failed to retrieve user sessions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/rbac/audit": {
+    
+    "/api/v1/internal/rbac-audit-deprecated": {
       "get": {
         "summary": "Get audit events",
         "description": "Get RBAC audit events",
@@ -5644,7 +5375,7 @@
         }
       }
     },
-    "/api/v1/rbac/audit/{eventId}": {
+    "/api/v1/internal/rbac-audit-event-deprecated": {
       "get": {
         "summary": "Get audit event",
         "description": "Get a specific audit event by ID",
@@ -5730,7 +5461,7 @@
         }
       }
     },
-    "/api/v1/rbac/audit/summary": {
+    "/api/v1/internal/rbac-audit-summary-deprecated": {
       "get": {
         "summary": "Get audit summary",
         "description": "Get summary statistics for audit events",
@@ -5810,7 +5541,7 @@
         }
       }
     },
-    "/api/v1/rbac/audit/subject/{subjectId}": {
+    "/api/v1/internal/rbac-audit-subject-deprecated": {
       "get": {
         "summary": "Get audit events by subject",
         "description": "Get audit events for a specific subject",
@@ -6384,7 +6115,7 @@
         }
       }
     },
-    "/api/v1/auth/users": {
+    "/api/v1/internal/auth-users-deprecated": {
       "post": {
         "summary": "Create MiradorAuth",
         "description": "Create local authentication credentials (global admin only)",
@@ -6477,7 +6208,7 @@
         }
       }
     },
-    "/api/v1/auth/users/{userId}": {
+    "/api/v1/internal/auth-users-userid-deprecated": {
       "get": {
         "summary": "Get MiradorAuth",
         "description": "Get local authentication credentials (global admin only)",
@@ -6777,7 +6508,7 @@
         }
       }
     },
-    "/api/v1/auth/config": {
+    "/api/v1/internal/auth-config-deprecated": {
       "post": {
         "summary": "Create AuthConfig",
         "description": "Create authentication configuration (admin only)",

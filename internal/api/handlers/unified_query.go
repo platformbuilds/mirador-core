@@ -34,13 +34,6 @@ func (h *UnifiedQueryHandler) HandleUnifiedQuery(c *gin.Context) {
 		return
 	}
 
-	// Set tenant ID from context (middleware should set this)
-	if tenantID, exists := c.Get("tenant_id"); exists {
-		if tid, ok := tenantID.(string); ok {
-			req.Query.TenantID = tid
-		}
-	}
-
 	// Execute the unified query
 	result, err := h.unifiedEngine.ExecuteQuery(c.Request.Context(), req.Query)
 	if err != nil {
@@ -70,13 +63,6 @@ func (h *UnifiedQueryHandler) HandleUnifiedCorrelation(c *gin.Context) {
 			"details": err.Error(),
 		})
 		return
-	}
-
-	// Set tenant ID from context
-	if tenantID, exists := c.Get("tenant_id"); exists {
-		if tid, ok := tenantID.(string); ok {
-			req.Query.TenantID = tid
-		}
 	}
 
 	// Ensure this is a correlation query
@@ -151,13 +137,6 @@ func (h *UnifiedQueryHandler) HandleUnifiedSearch(c *gin.Context) {
 		return
 	}
 
-	// Set tenant ID from context (middleware should set this)
-	if tenantID, exists := c.Get("tenant_id"); exists {
-		if tid, ok := tenantID.(string); ok {
-			req.Query.TenantID = tid
-		}
-	}
-
 	// For search, we can route to the appropriate engine based on query content
 	result, err := h.unifiedEngine.ExecuteQuery(c.Request.Context(), req.Query)
 	if err != nil {
@@ -187,13 +166,6 @@ func (h *UnifiedQueryHandler) HandleUQLQuery(c *gin.Context) {
 			"details": err.Error(),
 		})
 		return
-	}
-
-	// Set tenant ID from context (middleware should set this)
-	if tenantID, exists := c.Get("tenant_id"); exists {
-		if tid, ok := tenantID.(string); ok {
-			req.Query.TenantID = tid
-		}
 	}
 
 	// Execute the UQL query
@@ -255,13 +227,6 @@ func (h *UnifiedQueryHandler) HandleUQLExplain(c *gin.Context) {
 			"details": err.Error(),
 		})
 		return
-	}
-
-	// Set tenant ID from context
-	if tenantID, exists := c.Get("tenant_id"); exists {
-		if tid, ok := tenantID.(string); ok {
-			req.Query.TenantID = tid
-		}
 	}
 
 	// For explain, we would ideally get the execution plan from the optimizer

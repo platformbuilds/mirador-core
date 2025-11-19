@@ -45,12 +45,11 @@ func NewRCAHandler(
 	}
 }
 
-// checkFeatureEnabled checks if the RCA feature is enabled for the current tenant
+// checkFeatureEnabled checks if the RCA feature is enabled for the current
 func (h *RCAHandler) checkFeatureEnabled(c *gin.Context) bool {
-	tenantID := c.GetString("tenant_id")
-	flags, err := h.featureFlagService.GetFeatureFlags(c.Request.Context(), tenantID)
+	flags, err := h.featureFlagService.GetFeatureFlags(c.Request.Context(), "system")
 	if err != nil {
-		h.logger.Error("Failed to check feature flags", "tenantID", tenantID, "error", err)
+		h.logger.Error("Failed to check feature flags", "error", err)
 		return false
 	}
 	return flags.RCAEnabled
@@ -75,9 +74,6 @@ func (h *RCAHandler) StartInvestigation(c *gin.Context) {
 		})
 		return
 	}
-
-	// Set tenant context
-	request.TenantID = c.GetString("tenant_id")
 
 	// Call MIRADOR-RCA-ENGINE for correlation analysis
 	correlation, err := h.rcaClient.InvestigateIncident(c.Request.Context(), &request)
@@ -136,7 +132,6 @@ func (h *RCAHandler) StoreCorrelation(c *gin.Context) {
 		RedAnchors: storeRequest.RedAnchors,
 		Timeline:   storeRequest.Timeline,
 		CreatedAt:  time.Now(),
-		TenantID:   c.GetString("tenant_id"),
 	}
 
 	// Store as JSON event in VictoriaLogs via MIRADOR-CORE (as per diagram)
@@ -149,7 +144,7 @@ func (h *RCAHandler) StoreCorrelation(c *gin.Context) {
 		"correlation": correlationEvent,
 	}
 
-	if err := h.logsService.StoreJSONEvent(c.Request.Context(), logEntry, correlationEvent.TenantID); err != nil {
+	if err := h.logsService.StoreJSONEvent(c.Request.Context(), logEntry, "system"); err != nil {
 		h.logger.Error("Failed to store correlation", "correlationId", correlationEvent.ID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
@@ -180,9 +175,6 @@ func (h *RCAHandler) GetActiveCorrelations(c *gin.Context) {
 		})
 		return
 	}
-
-	tenantID := c.GetString("tenant_id")
-
 	// Optional filters
 	service := c.Query("service")
 	pageSizeStr := c.DefaultQuery("limit", "50")
@@ -209,7 +201,6 @@ func (h *RCAHandler) GetActiveCorrelations(c *gin.Context) {
 	}
 
 	request := &models.ListCorrelationsRequest{
-		TenantID:  tenantID,
 		Service:   service,
 		StartTime: startTime,
 		EndTime:   endTime,
@@ -218,7 +209,7 @@ func (h *RCAHandler) GetActiveCorrelations(c *gin.Context) {
 
 	response, err := h.rcaClient.ListCorrelations(c.Request.Context(), request)
 	if err != nil {
-		h.logger.Error("Failed to list correlations", "tenantID", tenantID, "error", err)
+		h.logger.Error("Failed to list correlations", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
 			"error":  "Failed to retrieve correlations",
@@ -246,20 +237,16 @@ func (h *RCAHandler) GetFailurePatterns(c *gin.Context) {
 		})
 		return
 	}
-
-	tenantID := c.GetString("tenant_id")
-
 	// Optional filters
 	service := c.Query("service")
 
 	request := &models.GetPatternsRequest{
-		TenantID: tenantID,
-		Service:  service,
+		Service: service,
 	}
 
 	response, err := h.rcaClient.GetPatterns(c.Request.Context(), request)
 	if err != nil {
-		h.logger.Error("Failed to get patterns", "tenantID", tenantID, "error", err)
+		h.logger.Error("Failed to get patterns", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
 			"error":  "Failed to retrieve patterns",
@@ -311,11 +298,9 @@ func (h *RCAHandler) GetServiceGraph(c *gin.Context) {
 		})
 		return
 	}
-
-	tenantID := c.GetString("tenant_id")
-	data, err := h.serviceGraph.FetchServiceGraph(c.Request.Context(), tenantID, &request)
+	data, err := h.serviceGraph.FetchServiceGraph(c.Request.Context(), "system", &request)
 	if err != nil {
-		h.logger.Error("service graph fetch failed", "tenant", tenantID, "error", err)
+		h.logger.Error("service graph fetch failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
 			"error":  "failed to fetch service graph",

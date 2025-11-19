@@ -21,11 +21,10 @@ type WebSocketHandler struct {
 }
 
 type WebSocketClient struct {
-	conn     *websocket.Conn
-	send     chan []byte
-	logger   logger.Logger
-	tenantID string
-	userID   string
+	conn   *websocket.Conn
+	send   chan []byte
+	logger logger.Logger
+	userID string
 	// streams: metrics, alerts
 	streams []string
 }
@@ -33,7 +32,7 @@ type WebSocketClient struct {
 func NewWebSocketHandler(logger logger.Logger) *WebSocketHandler {
 	return &WebSocketHandler{
 		upgrader: websocket.Upgrader{
-			// TODO: tighten in prod (check Origin/Host, tenant, auth)
+			// TODO: tighten in prod (check Origin/Host, auth)
 			CheckOrigin: func(r *http.Request) bool { return true },
 		},
 		logger:  logger,
@@ -52,10 +51,9 @@ func (h *WebSocketHandler) HandleMetricsStream(c *gin.Context) {
 
 	clientID := generateClientID()
 	client := &WebSocketClient{
-		conn:     conn,
-		tenantID: c.GetString("tenant_id"),
-		userID:   c.GetString("user_id"),
-		streams:  []string{"metrics"},
+		conn:    conn,
+		userID:  c.GetString("user_id"),
+		streams: []string{"metrics"},
 	}
 	h.clients[clientID] = client
 	defer delete(h.clients, clientID)
@@ -72,7 +70,7 @@ func (h *WebSocketHandler) HandleMetricsStream(c *gin.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			metrics, err := h.getLatestMetrics(client.tenantID)
+			metrics, err := h.getLatestMetrics()
 			if err != nil {
 				h.logger.Error("Failed to get latest metrics", "error", err)
 				continue
@@ -111,10 +109,9 @@ func (h *WebSocketHandler) HandleAlertsStream(c *gin.Context) {
 
 	clientID := generateClientID()
 	client := &WebSocketClient{
-		conn:     conn,
-		tenantID: c.GetString("tenant_id"),
-		userID:   c.GetString("user_id"),
-		streams:  []string{"alerts"},
+		conn:    conn,
+		userID:  c.GetString("user_id"),
+		streams: []string{"alerts"},
 	}
 	h.clients[clientID] = client
 	defer delete(h.clients, clientID)
@@ -130,7 +127,7 @@ func (h *WebSocketHandler) BroadcastAlert(alert *models.Alert) {
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
 	for clientID, client := range h.clients {
-		if client.tenantID == alert.TenantID && contains(client.streams, "alerts") {
+		if contains(client.streams, "alerts") {
 			client.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := client.conn.WriteJSON(message); err != nil {
 				h.logger.Error("Failed to broadcast alert", "clientId", clientID, "error", err)
@@ -151,11 +148,10 @@ func generateClientID() string {
 
 // getLatestMetrics currently returns a placeholder structure.
 // Wire this to Valkey (or another source) later.
-func (h *WebSocketHandler) getLatestMetrics(tenantID string) (interface{}, error) {
+func (h *WebSocketHandler) getLatestMetrics() (interface{}, error) {
 	return map[string]any{
-		"tenantId": tenantID,
-		"series":   []any{}, // fill with real data points
-		"ts":       time.Now().UnixMilli(),
+		"series": []any{}, // fill with real data points
+		"ts":     time.Now().UnixMilli(),
 	}, nil
 }
 

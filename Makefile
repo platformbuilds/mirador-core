@@ -254,6 +254,11 @@ dev: proto
 run: dev
 	@true
 
+.PHONY: e2e
+e2e: ## Run the full E2E pipeline (localdev up, seed OTEL, run e2e tests/lint)
+	@echo "📦 Running end-to-end pipeline (config → KPI → UQL → correlation → RCA)"
+	@bash hack/e2e-core.sh
+
 # Clean and regenerate everything
 clean-build: clean proto
 	@echo "🧹 Clean build with fresh protobuf generation..."

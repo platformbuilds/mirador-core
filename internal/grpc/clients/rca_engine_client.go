@@ -76,9 +76,6 @@ func (c *RCAEngineClient) InvestigateIncident(ctx context.Context, req *models.R
 func (c *RCAEngineClient) ListCorrelations(ctx context.Context, req *models.ListCorrelationsRequest) (*models.ListCorrelationsResponse, error) {
 	// Build query parameters
 	params := url.Values{}
-	if req.TenantID != "" {
-		params.Add("tenant_id", req.TenantID)
-	}
 	if req.Service != "" {
 		params.Add("service", req.Service)
 	}
@@ -121,7 +118,7 @@ func (c *RCAEngineClient) ListCorrelations(ctx context.Context, req *models.List
 		return nil, fmt.Errorf("failed to decode correlations response: %w", err)
 	}
 
-	c.logger.Info("Retrieved correlations successfully", "tenant", req.TenantID, "count", len(response.Correlations))
+	c.logger.Info("Retrieved correlations successfully", "count", len(response.Correlations))
 	return &response, nil
 }
 
@@ -129,9 +126,6 @@ func (c *RCAEngineClient) ListCorrelations(ctx context.Context, req *models.List
 func (c *RCAEngineClient) GetPatterns(ctx context.Context, req *models.GetPatternsRequest) (*models.GetPatternsResponse, error) {
 	// Build query parameters
 	params := url.Values{}
-	if req.TenantID != "" {
-		params.Add("tenant_id", req.TenantID)
-	}
 	if req.Service != "" {
 		params.Add("service", req.Service)
 	}
@@ -164,7 +158,7 @@ func (c *RCAEngineClient) GetPatterns(ctx context.Context, req *models.GetPatter
 		return nil, fmt.Errorf("failed to decode patterns response: %w", err)
 	}
 
-	c.logger.Info("Retrieved patterns successfully", "tenant", req.TenantID, "count", len(response.Patterns))
+	c.logger.Info("Retrieved patterns successfully", "count", len(response.Patterns))
 	return &models.GetPatternsResponse{Patterns: response.Patterns}, nil
 }
 
@@ -172,7 +166,6 @@ func (c *RCAEngineClient) GetPatterns(ctx context.Context, req *models.GetPatter
 func (c *RCAEngineClient) SubmitFeedback(ctx context.Context, req *models.FeedbackRequest) (*models.FeedbackResponse, error) {
 	// Convert request to JSON
 	feedback := map[string]interface{}{
-		"tenant_id":      req.TenantID,
 		"correlation_id": req.CorrelationID,
 		"correct":        req.Correct,
 		"notes":          req.Notes,

@@ -36,8 +36,7 @@ type LogsHistogramRequest struct {
 	End      int64  `form:"end" json:"end"`
 	Step     int64  `form:"step" json:"step"`         // bucket width in ms
 	Sampling int    `form:"sampling" json:"sampling"` // 0 or 1 = no sampling; N = keep 1/N rows
-	TenantID string `form:"tenantId" json:"tenantId"`
-	Limit    int    `form:"limit" json:"limit"` // optional server guard
+	Limit    int    `form:"limit" json:"limit"`       // optional server guard
 }
 
 type HistogramBucket struct {
@@ -59,7 +58,6 @@ type LogsFacetsRequest struct {
 	Fields   []string `form:"fields" json:"fields"` // e.g. service,level,host
 	Limit    int      `form:"limit" json:"limit"`   // top-N per field (default 20)
 	Sampling int      `form:"sampling" json:"sampling"`
-	TenantID string   `form:"tenantId" json:"tenantId"`
 }
 
 type FacetBucket struct {
@@ -85,7 +83,6 @@ type LogsSearchRequest struct {
 	End           int64       `json:"end"`
 	Limit         int         `json:"limit"` // rows per page
 	PageAfter     *PageCursor `json:"page_after,omitempty"`
-	TenantID      string      `json:"tenantId"`
 	QueryLanguage string      `json:"query_language,omitempty"`
 }
 

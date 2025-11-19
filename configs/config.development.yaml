@@ -35,11 +35,7 @@ auth:
     enabled: false
   oauth:
     enabled: false
-  rbac:
-    enabled: true
-    admin_role: "admin"
-  jwt:
-    expiry_minutes: 480 # 8 hours for development
+  # RBAC is now handled externally
 
 cache:
   nodes:
@@ -114,24 +110,6 @@ unified_query:
 uploads:
   # Configurable bulk CSV upload limit (bytes). Default is 5 MiB if omitted.
   bulk_max_bytes: 5242880
-
-# API Key Management Configuration (Development)
-api_keys:
-  enabled: true
-  # Development defaults - more permissive for testing
-  default_limits:
-    max_keys_per_user: 15
-    max_keys_per_tenant_admin: 35
-    max_keys_per_global_admin: 150
-  tenant_limits: []
-  global_limits_override: null
-  # More permissive in development
-  allow_tenant_override: true
-  allow_admin_override: true
-  # Shorter expiry for development
-  max_expiry_days: 90
-  min_expiry_days: 1
-  enforce_expiry: false
 
 # Schema Store Configuration (Weaviate)
 weaviate:

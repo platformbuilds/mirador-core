@@ -12,13 +12,11 @@ type Alert struct {
 	Labels      map[string]string `json:"labels"`
 	Annotations map[string]string `json:"annotations"`
 	Timestamp   time.Time         `json:"timestamp"`
-	TenantID    string            `json:"tenant_id"`
 	CreatedBy   string            `json:"created_by,omitempty"`
 }
 
 // AlertQuery represents a query for alerts
 type AlertQuery struct {
-	TenantID  string `json:"tenant_id"`
 	Limit     int    `json:"limit,omitempty"`
 	Severity  string `json:"severity,omitempty"`
 	Status    string `json:"status,omitempty"` // active, acknowledged, resolved
@@ -35,7 +33,6 @@ type AlertRule struct {
 	Enabled     bool              `json:"enabled"`
 	Labels      map[string]string `json:"labels"`
 	Annotations map[string]string `json:"annotations"`
-	TenantID    string            `json:"tenant_id"`
 	CreatedBy   string            `json:"created_by"`
 	CreatedAt   time.Time         `json:"created_at"`
 	UpdatedAt   time.Time         `json:"updated_at"`
@@ -66,5 +63,4 @@ type Notification struct {
 	Component string    `json:"component"`
 	Severity  string    `json:"severity"`
 	Timestamp time.Time `json:"timestamp"`
-	TenantID  string    `json:"tenant_id"`
 }

@@ -8,21 +8,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/platformbuilds/mirador-core/internal/api/constants"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 )
 
-// RateLimiter implements per-tenant rate limiting using Valkey cluster
+// RateLimiter implements rate limiting using Valkey cluster
 func RateLimiter(valkeyCache cache.ValkeyCluster) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tenantID := c.GetString("tenant_id")
-		if tenantID == "" {
-			tenantID = constants.AnonymousTenantID
-		}
 
 		// Rate limiting key
 		window := time.Now().Unix() / 60 // 1-minute windows
-		key := fmt.Sprintf("rate_limit:%s:%d", tenantID, window)
+		key := fmt.Sprintf("rate_limit:%s:%d", window)
 
 		// Get current request count
 		countBytes, err := valkeyCache.Get(c.Request.Context(), key)
@@ -34,7 +29,7 @@ func RateLimiter(valkeyCache cache.ValkeyCluster) gin.HandlerFunc {
 			}
 		}
 
-		// Rate limit: 1000 requests per minute per tenant
+		// Rate limit: 1000 requests per minute
 		maxRequests := int64(1000)
 		if currentCount >= maxRequests {
 			c.Header("X-Rate-Limit-Limit", strconv.FormatInt(maxRequests, 10))

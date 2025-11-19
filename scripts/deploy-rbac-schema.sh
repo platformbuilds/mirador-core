@@ -1,29 +1,11 @@
 #!/usr/bin/env bash
-# Deploy RBAC Schema to Weaviate
-#
-# This script deploys the RBAC schema classes to a running Weaviate instance.
-# It creates all necessary classes for the Multi-Tenant RBAC system.
+# RBAC schema deployment disabled
+# Mirador Core no longer manages RBAC schema in Weaviate. If you need to
+# deploy RBAC schema for a separate auth/identity service, consult `dev/RBAC-TENANT-REMOVAL-ANALYSIS.md`.
 
-set -e
-
-# Configuration
-WEAVIATE_URL="${WEAVIATE_URL:-http://localhost:8080}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-echo "🚀 Deploying RBAC Schema to Weaviate"
-echo "   Weaviate URL: $WEAVIATE_URL"
-echo ""
-
-# Check if Weaviate is accessible
-echo "📡 Checking Weaviate connectivity..."
-if ! curl -s -f "$WEAVIATE_URL/v1/meta" > /dev/null; then
-    echo "❌ Error: Cannot connect to Weaviate at $WEAVIATE_URL"
-    echo "   Please ensure Weaviate is running:"
-    echo "   docker-compose -f deployments/localdev/docker-compose.yaml up -d weaviate"
-    exit 1
-fi
-echo "✅ Weaviate is accessible"
-echo ""
+echo "⚠️  RBAC deployment script disabled: internal RBAC removed."
+echo "See dev/RBAC-TENANT-REMOVAL-ANALYSIS.md and dev/archived-rbac for details."
+exit 0
 
 # Function to create a schema class
 create_class() {

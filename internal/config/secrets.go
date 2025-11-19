@@ -9,46 +9,6 @@ import (
 
 // LoadSecrets loads sensitive configuration from environment or files
 func LoadSecrets(config *Config) error {
-	// Load JWT secret
-	if jwtSecret := os.Getenv("JWT_SECRET"); jwtSecret != "" {
-		config.Auth.JWT.Secret = jwtSecret
-	} else if secretFile := os.Getenv("JWT_SECRET_FILE"); secretFile != "" {
-		secret, err := os.ReadFile(secretFile)
-		if err != nil {
-			return fmt.Errorf("failed to read JWT secret file: %w", err)
-		}
-		config.Auth.JWT.Secret = strings.TrimSpace(string(secret))
-	} else {
-		// Generate a default secret for development
-		if config.Environment == "development" || config.Environment == "test" {
-			config.Auth.JWT.Secret = "development-secret-key-not-for-production"
-		} else {
-			return fmt.Errorf("JWT secret is required for production")
-		}
-	}
-
-	// Load LDAP password
-	if ldapPassword := os.Getenv("LDAP_PASSWORD"); ldapPassword != "" {
-		config.Auth.LDAP.BindPassword = ldapPassword
-	} else if passwordFile := os.Getenv("LDAP_PASSWORD_FILE"); passwordFile != "" {
-		password, err := os.ReadFile(passwordFile)
-		if err != nil {
-			return fmt.Errorf("failed to read LDAP password file: %w", err)
-		}
-		config.Auth.LDAP.BindPassword = strings.TrimSpace(string(password))
-	}
-
-	// Load OAuth client secret
-	if oauthSecret := os.Getenv("OAUTH_CLIENT_SECRET"); oauthSecret != "" {
-		config.Auth.OAuth.ClientSecret = oauthSecret
-	} else if secretFile := os.Getenv("OAUTH_CLIENT_SECRET_FILE"); secretFile != "" {
-		secret, err := os.ReadFile(secretFile)
-		if err != nil {
-			return fmt.Errorf("failed to read OAuth client secret file: %w", err)
-		}
-		config.Auth.OAuth.ClientSecret = strings.TrimSpace(string(secret))
-	}
-
 	// Load Redis password for Valkey cluster
 	if redisPassword := os.Getenv("REDIS_PASSWORD"); redisPassword != "" {
 		config.Cache.Password = redisPassword

@@ -42,10 +42,9 @@ func (s *VictoriaMetricsQueryService) ExecuteFunctionQuery(ctx context.Context, 
 
 	// Create a MetricsQLQueryRequest for the underlying service
 	queryReq := &models.MetricsQLQueryRequest{
-		Query:    fullQuery,
-		Time:     req.Time,
-		Timeout:  req.Timeout,
-		TenantID: req.TenantID,
+		Query:   fullQuery,
+		Time:    req.Time,
+		Timeout: req.Timeout,
 	}
 
 	// Execute the query using the underlying metrics service
@@ -86,11 +85,10 @@ func (s *VictoriaMetricsQueryService) ExecuteRangeFunctionQuery(ctx context.Cont
 
 	// For range queries, we need to use ExecuteRangeQuery
 	queryReq := &models.MetricsQLRangeQueryRequest{
-		Query:    fullQuery,
-		Start:    req.Start,
-		End:      req.End,
-		Step:     req.Step,
-		TenantID: req.TenantID,
+		Query: fullQuery,
+		Start: req.Start,
+		End:   req.End,
+		Step:  req.Step,
 	}
 
 	// Execute the range query using the underlying service

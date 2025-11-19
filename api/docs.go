@@ -24,16 +24,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v1/auth/apikey-config": {
+        "/api/v1/internal/auth-removed": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                
                 "description": "Retrieve the current API key configuration (global admin only)",
                 "consumes": [
                     "application/json"
@@ -63,19 +56,19 @@ const docTemplate = `{
                         }
                     }
                 }
+            "get": {
+                "description": "DEPRECATED: Mirador Core no longer serves built-in authentication, RBAC, or API-key management. Use external identity providers and management layers.",
+                "responses": {
+                    "410": {
+                        "description": "Gone"
+                    }
+                }
             }
         },
-        "/api/v1/auth/apikey-limits": {
+        "/api/v1/internal/rbac-removed": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Retrieve the current API key limits and configuration for the authenticated tenant",
+                
+                "description": "Retrieve the current API key limits and configuration",
                 "consumes": [
                     "application/json"
                 ],
@@ -97,15 +90,8 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Update API key limits for a tenant (requires tenant admin or global admin role)",
+                
+                "description": "Update API key limits",
                 "consumes": [
                     "application/json"
                 ],
@@ -154,18 +140,18 @@ const docTemplate = `{
                         }
                     }
                 }
+            "get": {
+                "description": "DEPRECATED: RBAC and API key endpoints removed from Mirador Core. These requests are no longer supported. Use external identity management.",
+                "responses": {
+                    "410": {
+                        "description": "Gone"
+                    }
+                }
             }
         },
-        "/api/v1/auth/apikeys": {
+        "/api/v1/internal/auth-apikeys-deprecated": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                
                 "description": "Retrieve all API keys for the authenticated user",
                 "consumes": [
                     "application/json"
@@ -197,14 +183,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                
                 "description": "Create a new API key for the authenticated user with specified name, description, and scopes",
                 "consumes": [
                     "application/json"
@@ -273,16 +252,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/auth/apikeys/{keyId}": {
+        "/api/v1/internal/auth-apikeys-keyid-deprecated": {
             "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                
                 "description": "Deactivate an API key by its ID",
                 "consumes": [
                     "application/json"
@@ -332,7 +304,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/auth/login": {
+        "/api/v1/internal/auth-login-deprecated": {
             "post": {
                 "description": "Authenticate a user with username and password, returns session token and API key",
                 "consumes": [
@@ -372,7 +344,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "status: success, data: {session_token, api_key, user_id, tenant_id, roles, expires_at}",
+                        "description": "status: success, data: {session_token, api_key, user_id, roles, expires_at}",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -408,16 +380,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/auth/logout": {
+        "/api/v1/internal/auth-logout-deprecated": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
+                
                 "description": "Invalidate the current user session",
                 "consumes": [
                     "application/json"
@@ -449,7 +414,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/auth/validate": {
+        "/api/v1/internal/auth-validate-deprecated": {
             "post": {
                 "description": "Validate a session token, API key, or JWT token and return user information",
                 "consumes": [
@@ -480,7 +445,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "status: success, data: {valid, type, user_id, tenant_id, roles, scopes}",
+                        "description": "status: success, data: {valid, type, user_id, roles, scopes}",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -507,289 +472,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/kpi/dashboards": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Retrieve a paginated list of dashboards",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dashboards"
-                ],
-                "summary": "Get dashboards",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID (optional, defaults to request context)",
-                        "name": "tenant_id",
-                        "in": "query"
-                    },
-                    {
-                        "maximum": 100,
-                        "minimum": 1,
-                        "type": "integer",
-                        "description": "Maximum number of results (default: 10)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "minimum": 0,
-                        "type": "integer",
-                        "description": "Pagination offset (default: 0)",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.DashboardListResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "error: invalid query parameters",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: failed to list dashboards",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Create a new dashboard. If ID is not provided, a new UUID will be generated.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dashboards"
-                ],
-                "summary": "Create dashboard",
-                "parameters": [
-                    {
-                        "description": "Dashboard creation payload",
-                        "name": "dashboard",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.DashboardRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/models.DashboardResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "error: invalid payload",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: failed to create dashboard",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/kpi/dashboards/{id}": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Update an existing dashboard by ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dashboards"
-                ],
-                "summary": "Update dashboard",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Dashboard ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Dashboard update payload",
-                        "name": "dashboard",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.DashboardRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.DashboardResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "error: invalid payload or missing id",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "error: dashboard not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: failed to update dashboard",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Delete a dashboard by its ID. Cannot delete the default dashboard. Requires confirmation.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "dashboards"
-                ],
-                "summary": "Delete dashboard",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Dashboard ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "enum": [
-                            "1",
-                            "true",
-                            "yes"
-                        ],
-                        "type": "string",
-                        "description": "Confirmation flag (1, true, or yes)",
-                        "name": "confirm",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "status: deleted",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "error: missing id, cannot delete default dashboard, or confirmation required",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: failed to delete dashboard",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/kpi/defs": {
             "get": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        
                     },
                     {
-                        "ApiKeyAuth": []
+                        
                     }
                 ],
                 "description": "Retrieve a paginated list of KPI definitions with optional filtering by tags",
@@ -866,10 +556,10 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        
                     },
                     {
-                        "ApiKeyAuth": []
+                        
                     }
                 ],
                 "description": "Create a new KPI definition or update an existing one. If ID is not provided, a new UUID will be generated.",
@@ -927,10 +617,10 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        
                     },
                     {
-                        "ApiKeyAuth": []
+                        
                     }
                 ],
                 "description": "Delete a KPI definition by its ID. Requires confirmation via query parameter.",
@@ -1319,20 +1009,7 @@ const docTemplate = `{
             }
         }
     },
-    "securityDefinitions": {
-        "ApiKeyAuth": {
-            "description": "API key for authentication",
-            "type": "apiKey",
-            "name": "X-API-Key",
-            "in": "header"
-        },
-        "BearerAuth": {
-            "description": "Type \"Bearer\" followed by a space and JWT token.",
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header"
-        }
-    },
+    "securityDefinitions": {},
     "externalDocs": {
         "description": "OpenAPI",
         "url": "https://swagger.io/resources/open-api/"

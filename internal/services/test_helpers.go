@@ -145,8 +145,8 @@ type MockTracesService struct {
 	mock.Mock
 }
 
-func (m *MockTracesService) GetOperations(ctx context.Context, service, tenantID string) ([]string, error) {
-	args := m.Called(ctx, service, tenantID)
+func (m *MockTracesService) GetOperations(ctx context.Context, service string) ([]string, error) {
+	args := m.Called(ctx, service)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

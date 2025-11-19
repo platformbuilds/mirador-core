@@ -67,22 +67,28 @@ type AnomalyGroup struct {
 
 	// MaxGraphDistance is the maximum hop count to impact service.
 	MaxGraphDistance int
+
+	// ExtraDimensionValues maps dimension keys to their values for this group
+	// (e.g., {"env": "prod", "region": "us-east-1", "namespace": "critical"}).
+	// Used for alignment scoring when user-configured dimensions are provided.
+	ExtraDimensionValues map[string]string
 }
 
 // NewAnomalyGroup creates a new AnomalyGroup with the given parameters.
 func NewAnomalyGroup(service, component string, ring TimeRing) *AnomalyGroup {
 	return &AnomalyGroup{
-		Service:          service,
-		Component:        component,
-		Ring:             ring,
-		Events:           make([]*EnrichedAnomalyEvent, 0),
-		MaxSeverity:      0,
-		AvgSeverity:      0,
-		MaxScore:         0,
-		AvgScore:         0,
-		GraphDirection:   DirectionUnknown,
-		MinGraphDistance: -1,
-		MaxGraphDistance: -1,
+		Service:              service,
+		Component:            component,
+		Ring:                 ring,
+		Events:               make([]*EnrichedAnomalyEvent, 0),
+		MaxSeverity:          0,
+		AvgSeverity:          0,
+		MaxScore:             0,
+		AvgScore:             0,
+		GraphDirection:       DirectionUnknown,
+		MinGraphDistance:     -1,
+		MaxGraphDistance:     -1,
+		ExtraDimensionValues: make(map[string]string),
 	}
 }
 
@@ -219,6 +225,12 @@ type DetailedScore struct {
 
 	// TransactionCountScore: contribution from breadth of impact (0..1)
 	TransactionCountScore float64
+
+	// DimensionAlignmentScore: contribution from extra dimension alignment (-penalty..+bonus)
+	DimensionAlignmentScore float64
+
+	// DimensionAlignments: detailed breakdown of each dimension (if computed)
+	DimensionAlignments []DimensionAlignment
 }
 
 // NewCandidateCause creates a new CandidateCause with default values.

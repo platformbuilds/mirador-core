@@ -9,7 +9,6 @@ type Config struct {
 
 	Database     DatabaseConfig     `mapstructure:"database" yaml:"database"`
 	GRPC         GRPCConfig         `mapstructure:"grpc" yaml:"grpc"`
-	Auth         AuthConfig         `mapstructure:"auth" yaml:"auth"`
 	Cache        CacheConfig        `mapstructure:"cache" yaml:"cache"`
 	CORS         CORSConfig         `mapstructure:"cors" yaml:"cors"`
 	Integrations IntegrationsConfig `mapstructure:"integrations" yaml:"integrations"`
@@ -19,7 +18,7 @@ type Config struct {
 	Uploads      UploadsConfig      `mapstructure:"uploads" yaml:"uploads"`
 	Search       SearchConfig       `mapstructure:"search" yaml:"search"`
 	UnifiedQuery UnifiedQueryConfig `mapstructure:"unified_query" yaml:"unified_query"`
-	APIKeys      APIKeyLimitsConfig `mapstructure:"api_keys" yaml:"api_keys"`
+	RCA          RCAConfig          `mapstructure:"rca" yaml:"rca"`
 }
 
 // DatabaseConfig handles VictoriaMetrics ecosystem configuration
@@ -97,81 +96,9 @@ type AlertEngineConfig struct {
 	Timeout   int    `mapstructure:"timeout" yaml:"timeout"`
 }
 
-// AuthConfig handles authentication and authorization
-type AuthConfig struct {
-	Enabled          bool                  `mapstructure:"enabled" yaml:"enabled"`
-	StrictAPIKeyMode bool                  `mapstructure:"strict_api_key_mode" yaml:"strict_api_key_mode"` // Enforce API key-only for programmatic access
-	LDAP             LDAPConfig            `mapstructure:"ldap" yaml:"ldap"`
-	OAuth            OAuthConfig           `mapstructure:"oauth" yaml:"oauth"`
-	RBAC             RBACConfig            `mapstructure:"rbac" yaml:"rbac"`
-	JWT              JWTConfig             `mapstructure:"jwt" yaml:"jwt"`
-	APIKeyRateLimit  APIKeyRateLimitConfig `mapstructure:"api_key_rate_limit" yaml:"api_key_rate_limit"`
-}
-
-type LDAPConfig struct {
-	URL               string         `mapstructure:"url" yaml:"url"`
-	BaseDN            string         `mapstructure:"base_dn" yaml:"base_dn"`
-	BindDN            string         `mapstructure:"bind_dn" yaml:"bind_dn"`
-	BindPassword      string         `mapstructure:"bind_password" yaml:"bind_password"`
-	UserSearchFilter  string         `mapstructure:"user_search_filter" yaml:"user_search_filter"`
-	UserSearchBase    string         `mapstructure:"user_search_base" yaml:"user_search_base"`
-	GroupSearchFilter string         `mapstructure:"group_search_filter" yaml:"group_search_filter"`
-	GroupSearchBase   string         `mapstructure:"group_search_base" yaml:"group_search_base"`
-	UserDN            string         `mapstructure:"user_dn" yaml:"user_dn"`
-	GroupDN           string         `mapstructure:"group_dn" yaml:"group_dn"`
-	Attributes        LDAPAttributes `mapstructure:"attributes" yaml:"attributes"`
-	Sync              LDAPSyncConfig `mapstructure:"sync" yaml:"sync"`
-	StartTLS          bool           `mapstructure:"start_tls" yaml:"start_tls"`
-	TLSCABundlePath   string         `mapstructure:"tls_ca_bundle_path" yaml:"tls_ca_bundle_path"`
-	TLSSkipVerify     bool           `mapstructure:"tls_skip_verify" yaml:"tls_skip_verify"`
-	Enabled           bool           `mapstructure:"enabled" yaml:"enabled"`
-}
-
-type LDAPAttributes struct {
-	Username     string `mapstructure:"username" yaml:"username"`
-	Email        string `mapstructure:"email" yaml:"email"`
-	FullName     string `mapstructure:"full_name" yaml:"full_name"`
-	MemberOf     string `mapstructure:"member_of" yaml:"member_of"`
-	GroupName    string `mapstructure:"group_name" yaml:"group_name"`
-	GroupMembers string `mapstructure:"group_members" yaml:"group_members"`
-	UserID       string `mapstructure:"user_id" yaml:"user_id"`
-}
-
-type LDAPSyncConfig struct {
-	Enabled          bool          `mapstructure:"enabled" yaml:"enabled"`
-	Interval         time.Duration `mapstructure:"interval" yaml:"interval"`
-	UserSyncEnabled  bool          `mapstructure:"user_sync_enabled" yaml:"user_sync_enabled"`
-	GroupSyncEnabled bool          `mapstructure:"group_sync_enabled" yaml:"group_sync_enabled"`
-	PageSize         int           `mapstructure:"page_size" yaml:"page_size"`
-	MaxRetries       int           `mapstructure:"max_retries" yaml:"max_retries"`
-	RetryDelay       time.Duration `mapstructure:"retry_delay" yaml:"retry_delay"`
-}
-
-type OAuthConfig struct {
-	ClientID     string `mapstructure:"client_id" yaml:"client_id"`
-	ClientSecret string `mapstructure:"client_secret" yaml:"client_secret"`
-	RedirectURL  string `mapstructure:"redirect_url" yaml:"redirect_url"`
-	Issuer       string `mapstructure:"issuer" yaml:"issuer"`
-	Enabled      bool   `mapstructure:"enabled" yaml:"enabled"`
-}
-
-type RBACConfig struct {
-	Enabled   bool   `mapstructure:"enabled" yaml:"enabled"`
-	AdminRole string `mapstructure:"admin_role" yaml:"admin_role"`
-}
-
-type JWTConfig struct {
-	Secret    string `mapstructure:"secret" yaml:"secret"`
-	ExpiryMin int    `mapstructure:"expiry_minutes" yaml:"expiry_minutes"`
-}
-
-type APIKeyRateLimitConfig struct {
-	Enabled              bool          `mapstructure:"enabled" yaml:"enabled"`
-	MaxRequests          int           `mapstructure:"max_requests" yaml:"max_requests"`       // Max requests per window
-	WindowDuration       time.Duration `mapstructure:"window_duration" yaml:"window_duration"` // Time window for rate limiting
-	BlockDuration        time.Duration `mapstructure:"block_duration" yaml:"block_duration"`   // How long to block after exceeding limit
-	EnableAbuseDetection bool          `mapstructure:"enable_abuse_detection" yaml:"enable_abuse_detection"`
-}
+// AuthConfig is deprecated and kept empty for backward compatibility
+// Authentication and RBAC are now handled externally (API gateway, service mesh, etc.)
+type AuthConfig struct{}
 
 // CacheConfig handles Valkey cluster caching configuration
 type CacheConfig struct {
@@ -321,38 +248,43 @@ type UnifiedQueryConfig struct {
 	EnableCorrelation bool          `mapstructure:"enable_correlation" yaml:"enable_correlation"`
 }
 
-// APIKeyLimitsConfig holds configuration for API key limits
-type APIKeyLimitsConfig struct {
-	Enabled              bool                 `mapstructure:"enabled" yaml:"enabled"`
-	DefaultLimits        DefaultAPIKeyLimits  `mapstructure:"default_limits" yaml:"default_limits"`
-	TenantLimits         []TenantAPIKeyLimits `mapstructure:"tenant_limits" yaml:"tenant_limits"`
-	GlobalLimitsOverride *GlobalAPIKeyLimits  `mapstructure:"global_limits_override" yaml:"global_limits_override"`
-	AllowTenantOverride  bool                 `mapstructure:"allow_tenant_override" yaml:"allow_tenant_override"`
-	AllowAdminOverride   bool                 `mapstructure:"allow_admin_override" yaml:"allow_admin_override"`
-	MaxExpiryDays        int                  `mapstructure:"max_expiry_days" yaml:"max_expiry_days"`
-	MinExpiryDays        int                  `mapstructure:"min_expiry_days" yaml:"min_expiry_days"`
-	EnforceExpiry        bool                 `mapstructure:"enforce_expiry" yaml:"enforce_expiry"`
-}
+// RCAConfig holds Root Cause Analysis engine configuration
+type RCAConfig struct {
+	// Enabled toggles RCA feature on/off
+	Enabled bool `mapstructure:"enabled" yaml:"enabled"`
 
-// DefaultAPIKeyLimits holds system-wide default limits
-type DefaultAPIKeyLimits struct {
-	MaxKeysPerUser        int `mapstructure:"max_keys_per_user" yaml:"max_keys_per_user"`
-	MaxKeysPerTenantAdmin int `mapstructure:"max_keys_per_tenant_admin" yaml:"max_keys_per_tenant_admin"`
-	MaxKeysPerGlobalAdmin int `mapstructure:"max_keys_per_global_admin" yaml:"max_keys_per_global_admin"`
-}
+	// ExtraMetrics lists additional metric names (PromQL/MetricsQL friendly names) to consider
+	// as impact/cause signals beyond standard OTEL metrics.
+	// Example: ["custom_api_errors", "db_connection_pool_exhaustion"]
+	ExtraMetrics []string `mapstructure:"extra_metrics" yaml:"extra_metrics"`
 
-// TenantAPIKeyLimits holds tenant-specific limits
-type TenantAPIKeyLimits struct {
-	TenantID              string `mapstructure:"tenant_id" yaml:"tenant_id"`
-	MaxKeysPerUser        int    `mapstructure:"max_keys_per_user" yaml:"max_keys_per_user"`
-	MaxKeysPerTenantAdmin int    `mapstructure:"max_keys_per_tenant_admin" yaml:"max_keys_per_tenant_admin"`
-	MaxKeysPerGlobalAdmin int    `mapstructure:"max_keys_per_global_admin" yaml:"max_keys_per_global_admin"`
-}
+	// ExtraLabels lists additional label keys to include as correlation/RCA dimensions
+	// beyond standard OTEL labels (service_name, span_kind, etc.).
+	// Example: ["env", "region", "cluster", "namespace", "pod_name"]
+	ExtraLabels []string `mapstructure:"extra_labels" yaml:"extra_labels"`
 
-// GlobalAPIKeyLimits holds system-wide override limits
-type GlobalAPIKeyLimits struct {
-	MaxKeysPerUser        int `mapstructure:"max_keys_per_user" yaml:"max_keys_per_user"`
-	MaxKeysPerTenantAdmin int `mapstructure:"max_keys_per_tenant_admin" yaml:"max_keys_per_tenant_admin"`
-	MaxKeysPerGlobalAdmin int `mapstructure:"max_keys_per_global_admin" yaml:"max_keys_per_global_admin"`
-	MaxTotalKeys          int `mapstructure:"max_total_keys" yaml:"max_total_keys"`
+	// ExtraLabelWeights maps label keys to their influence weight (0..1).
+	// If a label is not listed here, default weight is 0.1.
+	ExtraLabelWeights map[string]float64 `mapstructure:"extra_label_weights" yaml:"extra_label_weights"`
+
+	// KPIBindings maps KPI names to their underlying metric/label representations.
+	// Allows correlating business-layer KPIs with technical OTEL signals.
+	// Example: {"revenue_impacted": "error_rate:payment_service", "latency_spike": "p99_latency"}
+	KPIBindings map[string]string `mapstructure:"kpi_bindings" yaml:"kpi_bindings"`
+
+	// ScoringBiasKPINegative is the bias to apply when a KPI with NEGATIVE sentiment increases
+	// and correlates with candidate causes (default: 0.05).
+	ScoringBiasKPINegative float64 `mapstructure:"scoring_bias_kpi_negative" yaml:"scoring_bias_kpi_negative"`
+
+	// ScoringBiasKPIPositive is the bias to apply when a KPI with POSITIVE sentiment increases
+	// (typically a decrease in confidence for candidates, so negative; default: -0.05).
+	ScoringBiasKPIPositive float64 `mapstructure:"scoring_bias_kpi_positive" yaml:"scoring_bias_kpi_positive"`
+
+	// AlignmentPenalty is the penalty applied when extra dimensions misalign (0..1).
+	// Default: 0.2 (20% penalty per misaligned dimension).
+	AlignmentPenalty float64 `mapstructure:"alignment_penalty" yaml:"alignment_penalty"`
+
+	// AlignmentBonus is the bonus applied when extra dimensions align (0..1).
+	// Default: 0.1 (10% bonus per aligned dimension).
+	AlignmentBonus float64 `mapstructure:"alignment_bonus" yaml:"alignment_bonus"`
 }

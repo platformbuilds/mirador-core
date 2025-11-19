@@ -2,12 +2,6 @@ package models
 
 import "time"
 
-// DefaultTenantID is the single tenant ID used in single-tenant mode
-const DefaultTenantID = "default"
-
-// UnknownTenantID represents an unknown or unset tenant
-const UnknownTenantID = "unknown"
-
 // RedAnchor represents anomaly score pattern for RCA
 type RedAnchor struct {
 	Service   string    `json:"service"`
@@ -41,31 +35,15 @@ type CorrelationEvent struct {
 	RedAnchors []*RedAnchor    `json:"red_anchors"`
 	Timeline   []TimelineEvent `json:"timeline"`
 	CreatedAt  time.Time       `json:"created_at"`
-	TenantID   string          `json:"tenant_id,omitempty"`
 }
 
 // UserSession for Valkey cluster session management
 type UserSession struct {
 	ID           string                 `json:"id"`
 	UserID       string                 `json:"user_id"`
-	TenantID     string                 `json:"tenant_id"`
-	Roles        []string               `json:"roles"`
 	CreatedAt    time.Time              `json:"created_at"`
 	LastActivity time.Time              `json:"last_activity"`
-	ExpiresAt    time.Time              `json:"expires_at"`
 	Settings     map[string]interface{} `json:"user_settings"` // User-driven settings
-	IPAddress    string                 `json:"ip_address"`
-	UserAgent    string                 `json:"user_agent"`
-
-	// Authentication method tracking
-	AuthMethod   string `json:"auth_method"`          // "password", "api_key", "sso"
-	TOTPVerified bool   `json:"totp_verified"`        // Whether TOTP was verified for this session
-	APIKeyID     string `json:"api_key_id,omitempty"` // If authenticated via API key
-
-	// Security tracking
-	DeviceID      string                 `json:"device_id,omitempty"`
-	LocationInfo  map[string]interface{} `json:"location_info,omitempty"`
-	SecurityFlags []string               `json:"security_flags,omitempty"` // e.g., "high_risk", "new_device"
 }
 
 // TimelineEvent represents events in incident correlation
@@ -80,7 +58,6 @@ type TimelineEvent struct {
 
 // RCA List Correlations models
 type ListCorrelationsRequest struct {
-	TenantID  string     `json:"tenant_id"`
 	Service   string     `json:"service,omitempty"`
 	StartTime *time.Time `json:"start_time,omitempty"`
 	EndTime   *time.Time `json:"end_time,omitempty"`
@@ -95,8 +72,7 @@ type ListCorrelationsResponse struct {
 
 // RCA Patterns models
 type GetPatternsRequest struct {
-	TenantID string `json:"tenant_id"`
-	Service  string `json:"service,omitempty"`
+	Service string `json:"service,omitempty"`
 }
 
 type Pattern struct {
@@ -129,7 +105,6 @@ type GetPatternsResponse struct {
 
 // RCA Feedback models
 type FeedbackRequest struct {
-	TenantID      string `json:"tenant_id"`
 	CorrelationID string `json:"correlation_id"`
 	Correct       bool   `json:"correct"`
 	Notes         string `json:"notes,omitempty"`

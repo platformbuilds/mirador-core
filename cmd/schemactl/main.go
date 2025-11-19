@@ -140,8 +140,8 @@ func uuidV5(ns [16]byte, name string) string {
 }
 
 // makeRBACID generates deterministic IDs for RBAC objects
-func makeRBACID(class, tenantID string, parts ...string) string {
-	allParts := append([]string{class, tenantID}, parts...)
+func makeRBACID(class, parts ...string) string {
+	allParts := append([]string{class}, parts...)
 	return makeID(allParts...)
 }
 
@@ -201,23 +201,23 @@ func dump(ctx context.Context, c *client, outPath string) error {
 	return os.WriteFile(outPath, b, 0644)
 }
 
-func seed(ctx context.Context, c *client, tenantID string) error {
+func seed(ctx context.Context, c *client) error {
 	// Seed default dashboard
-	if err := seedDefaultDashboard(ctx, c, tenantID); err != nil {
+	if err := seedDefaultDashboard(ctx, c); err != nil {
 		return fmt.Errorf("failed to seed default dashboard: %w", err)
 	}
 
 	// Seed sample KPIs
-	if err := seedSampleKPIs(ctx, c, tenantID); err != nil {
+	if err := seedSampleKPIs(ctx, c); err != nil {
 		return fmt.Errorf("failed to seed sample KPIs: %w", err)
 	}
 
-	fmt.Printf("Successfully seeded data for tenant %s\n", tenantID)
+	fmt.Printf("Successfully seeded data\n")
 	return nil
 }
 
-func seedDefaultDashboard(ctx context.Context, c *client, tenantID string) error {
-	dashboardID := makeRBACID("Dashboard", tenantID, "default")
+func seedDefaultDashboard(ctx context.Context, c *client) error {
+	dashboardID := makeRBACID("Dashboard", "default")
 	dashboard := map[string]interface{}{
 		"class": "Dashboard",
 		"id":    dashboardID,
@@ -226,7 +226,6 @@ func seedDefaultDashboard(ctx context.Context, c *client, tenantID string) error
 			"ownerUserId": "system",
 			"visibility":  "org",
 			"isDefault":   true,
-			"tenantId":    tenantID,
 			"createdAt":   time.Now().Format(time.RFC3339),
 			"updatedAt":   time.Now().Format(time.RFC3339),
 		},
@@ -238,7 +237,7 @@ func seedDefaultDashboard(ctx context.Context, c *client, tenantID string) error
 	}
 	err := c.do(ctx, http.MethodGet, "/v1/objects/"+dashboardID, nil, &existing)
 	if err == nil {
-		fmt.Printf("Default dashboard already exists for tenant %s\n", tenantID)
+		fmt.Printf("Default dashboard already exists\n")
 		return nil
 	}
 
@@ -247,15 +246,15 @@ func seedDefaultDashboard(ctx context.Context, c *client, tenantID string) error
 		return fmt.Errorf("failed to create dashboard: %w", err)
 	}
 
-	fmt.Printf("Created default dashboard for tenant %s\n", tenantID)
+	fmt.Printf("Created default dashboard\n")
 	return nil
 }
 
-func seedSampleKPIs(ctx context.Context, c *client, tenantID string) error {
+func seedSampleKPIs(ctx context.Context, c *client) error {
 	sampleKPIs := []map[string]interface{}{
 		{
 			"class": "KPIDefinition",
-			"id":    makeRBACID("KPIDefinition", tenantID, "http_request_duration"),
+			"id":    makeRBACID("KPIDefinition", "http_request_duration"),
 			"properties": map[string]interface{}{
 				"kind":   "tech",
 				"name":   "HTTP Request Duration",
@@ -293,14 +292,13 @@ func seedSampleKPIs(ctx context.Context, c *client, tenantID string) error {
 				},
 				"ownerUserId": "system",
 				"visibility":  "org",
-				"tenantId":    tenantID,
 				"createdAt":   time.Now().Format(time.RFC3339),
 				"updatedAt":   time.Now().Format(time.RFC3339),
 			},
 		},
 		{
 			"class": "KPIDefinition",
-			"id":    makeRBACID("KPIDefinition", tenantID, "error_rate"),
+			"id":    makeRBACID("KPIDefinition", "error_rate"),
 			"properties": map[string]interface{}{
 				"kind":   "tech",
 				"name":   "Error Rate",
@@ -338,7 +336,6 @@ func seedSampleKPIs(ctx context.Context, c *client, tenantID string) error {
 				},
 				"ownerUserId": "system",
 				"visibility":  "org",
-				"tenantId":    tenantID,
 				"createdAt":   time.Now().Format(time.RFC3339),
 				"updatedAt":   time.Now().Format(time.RFC3339),
 			},
@@ -355,7 +352,7 @@ func seedSampleKPIs(ctx context.Context, c *client, tenantID string) error {
 		}
 		err := c.do(ctx, http.MethodGet, "/v1/objects/"+kpiID, nil, &existing)
 		if err == nil {
-			fmt.Printf("KPI %s already exists for tenant %s\n", kpiName, tenantID)
+			fmt.Printf("KPI %s already exists\n", kpiName)
 			continue
 		}
 
@@ -364,7 +361,7 @@ func seedSampleKPIs(ctx context.Context, c *client, tenantID string) error {
 			return fmt.Errorf("failed to create KPI %s: %w", kpiName, err)
 		}
 
-		fmt.Printf("Created KPI %s for tenant %s\n", kpiName, tenantID)
+		fmt.Printf("Created KPI %s\n", kpiName)
 	}
 
 	return nil
@@ -392,11 +389,9 @@ func main() {
 	var out string
 	var in string
 	var mode string
-	var tenantID string
 	flag.StringVar(&mode, "mode", "dump", "mode: dump|restore|seed")
 	flag.StringVar(&out, "out", "schema_dump.json", "output file for dump")
 	flag.StringVar(&in, "in", "schema_dump.json", "input file for restore")
-	flag.StringVar(&tenantID, "tenant", "PLATFORMBUILDS", "tenant ID for seeding")
 	flag.Parse()
 	c := newClient()
 	ctx := context.Background()
@@ -414,7 +409,7 @@ func main() {
 		}
 		fmt.Println("restored from", in)
 	case "seed":
-		if err := seed(ctx, c, tenantID); err != nil {
+		if err := seed(ctx, c); err != nil {
 			fmt.Fprintln(os.Stderr, "seed failed:", err)
 			os.Exit(1)
 		}

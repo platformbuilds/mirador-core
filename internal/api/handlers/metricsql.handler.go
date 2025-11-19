@@ -31,8 +31,8 @@ type MetricsQLHandler struct {
 
 // SchemaProvider is the minimal interface the handler uses to fetch schema definitions.
 type SchemaProvider interface {
-	GetMetric(ctx context.Context, tenantID, metric string) (*repo.MetricDef, error)
-	GetMetricLabelDefs(ctx context.Context, tenantID, metric string, labels []string) (map[string]*repo.MetricLabelDef, error)
+	GetMetric(ctx context.Context, metric string) (*repo.MetricDef, error)
+	GetMetricLabelDefs(ctx context.Context, metric string, labels []string) (map[string]*repo.MetricLabelDef, error)
 }
 
 func NewMetricsQLHandler(metricsService *services.VictoriaMetricsService, cache cache.ValkeyCluster, logger logger.Logger) *MetricsQLHandler {
@@ -52,7 +52,6 @@ func NewMetricsQLHandlerWithSchema(metricsService *services.VictoriaMetricsServi
 
 // GET /api/v1/metrics/names - List metric names (__name__) from VictoriaMetrics
 func (h *MetricsQLHandler) GetMetricNames(c *gin.Context) {
-	tenantID := c.GetString("tenant_id")
 	limitStr := c.Query("limit")
 	limit := 0
 	if limitStr != "" {
@@ -61,16 +60,15 @@ func (h *MetricsQLHandler) GetMetricNames(c *gin.Context) {
 		}
 	}
 	req := &models.LabelValuesRequest{
-		Label:    "__name__",
-		Start:    c.Query("start"),
-		End:      c.Query("end"),
-		Match:    c.QueryArray("match[]"),
-		Limit:    limit,
-		TenantID: tenantID,
+		Label: "__name__",
+		Start: c.Query("start"),
+		End:   c.Query("end"),
+		Match: c.QueryArray("match[]"),
+		Limit: limit,
 	}
 	names, err := h.metricsService.GetLabelValues(c.Request.Context(), req)
 	if err != nil {
-		h.logger.Error("Failed to get metric names", "tenant", tenantID, "error", err)
+		h.logger.Error("Failed to get metric names", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": "Failed to retrieve metric names"})
 		return
 	}
@@ -83,11 +81,10 @@ func (h *MetricsQLHandler) GetMetricNames(c *gin.Context) {
 // POST /api/v1/query - Execute instant MetricsQL query
 func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 	start := time.Now()
-	tenantID := c.GetString("tenant_id")
 
 	var request models.MetricsQLQueryRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		metrics.HTTPRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), "400", tenantID).Inc()
+		metrics.HTTPRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), "400").Inc()
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  "error",
 			"error":   "Invalid query request format",
@@ -98,7 +95,7 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 
 	// Validate MetricsQL query syntax
 	if err := h.validator.ValidateMetricsQL(request.Query); err != nil {
-		metrics.HTTPRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), "400", tenantID).Inc()
+		metrics.HTTPRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), "400").Inc()
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status": "error",
 			"error":  fmt.Sprintf("Invalid MetricsQL query: %s", err.Error()),
@@ -126,7 +123,7 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 
 	// Check Valkey cluster cache for query results
 	keySalt := fmt.Sprintf("defs=%t|labels=%v", includeDefs, labelKeys)
-	queryHash := generateQueryHash(request.Query+"|"+keySalt, request.Time, tenantID)
+	queryHash := generateQueryHash(request.Query+"|"+keySalt, request.Time)
 	if cached, err := h.cache.GetCachedQueryResult(c.Request.Context(), queryHash); err == nil {
 		var cachedResult models.MetricsQLQueryResponse
 		if json.Unmarshal(cached, &cachedResult) == nil {
@@ -148,16 +145,14 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 	metrics.CacheRequestsTotal.WithLabelValues("get", "miss").Inc()
 
 	// Execute query via VictoriaMetrics
-	request.TenantID = tenantID
 	result, err := h.metricsService.ExecuteQuery(c.Request.Context(), &request)
 	if err != nil {
 		executionTime := time.Since(start)
-		metrics.HTTPRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), "500", tenantID).Inc()
-		metrics.QueryExecutionDuration.WithLabelValues("metricsql", tenantID).Observe(executionTime.Seconds())
+		metrics.HTTPRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), "500").Inc()
+		metrics.QueryExecutionDuration.WithLabelValues("metricsql").Observe(executionTime.Seconds())
 
 		h.logger.Error("MetricsQL query execution failed",
 			"query", request.Query,
-			"tenant", tenantID,
 			"error", err,
 			"executionTime", executionTime,
 		)
@@ -175,7 +170,7 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 	if result.Status == "success" {
 		var defs map[string]interface{}
 		if includeDefs {
-			defs = h.buildDefinitionsFiltered(c.Request.Context(), tenantID, result.Data, labelKeys)
+			defs = h.buildDefinitionsFiltered(c.Request.Context(), result.Data, labelKeys)
 		}
 		cacheResponse := models.MetricsQLQueryResponse{
 			Data:          result.Data,
@@ -188,9 +183,9 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 	}
 
 	// Record metrics
-	metrics.HTTPRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), "200", tenantID).Inc()
-	metrics.HTTPRequestDuration.WithLabelValues(c.Request.Method, c.FullPath(), tenantID).Observe(executionTime.Seconds())
-	metrics.QueryExecutionDuration.WithLabelValues("metricsql", tenantID).Observe(executionTime.Seconds())
+	metrics.HTTPRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), "200").Inc()
+	metrics.HTTPRequestDuration.WithLabelValues(c.Request.Method, c.FullPath()).Observe(executionTime.Seconds())
+	metrics.QueryExecutionDuration.WithLabelValues("metricsql").Observe(executionTime.Seconds())
 
 	// definitions_minimal: only include metric-level defs, skip per-metric label defs
 	minimal := false
@@ -205,9 +200,9 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 	var defs map[string]interface{}
 	if includeDefs {
 		if minimal {
-			defs = h.buildMetricOnlyDefinitions(c.Request.Context(), tenantID, result.Data)
+			defs = h.buildMetricOnlyDefinitions(c.Request.Context(), result.Data)
 		} else {
-			defs = h.buildDefinitionsFiltered(c.Request.Context(), tenantID, result.Data, labelKeys)
+			defs = h.buildDefinitionsFiltered(c.Request.Context(), result.Data, labelKeys)
 		}
 	}
 	c.Header("X-Cache", "MISS")
@@ -227,7 +222,6 @@ func (h *MetricsQLHandler) ExecuteQuery(c *gin.Context) {
 // POST /api/v1/query_range - Execute range MetricsQL query
 func (h *MetricsQLHandler) ExecuteRangeQuery(c *gin.Context) {
 	start := time.Now()
-	tenantID := c.GetString("tenant_id")
 
 	var request models.MetricsQLRangeQueryRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -248,7 +242,6 @@ func (h *MetricsQLHandler) ExecuteRangeQuery(c *gin.Context) {
 	}
 
 	// Execute range query
-	request.TenantID = tenantID
 	result, err := h.metricsService.ExecuteRangeQuery(c.Request.Context(), &request)
 	if err != nil {
 		executionTime := time.Since(start)
@@ -267,7 +260,7 @@ func (h *MetricsQLHandler) ExecuteRangeQuery(c *gin.Context) {
 	}
 
 	executionTime := time.Since(start)
-	metrics.QueryExecutionDuration.WithLabelValues("metricsql_range", tenantID).Observe(executionTime.Seconds())
+	metrics.QueryExecutionDuration.WithLabelValues("metricsql_range").Observe(executionTime.Seconds())
 
 	includeDefs := true
 	if request.IncludeDefinitions != nil {
@@ -297,9 +290,9 @@ func (h *MetricsQLHandler) ExecuteRangeQuery(c *gin.Context) {
 	var defs map[string]interface{}
 	if includeDefs {
 		if minimal {
-			defs = h.buildMetricOnlyDefinitions(c.Request.Context(), tenantID, result.Data)
+			defs = h.buildMetricOnlyDefinitions(c.Request.Context(), result.Data)
 		} else {
-			defs = h.buildDefinitionsFiltered(c.Request.Context(), tenantID, result.Data, labelKeys)
+			defs = h.buildDefinitionsFiltered(c.Request.Context(), result.Data, labelKeys)
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -316,7 +309,7 @@ func (h *MetricsQLHandler) ExecuteRangeQuery(c *gin.Context) {
 }
 
 // buildDefinitionsFiltered inspects VM data to extract metric names and label keys, optionally filters label keys, and returns definitions.
-func (h *MetricsQLHandler) buildDefinitionsFiltered(ctx context.Context, tenantID string, data interface{}, allowedLabelKeys []string) map[string]interface{} {
+func (h *MetricsQLHandler) buildDefinitionsFiltered(ctx context.Context, data interface{}, allowedLabelKeys []string) map[string]interface{} {
 	if h.schemaRepo == nil || data == nil {
 		return nil
 	}
@@ -358,7 +351,7 @@ func (h *MetricsQLHandler) buildDefinitionsFiltered(ctx context.Context, tenantI
 	// metric defs
 	metricDefs := map[string]interface{}{}
 	for name := range metricsSet {
-		if md, err := h.schemaRepo.GetMetric(ctx, tenantID, name); err == nil && md != nil {
+		if md, err := h.schemaRepo.GetMetric(ctx, name); err == nil && md != nil {
 			metricDefs[name] = md
 		} else {
 			metricDefs[name] = map[string]string{"definition": "No definition provided. Use /api/v1/schema/metrics to add one."}
@@ -375,7 +368,7 @@ func (h *MetricsQLHandler) buildDefinitionsFiltered(ctx context.Context, tenantI
 		for l := range lblset {
 			names = append(names, l)
 		}
-		mdefs, err := h.schemaRepo.GetMetricLabelDefs(ctx, tenantID, metricName, names)
+		mdefs, err := h.schemaRepo.GetMetricLabelDefs(ctx, metricName, names)
 		if err != nil {
 			continue
 		}
@@ -396,7 +389,7 @@ func (h *MetricsQLHandler) buildDefinitionsFiltered(ctx context.Context, tenantI
 }
 
 // buildMetricOnlyDefinitions extracts metric names and returns only metric-level definitions.
-func (h *MetricsQLHandler) buildMetricOnlyDefinitions(ctx context.Context, tenantID string, data interface{}) map[string]interface{} {
+func (h *MetricsQLHandler) buildMetricOnlyDefinitions(ctx context.Context, data interface{}) map[string]interface{} {
 	if h.schemaRepo == nil || data == nil {
 		return nil
 	}
@@ -416,7 +409,7 @@ func (h *MetricsQLHandler) buildMetricOnlyDefinitions(ctx context.Context, tenan
 	}
 	metricDefs := map[string]interface{}{}
 	for name := range metricsSet {
-		if md, err := h.schemaRepo.GetMetric(ctx, tenantID, name); err == nil && md != nil {
+		if md, err := h.schemaRepo.GetMetric(ctx, name); err == nil && md != nil {
 			metricDefs[name] = md
 		} else {
 			metricDefs[name] = map[string]string{"definition": "No definition provided. Use /api/v1/schema/metrics to add one."}
@@ -427,14 +420,13 @@ func (h *MetricsQLHandler) buildMetricOnlyDefinitions(ctx context.Context, tenan
 	}
 }
 
-func generateQueryHash(query, timeParam, tenantID string) string {
-	data := fmt.Sprintf("%s:%s:%s", query, timeParam, tenantID)
+func generateQueryHash(query, timeParam) string {
+	data := fmt.Sprintf("%s:%s", query, timeParam)
 	hash := sha256.Sum256([]byte(data))
 	return fmt.Sprintf("%x", hash)
 }
 
 func (h *MetricsQLHandler) GetSeries(c *gin.Context) {
-	tenantID := c.GetString("tenant_id")
 
 	// Parse query parameters
 	match := c.QueryArray("match[]")
@@ -451,15 +443,14 @@ func (h *MetricsQLHandler) GetSeries(c *gin.Context) {
 
 	// Create series request
 	request := &models.SeriesRequest{
-		Match:    match,
-		Start:    start,
-		End:      end,
-		TenantID: tenantID,
+		Match: match,
+		Start: start,
+		End:   end,
 	}
 
 	series, err := h.metricsService.GetSeries(c.Request.Context(), request)
 	if err != nil {
-		h.logger.Error("Failed to get series", "tenant", tenantID, "error", err)
+		h.logger.Error("Failed to get series", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
 			"error":  "Failed to retrieve series",
@@ -474,7 +465,6 @@ func (h *MetricsQLHandler) GetSeries(c *gin.Context) {
 }
 
 func (h *MetricsQLHandler) GetLabels(c *gin.Context) {
-	tenantID := c.GetString("tenant_id")
 
 	// Parse JSON payload
 	var requestBody struct {
@@ -495,15 +485,14 @@ func (h *MetricsQLHandler) GetLabels(c *gin.Context) {
 	match := []string{fmt.Sprintf("{__name__=\"%s\"}", requestBody.Metric)}
 
 	request := &models.LabelsRequest{
-		Start:    requestBody.Start,
-		End:      requestBody.End,
-		Match:    match,
-		TenantID: tenantID,
+		Start: requestBody.Start,
+		End:   requestBody.End,
+		Match: match,
 	}
 
 	labels, err := h.metricsService.GetLabels(c.Request.Context(), request)
 	if err != nil {
-		h.logger.Error("Failed to get labels", "tenant", tenantID, "metric", requestBody.Metric, "error", err)
+		h.logger.Error("Failed to get labels", "metric", requestBody.Metric, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
 			"error":  "Failed to retrieve labels",
@@ -516,7 +505,6 @@ func (h *MetricsQLHandler) GetLabels(c *gin.Context) {
 
 // GET /api/v1/label/:name/values - Get values for a specific label
 func (h *MetricsQLHandler) GetLabelValues(c *gin.Context) {
-	tenantID := c.GetString("tenant_id")
 	labelName := c.Param("name")
 
 	if labelName == "" {
@@ -540,19 +528,17 @@ func (h *MetricsQLHandler) GetLabelValues(c *gin.Context) {
 	}
 
 	request := &models.LabelValuesRequest{
-		Label:    labelName,
-		Start:    start,
-		End:      end,
-		Match:    match,
-		Limit:    limit,
-		TenantID: tenantID,
+		Label: labelName,
+		Start: start,
+		End:   end,
+		Match: match,
+		Limit: limit,
 	}
 
 	values, err := h.metricsService.GetLabelValues(c.Request.Context(), request)
 	if err != nil {
 		h.logger.Error("Failed to get label values",
 			"label", labelName,
-			"tenant", tenantID,
 			"error", err,
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{

@@ -1,6 +1,7 @@
 package rca
 
 import (
+	"fmt"
 	"math"
 	"sort"
 )
@@ -284,4 +285,91 @@ func RankCandidateCauses(groups []*AnomalyGroup, incident *IncidentContext, cfg 
 	}
 
 	return candidates
+}
+
+// ApplyKPISentimentBias adjusts candidate cause scores based on KPI metadata and sentiment.
+// This implements lightweight, deterministic scoring adjustments that respect KPI business context
+// without breaking OTEL-only scenarios.
+//
+// Behavior:
+//   - If incident has KPI metadata and KPI.Sentiment == "NEGATIVE" and KPI value increased:
+//     Add small positive bias to candidates (e.g., +0.05)
+//   - If KPI.Sentiment == "POSITIVE" and KPI value increased:
+//     Add small negative bias (e.g., -0.05, reducing candidate scores)
+//   - NEUTRAL sentiment: minimal effect
+//
+// Bias magnitude and application strategy are controlled by config (default 0.05).
+func ApplyKPISentimentBias(
+	candidates []*CandidateCause,
+	incident *IncidentContext,
+	biasMagnitude float64,
+	diagnostics *RCADiagnostics,
+) {
+	if len(candidates) == 0 || incident == nil {
+		return
+	}
+
+	// Check if this incident has KPI metadata
+	if incident.KPIMetadata == nil {
+		return // No KPI context, skip bias application
+	}
+
+	kpiMeta := incident.KPIMetadata
+	if !kpiMeta.ImpactIsKPI {
+		return // Impact is not KPI-based, skip
+	}
+
+	// Determine bias direction based on sentiment
+	var bias float64
+	sentiment := kpiMeta.KPISentiment
+
+	switch sentiment {
+	case "NEGATIVE":
+		// Increase in NEGATIVE KPI is bad; increase suspicion of technical causes
+		bias = biasMagnitude
+		if diagnostics != nil {
+			diagnostics.AddReducedAccuracyReason(
+				fmt.Sprintf("KPI '%s' (NEGATIVE sentiment) applied +%.2f bias to candidate scores", kpiMeta.KPIName, bias))
+		}
+
+	case "POSITIVE":
+		// Increase in POSITIVE KPI is good; decrease suspicion where appropriate
+		bias = -biasMagnitude
+		if diagnostics != nil {
+			diagnostics.AddReducedAccuracyReason(
+				fmt.Sprintf("KPI '%s' (POSITIVE sentiment) applied %.2f bias to candidate scores", kpiMeta.KPIName, bias))
+		}
+
+	case "NEUTRAL":
+		// Neutral sentiment: no or minimal effect
+		bias = 0.0
+
+	default:
+		// Unknown sentiment: no effect
+		return
+	}
+
+	if bias == 0.0 {
+		return // No bias to apply
+	}
+
+	// Apply bias to each candidate, clamping to [0, 1]
+	for _, candidate := range candidates {
+		newScore := candidate.Score + bias
+		if newScore > 1.0 {
+			newScore = 1.0
+		}
+		if newScore < 0.0 {
+			newScore = 0.0
+		}
+		candidate.Score = newScore
+	}
+
+	// Re-rank candidates by updated score
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].Score > candidates[j].Score
+	})
+	for i := range candidates {
+		candidates[i].Rank = i + 1
+	}
 }

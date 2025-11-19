@@ -13,7 +13,7 @@ const (
 	DefaultShutdownTimeout = 30000
 
 	// Rate limiting defaults
-	DefaultRateLimit       = 1000 // requests per minute per tenant
+	DefaultRateLimit       = 1000 // requests per minute
 	DefaultBurstLimit      = 100  // burst allowance
 	DefaultRateLimitWindow = 60   // seconds
 

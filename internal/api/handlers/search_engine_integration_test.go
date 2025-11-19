@@ -48,7 +48,7 @@ func TestSearchEngineIntegration(t *testing.T) {
 	t.Run("LogsQLHandler_LuceneEngine", func(t *testing.T) {
 		lh := NewLogsQLHandler(logsSvc, cch, log, router, testConfig)
 		r := gin.New()
-		r.Use(func(c *gin.Context) { c.Set("tenant_id", "test"); c.Next() })
+		r.Use(func(c *gin.Context) { c.Set("default", "test"); c.Next() })
 		r.POST("/logs/query", lh.ExecuteQuery)
 
 		reqBody := models.LogsQLQueryRequest{
@@ -78,7 +78,7 @@ func TestSearchEngineIntegration(t *testing.T) {
 	t.Run("LogsQLHandler_BleveEngine", func(t *testing.T) {
 		lh := NewLogsQLHandler(logsSvc, cch, log, router, testConfig)
 		r := gin.New()
-		r.Use(func(c *gin.Context) { c.Set("tenant_id", "test"); c.Next() })
+		r.Use(func(c *gin.Context) { c.Set("default", "test"); c.Next() })
 		r.POST("/logs/query", lh.ExecuteQuery)
 
 		reqBody := models.LogsQLQueryRequest{
@@ -107,7 +107,7 @@ func TestSearchEngineIntegration(t *testing.T) {
 	t.Run("LogsQLHandler_DefaultEngine", func(t *testing.T) {
 		lh := NewLogsQLHandler(logsSvc, cch, log, router, testConfig)
 		r := gin.New()
-		r.Use(func(c *gin.Context) { c.Set("tenant_id", "test"); c.Next() })
+		r.Use(func(c *gin.Context) { c.Set("default", "test"); c.Next() })
 		r.POST("/logs/query", lh.ExecuteQuery)
 
 		reqBody := models.LogsQLQueryRequest{
@@ -136,7 +136,7 @@ func TestSearchEngineIntegration(t *testing.T) {
 	t.Run("LogsQLHandler_InvalidEngine", func(t *testing.T) {
 		lh := NewLogsQLHandler(logsSvc, cch, log, router, testConfig)
 		r := gin.New()
-		r.Use(func(c *gin.Context) { c.Set("tenant_id", "test"); c.Next() })
+		r.Use(func(c *gin.Context) { c.Set("default", "test"); c.Next() })
 		r.POST("/logs/query", lh.ExecuteQuery)
 
 		reqBody := models.LogsQLQueryRequest{
@@ -168,7 +168,7 @@ func TestSearchEngineIntegration(t *testing.T) {
 	t.Run("TracesHandler_LuceneEngine", func(t *testing.T) {
 		th := NewTracesHandler(tracesSvc, cch, log, router, testConfig)
 		r := gin.New()
-		r.Use(func(c *gin.Context) { c.Set("tenant_id", "test"); c.Next() })
+		r.Use(func(c *gin.Context) { c.Set("default", "test"); c.Next() })
 		r.POST("/traces/search", th.SearchTraces)
 
 		reqBody := models.TraceSearchRequest{
@@ -197,7 +197,7 @@ func TestSearchEngineIntegration(t *testing.T) {
 	t.Run("TracesHandler_BleveEngine", func(t *testing.T) {
 		th := NewTracesHandler(tracesSvc, cch, log, router, testConfig)
 		r := gin.New()
-		r.Use(func(c *gin.Context) { c.Set("tenant_id", "test"); c.Next() })
+		r.Use(func(c *gin.Context) { c.Set("default", "test"); c.Next() })
 		r.POST("/traces/search", th.SearchTraces)
 
 		reqBody := models.TraceSearchRequest{
@@ -226,7 +226,7 @@ func TestSearchEngineIntegration(t *testing.T) {
 	t.Run("TracesHandler_InvalidEngine", func(t *testing.T) {
 		th := NewTracesHandler(tracesSvc, cch, log, router, testConfig)
 		r := gin.New()
-		r.Use(func(c *gin.Context) { c.Set("tenant_id", "test"); c.Next() })
+		r.Use(func(c *gin.Context) { c.Set("default", "test"); c.Next() })
 		r.POST("/traces/search", th.SearchTraces)
 
 		reqBody := models.TraceSearchRequest{

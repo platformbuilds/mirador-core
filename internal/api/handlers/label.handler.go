@@ -49,7 +49,6 @@ func (h *LabelHandler) CreateOrUpdateLabel(c *gin.Context) {
 	schemaDef := &models.SchemaDefinition{
 		Name:      req.Name,
 		Type:      models.SchemaTypeLabel,
-		TenantID:  req.TenantID,
 		Author:    req.Author,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -61,10 +60,6 @@ func (h *LabelHandler) CreateOrUpdateLabel(c *gin.Context) {
 				Description: req.Description,
 			},
 		},
-	}
-
-	if schemaDef.TenantID == "" {
-		schemaDef.TenantID = c.GetString("tenant_id")
 	}
 
 	if schemaDef.ID == "" {
@@ -90,10 +85,8 @@ func (h *LabelHandler) GetLabel(c *gin.Context) {
 		return
 	}
 
-	tenantID := c.GetString("tenant_id")
-
 	// Use unified KPI-based retrieval
-	schemaDef, err := h.repo.GetSchemaAsKPI(c.Request.Context(), tenantID, string(models.SchemaTypeLabel), name)
+	schemaDef, err := h.repo.GetSchemaAsKPI(c.Request.Context(), string(models.SchemaTypeLabel), name)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "label not found"})
@@ -106,7 +99,6 @@ func (h *LabelHandler) GetLabel(c *gin.Context) {
 
 	// Convert SchemaDefinition back to Label for backward compatibility
 	label := &models.Label{
-		TenantID:  schemaDef.TenantID,
 		Name:      schemaDef.Name,
 		Category:  schemaDef.Category,
 		Sentiment: schemaDef.Sentiment,
@@ -132,10 +124,6 @@ func (h *LabelHandler) ListLabels(c *gin.Context) {
 		return
 	}
 
-	if req.TenantID == "" {
-		req.TenantID = c.GetString("tenant_id")
-	}
-
 	// Set defaults
 	if req.Limit <= 0 {
 		req.Limit = 10
@@ -144,8 +132,25 @@ func (h *LabelHandler) ListLabels(c *gin.Context) {
 		req.Offset = 0
 	}
 
-	// Use unified KPI-based listing
-	schemaDefs, total, err := h.repo.ListSchemasAsKPIs(c.Request.Context(), req.TenantID, string(models.SchemaTypeLabel), req.Limit, req.Offset)
+	// Use KPIRepo to list KPI-backed schema types (labels are stored as KPIs)
+	var schemaDefs []*models.SchemaDefinition
+	var total int
+	var err error
+	if kpirepo, ok := h.repo.(repo.KPIRepo); ok {
+		kpis, totalKpis, lerr := kpirepo.ListKPIs(c.Request.Context(), []string{string(models.SchemaTypeLabel)}, req.Limit, req.Offset)
+		if lerr != nil {
+			err = lerr
+		} else {
+			total = totalKpis
+			schemaDefs = make([]*models.SchemaDefinition, 0, len(kpis))
+			for _, k := range kpis {
+				schemaDefs = append(schemaDefs, kpiToSchemaDefinition(k, models.SchemaTypeLabel))
+			}
+		}
+	} else {
+		// Fallback to older method if underlying repo has not been migrated
+		schemaDefs, total, err = h.repo.ListSchemasAsKPIs(c.Request.Context(), string(models.SchemaTypeLabel), req.Limit, req.Offset)
+	}
 	if err != nil {
 		h.logger.Error("label list failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "list failed"})
@@ -156,7 +161,6 @@ func (h *LabelHandler) ListLabels(c *gin.Context) {
 	labels := make([]*models.Label, 0, len(schemaDefs))
 	for _, schemaDef := range schemaDefs {
 		label := &models.Label{
-			TenantID:  schemaDef.TenantID,
 			Name:      schemaDef.Name,
 			Category:  schemaDef.Category,
 			Sentiment: schemaDef.Sentiment,
@@ -194,16 +198,14 @@ func (h *LabelHandler) DeleteLabel(c *gin.Context) {
 		return
 	}
 
-	tenantID := c.GetString("tenant_id")
-
 	q := strings.ToLower(strings.TrimSpace(c.Query("confirm")))
 	if q != "1" && q != "true" && q != "yes" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "confirmation required: add ?confirm=1"})
 		return
 	}
 
-	// Use unified KPI-based deletion
-	err := h.repo.DeleteSchemaAsKPI(c.Request.Context(), tenantID, string(models.SchemaTypeLabel), name)
+	// Delete the label
+	err := h.repo.DeleteLabel(c.Request.Context(), name)
 	if err != nil {
 		h.logger.Error("label delete failed", "error", err, "name", name)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete label"})

@@ -14,6 +14,7 @@ correlation-queries-guide
 monitoring-observability
 deployment
 configuration
+testing_e2e
 ```
 
 ## Overview

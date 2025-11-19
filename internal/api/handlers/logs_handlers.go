@@ -102,7 +102,6 @@ func (h *LogsHandler) Histogram(c *gin.Context) {
 		Query:    req.Query,
 		Start:    start,
 		End:      end,
-		TenantID: req.TenantID,
 	}, func(row map[string]any) error {
 		n := atomic.AddInt64(&rowsSeen, 1)
 		if sampleN > 1 && (n%int64(sampleN)) != 0 {
@@ -200,7 +199,6 @@ func (h *LogsHandler) Facets(c *gin.Context) {
 		Query:    req.Query,
 		Start:    start,
 		End:      end,
-		TenantID: req.TenantID,
 	}, func(row map[string]any) error {
 		n := atomic.AddInt64(&rowsSeen, 1)
 		if sampleN > 1 && (n%int64(sampleN)) != 0 {
@@ -308,7 +306,6 @@ func (h *LogsHandler) Search(c *gin.Context) {
 		Query:    req.Query,
 		Start:    start,
 		End:      end,
-		TenantID: req.TenantID,
 	}, func(row map[string]any) error {
 		ts := extractTS(row)
 		if skipUntilCursor(ts, &offsetInMS) {

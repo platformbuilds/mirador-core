@@ -707,11 +707,10 @@ func (u *UnifiedQueryEngineImpl) executeMetricsQuery(ctx context.Context, query 
 	if query.StartTime != nil && query.EndTime != nil {
 		// Range query
 		rangeQuery := &models.MetricsQLRangeQueryRequest{
-			Query:    query.Query,
-			Start:    query.StartTime.Format(time.RFC3339),
-			End:      query.EndTime.Format(time.RFC3339),
-			Step:     "15s", // default step
-			TenantID: query.TenantID,
+			Query: query.Query,
+			Start: query.StartTime.Format(time.RFC3339),
+			End:   query.EndTime.Format(time.RFC3339),
+			Step:  "15s", // default step
 		}
 		result, err := u.metricsService.ExecuteRangeQuery(ctx, rangeQuery)
 		if err != nil {
@@ -740,9 +739,8 @@ func (u *UnifiedQueryEngineImpl) executeMetricsQuery(ctx context.Context, query 
 
 	// Instant query
 	metricsQuery := &models.MetricsQLQueryRequest{
-		Query:    query.Query,
-		TenantID: query.TenantID,
-		Timeout:  query.Timeout,
+		Query:   query.Query,
+		Timeout: query.Timeout,
 	}
 	result, err := u.metricsService.ExecuteQuery(ctx, metricsQuery)
 	if err != nil {
@@ -791,11 +789,10 @@ func (u *UnifiedQueryEngineImpl) executeLogsQuery(ctx context.Context, query *mo
 	}
 
 	logsQuery := &models.LogsQLQueryRequest{
-		Query:    query.Query,
-		Start:    startTime,
-		End:      endTime,
-		Limit:    1000, // default limit
-		TenantID: query.TenantID,
+		Query: query.Query,
+		Start: startTime,
+		End:   endTime,
+		Limit: 1000, // default limit
 	}
 
 	result, err := u.logsService.ExecuteQuery(ctx, logsQuery)
@@ -852,9 +849,8 @@ func (u *UnifiedQueryEngineImpl) shouldUseBleveForLogs(queryStr string) bool {
 func (u *UnifiedQueryEngineImpl) executeLogsSearchWithBleve(ctx context.Context, query *models.UnifiedQuery) (*models.UnifiedResult, error) {
 	// Convert to Bleve search request
 	logsSearchReq := &models.LogsSearchRequest{
-		Query:    query.Query,
-		TenantID: query.TenantID,
-		Limit:    1000, // default limit
+		Query: query.Query,
+		Limit: 1000, // default limit
 	}
 
 	if query.StartTime != nil {
@@ -929,12 +925,9 @@ func (u *UnifiedQueryEngineImpl) executeTracesQuery(ctx context.Context, query *
 // parseTracesQuery parses a unified query into a TraceSearchRequest
 func (u *UnifiedQueryEngineImpl) parseTracesQuery(query *models.UnifiedQuery) *models.TraceSearchRequest {
 	searchReq := &models.TraceSearchRequest{
-		Query:    query.Query,
-		TenantID: query.TenantID,
-		Limit:    100, // default limit
-	}
-
-	// Set time range
+		Query: query.Query,
+		Limit: 100, // default limit
+	} // Set time range
 	if query.StartTime != nil {
 		searchReq.Start = models.FlexibleTime{Time: *query.StartTime}
 	}
@@ -986,7 +979,7 @@ func (u *UnifiedQueryEngineImpl) executeTracesQueryFallback(ctx context.Context,
 		}
 	}
 
-	operations, err := u.tracesService.GetOperations(ctx, serviceName, query.TenantID)
+	operations, err := u.tracesService.GetOperations(ctx, serviceName)
 	if err != nil {
 		return nil, fmt.Errorf("traces fallback query failed: %w", err)
 	}
@@ -1313,7 +1306,6 @@ func (u *UnifiedQueryEngineImpl) parseSubQueries(query *models.UnifiedQuery) []*
 		subQuery := &models.UnifiedQuery{
 			ID:           fmt.Sprintf("%s_sub_%d", query.ID, i),
 			Query:        part,
-			TenantID:     query.TenantID,
 			StartTime:    query.StartTime,
 			EndTime:      query.EndTime,
 			Timeout:      query.Timeout,
@@ -1359,10 +1351,9 @@ func (u *UnifiedQueryEngineImpl) getDataSourcesFromEngines(engineResults map[mod
 // generateCacheKey generates a cache key for the query
 func (u *UnifiedQueryEngineImpl) generateCacheKey(query *models.UnifiedQuery) string {
 	// Create a deterministic key based on query content
-	keyData := fmt.Sprintf("%s:%s:%s:%s",
+	keyData := fmt.Sprintf("%s:%s:%s",
 		query.Type,
 		query.Query,
-		query.TenantID,
 		query.Parameters,
 	)
 
@@ -1442,9 +1433,6 @@ func (u *UnifiedQueryEngineImpl) generateCachePatternsForResult(result *models.U
 	if result.Type == models.QueryTypeCorrelation || result.Correlations != nil {
 		patterns = append(patterns, "query_cache:correlation:*")
 	}
-
-	// Add tenant-specific patterns if tenant info is available
-	// Note: We don't have tenant info in the result, but this could be extended
 
 	return patterns
 }

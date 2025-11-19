@@ -29,7 +29,7 @@ import (
 
 // @contact.name Platform Builds Team
 // @contact.url https://github.com/platformbuilds/mirador-core
-// @contact.email support@platformbuilds.com
+// @contact.email support@platformbuilds.org
 
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html

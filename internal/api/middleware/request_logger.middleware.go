@@ -14,31 +14,17 @@ import (
 
 // Unknown identifiers for logging when context is not available
 const (
-	UnknownUserID    = "unknown"
 	UnknownSessionID = "unknown"
-	UnknownTenantID  = "unknown"
 )
 
 // RequestLogger logs HTTP requests for MIRADOR-CORE observability
 func RequestLogger(log logger.Logger) gin.HandlerFunc {
 	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		// Extract additional context
-		tenantID := UnknownTenantID
-		userID := UnknownUserID
 		sessionID := UnknownSessionID
 
 		// Try to get context from Gin context if available
 		if param.Keys != nil {
-			if tid, exists := param.Keys["tenant_id"]; exists {
-				if tidStr, ok := tid.(string); ok {
-					tenantID = tidStr
-				}
-			}
-			if uid, exists := param.Keys["user_id"]; exists {
-				if uidStr, ok := uid.(string); ok {
-					userID = uidStr
-				}
-			}
 			if sid, exists := param.Keys["session_id"]; exists {
 				if sidStr, ok := sid.(string); ok {
 					sessionID = sidStr
@@ -63,8 +49,6 @@ func RequestLogger(log logger.Logger) gin.HandlerFunc {
 			"latency", param.Latency,
 			"client_ip", param.ClientIP,
 			"user_agent", param.Request.UserAgent(),
-			"tenant_id", tenantID,
-			"user_id", userID,
 			"session_id", sessionID,
 			"request_id", param.Request.Header.Get("X-Request-ID"),
 			"content_length", param.Request.ContentLength,
@@ -112,17 +96,6 @@ func RequestLoggerWithBody(log logger.Logger) gin.HandlerFunc {
 		// Calculate latency
 		latency := time.Since(start)
 
-		// Extract context information
-		tenantID := c.GetString("tenant_id")
-		if tenantID == "" {
-			tenantID = UnknownTenantID
-		}
-
-		userID := c.GetString("user_id")
-		if userID == "" {
-			userID = UnknownUserID
-		}
-
 		sessionID := c.GetString("session_id")
 		if sessionID == "" {
 			sessionID = UnknownSessionID
@@ -137,8 +110,6 @@ func RequestLoggerWithBody(log logger.Logger) gin.HandlerFunc {
 			"latency", latency,
 			"client_ip", c.ClientIP(),
 			"user_agent", c.Request.UserAgent(),
-			"tenant_id", tenantID,
-			"user_id", userID,
 			"session_id", sessionID,
 			"request_id", c.Request.Header.Get("X-Request-ID"),
 			"content_length", c.Request.ContentLength,
@@ -183,8 +154,8 @@ func (w responseBodyWriter) Write(b []byte) (int, error) {
 // isSensitiveEndpoint checks if an endpoint contains sensitive data that shouldn't be logged
 func isSensitiveEndpoint(path string) bool {
 	sensitiveEndpoints := []string{
-		"/api/v1/auth/login",
-		"/api/v1/auth/token",
+		// Authentication endpoints removed from MIRADOR-CORE core;
+		// keep only server-side secret endpoints as sensitive.
 		"/api/v1/users/password",
 		"/api/v1/config/secrets",
 	}

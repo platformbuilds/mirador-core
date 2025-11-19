@@ -27,6 +27,8 @@ type CacheMemoryInfo struct {
 	MissRate            float64 `json:"miss_rate"`
 }
 
+const activeSessionsKey = "active_sessions"
+
 type ValkeyCluster interface {
 	// General caching
 	Get(ctx context.Context, key string) ([]byte, error)
@@ -41,7 +43,7 @@ type ValkeyCluster interface {
 	GetSession(ctx context.Context, sessionID string) (*models.UserSession, error)
 	SetSession(ctx context.Context, session *models.UserSession) error
 	InvalidateSession(ctx context.Context, sessionID string) error
-	GetActiveSessions(ctx context.Context, tenantID string) ([]*models.UserSession, error)
+	GetActiveSessions(ctx context.Context) ([]*models.UserSession, error)
 
 	// Query result caching for faster fetch
 	CacheQueryResult(ctx context.Context, queryHash string, result interface{}, ttl time.Duration) error
@@ -167,9 +169,9 @@ func (v *valkeyClusterImpl) SetSession(ctx context.Context, session *models.User
 		return err
 	}
 
-	// Add to tenant active sessions set
-	tenantKey := fmt.Sprintf("tenant_sessions:%s", session.TenantID)
-	err := v.client.SAdd(ctx, tenantKey, session.ID).Err()
+	// Add to active sessions set
+	activeKey := fmt.Sprintf("active_sessions:%s")
+	err := v.client.SAdd(ctx, activeKey, session.ID).Err()
 	if err != nil {
 		monitoring.RecordCacheOperation("set_session", "error")
 		return err
@@ -196,13 +198,11 @@ func (v *valkeyClusterImpl) GetSession(ctx context.Context, sessionID string) (*
 }
 
 func (v *valkeyClusterImpl) InvalidateSession(ctx context.Context, sessionID string) error {
-	// Best-effort remove from tenant set as well
-	sess, err := v.GetSession(ctx, sessionID)
-	if err == nil && sess != nil {
-		tenantKey := fmt.Sprintf("tenant_sessions:%s", sess.TenantID)
-		_ = v.client.SRem(ctx, tenantKey, sessionID).Err()
-	}
-	err = v.Delete(ctx, fmt.Sprintf("session:%s", sessionID))
+	// Remove from active sessions set
+	activeKey := fmt.Sprintf("active_sessions:%s")
+	_ = v.client.SRem(ctx, activeKey, sessionID).Err()
+
+	err := v.Delete(ctx, fmt.Sprintf("session:%s", sessionID))
 	if err != nil {
 		monitoring.RecordCacheOperation("invalidate_session", "error")
 		return err
@@ -211,9 +211,9 @@ func (v *valkeyClusterImpl) InvalidateSession(ctx context.Context, sessionID str
 	return nil
 }
 
-func (v *valkeyClusterImpl) GetActiveSessions(ctx context.Context, tenantID string) ([]*models.UserSession, error) {
-	tenantKey := fmt.Sprintf("tenant_sessions:%s", tenantID)
-	sessionIDs, err := v.client.SMembers(ctx, tenantKey).Result()
+func (v *valkeyClusterImpl) GetActiveSessions(ctx context.Context) ([]*models.UserSession, error) {
+	activeKey := fmt.Sprintf("active_sessions:%s")
+	sessionIDs, err := v.client.SMembers(ctx, activeKey).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +224,7 @@ func (v *valkeyClusterImpl) GetActiveSessions(ctx context.Context, tenantID stri
 			sessions = append(sessions, session)
 		} else {
 			// Clean up stale references
-			_ = v.client.SRem(ctx, tenantKey, sessionID).Err()
+			_ = v.client.SRem(ctx, activeKey, sessionID).Err()
 		}
 	}
 	return sessions, nil

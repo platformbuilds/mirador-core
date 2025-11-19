@@ -41,7 +41,6 @@ type SchemaDefinition struct {
 	Type SchemaType `json:"type"` // The schema type this definition represents
 
 	// Common metadata
-	TenantID  string    `json:"tenantId"`
 	Category  string    `json:"category,omitempty"`
 	Sentiment string    `json:"sentiment,omitempty"`
 	Author    string    `json:"author,omitempty"`
@@ -152,7 +151,6 @@ type SchemaDefinitionResponse struct {
 
 // SchemaListRequest represents a request to list schema definitions
 type SchemaListRequest struct {
-	TenantID string     `json:"tenantId"`
 	Type     SchemaType `json:"type,omitempty"`     // Filter by schema type
 	Category string     `json:"category,omitempty"` // Filter by category
 	Tags     []string   `json:"tags,omitempty"`     // Filter by tags
@@ -169,7 +167,6 @@ type SchemaListResponse struct {
 
 // Label represents a label definition (for backward compatibility)
 type Label struct {
-	TenantID    string                 `json:"tenantId"`
 	Name        string                 `json:"name"`
 	Type        string                 `json:"type"`
 	Required    bool                   `json:"required"`
@@ -183,7 +180,6 @@ type Label struct {
 
 // LabelRequest represents a request to create/update a label definition
 type LabelRequest struct {
-	TenantID      string                 `json:"tenantId,omitempty"`
 	Name          string                 `json:"name"`
 	Type          string                 `json:"type,omitempty"`
 	Required      bool                   `json:"required,omitempty"`
@@ -199,9 +195,8 @@ type LabelResponse struct {
 
 // LabelListRequest represents a request to list label definitions
 type LabelListRequest struct {
-	TenantID string `json:"tenantId,omitempty"`
-	Limit    int    `json:"limit,omitempty"`
-	Offset   int    `json:"offset,omitempty"`
+	Limit  int `json:"limit,omitempty"`
+	Offset int `json:"offset,omitempty"`
 }
 
 // LabelListResponse represents a response containing a list of label definitions
@@ -213,7 +208,6 @@ type LabelListResponse struct {
 
 // Metric represents a metric definition (for backward compatibility)
 type Metric struct {
-	TenantID    string    `json:"tenantId"`
 	Metric      string    `json:"metric"`
 	Description string    `json:"description,omitempty"`
 	Owner       string    `json:"owner,omitempty"`
@@ -236,9 +230,8 @@ type MetricResponse struct {
 
 // MetricListRequest represents a request to list metric definitions
 type MetricListRequest struct {
-	TenantID string `json:"tenantId,omitempty"`
-	Limit    int    `json:"limit,omitempty"`
-	Offset   int    `json:"offset,omitempty"`
+	Limit  int `json:"limit,omitempty"`
+	Offset int `json:"offset,omitempty"`
 }
 
 // MetricListResponse represents a response containing a list of metric definitions
@@ -250,7 +243,6 @@ type MetricListResponse struct {
 
 // LogField represents a log field definition (for backward compatibility)
 type LogField struct {
-	TenantID    string    `json:"tenantId"`
 	Field       string    `json:"field"`
 	Type        string    `json:"type"`
 	Description string    `json:"description,omitempty"`
@@ -273,9 +265,8 @@ type LogFieldResponse struct {
 
 // LogFieldListRequest represents a request to list log field definitions
 type LogFieldListRequest struct {
-	TenantID string `json:"tenantId,omitempty"`
-	Limit    int    `json:"limit,omitempty"`
-	Offset   int    `json:"offset,omitempty"`
+	Limit  int `json:"limit,omitempty"`
+	Offset int `json:"offset,omitempty"`
 }
 
 // LogFieldListResponse represents a response containing a list of log field definitions
@@ -287,7 +278,6 @@ type LogFieldListResponse struct {
 
 // TraceService represents a trace service definition (for backward compatibility)
 type TraceService struct {
-	TenantID       string    `json:"tenantId"`
 	Service        string    `json:"service"`
 	ServicePurpose string    `json:"servicePurpose,omitempty"`
 	Owner          string    `json:"owner,omitempty"`
@@ -310,9 +300,8 @@ type TraceServiceResponse struct {
 
 // TraceServiceListRequest represents a request to list trace service definitions
 type TraceServiceListRequest struct {
-	TenantID string `json:"tenantId,omitempty"`
-	Limit    int    `json:"limit,omitempty"`
-	Offset   int    `json:"offset,omitempty"`
+	Limit  int `json:"limit,omitempty"`
+	Offset int `json:"offset,omitempty"`
 }
 
 // TraceServiceListResponse represents a response containing a list of trace service definitions
@@ -324,7 +313,6 @@ type TraceServiceListResponse struct {
 
 // TraceOperation represents a trace operation definition (for backward compatibility)
 type TraceOperation struct {
-	TenantID       string    `json:"tenantId"`
 	Service        string    `json:"service"`
 	Operation      string    `json:"operation"`
 	ServicePurpose string    `json:"servicePurpose,omitempty"`
@@ -348,9 +336,8 @@ type TraceOperationResponse struct {
 
 // TraceOperationListRequest represents a request to list trace operation definitions
 type TraceOperationListRequest struct {
-	TenantID string `json:"tenantId,omitempty"`
-	Limit    int    `json:"limit,omitempty"`
-	Offset   int    `json:"offset,omitempty"`
+	Limit  int `json:"limit,omitempty"`
+	Offset int `json:"offset,omitempty"`
 }
 
 // TraceOperationListResponse represents a response containing a list of trace operation definitions

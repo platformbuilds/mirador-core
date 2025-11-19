@@ -135,11 +135,8 @@ echo
 echo "# Port-forward to access API:"
 echo "kubectl port-forward -n $NAMESPACE svc/mirador-core 8010:8010"
 echo
-echo "# Test API key configuration endpoint (requires global admin JWT):"
-echo "curl -H \"Authorization: Bearer \$API_KEY\" http://localhost:8010/api/v1/auth/apikey-config"
-echo
-echo "# Get API key limits for tenant (requires user JWT):"
-echo "curl -H \"Authorization: Bearer \$API_KEY\" http://localhost:8010/api/v1/auth/apikey-limits"
+echo "# NOTE: API key endpoints have been removed from Mirador Core; the above example commands are deprecated."
+echo "# For API key management, use your separate identity provider or API Key microservice."
 
 # Cleanup temporary file
 rm /tmp/api-key-values.yaml

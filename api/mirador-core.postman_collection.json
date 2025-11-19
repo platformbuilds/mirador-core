@@ -22,10 +22,10 @@
                 "health"
               ],
               "query": []
-            }
-          },
-          "response": []
-        },
+            {
+              "name": "RBAC (REMOVED)",
+              "description": "RBAC and role-based endpoints were removed from Mirador Core. Manage roles/permissions externally.",
+              "item": []
         {
           "name": "Readiness check",
           "request": {
@@ -84,96 +84,22 @@
       ]
     },
     {
-      "name": "Authentication",
+      "name": "System",
       "item": [
         {
-          "name": "User login",
+          "name": "Health check",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/login",
+              "raw": "{{scheme}}://{{host}}:{{port}}/health",
               "host": [
                 "{{scheme}}://{{host}}:{{port}}"
               ],
               "path": [
-                "api",
-                "v1",
-                "auth",
-                "login"
+                "health"
               ],
               "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "User logout",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/logout",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "logout"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Validate token",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/validate",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "validate"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
             }
           },
           "response": []
@@ -181,8 +107,9 @@
       ]
     },
     {
-      "name": "Api Keys",
-      "item": [
+      "name": "Api Keys (REMOVED)",
+      "description": "Removed: API key endpoints are not supported. Manage API keys externally.",
+      "item": [],
         {
           "name": "List API keys",
           "request": {
@@ -396,46 +323,9 @@
         }
       ]
     },
-    {
-      "name": "Rbac",
-      "item": [
         {
           "name": "Get roles",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/roles",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "roles"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create role",
-          "request": {
-            "method": "POST",
-            "header": [
+      },
               {
                 "key": "X-API-Key",
                 "value": "{{apiKey}}",
@@ -2979,121 +2869,6 @@
           "response": []
         }
       ]
-    },
-    {
-      "name": "Sessions",
-      "item": [
-        {
-          "name": "Get active sessions",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/sessions/active",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "sessions",
-                "active"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Invalidate session",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/sessions/invalidate",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "sessions",
-                "invalidate"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get user sessions",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/sessions/user/{{userId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "sessions",
-                "user",
-                "{{userId}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Rbac Audit",
-      "item": [
         {
           "name": "Get audit events",
           "request": {
@@ -3278,8 +3053,6 @@
             }
           },
           "response": []
-        }
-      ]
     },
     {
       "name": "Tenants",

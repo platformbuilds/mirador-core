@@ -26,7 +26,7 @@ func TestNoopValkey_BasicOps(t *testing.T) {
 	}
 
 	// session helpers
-	s := &models.UserSession{ID: "tok", TenantID: "t1", UserID: "u1"}
+	s := &models.UserSession{ID: "tok", UserID: "u1"}
 	if err := cch.SetSession(ctx, s); err != nil {
 		t.Fatalf("set session: %v", err)
 	}
@@ -34,7 +34,7 @@ func TestNoopValkey_BasicOps(t *testing.T) {
 	if err != nil || got.UserID != "u1" {
 		t.Fatalf("get session: %v %+v", err, got)
 	}
-	act, _ := cch.GetActiveSessions(ctx, "t1")
+	act, _ := cch.GetActiveSessions(ctx)
 	if len(act) == 0 {
 		t.Fatalf("active sessions empty")
 	}

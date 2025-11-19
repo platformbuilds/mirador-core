@@ -126,13 +126,13 @@ func (g *GRPCClients) HealthCheck() error {
 }
 
 // UpdateRCAEndpoint updates the RCA engine endpoint dynamically
-func (g *GRPCClients) UpdateRCAEndpoint(ctx context.Context, tenantID, endpoint string) error {
+func (g *GRPCClients) UpdateRCAEndpoint(ctx context.Context, endpoint string) error {
 	if g.dynamicConfig == nil {
 		return fmt.Errorf("dynamic config service not available")
 	}
 
 	// Get current config
-	currentConfig, err := g.dynamicConfig.GetGRPCConfig(ctx, tenantID, &config.GRPCConfig{
+	currentConfig, err := g.dynamicConfig.GetGRPCConfig(ctx, &config.GRPCConfig{
 		RCAEngine:   config.RCAEngineConfig{Endpoint: endpoint},
 		AlertEngine: config.AlertEngineConfig{},
 	})
@@ -144,7 +144,7 @@ func (g *GRPCClients) UpdateRCAEndpoint(ctx context.Context, tenantID, endpoint 
 	currentConfig.RCAEngine.Endpoint = endpoint
 
 	// Save updated config
-	if err := g.dynamicConfig.SetGRPCConfig(ctx, tenantID, currentConfig); err != nil {
+	if err := g.dynamicConfig.SetGRPCConfig(ctx, currentConfig); err != nil {
 		return fmt.Errorf("failed to save updated gRPC config: %w", err)
 	}
 
@@ -155,18 +155,18 @@ func (g *GRPCClients) UpdateRCAEndpoint(ctx context.Context, tenantID, endpoint 
 		}
 	}
 
-	g.logger.Info("Successfully updated RCA engine endpoint", "tenantID", tenantID, "endpoint", endpoint)
+	g.logger.Info("Successfully updated RCA engine endpoint", "endpoint", endpoint)
 	return nil
 }
 
 // UpdateAlertEndpoint updates the alert engine endpoint dynamically
-func (g *GRPCClients) UpdateAlertEndpoint(ctx context.Context, tenantID, endpoint string) error {
+func (g *GRPCClients) UpdateAlertEndpoint(ctx context.Context, endpoint string) error {
 	if g.dynamicConfig == nil {
 		return fmt.Errorf("dynamic config service not available")
 	}
 
 	// Get current config
-	currentConfig, err := g.dynamicConfig.GetGRPCConfig(ctx, tenantID, &config.GRPCConfig{
+	currentConfig, err := g.dynamicConfig.GetGRPCConfig(ctx, &config.GRPCConfig{
 		RCAEngine:   config.RCAEngineConfig{},
 		AlertEngine: config.AlertEngineConfig{Endpoint: endpoint},
 	})
@@ -178,7 +178,7 @@ func (g *GRPCClients) UpdateAlertEndpoint(ctx context.Context, tenantID, endpoin
 	currentConfig.AlertEngine.Endpoint = endpoint
 
 	// Save updated config
-	if err := g.dynamicConfig.SetGRPCConfig(ctx, tenantID, currentConfig); err != nil {
+	if err := g.dynamicConfig.SetGRPCConfig(ctx, currentConfig); err != nil {
 		return fmt.Errorf("failed to save updated gRPC config: %w", err)
 	}
 
@@ -189,7 +189,7 @@ func (g *GRPCClients) UpdateAlertEndpoint(ctx context.Context, tenantID, endpoin
 		}
 	}
 
-	g.logger.Info("Successfully updated alert engine endpoint", "tenantID", tenantID, "endpoint", endpoint)
+	g.logger.Info("Successfully updated alert engine endpoint", "endpoint", endpoint)
 	return nil
 }
 

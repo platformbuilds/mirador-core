@@ -36,7 +36,7 @@ func NewServiceGraphBuilder(metricsQuerier MetricsQuerier, logger logger.Logger)
 
 // BuildGraph constructs a ServiceGraph from servicegraph metrics within a time range.
 // It queries multiple servicegraph metrics and aggregates them into a dependency graph.
-func (sgb *ServiceGraphBuilder) BuildGraph(ctx context.Context, tenantID string, start, end time.Time) (*ServiceGraph, error) {
+func (sgb *ServiceGraphBuilder) BuildGraph(ctx context.Context, start, end time.Time) (*ServiceGraph, error) {
 	if start.IsZero() || end.IsZero() || !end.After(start) {
 		return nil, fmt.Errorf("invalid time range: start=%v, end=%v", start, end)
 	}
@@ -97,7 +97,7 @@ func (sgb *ServiceGraphBuilder) BuildGraph(ctx context.Context, tenantID string,
 
 	// Query each metric
 	for _, metric := range metricsToQuery {
-		samples, err := sgb.querySamples(ctx, tenantID, metric.name, start, end)
+		samples, err := sgb.querySamples(ctx, metric.name, start, end)
 		if err != nil {
 			sgb.logger.Warn("Failed to query metric",
 				"metric", metric.name,
@@ -164,7 +164,7 @@ type promSample struct {
 }
 
 // querySamples executes a query for a single metric and returns all samples.
-func (sgb *ServiceGraphBuilder) querySamples(ctx context.Context, tenantID, metricName string, start, end time.Time) ([]promSample, error) {
+func (sgb *ServiceGraphBuilder) querySamples(ctx context.Context, metricName string, start, end time.Time) ([]promSample, error) {
 	// Use the same approach as ServiceGraphService in services/service_graph.service.go:
 	// Query metric using increase() to get total count over the time window.
 
@@ -178,8 +178,7 @@ func (sgb *ServiceGraphBuilder) querySamples(ctx context.Context, tenantID, metr
 	query := fmt.Sprintf("increase(%s[%ds])", metricName, rangeSeconds)
 
 	req := &models.MetricsQLQueryRequest{
-		Query:    query,
-		TenantID: tenantID,
+		Query: query,
 	}
 
 	res, err := sgb.metricsQuerier.ExecuteQuery(ctx, req)

@@ -110,11 +110,11 @@ func (a *autoSwapCache) InvalidateSession(ctx context.Context, sessionID string)
 	return a.withCurrent(func(c ValkeyCluster) error { return c.InvalidateSession(ctx, sessionID) })
 }
 
-func (a *autoSwapCache) GetActiveSessions(ctx context.Context, tenantID string) ([]*models.UserSession, error) {
+func (a *autoSwapCache) GetActiveSessions(ctx context.Context) ([]*models.UserSession, error) {
 	var out []*models.UserSession
 	var retErr error
 	_ = a.withCurrent(func(c ValkeyCluster) error {
-		s, e := c.GetActiveSessions(ctx, tenantID)
+		s, e := c.GetActiveSessions(ctx)
 		out, retErr = s, e
 		return nil
 	})

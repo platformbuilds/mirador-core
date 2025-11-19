@@ -19,14 +19,14 @@ type MetricsMetadataSynchronizer interface {
 	// Stop stops the synchronization process
 	Stop() error
 
-	// SyncNow triggers an immediate sync for a tenant
-	SyncNow(ctx context.Context, tenantID string, forceFull bool) (*models.MetricMetadataSyncResult, error)
+	// SyncNow triggers an immediate sync
+	SyncNow(ctx context.Context, forceFull bool) (*models.MetricMetadataSyncResult, error)
 
-	// GetSyncState returns the current sync state for a tenant
-	GetSyncState(tenantID string) (*models.MetricMetadataSyncState, error)
+	// GetSyncState returns the current sync state
+	GetSyncState() (*models.MetricMetadataSyncState, error)
 
 	// GetSyncStatus returns the status of the current/last sync operation
-	GetSyncStatus(tenantID string) (*models.MetricMetadataSyncStatus, error)
+	GetSyncStatus() (*models.MetricMetadataSyncStatus, error)
 
 	// UpdateConfig updates the synchronization configuration
 	UpdateConfig(config *models.MetricMetadataSyncConfig) error
@@ -141,39 +141,20 @@ func (s *MetricsMetadataSynchronizerImpl) syncLoop(ctx context.Context) {
 	}
 }
 
-// syncAllTenants synchronizes all known tenants
-func (s *MetricsMetadataSynchronizerImpl) syncAllTenants(ctx context.Context, forceFull bool) error {
-	// Get list of tenants that need syncing
-	tenants, err := s.getTenantsToSync()
-	if err != nil {
-		return fmt.Errorf("failed to get tenants to sync: %w", err)
-	}
-
-	for _, tenantID := range tenants {
-		if err := s.syncTenant(ctx, tenantID, forceFull); err != nil {
-			s.logger.Error("Failed to sync tenant", "tenantID", tenantID, "error", err)
-			// Continue with other tenants
-		}
-	}
-
-	return nil
-}
-
 // syncTenant synchronizes a specific tenant
-func (s *MetricsMetadataSynchronizerImpl) syncTenant(ctx context.Context, tenantID string, forceFull bool) error {
+func (s *MetricsMetadataSynchronizerImpl) syncTenant(ctx context.Context, forceFull bool) error {
 	s.stateMutex.Lock()
-	state := s.syncStates[tenantID]
+	state := s.syncStates[]
 	if state == nil {
 		state = &models.MetricMetadataSyncState{
-			TenantID: tenantID,
-		}
-		s.syncStates[tenantID] = state
+			IsCurrentlySyncing: false,}
+		s.syncStates[] = state
 	}
 	s.stateMutex.Unlock()
 
 	// Check if sync is already running
 	if state.IsCurrentlySyncing {
-		s.logger.Debug("Sync already running for tenant", "tenantID", tenantID)
+		s.logger.Debug("Sync already running for tenant")
 		return nil
 	}
 
@@ -188,18 +169,17 @@ func (s *MetricsMetadataSynchronizerImpl) syncTenant(ctx context.Context, tenant
 
 	// Create sync status
 	status := &models.MetricMetadataSyncStatus{
-		TenantID:  tenantID,
 		Status:    "running",
 		StartTime: time.Now(),
 		Strategy:  strategy,
 	}
 
 	s.stateMutex.Lock()
-	s.syncStatuses[tenantID] = status
+	s.syncStatuses[] = status
 	s.stateMutex.Unlock()
 
 	// Perform the sync
-	result, err := s.performSync(ctx, tenantID, strategy)
+	result, err := s.performSync(ctx, strategy)
 
 	// Update status
 	status.EndTime = time.Now()
@@ -214,7 +194,7 @@ func (s *MetricsMetadataSynchronizerImpl) syncTenant(ctx context.Context, tenant
 		state.LastError = err.Error()
 		state.LastErrorTime = time.Now()
 
-		s.logger.Error("Sync failed for tenant", "tenantID", tenantID, "error", err)
+		s.logger.Error("Sync failed" "error", err)
 	} else {
 		status.Status = "completed"
 		status.MetricsProcessed = result.MetricsProcessed
@@ -232,8 +212,7 @@ func (s *MetricsMetadataSynchronizerImpl) syncTenant(ctx context.Context, tenant
 			state.LastFullSyncTime = result.LastSyncTime
 		}
 
-		s.logger.Info("Sync completed for tenant",
-			"tenantID", tenantID,
+		s.logger.Info("Sync completed",
 			"strategy", strategy,
 			"metricsProcessed", result.MetricsProcessed,
 			"duration", result.Duration)
@@ -265,10 +244,9 @@ func (s *MetricsMetadataSynchronizerImpl) determineSyncStrategy(state *models.Me
 }
 
 // performSync executes the actual sync operation
-func (s *MetricsMetadataSynchronizerImpl) performSync(ctx context.Context, tenantID string, strategy models.SyncStrategy) (*models.MetricMetadataSyncResult, error) {
+func (s *MetricsMetadataSynchronizerImpl) performSync(ctx context.Context, strategy models.SyncStrategy) (*models.MetricMetadataSyncResult, error) {
 	// Create sync request
 	request := &models.MetricMetadataSyncRequest{
-		TenantID:      tenantID,
 		ForceFullSync: strategy == models.SyncStrategyFull,
 		BatchSize:     s.config.BatchSize,
 	}
@@ -300,7 +278,6 @@ func (s *MetricsMetadataSynchronizerImpl) performSync(ctx context.Context, tenan
 
 		if attempt < s.config.MaxRetries {
 			s.logger.Warn("Sync attempt failed, retrying",
-				"tenantID", tenantID,
 				"attempt", attempt+1,
 				"maxRetries", s.config.MaxRetries,
 				"error", err)
@@ -311,19 +288,19 @@ func (s *MetricsMetadataSynchronizerImpl) performSync(ctx context.Context, tenan
 	return result, err
 }
 
-// SyncNow triggers an immediate sync for a tenant
-func (s *MetricsMetadataSynchronizerImpl) SyncNow(ctx context.Context, tenantID string, forceFull bool) (*models.MetricMetadataSyncResult, error) {
-	return s.performSync(ctx, tenantID, s.determineSyncStrategy(s.getSyncState(tenantID), forceFull))
+// SyncNow triggers an immediate sync
+func (s *MetricsMetadataSynchronizerImpl) SyncNow(ctx context.Context, forceFull bool) (*models.MetricMetadataSyncResult, error) {
+	return s.performSync(ctx, s.determineSyncStrategy(s.getSyncState(), forceFull))
 }
 
-// GetSyncState returns the current sync state for a tenant
-func (s *MetricsMetadataSynchronizerImpl) GetSyncState(tenantID string) (*models.MetricMetadataSyncState, error) {
+// GetSyncState returns the current sync state
+func (s *MetricsMetadataSynchronizerImpl) GetSyncState() (*models.MetricMetadataSyncState, error) {
 	s.stateMutex.RLock()
 	defer s.stateMutex.RUnlock()
 
-	state := s.syncStates[tenantID]
+	state := s.syncStates[]
 	if state == nil {
-		return &models.MetricMetadataSyncState{TenantID: tenantID}, nil
+		return &models.MetricMetadataSyncState{}, nil
 	}
 
 	// Return a copy to avoid external modifications
@@ -332,13 +309,13 @@ func (s *MetricsMetadataSynchronizerImpl) GetSyncState(tenantID string) (*models
 }
 
 // GetSyncStatus returns the status of the current/last sync operation
-func (s *MetricsMetadataSynchronizerImpl) GetSyncStatus(tenantID string) (*models.MetricMetadataSyncStatus, error) {
+func (s *MetricsMetadataSynchronizerImpl) GetSyncStatus() (*models.MetricMetadataSyncStatus, error) {
 	s.stateMutex.RLock()
 	defer s.stateMutex.RUnlock()
 
-	status := s.syncStatuses[tenantID]
+	status := s.syncStatuses[]
 	if status == nil {
-		return &models.MetricMetadataSyncStatus{TenantID: tenantID, Status: "never_run"}, nil
+		return &models.MetricMetadataSyncStatus{Status: "never_run"}, nil
 	}
 
 	// Return a copy to avoid external modifications
@@ -363,25 +340,17 @@ func (s *MetricsMetadataSynchronizerImpl) UpdateConfig(config *models.MetricMeta
 	return nil
 }
 
-// getSyncState returns the sync state for a tenant (internal method)
-func (s *MetricsMetadataSynchronizerImpl) getSyncState(tenantID string) *models.MetricMetadataSyncState {
+// getSyncState returns the sync state (internal method)
+func (s *MetricsMetadataSynchronizerImpl) getSyncState() *models.MetricMetadataSyncState {
 	s.stateMutex.RLock()
 	defer s.stateMutex.RUnlock()
 
-	state := s.syncStates[tenantID]
+	state := s.syncStates[]
 	if state == nil {
-		state = &models.MetricMetadataSyncState{TenantID: tenantID}
-		s.syncStates[tenantID] = state
+		state = &models.MetricMetadataSyncState{}
+		s.syncStates[] = state
 	}
 	return state
-}
-
-// getTenantsToSync returns a list of tenants that need synchronization
-func (s *MetricsMetadataSynchronizerImpl) getTenantsToSync() ([]string, error) {
-	// For now, return a hardcoded list. In a real implementation,
-	// this would query the system for active tenants.
-	// TODO: Implement dynamic tenant discovery
-	return []string{"default", "tenant1", "tenant2"}, nil
 }
 
 // loadSyncStates loads sync states from cache
@@ -423,11 +392,10 @@ func (s *StubMetricsMetadataSynchronizer) Stop() error {
 }
 
 // SyncNow returns a stub sync result
-func (s *StubMetricsMetadataSynchronizer) SyncNow(ctx context.Context, tenantID string, forceFull bool) (*models.MetricMetadataSyncResult, error) {
-	s.logger.Info("StubMetricsMetadataSynchronizer.SyncNow called", "tenant_id", tenantID, "force_full", forceFull)
+func (s *StubMetricsMetadataSynchronizer) SyncNow(ctx context.Context, forceFull bool) (*models.MetricMetadataSyncResult, error) {
+	s.logger.Info("StubMetricsMetadataSynchronizer.SyncNow called", "force_full", forceFull)
 
 	return &models.MetricMetadataSyncResult{
-		TenantID:         tenantID,
 		MetricsProcessed: 0,
 		MetricsAdded:     0,
 		MetricsUpdated:   0,
@@ -439,11 +407,10 @@ func (s *StubMetricsMetadataSynchronizer) SyncNow(ctx context.Context, tenantID 
 }
 
 // GetSyncState returns a stub sync state
-func (s *StubMetricsMetadataSynchronizer) GetSyncState(tenantID string) (*models.MetricMetadataSyncState, error) {
-	s.logger.Info("StubMetricsMetadataSynchronizer.GetSyncState called", "tenant_id", tenantID)
+func (s *StubMetricsMetadataSynchronizer) GetSyncState() (*models.MetricMetadataSyncState, error) {
+	s.logger.Info("StubMetricsMetadataSynchronizer.GetSyncState called")
 
 	return &models.MetricMetadataSyncState{
-		TenantID:           tenantID,
 		LastSyncTime:       time.Now(),
 		LastFullSyncTime:   time.Now(),
 		TotalSyncs:         0,
@@ -455,11 +422,10 @@ func (s *StubMetricsMetadataSynchronizer) GetSyncState(tenantID string) (*models
 }
 
 // GetSyncStatus returns a stub sync status
-func (s *StubMetricsMetadataSynchronizer) GetSyncStatus(tenantID string) (*models.MetricMetadataSyncStatus, error) {
-	s.logger.Info("StubMetricsMetadataSynchronizer.GetSyncStatus called", "tenant_id", tenantID)
+func (s *StubMetricsMetadataSynchronizer) GetSyncStatus() (*models.MetricMetadataSyncStatus, error) {
+	s.logger.Info("StubMetricsMetadataSynchronizer.GetSyncStatus called")
 
 	return &models.MetricMetadataSyncStatus{
-		TenantID:         tenantID,
 		Status:           "disabled",
 		StartTime:        time.Now(),
 		EndTime:          time.Now(),

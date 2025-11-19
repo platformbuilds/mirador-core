@@ -40,7 +40,7 @@ type mockTracesService struct {
 	searchErr     error
 }
 
-func (m *mockTracesService) GetOperations(ctx context.Context, service, tenantID string) ([]string, error) {
+func (m *mockTracesService) GetOperations(ctx context.Context, service string) ([]string, error) {
 	if m.operationsErr != nil {
 		return nil, m.operationsErr
 	}

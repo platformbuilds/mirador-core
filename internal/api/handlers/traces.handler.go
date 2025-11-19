@@ -41,10 +41,9 @@ func NewTracesHandler(tracesService *services.VictoriaTracesService, cache cache
 
 // GET /api/v1/traces/services - List all services (Jaeger-compatible)
 func (h *TracesHandler) GetServices(c *gin.Context) {
-	tenantID := c.GetString("tenant_id")
 
 	// Check Valkey cluster cache first
-	cacheKey := fmt.Sprintf("trace_services:%s", tenantID)
+	cacheKey := fmt.Sprintf("trace_services:%s", "system")
 	if cached, err := h.cache.Get(c.Request.Context(), cacheKey); err == nil {
 		var services []string
 		if json.Unmarshal(cached, &services) == nil {
@@ -56,10 +55,10 @@ func (h *TracesHandler) GetServices(c *gin.Context) {
 		}
 	}
 
-	services, err := h.tracesService.GetServices(c.Request.Context(), tenantID)
+	services, err := h.tracesService.GetServices(c.Request.Context(), "system")
 	if err != nil {
 		// Degraded mode: log and return empty list so UI can continue to load.
-		h.logger.Error("Failed to get trace services", "tenant", tenantID, "error", err)
+		h.logger.Error("Failed to get trace services", "system", "error", err)
 		c.Header("X-Backend-Degraded", "victoria_traces")
 		c.Header("X-Cache", "MISS")
 		c.JSON(http.StatusOK, gin.H{
@@ -81,7 +80,6 @@ func (h *TracesHandler) GetServices(c *gin.Context) {
 // GET /api/v1/traces/:traceId - Get specific trace (Jaeger-compatible)
 func (h *TracesHandler) GetTrace(c *gin.Context) {
 	traceID := c.Param("traceId")
-	tenantID := c.GetString("tenant_id")
 
 	if traceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -92,9 +90,9 @@ func (h *TracesHandler) GetTrace(c *gin.Context) {
 	}
 
 	// Get trace from VictoriaTraces
-	trace, err := h.tracesService.GetTrace(c.Request.Context(), traceID, tenantID)
+	trace, err := h.tracesService.GetTrace(c.Request.Context(), traceID, "system")
 	if err != nil {
-		h.logger.Error("Failed to get trace", "traceId", traceID, "tenant", tenantID, "error", err)
+		h.logger.Error("Failed to get trace", "traceId", traceID, "system", "error", err)
 		c.JSON(http.StatusNotFound, gin.H{
 			"status": "error",
 			"error":  "Trace not found",
@@ -130,8 +128,6 @@ func (h *TracesHandler) SearchTraces(c *gin.Context) {
 		return
 	}
 
-	request.TenantID = c.GetString("tenant_id")
-
 	// Determine search engine (default to lucene for backward compatibility)
 	searchEngine := request.SearchEngine
 	if searchEngine == "" {
@@ -140,11 +136,11 @@ func (h *TracesHandler) SearchTraces(c *gin.Context) {
 
 	// Check feature flags for Bleve access
 	if searchEngine == "bleve" {
-		featureFlags := h.config.GetFeatureFlags(request.TenantID)
+		featureFlags := h.config.GetFeatureFlags()
 		if !featureFlags.BleveSearch || !featureFlags.BleveTraces {
 			c.JSON(http.StatusForbidden, gin.H{
 				"status": "error",
-				"error":  "Bleve search engine is not enabled for this tenant",
+				"error":  "Bleve search engine is not enabled",
 			})
 			return
 		}
@@ -251,7 +247,7 @@ func (h *TracesHandler) SearchTraces(c *gin.Context) {
 	traces, err := h.tracesService.SearchTraces(c.Request.Context(), &request)
 	if err != nil {
 		// Degraded mode: return success with empty results
-		h.logger.Error("Trace search failed", "tenant", request.TenantID, "error", err)
+		h.logger.Error("Trace search failed", "error", err)
 		c.Header("X-Backend-Degraded", "victoria_traces")
 		c.JSON(http.StatusOK, gin.H{
 			"status": "success",
@@ -316,7 +312,6 @@ func parseNowLike(expr string, now time.Time) (time.Time, bool) {
 // GET /api/v1/traces/services/:service/operations - Get operations for a service (Jaeger-compatible)
 func (h *TracesHandler) GetOperations(c *gin.Context) {
 	serviceName := c.Param("service")
-	tenantID := c.GetString("tenant_id")
 
 	if serviceName == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -327,7 +322,7 @@ func (h *TracesHandler) GetOperations(c *gin.Context) {
 	}
 
 	// Check Valkey cluster cache first
-	cacheKey := fmt.Sprintf("trace_operations:%s:%s", tenantID, serviceName)
+	cacheKey := fmt.Sprintf("trace_operations:%s:%s", "system", serviceName)
 	if cached, err := h.cache.Get(c.Request.Context(), cacheKey); err == nil {
 		var operations []string
 		if json.Unmarshal(cached, &operations) == nil {
@@ -339,12 +334,12 @@ func (h *TracesHandler) GetOperations(c *gin.Context) {
 		}
 	}
 
-	operations, err := h.tracesService.GetOperations(c.Request.Context(), serviceName, tenantID)
+	operations, err := h.tracesService.GetOperations(c.Request.Context(), serviceName)
 	if err != nil {
 		// Degraded mode: log and return empty list
 		h.logger.Error("Failed to get trace operations",
 			"service", serviceName,
-			"tenant", tenantID,
+			"system",
 			"error", err,
 		)
 		c.Header("X-Backend-Degraded", "victoria_traces")
@@ -370,15 +365,14 @@ func (h *TracesHandler) GetOperations(c *gin.Context) {
 // GET /api/v1/traces/:traceId/flamegraph - D3-friendly flame graph for a single trace
 func (h *TracesHandler) GetFlameGraph(c *gin.Context) {
 	traceID := c.Param("traceId")
-	tenantID := c.GetString("tenant_id")
 	mode := c.DefaultQuery("mode", string(utils.FlameDuration))
 	if traceID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "Trace ID is required"})
 		return
 	}
-	tr, err := h.tracesService.GetTrace(c.Request.Context(), traceID, tenantID)
+	tr, err := h.tracesService.GetTrace(c.Request.Context(), traceID, "system")
 	if err != nil {
-		h.logger.Error("Failed to get trace for flamegraph", "traceId", traceID, "tenant", tenantID, "error", err)
+		h.logger.Error("Failed to get trace for flamegraph", "traceId", traceID, "system", "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "error": "Trace not found"})
 		return
 	}
@@ -396,12 +390,11 @@ func (h *TracesHandler) SearchFlameGraph(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "Invalid trace search request"})
 		return
 	}
-	request.TenantID = c.GetString("tenant_id")
 	mode := c.DefaultQuery("mode", string(utils.FlameDuration))
 
 	res, err := h.tracesService.SearchTraces(c.Request.Context(), &request)
 	if err != nil {
-		h.logger.Error("Trace search for flamegraph failed", "tenant", request.TenantID, "error", err)
+		h.logger.Error("Trace search for flamegraph failed", "error", err)
 		c.JSON(http.StatusOK, gin.H{"status": "success", "data": gin.H{"name": "aggregate (0 traces)", "value": 0}})
 		return
 	}

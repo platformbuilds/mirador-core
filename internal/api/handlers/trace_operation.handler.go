@@ -44,9 +44,6 @@ func (h *TraceOperationHandler) CreateOrUpdateTraceOperation(c *gin.Context) {
 	}
 
 	traceOperation := req.TraceOperation
-	if traceOperation.TenantID == "" {
-		traceOperation.TenantID = c.GetString("tenant_id")
-	}
 
 	// Convert TraceOperation to SchemaDefinition
 	// Use composite ID "service:operation" for unique identification
@@ -55,7 +52,6 @@ func (h *TraceOperationHandler) CreateOrUpdateTraceOperation(c *gin.Context) {
 		ID:        compositeID,
 		Name:      traceOperation.Operation,
 		Type:      models.SchemaTypeTraceOperation,
-		TenantID:  traceOperation.TenantID,
 		Category:  traceOperation.Category,
 		Sentiment: traceOperation.Sentiment,
 		Author:    traceOperation.Author,
@@ -89,10 +85,8 @@ func (h *TraceOperationHandler) GetTraceOperation(c *gin.Context) {
 		return
 	}
 
-	tenantID := c.GetString("tenant_id")
-
 	compositeID := serviceName + ":" + operationName
-	schemaDef, err := h.repo.GetSchemaAsKPI(context.Background(), tenantID, "trace_operation", compositeID)
+	schemaDef, err := h.repo.GetSchemaAsKPI(context.Background(), "trace_operation", compositeID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "trace operation not found"})
@@ -105,7 +99,6 @@ func (h *TraceOperationHandler) GetTraceOperation(c *gin.Context) {
 
 	// Convert SchemaDefinition back to TraceOperation
 	traceOperation := &models.TraceOperation{
-		TenantID:       schemaDef.TenantID,
 		Service:        schemaDef.Extensions.Trace.Service,
 		Operation:      schemaDef.Extensions.Trace.Operation,
 		ServicePurpose: schemaDef.Extensions.Trace.ServicePurpose,
@@ -128,10 +121,6 @@ func (h *TraceOperationHandler) ListTraceOperations(c *gin.Context) {
 		return
 	}
 
-	if req.TenantID == "" {
-		req.TenantID = c.GetString("tenant_id")
-	}
-
 	// Set defaults
 	if req.Limit <= 0 {
 		req.Limit = 10
@@ -140,7 +129,23 @@ func (h *TraceOperationHandler) ListTraceOperations(c *gin.Context) {
 		req.Offset = 0
 	}
 
-	schemaDefs, total, err := h.repo.ListSchemasAsKPIs(context.Background(), req.TenantID, "trace_operation", req.Limit, req.Offset)
+	var schemaDefs []*models.SchemaDefinition
+	var total int
+	var err error
+	if kpirepo, ok := h.repo.(repo.KPIRepo); ok {
+		kpis, totalKpis, lerr := kpirepo.ListKPIs(context.Background(), []string{"trace_operation"}, req.Limit, req.Offset)
+		if lerr != nil {
+			err = lerr
+		} else {
+			total = totalKpis
+			schemaDefs = make([]*models.SchemaDefinition, 0, len(kpis))
+			for _, k := range kpis {
+				schemaDefs = append(schemaDefs, kpiToSchemaDefinition(k, models.SchemaTypeTraceOperation))
+			}
+		}
+	} else {
+		schemaDefs, total, err = h.repo.ListSchemasAsKPIs(context.Background(), "trace_operation", req.Limit, req.Offset)
+	}
 	if err != nil {
 		h.logger.Error("trace operation list failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list trace operations"})
@@ -151,7 +156,6 @@ func (h *TraceOperationHandler) ListTraceOperations(c *gin.Context) {
 	traceOperations := make([]*models.TraceOperation, len(schemaDefs))
 	for i, schemaDef := range schemaDefs {
 		traceOperations[i] = &models.TraceOperation{
-			TenantID:       schemaDef.TenantID,
 			Service:        schemaDef.Extensions.Trace.Service,
 			Operation:      schemaDef.Extensions.Trace.Operation,
 			ServicePurpose: schemaDef.Extensions.Trace.ServicePurpose,
@@ -185,16 +189,13 @@ func (h *TraceOperationHandler) DeleteTraceOperation(c *gin.Context) {
 		return
 	}
 
-	tenantID := c.GetString("tenant_id")
-
 	q := strings.ToLower(strings.TrimSpace(c.Query("confirm")))
 	if q != "1" && q != "true" && q != "yes" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "confirmation required: add ?confirm=1"})
 		return
 	}
 
-	compositeID := serviceName + ":" + operationName
-	err := h.repo.DeleteSchemaAsKPI(context.Background(), tenantID, "trace_operation", compositeID)
+	err := h.repo.DeleteTraceOperation(c.Request.Context(), serviceName, operationName)
 	if err != nil {
 		h.logger.Error("trace operation delete failed", "error", err, "service", serviceName, "operation", operationName)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete trace operation"})

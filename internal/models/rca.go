@@ -28,6 +28,11 @@ type RCARequest struct {
 	// ImpactMetric is the metric indicating the impact (optional; defaults to "error_rate")
 	ImpactMetric string `json:"impactMetric,omitempty"`
 
+	// ImpactKPIID is the optional ID of a KPI definition to use as the impact signal.
+	// If provided, the handler will resolve the KPI and use it as the impact metric.
+	// Takes precedence over ImpactMetric if both are provided.
+	ImpactKPIID string `json:"impactKpiId,omitempty"`
+
 	// MetricDirection indicates whether higher or lower values are worse
 	// "higher_is_worse" or "lower_is_worse"
 	MetricDirection string `json:"metricDirection,omitempty"`
@@ -45,9 +50,25 @@ type RCARequest struct {
 	ImpactSummary string `json:"impactSummary,omitempty"`
 
 	// RCAOptions (optional)
-	MaxChains         int     `json:"maxChains,omitempty"`
-	MaxStepsPerChain  int     `json:"maxStepsPerChain,omitempty"`
-	MinScoreThreshold float64 `json:"minScoreThreshold,omitempty"`
+	MaxChains         int                    `json:"maxChains,omitempty"`
+	MaxStepsPerChain  int                    `json:"maxStepsPerChain,omitempty"`
+	MinScoreThreshold float64                `json:"minScoreThreshold,omitempty"`
+	DimensionConfig   *RCADimensionConfigDTO `json:"dimensionConfig,omitempty"`
+}
+
+// RCADimensionConfigDTO represents the dimension configuration in the HTTP request.
+type RCADimensionConfigDTO struct {
+	// ExtraDimensions is a list of additional label keys to consider
+	ExtraDimensions []string `json:"extraDimensions,omitempty"`
+
+	// DimensionWeights maps dimension keys to their influence weight (0..1)
+	DimensionWeights map[string]float64 `json:"dimensionWeights,omitempty"`
+
+	// AlignmentPenalty is the penalty applied when dimensions misalign (0..1)
+	AlignmentPenalty float64 `json:"alignmentPenalty,omitempty"`
+
+	// AlignmentBonus is the bonus applied when dimensions align (0..1)
+	AlignmentBonus float64 `json:"alignmentBonus,omitempty"`
 }
 
 // RCAResponse is the HTTP response for POST /api/v1/unified/rca.
@@ -84,6 +105,27 @@ type RCAIncidentDTO struct {
 
 	// Notes are optional observations
 	Notes []string `json:"notes"`
+
+	// Diagnostics contains warnings about missing labels, dimension detection, IsolationForest tuning, etc.
+	Diagnostics *RCADiagnosticsDTO `json:"diagnostics,omitempty"`
+}
+
+// RCADiagnosticsDTO represents diagnostics in the HTTP response.
+type RCADiagnosticsDTO struct {
+	// MissingLabels lists standard labels not found in the metrics
+	MissingLabels []string `json:"missingLabels,omitempty"`
+
+	// DimensionDetectionStatus maps dimension keys to detection status
+	DimensionDetectionStatus map[string]bool `json:"dimensionDetectionStatus,omitempty"`
+
+	// IsolationForestIssues lists any potential IsolationForest tuning issues
+	IsolationForestIssues []string `json:"isolationForestIssues,omitempty"`
+
+	// ReducedAccuracyReasons explains why confidence is lower than optimal
+	ReducedAccuracyReasons []string `json:"reducedAccuracyReasons,omitempty"`
+
+	// MetricsQueryErrors captures any metrics query issues
+	MetricsQueryErrors []string `json:"metricsQueryErrors,omitempty"`
 }
 
 // IncidentContextDTO is the DTO for IncidentContext.

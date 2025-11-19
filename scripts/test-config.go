@@ -42,42 +42,7 @@ func main() {
 	}
 
 	fmt.Println("\n=== API Key Configuration Test ===")
-	fmt.Printf("Enabled: %t\n", cfg.APIKeys.Enabled)
-
-	if cfg.APIKeys.Enabled {
-		fmt.Println("\nDefault Limits:")
-		fmt.Printf("  Users: %d keys\n", cfg.APIKeys.DefaultLimits.MaxKeysPerUser)
-		fmt.Printf("  Tenant Admins: %d keys\n", cfg.APIKeys.DefaultLimits.MaxKeysPerTenantAdmin)
-		fmt.Printf("  Global Admins: %d keys\n", cfg.APIKeys.DefaultLimits.MaxKeysPerGlobalAdmin)
-
-		fmt.Println("\nPermission Settings:")
-		fmt.Printf("  Allow Tenant Override: %t\n", cfg.APIKeys.AllowTenantOverride)
-		fmt.Printf("  Allow Admin Override: %t\n", cfg.APIKeys.AllowAdminOverride)
-
-		fmt.Println("\nExpiry Settings:")
-		fmt.Printf("  Enforce Expiry: %t\n", cfg.APIKeys.EnforceExpiry)
-		fmt.Printf("  Min Expiry Days: %d\n", cfg.APIKeys.MinExpiryDays)
-		fmt.Printf("  Max Expiry Days: %d\n", cfg.APIKeys.MaxExpiryDays)
-
-		if len(cfg.APIKeys.TenantLimits) > 0 {
-			fmt.Println("\nTenant-Specific Limits:")
-			for _, tenant := range cfg.APIKeys.TenantLimits {
-				fmt.Printf("  %s: %d/%d/%d (user/tenant_admin/global_admin)\n",
-					tenant.TenantID,
-					tenant.MaxKeysPerUser,
-					tenant.MaxKeysPerTenantAdmin,
-					tenant.MaxKeysPerGlobalAdmin)
-			}
-		}
-
-		if cfg.APIKeys.GlobalLimitsOverride != nil {
-			fmt.Println("\nGlobal Overrides:")
-			fmt.Printf("  Users: %d keys\n", cfg.APIKeys.GlobalLimitsOverride.MaxKeysPerUser)
-			fmt.Printf("  Tenant Admins: %d keys\n", cfg.APIKeys.GlobalLimitsOverride.MaxKeysPerTenantAdmin)
-			fmt.Printf("  Global Admins: %d keys\n", cfg.APIKeys.GlobalLimitsOverride.MaxKeysPerGlobalAdmin)
-			fmt.Printf("  Total System Limit: %d keys\n", cfg.APIKeys.GlobalLimitsOverride.MaxTotalKeys)
-		}
-	}
+	fmt.Println("API Key support has been removed from MIRADOR-CORE core. Manage keys via external gateway or separate service.")
 
 	fmt.Println("\n✅ Configuration loaded successfully!")
 	fmt.Printf("Environment: %s\n", cfg.Environment)

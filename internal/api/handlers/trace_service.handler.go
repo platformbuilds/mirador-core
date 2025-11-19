@@ -44,16 +44,12 @@ func (h *TraceServiceHandler) CreateOrUpdateTraceService(c *gin.Context) {
 	}
 
 	traceService := req.TraceService
-	if traceService.TenantID == "" {
-		traceService.TenantID = c.GetString("tenant_id")
-	}
 
 	// Convert TraceService to SchemaDefinition
 	schemaDef := &models.SchemaDefinition{
 		ID:        traceService.Service, // Use service name as ID
 		Name:      traceService.Service,
 		Type:      models.SchemaTypeTraceService,
-		TenantID:  traceService.TenantID,
 		Category:  traceService.Category,
 		Sentiment: traceService.Sentiment,
 		Author:    traceService.Author,
@@ -85,9 +81,7 @@ func (h *TraceServiceHandler) GetTraceService(c *gin.Context) {
 		return
 	}
 
-	tenantID := c.GetString("tenant_id")
-
-	schemaDef, err := h.repo.GetSchemaAsKPI(context.Background(), tenantID, "trace_service", serviceName)
+	schemaDef, err := h.repo.GetSchemaAsKPI(context.Background(), "trace_service", serviceName)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "trace service not found"})
@@ -100,7 +94,6 @@ func (h *TraceServiceHandler) GetTraceService(c *gin.Context) {
 
 	// Convert SchemaDefinition back to TraceService
 	traceService := &models.TraceService{
-		TenantID:       schemaDef.TenantID,
 		Service:        schemaDef.Name,
 		ServicePurpose: schemaDef.Extensions.Trace.ServicePurpose,
 		Owner:          schemaDef.Extensions.Trace.Owner,
@@ -122,10 +115,6 @@ func (h *TraceServiceHandler) ListTraceServices(c *gin.Context) {
 		return
 	}
 
-	if req.TenantID == "" {
-		req.TenantID = c.GetString("tenant_id")
-	}
-
 	// Set defaults
 	if req.Limit <= 0 {
 		req.Limit = 10
@@ -134,7 +123,23 @@ func (h *TraceServiceHandler) ListTraceServices(c *gin.Context) {
 		req.Offset = 0
 	}
 
-	schemaDefs, total, err := h.repo.ListSchemasAsKPIs(context.Background(), req.TenantID, "trace_service", req.Limit, req.Offset)
+	var schemaDefs []*models.SchemaDefinition
+	var total int
+	var err error
+	if kpirepo, ok := h.repo.(repo.KPIRepo); ok {
+		kpis, totalKpis, lerr := kpirepo.ListKPIs(context.Background(), []string{"trace_service"}, req.Limit, req.Offset)
+		if lerr != nil {
+			err = lerr
+		} else {
+			total = totalKpis
+			schemaDefs = make([]*models.SchemaDefinition, 0, len(kpis))
+			for _, k := range kpis {
+				schemaDefs = append(schemaDefs, kpiToSchemaDefinition(k, models.SchemaTypeTraceService))
+			}
+		}
+	} else {
+		schemaDefs, total, err = h.repo.ListSchemasAsKPIs(context.Background(), "trace_service", req.Limit, req.Offset)
+	}
 	if err != nil {
 		h.logger.Error("trace service list failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list trace services"})
@@ -145,7 +150,6 @@ func (h *TraceServiceHandler) ListTraceServices(c *gin.Context) {
 	traceServices := make([]*models.TraceService, len(schemaDefs))
 	for i, schemaDef := range schemaDefs {
 		traceServices[i] = &models.TraceService{
-			TenantID:       schemaDef.TenantID,
 			Service:        schemaDef.Name,
 			ServicePurpose: schemaDef.Extensions.Trace.ServicePurpose,
 			Owner:          schemaDef.Extensions.Trace.Owner,
@@ -177,15 +181,13 @@ func (h *TraceServiceHandler) DeleteTraceService(c *gin.Context) {
 		return
 	}
 
-	tenantID := c.GetString("tenant_id")
-
 	q := strings.ToLower(strings.TrimSpace(c.Query("confirm")))
 	if q != "1" && q != "true" && q != "yes" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "confirmation required: add ?confirm=1"})
 		return
 	}
 
-	err := h.repo.DeleteSchemaAsKPI(context.Background(), tenantID, "trace_service", serviceName)
+	err := h.repo.DeleteSchemaAsKPI(context.Background(), serviceName)
 	if err != nil {
 		h.logger.Error("trace service delete failed", "error", err, "service", serviceName)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete trace service"})

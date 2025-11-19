@@ -238,3 +238,37 @@ jobs:
             VERSION=${{ github.sha }}
             BUILD_TIME=${{ steps.meta.outputs.build-date }}
             COMMIT_HASH=${{ github.sha }}
+
+  e2e:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: [ci]
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      - name: Ensure Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install docker-compose-plugin docker-compose
+
+      - name: Run E2E pipeline
+        run: |
+          make e2e
+
+    # End of deploy job
+
+
+    

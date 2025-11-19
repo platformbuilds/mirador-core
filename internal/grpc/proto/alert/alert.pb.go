@@ -7,11 +7,12 @@
 package alert
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -24,7 +25,6 @@ const (
 type ProcessAlertRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Alert         *Alert                 `protobuf:"bytes,1,opt,name=alert,proto3" json:"alert,omitempty"`
-	TenantId      string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -64,13 +64,6 @@ func (x *ProcessAlertRequest) GetAlert() *Alert {
 		return x.Alert
 	}
 	return nil
-}
-
-func (x *ProcessAlertRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 type ProcessAlertResponse struct {
@@ -287,7 +280,6 @@ func (x *ProcessedAlert) GetNotifications() []string {
 
 type GetAlertRulesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -320,13 +312,6 @@ func (x *GetAlertRulesRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetAlertRulesRequest.ProtoReflect.Descriptor instead.
 func (*GetAlertRulesRequest) Descriptor() ([]byte, []int) {
 	return file_internal_grpc_proto_alert_alert_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *GetAlertRulesRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 type GetAlertRulesResponse struct {
@@ -476,7 +461,6 @@ func (x *AlertRule) GetAnnotations() map[string]string {
 type CreateAlertRuleRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Rule          *AlertRule             `protobuf:"bytes,1,opt,name=rule,proto3" json:"rule,omitempty"`
-	TenantId      string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -516,13 +500,6 @@ func (x *CreateAlertRuleRequest) GetRule() *AlertRule {
 		return x.Rule
 	}
 	return nil
-}
-
-func (x *CreateAlertRuleRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 type CreateAlertRuleResponse struct {
@@ -571,7 +548,6 @@ func (x *CreateAlertRuleResponse) GetRule() *AlertRule {
 
 type GetActiveAlertsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	Severity      string                 `protobuf:"bytes,3,opt,name=severity,proto3" json:"severity,omitempty"` // optional filter
 	unknownFields protoimpl.UnknownFields
@@ -606,13 +582,6 @@ func (x *GetActiveAlertsRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetActiveAlertsRequest.ProtoReflect.Descriptor instead.
 func (*GetActiveAlertsRequest) Descriptor() ([]byte, []int) {
 	return file_internal_grpc_proto_alert_alert_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *GetActiveAlertsRequest) GetTenantId() string {
-	if x != nil {
-		return x.TenantId
-	}
-	return ""
 }
 
 func (x *GetActiveAlertsRequest) GetLimit() int32 {
@@ -904,7 +873,6 @@ const file_internal_grpc_proto_alert_alert_proto_rawDesc = "" +
 	"%internal/grpc/proto/alert/alert.proto\x12\rmirador.alert\"^\n" +
 	"\x13ProcessAlertRequest\x12*\n" +
 	"\x05alert\x18\x01 \x01(\v2\x14.mirador.alert.AlertR\x05alert\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\"^\n" +
 	"\x14ProcessAlertResponse\x12F\n" +
 	"\x0fprocessed_alert\x18\x01 \x01(\v2\x1d.mirador.alert.ProcessedAlertR\x0eprocessedAlert\"\x87\x03\n" +
 	"\x05Alert\x12\x0e\n" +
@@ -931,7 +899,6 @@ const file_internal_grpc_proto_alert_alert_proto_rawDesc = "" +
 	"escalation\x12$\n" +
 	"\rnotifications\x18\x05 \x03(\tR\rnotifications\"3\n" +
 	"\x14GetAlertRulesRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"G\n" +
 	"\x15GetAlertRulesResponse\x12.\n" +
 	"\x05rules\x18\x01 \x03(\v2\x18.mirador.alert.AlertRuleR\x05rules\"\x9f\x03\n" +
 	"\tAlertRule\x12\x0e\n" +
@@ -951,11 +918,9 @@ const file_internal_grpc_proto_alert_alert_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"c\n" +
 	"\x16CreateAlertRuleRequest\x12,\n" +
 	"\x04rule\x18\x01 \x01(\v2\x18.mirador.alert.AlertRuleR\x04rule\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\"G\n" +
 	"\x17CreateAlertRuleResponse\x12,\n" +
 	"\x04rule\x18\x01 \x01(\v2\x18.mirador.alert.AlertRuleR\x04rule\"g\n" +
 	"\x16GetActiveAlertsRequest\x12\x1b\n" +
-	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x1a\n" +
 	"\bseverity\x18\x03 \x01(\tR\bseverity\"]\n" +
 	"\x17GetActiveAlertsResponse\x12,\n" +

@@ -13,6 +13,9 @@ type RCAOptions struct {
 	// CandidateCauseOptions for computing ranked candidate causes
 	CandidateCauseOptions CandidateCauseOptions
 
+	// DimensionConfig specifies extra dimensions and weights for correlation
+	DimensionConfig RCADimensionConfig
+
 	// MaxChains is the maximum number of candidate chains to produce (default 5)
 	MaxChains int
 
@@ -27,6 +30,7 @@ type RCAOptions struct {
 func DefaultRCAOptions() RCAOptions {
 	return RCAOptions{
 		CandidateCauseOptions: DefaultCandidateCauseOptions(),
+		DimensionConfig:       DefaultDimensionConfig(),
 		MaxChains:             5,
 		MaxStepsPerChain:      10,
 		MinScoreThreshold:     0.1,
@@ -41,9 +45,11 @@ type RCAEngine interface {
 
 // RCAEngineImpl implements the RCAEngine interface.
 type RCAEngineImpl struct {
-	candidateCauseService CandidateCauseService
-	serviceGraph          *ServiceGraph
-	logger                logger.Logger
+	candidateCauseService    CandidateCauseService
+	serviceGraph             *ServiceGraph
+	logger                   logger.Logger
+	labelDetector            *MetricsLabelDetector
+	dimensionAlignmentScorer *DimensionAlignmentScorer
 }
 
 // NewRCAEngine creates a new RCAEngine implementation.
@@ -53,9 +59,11 @@ func NewRCAEngine(
 	logger logger.Logger,
 ) RCAEngine {
 	return &RCAEngineImpl{
-		candidateCauseService: candidateCauseService,
-		serviceGraph:          serviceGraph,
-		logger:                logger,
+		candidateCauseService:    candidateCauseService,
+		serviceGraph:             serviceGraph,
+		logger:                   logger,
+		labelDetector:            NewMetricsLabelDetector(logger),
+		dimensionAlignmentScorer: NewDimensionAlignmentScorer(logger),
 	}
 }
 
@@ -71,10 +79,24 @@ func (engine *RCAEngineImpl) ComputeRCA(
 
 	engine.logger.Debug("Starting RCA computation",
 		"incident_id", incident.ID,
-		"impact_service", incident.ImpactService)
+		"impact_service", incident.ImpactService,
+		"dimension_config", opts.DimensionConfig.String())
 
 	// Create result object
 	result := NewRCAIncident(incident)
+
+	// Validate and normalize dimension config
+	dimWarnings, err := opts.DimensionConfig.ValidateAndNormalize()
+	if err != nil {
+		engine.logger.Warn("Dimension config validation error",
+			"error", err)
+		// Continue with degraded functionality
+		result.Diagnostics.AddReducedAccuracyReason(fmt.Sprintf("Dimension config validation: %v", err))
+	}
+	for _, w := range dimWarnings {
+		engine.logger.Warn("Dimension config warning", "warning", w)
+		result.Diagnostics.AddReducedAccuracyReason(w)
+	}
 
 	// Step 1: Compute ranked candidate causes
 	candidates, err := engine.candidateCauseService.ComputeCandidates(ctx, incident, opts.CandidateCauseOptions)
@@ -85,12 +107,63 @@ func (engine *RCAEngineImpl) ComputeRCA(
 	if len(candidates) == 0 {
 		engine.logger.Warn("No candidate causes found for incident", "incident_id", incident.ID)
 		result.Notes = append(result.Notes, "No anomalies found to explain the incident")
+		result.Notes = append(result.Notes, result.Diagnostics.ToNotes()...)
 		return result, nil
 	}
 
 	engine.logger.Debug("Computed candidate causes",
 		"count", len(candidates),
 		"incident_id", incident.ID)
+
+	// Step 1b: Apply dimension alignment scoring if extra dimensions are configured
+	if len(opts.DimensionConfig.ExtraDimensions) > 0 {
+		engine.logger.Debug("Applying dimension alignment scoring",
+			"dimensions", opts.DimensionConfig.ExtraDimensions)
+
+		// Extract impact service dimensions from impact service groups (if available)
+		impactServiceDims := engine.dimensionAlignmentScorer.ExtractImpactServiceDimensions(
+			engine.filterGroupsByService(candidates, incident.ImpactService),
+			opts.DimensionConfig.ExtraDimensions)
+
+		// Apply alignment score adjustments to each candidate
+		for _, candidate := range candidates {
+			alignmentScore, alignments, alignNotes := engine.dimensionAlignmentScorer.ComputeDimensionAlignmentScore(
+				candidate.Group,
+				impactServiceDims,
+				opts.DimensionConfig,
+				result.Diagnostics)
+
+			if candidate.DetailedScore == nil {
+				candidate.DetailedScore = &DetailedScore{}
+			}
+			candidate.DetailedScore.DimensionAlignmentScore = alignmentScore
+			candidate.DetailedScore.DimensionAlignments = alignments
+
+			// Adjust overall score by alignment contribution (with small weight)
+			dimensionAlignmentWeight := 0.05 // 5% weight for dimension alignment
+			candidate.Score = candidate.Score*(1.0-dimensionAlignmentWeight) + alignmentScore*dimensionAlignmentWeight
+
+			// Clamp to [0, 1]
+			if candidate.Score > 1.0 {
+				candidate.Score = 1.0
+			}
+			if candidate.Score < 0.0 {
+				candidate.Score = 0.0
+			}
+
+			for _, note := range alignNotes {
+				engine.logger.Debug("Dimension alignment note", "note", note)
+			}
+		}
+
+		// Re-sort candidates after dimension adjustment
+		sort.Slice(candidates, func(i, j int) bool {
+			return candidates[i].Score > candidates[j].Score
+		})
+		for i := range candidates {
+			candidates[i].Rank = i + 1
+		}
+	}
 
 	// Step 2: For each top candidate, build an RCA chain
 	chainsBuilt := 0
@@ -125,6 +198,9 @@ func (engine *RCAEngineImpl) ComputeRCA(
 	// Step 4: Set root cause from best chain
 	result.SetRootCauseFromBestChain()
 
+	// Step 5: Append diagnostics to notes
+	result.Notes = append(result.Notes, result.Diagnostics.ToNotes()...)
+
 	engine.logger.Info("RCA computation completed",
 		"incident_id", incident.ID,
 		"chains_produced", len(result.Chains),
@@ -137,6 +213,17 @@ func (engine *RCAEngineImpl) ComputeRCA(
 		"overall_score", result.Score)
 
 	return result, nil
+}
+
+// filterGroupsByService returns all AnomalyGroups within candidates that belong to a specific service.
+func (engine *RCAEngineImpl) filterGroupsByService(candidates []*CandidateCause, service string) []*AnomalyGroup {
+	var groups []*AnomalyGroup
+	for _, candidate := range candidates {
+		if candidate.Group.Service == service {
+			groups = append(groups, candidate.Group)
+		}
+	}
+	return groups
 }
 
 // buildChainForCandidate constructs an RCA chain starting from a candidate cause.
@@ -153,7 +240,7 @@ func (engine *RCAEngineImpl) buildChainForCandidate(
 	candidateService := ServiceNode(candidate.Group.Service)
 
 	// Build initial step from the candidate cause
-	step := engine.buildStepFromCandidate(1, candidate, incident)
+	step := engine.buildStepFromCandidate(1, candidate, incident, nil) // Pass nil for diagnostics in intermediate steps
 	chain.AddStep(step)
 	chain.Score = candidate.Score
 
@@ -197,6 +284,7 @@ func (engine *RCAEngineImpl) buildStepFromCandidate(
 	whyIndex int,
 	candidate *CandidateCause,
 	incident *IncidentContext,
+	diagnostics *RCADiagnostics,
 ) *RCAStep {
 	step := NewRCAStep(whyIndex, candidate.Group.Service, candidate.Group.Component)
 	step.Ring = candidate.Group.Ring
@@ -218,8 +306,8 @@ func (engine *RCAEngineImpl) buildStepFromCandidate(
 		))
 	}
 
-	// Generate template-based summary
-	step.Summary = TemplateBasedSummary(step, incident.ImpactService)
+	// Generate template-based summary, optionally including diagnostics note
+	step.Summary = TemplateBasedSummary(step, incident.ImpactService, diagnostics)
 
 	return step
 }

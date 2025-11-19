@@ -40,12 +40,11 @@ func NewAlertHandler(
 
 // GET /api/v1/alerts - Get active alerts with intelligent clustering
 func (h *AlertHandler) GetAlerts(c *gin.Context) {
-	tenantID := c.GetString("tenant_id")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
 	severity := c.Query("severity")
 
 	// Try valkey cluster cache first for faster fetch
-	cacheKey := fmt.Sprintf("alerts:%s:%s:%d", tenantID, severity, limit)
+	cacheKey := fmt.Sprintf("alerts:%s:%d", severity, limit)
 	if cached, err := h.cache.Get(c.Request.Context(), cacheKey); err == nil {
 		var cachedAlerts []*models.Alert
 		if json.Unmarshal(cached, &cachedAlerts) == nil {
@@ -63,12 +62,11 @@ func (h *AlertHandler) GetAlerts(c *gin.Context) {
 
 	// Query from ALERT-ENGINE
 	alerts, err := h.alertClient.GetActiveAlerts(c.Request.Context(), &models.AlertQuery{
-		TenantID: tenantID,
 		Limit:    limit,
 		Severity: severity,
 	})
 	if err != nil {
-		h.logger.Error("Failed to get alerts", "tenant", tenantID, "error", err)
+		h.logger.Error("Failed to get alerts", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
 			"error":  "Failed to retrieve alerts",
@@ -106,8 +104,6 @@ func (h *AlertHandler) CreateAlert(c *gin.Context) {
 		return
 	}
 
-	alertRule.TenantID = c.GetString("tenant_id")
-	alertRule.CreatedBy = c.GetString("user_id")
 	alertRule.CreatedAt = time.Now()
 
 	// Validate alert rule query syntax

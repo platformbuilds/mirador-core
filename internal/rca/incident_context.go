@@ -82,6 +82,32 @@ type IncidentContext struct {
 
 	// CreatedAt is when the incident was created/detected.
 	CreatedAt time.Time
+
+	// KPIImpactID is the optional ID of the KPI that triggered this incident (if impact is KPI-based).
+	// Used to carry KPI context through RCA and enable KPI-aware scoring.
+	KPIImpactID string
+
+	// KPIMetadata holds additional context about the KPI (kind, sentiment, etc.)
+	// Only populated if this incident is based on a KPI.
+	KPIMetadata *KPIIncidentMetadata
+}
+
+// KPIIncidentMetadata carries KPI-specific context for RCA scoring and diagnostics.
+type KPIIncidentMetadata struct {
+	// KPIDefinitionID is the ID of the KPI definition
+	KPIDefinitionID string
+
+	// KPIName is the human-readable name of the KPI
+	KPIName string
+
+	// KPIKind is "impact" for business-layer KPIs or "cause" for technical-layer KPIs
+	KPIKind string
+
+	// KPISentiment is "NEGATIVE" (higher is worse), "POSITIVE" (lower is worse), or "NEUTRAL"
+	KPISentiment string
+
+	// ImpactIsKPI indicates whether the impact signal itself is KPI-based
+	ImpactIsKPI bool
 }
 
 // Validate checks that the incident context is complete and valid.

@@ -379,13 +379,13 @@ func (t *TieredStore) Close() error {
 }
 
 // RecordStorageMetrics records storage usage metrics for monitoring
-func (t *TieredStore) RecordStorageMetrics(tenantID, shardNum string) {
+func (t *TieredStore) RecordStorageMetrics(shardNum string) {
 	memoryUsage := t.memoryStore.Size() * int64(t.estimateItemSize())
 	// For disk usage, we'd need to implement disk size tracking
 	// For now, use a placeholder
 	diskUsage := int64(0) // TODO: Implement actual disk usage tracking
 
-	monitoring.RecordBleveStorageUsage(tenantID, shardNum, memoryUsage, diskUsage)
+	monitoring.RecordBleveStorageUsage(shardNum, memoryUsage, diskUsage)
 }
 
 // Stats returns statistics about the tiered store performance

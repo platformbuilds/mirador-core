@@ -47,13 +47,13 @@ func NewDynamicConfigService(cache cache.ValkeyCluster, logger logger.Logger) *D
 
 // GetGRPCConfig retrieves the current gRPC endpoint configuration from cache
 // If not found, returns the default configuration from static config
-func (s *DynamicConfigService) GetGRPCConfig(ctx context.Context, tenantID string, defaultConfig *config.GRPCConfig) (*DynamicGRPCConfig, error) {
-	key := s.getConfigKey(tenantID, "grpc_endpoints")
+func (s *DynamicConfigService) GetGRPCConfig(ctx context.Context, defaultConfig *config.GRPCConfig) (*DynamicGRPCConfig, error) {
+	key := s.getConfigKey("grpc_endpoints")
 
 	// Try to get from cache first
 	data, err := s.cache.Get(ctx, key)
 	if err != nil {
-		s.logger.Warn("Failed to get gRPC config from cache, using defaults", "tenantID", tenantID, "error", err)
+		s.logger.Warn("Failed to get gRPC config from cache, using defaults", "error", err)
 		return s.convertToDynamicConfig(defaultConfig), nil
 	}
 
@@ -65,7 +65,7 @@ func (s *DynamicConfigService) GetGRPCConfig(ctx context.Context, tenantID strin
 	// Parse from cache
 	var cfg DynamicGRPCConfig
 	if err := json.Unmarshal([]byte(data), &cfg); err != nil {
-		s.logger.Error("Failed to unmarshal gRPC config from cache", "tenantID", tenantID, "error", err)
+		s.logger.Error("Failed to unmarshal gRPC config from cache", "error", err)
 		return s.convertToDynamicConfig(defaultConfig), nil
 	}
 
@@ -73,8 +73,8 @@ func (s *DynamicConfigService) GetGRPCConfig(ctx context.Context, tenantID strin
 }
 
 // SetGRPCConfig updates the gRPC endpoint configuration in cache
-func (s *DynamicConfigService) SetGRPCConfig(ctx context.Context, tenantID string, cfg *DynamicGRPCConfig) error {
-	key := s.getConfigKey(tenantID, "grpc_endpoints")
+func (s *DynamicConfigService) SetGRPCConfig(ctx context.Context, cfg *DynamicGRPCConfig) error {
+	key := s.getConfigKey("grpc_endpoints")
 
 	data, err := json.Marshal(cfg)
 	if err != nil {
@@ -86,14 +86,14 @@ func (s *DynamicConfigService) SetGRPCConfig(ctx context.Context, tenantID strin
 		return fmt.Errorf("failed to store gRPC config in cache: %w", err)
 	}
 
-	s.logger.Info("Updated gRPC endpoint configuration", "tenantID", tenantID)
+	s.logger.Info("Updated gRPC endpoint configuration")
 	return nil
 }
 
 // ResetGRPCConfig resets the gRPC configuration to defaults
-func (s *DynamicConfigService) ResetGRPCConfig(ctx context.Context, tenantID string, defaultConfig *config.GRPCConfig) error {
+func (s *DynamicConfigService) ResetGRPCConfig(ctx context.Context, defaultConfig *config.GRPCConfig) error {
 	cfg := s.convertToDynamicConfig(defaultConfig)
-	return s.SetGRPCConfig(ctx, tenantID, cfg)
+	return s.SetGRPCConfig(ctx, cfg)
 }
 
 // convertToDynamicConfig converts static config to dynamic config format
@@ -113,6 +113,6 @@ func (s *DynamicConfigService) convertToDynamicConfig(staticConfig *config.GRPCC
 }
 
 // getConfigKey generates the cache key for configuration
-func (s *DynamicConfigService) getConfigKey(tenantID, configType string) string {
-	return fmt.Sprintf("cfg:%s:%s", tenantID, configType)
+func (s *DynamicConfigService) getConfigKey(configType string) string {
+	return fmt.Sprintf("cfg:%s", configType)
 }

@@ -74,7 +74,7 @@ func TestRCA_and_OpenRoutes(t *testing.T) {
 	// RCA
 	rh := NewRCAHandler(&fakeRCA{}, logs, nil, cch, log, nil)
 	r := gin.New()
-	r.Use(func(c *gin.Context) { c.Set("tenant_id", "t1"); c.Next() })
+	r.Use(func(c *gin.Context) { c.Set("default", "t1"); c.Next() })
 	r.POST("/rca/investigate", rh.StartInvestigation)
 	tr := models.TimeRange{Start: time.Now().Add(-time.Hour), End: time.Now()}
 	body, _ := json.Marshal(models.RCAInvestigationRequest{IncidentID: "i1", Symptoms: []string{"s"}, TimeRange: tr})
@@ -103,7 +103,7 @@ func TestRCA_ServiceGraph_Success(t *testing.T) {
 
 	rh := NewRCAHandler(&fakeRCA{}, logs, sg, cch, log, nil)
 	r := gin.New()
-	r.Use(func(c *gin.Context) { c.Set("tenant_id", "tenant-1"); c.Next() })
+	r.Use(func(c *gin.Context) { c.Set("default", "tenant-1"); c.Next() })
 	r.POST("/rca/service-graph", rh.GetServiceGraph)
 
 	body := []byte(`{"start":"1970-01-01T00:00:00Z","end":"1970-01-01T00:05:00Z"}`)
@@ -115,8 +115,9 @@ func TestRCA_ServiceGraph_Success(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("service graph status=%d body=%s", w.Code, w.Body.String())
 	}
-	if sg.lastTenant != "tenant-1" {
-		t.Fatalf("expected tenant tenant-1, got %s", sg.lastTenant)
+	// MIRADOR-CORE no longer exposes tenant context; system tenant is used internally
+	if sg.lastTenant != "system" {
+		t.Fatalf("expected tenant system, got %s", sg.lastTenant)
 	}
 	if sg.lastReq == nil || sg.lastReq.Start.IsZero() || sg.lastReq.End.IsZero() {
 		t.Fatalf("expected request to propagate start/end")
@@ -149,7 +150,7 @@ func TestRCA_ServiceGraph_Errors(t *testing.T) {
 
 	rh := NewRCAHandler(&fakeRCA{}, logs, nil, cch, log, nil)
 	r := gin.New()
-	r.Use(func(c *gin.Context) { c.Set("tenant_id", "tenant-err"); c.Next() })
+	r.Use(func(c *gin.Context) { c.Set("default", "tenant-err"); c.Next() })
 	r.POST("/rca/service-graph", rh.GetServiceGraph)
 
 	w := httptest.NewRecorder()
@@ -163,7 +164,7 @@ func TestRCA_ServiceGraph_Errors(t *testing.T) {
 	sg := &stubServiceGraph{}
 	rh = NewRCAHandler(&fakeRCA{}, logs, sg, cch, log, nil)
 	r = gin.New()
-	r.Use(func(c *gin.Context) { c.Set("tenant_id", "tenant-err"); c.Next() })
+	r.Use(func(c *gin.Context) { c.Set("default", "tenant-err"); c.Next() })
 	r.POST("/rca/service-graph", rh.GetServiceGraph)
 
 	w = httptest.NewRecorder()
