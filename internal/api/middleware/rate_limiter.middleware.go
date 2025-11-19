@@ -17,7 +17,7 @@ func RateLimiter(valkeyCache cache.ValkeyCluster) gin.HandlerFunc {
 
 		// Rate limiting key
 		window := time.Now().Unix() / 60 // 1-minute windows
-		key := fmt.Sprintf("rate_limit:%s:%d", window)
+		key := fmt.Sprintf("rate_limit:%s:%d", c.ClientIP(), int(window))
 
 		// Get current request count
 		countBytes, err := valkeyCache.Get(c.Request.Context(), key)

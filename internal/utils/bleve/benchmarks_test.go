@@ -80,7 +80,7 @@ func BenchmarkBleveIndexing(b *testing.B) {
 	shardManager := NewShardManager(3, storage, metadata, mapper, logger, tempDir)
 
 	// Initialize shards and index documents
-	err := shardManager.InitializeShards("bench-tenant")
+	err := shardManager.InitializeShards()
 	if err != nil {
 		b.Fatalf("Failed to initialize shards: %v", err)
 	}
@@ -91,7 +91,7 @@ func BenchmarkBleveIndexing(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		err := shardManager.IndexDocuments(docs, "bench-tenant")
+		err := shardManager.IndexDocuments(docs)
 		if err != nil {
 			b.Fatalf("Failed to index documents: %v", err)
 		}
@@ -109,13 +109,13 @@ func BenchmarkBleveSearch(b *testing.B) {
 	shardManager := NewShardManager(3, storage, metadata, mapper, logger, tempDir)
 
 	// Initialize shards and index documents
-	err := shardManager.InitializeShards("bench-tenant")
+	err := shardManager.InitializeShards()
 	if err != nil {
 		b.Fatalf("Failed to initialize shards: %v", err)
 	}
 
 	docs := generateBenchmarkDocuments(10000)
-	err = shardManager.IndexDocuments(docs, "bench-tenant")
+	err = shardManager.IndexDocuments(docs)
 	if err != nil {
 		b.Fatalf("Failed to index documents: %v", err)
 	}
@@ -134,7 +134,7 @@ func BenchmarkBleveSearch(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		request := searchRequests[i%len(searchRequests)]
-		_, err := shardManager.Search(request, "bench-tenant")
+		_, err := shardManager.Search(request)
 		if err != nil {
 			b.Fatalf("Search failed: %v", err)
 		}
@@ -152,7 +152,7 @@ func BenchmarkBleveConcurrentIndexing(b *testing.B) {
 	shardManager := NewShardManager(3, storage, metadata, mapper, logger, tempDir)
 
 	// Initialize shards
-	err := shardManager.InitializeShards("bench-tenant")
+	err := shardManager.InitializeShards()
 	if err != nil {
 		b.Fatalf("Failed to initialize shards: %v", err)
 	}
@@ -172,7 +172,7 @@ func BenchmarkBleveConcurrentIndexing(b *testing.B) {
 				Data: doc.Data,
 			}
 
-			err := shardManager.IndexDocuments([]mapping.IndexableDocument{uniqueDoc}, "bench-tenant")
+			err := shardManager.IndexDocuments([]mapping.IndexableDocument{uniqueDoc})
 			if err != nil {
 				b.Fatalf("Failed to index document: %v", err)
 			}
@@ -192,14 +192,14 @@ func BenchmarkBleveMemoryUsage(b *testing.B) {
 		tempDir := b.TempDir()
 		shardManager := NewShardManager(1, storage, metadata, mapper, logger, tempDir)
 
-		err := shardManager.InitializeShards("bench-tenant")
+		err := shardManager.InitializeShards()
 		if err != nil {
 			b.Fatalf("Failed to initialize shards: %v", err)
 		}
 
 		docs := generateBenchmarkDocuments(100)
 		for i := 0; i < b.N; i++ {
-			err := shardManager.IndexDocuments(docs, "bench-tenant")
+			err := shardManager.IndexDocuments(docs)
 			if err != nil {
 				b.Fatalf("Failed to index documents: %v", err)
 			}
@@ -213,14 +213,14 @@ func BenchmarkBleveMemoryUsage(b *testing.B) {
 		tempDir := b.TempDir()
 		shardManager := NewShardManager(3, storage, metadata, mapper, logger, tempDir)
 
-		err := shardManager.InitializeShards("bench-tenant")
+		err := shardManager.InitializeShards()
 		if err != nil {
 			b.Fatalf("Failed to initialize shards: %v", err)
 		}
 
 		docs := generateBenchmarkDocuments(1000)
 		for i := 0; i < b.N; i++ {
-			err := shardManager.IndexDocuments(docs, "bench-tenant")
+			err := shardManager.IndexDocuments(docs)
 			if err != nil {
 				b.Fatalf("Failed to index documents: %v", err)
 			}
@@ -239,13 +239,13 @@ func BenchmarkBleveQueryComplexity(b *testing.B) {
 	shardManager := NewShardManager(3, storage, metadata, mapper, logger, tempDir)
 
 	// Initialize shards and index documents
-	err := shardManager.InitializeShards("bench-tenant")
+	err := shardManager.InitializeShards()
 	if err != nil {
 		b.Fatalf("Failed to initialize shards: %v", err)
 	}
 
 	docs := generateBenchmarkDocuments(50000) // Large dataset for meaningful benchmarks
-	err = shardManager.IndexDocuments(docs, "bench-tenant")
+	err = shardManager.IndexDocuments(docs)
 	if err != nil {
 		b.Fatalf("Failed to index documents: %v", err)
 	}
@@ -268,7 +268,7 @@ func BenchmarkBleveQueryComplexity(b *testing.B) {
 			b.ReportAllocs()
 
 			for i := 0; i < b.N; i++ {
-				_, err := shardManager.Search(request, "bench-tenant")
+				_, err := shardManager.Search(request)
 				if err != nil {
 					b.Fatalf("Search failed for query %s: %v", query, err)
 				}

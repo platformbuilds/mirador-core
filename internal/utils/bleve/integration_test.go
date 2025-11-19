@@ -86,7 +86,7 @@ func TestDistributedIndexingEndToEnd(t *testing.T) {
 	require.NoError(t, err)
 
 	// Initialize shards
-	err = suite.shardManager.InitializeShards("test-tenant")
+	err = suite.shardManager.InitializeShards()
 	require.NoError(t, err)
 
 	// Create test data - mix of logs and traces
@@ -127,19 +127,19 @@ func TestDistributedIndexingEndToEnd(t *testing.T) {
 	}
 
 	// Map and index logs
-	logDocuments, err := suite.mapper.MapLogs(logs, "test-tenant")
+	logDocuments, err := suite.mapper.MapLogs(logs)
 	require.NoError(t, err)
 	assert.Len(t, logDocuments, 2)
 
-	err = suite.shardManager.IndexDocuments(logDocuments, "test-tenant")
+	err = suite.shardManager.IndexDocuments(logDocuments)
 	require.NoError(t, err)
 
 	// Map and index traces
-	traceDocuments, err := suite.mapper.MapTraces(traces, "test-tenant")
+	traceDocuments, err := suite.mapper.MapTraces(traces)
 	require.NoError(t, err)
 	assert.Len(t, traceDocuments, 1)
 
-	err = suite.shardManager.IndexDocuments(traceDocuments, "test-tenant")
+	err = suite.shardManager.IndexDocuments(traceDocuments)
 	require.NoError(t, err)
 
 	// Verify indexing by checking shard stats
@@ -155,14 +155,14 @@ func TestDistributedIndexingEndToEnd(t *testing.T) {
 	// Test search functionality
 	query := bleve.NewQueryStringQuery("login")
 	request := bleve.NewSearchRequest(query)
-	result, err := suite.shardManager.Search(request, "test-tenant")
+	result, err := suite.shardManager.Search(request)
 	require.NoError(t, err)
 	assert.Greater(t, result.Total, uint64(0))
 
 	// Test service-specific search
 	query = bleve.NewQueryStringQuery("auth-service")
 	request = bleve.NewSearchRequest(query)
-	result, err = suite.shardManager.Search(request, "test-tenant")
+	result, err = suite.shardManager.Search(request)
 	require.NoError(t, err)
 	assert.Greater(t, result.Total, uint64(0))
 }
@@ -173,7 +173,7 @@ func TestShardDistribution(t *testing.T) {
 	defer suite.Teardown()
 
 	// Initialize shards
-	err := suite.shardManager.InitializeShards("test-tenant")
+	err := suite.shardManager.InitializeShards()
 	require.NoError(t, err)
 
 	// Create many documents to test distribution
@@ -182,7 +182,6 @@ func TestShardDistribution(t *testing.T) {
 		documents[i] = mapping.IndexableDocument{
 			ID: fmt.Sprintf("doc_%d", i),
 			Data: mapping.LogDocument{
-				TenantID:  "test-tenant",
 				Message:   fmt.Sprintf("Test message %d", i),
 				Service:   "test-service",
 				Timestamp: time.Now(),
@@ -191,7 +190,7 @@ func TestShardDistribution(t *testing.T) {
 	}
 
 	// Index documents
-	err = suite.shardManager.IndexDocuments(documents, "test-tenant")
+	err = suite.shardManager.IndexDocuments(documents)
 	require.NoError(t, err)
 
 	// Check distribution across shards
@@ -255,7 +254,7 @@ func TestFailureRecovery(t *testing.T) {
 	err := suite.coordinator.Start(ctx)
 	require.NoError(t, err)
 
-	err = suite.shardManager.InitializeShards("test-tenant")
+	err = suite.shardManager.InitializeShards()
 	require.NoError(t, err)
 
 	// Index some data
@@ -263,7 +262,6 @@ func TestFailureRecovery(t *testing.T) {
 		{
 			ID: "recovery_test_1",
 			Data: mapping.LogDocument{
-				TenantID:  "test-tenant",
 				Message:   "Recovery test message",
 				Service:   "test-service",
 				Timestamp: time.Now(),
@@ -271,13 +269,13 @@ func TestFailureRecovery(t *testing.T) {
 		},
 	}
 
-	err = suite.shardManager.IndexDocuments(documents, "test-tenant")
+	err = suite.shardManager.IndexDocuments(documents)
 	require.NoError(t, err)
 
 	// Verify data is searchable
 	query := bleve.NewQueryStringQuery("recovery")
 	request := bleve.NewSearchRequest(query)
-	result, err := suite.shardManager.Search(request, "test-tenant")
+	result, err := suite.shardManager.Search(request)
 	require.NoError(t, err)
 	assert.Greater(t, result.Total, uint64(0))
 
@@ -292,7 +290,7 @@ func TestFailureRecovery(t *testing.T) {
 	defer newCoordinator.Stop()
 
 	// Verify system still works
-	result2, err := suite.shardManager.Search(request, "test-tenant")
+	result2, err := suite.shardManager.Search(request)
 	require.NoError(t, err)
 	assert.Equal(t, result.Total, result2.Total, "Search results should be consistent after restart")
 }
@@ -303,7 +301,7 @@ func TestConcurrentIndexing(t *testing.T) {
 	defer suite.Teardown()
 
 	// Initialize shards
-	err := suite.shardManager.InitializeShards("test-tenant")
+	err := suite.shardManager.InitializeShards()
 	require.NoError(t, err)
 
 	// Create concurrent indexing goroutines
@@ -318,7 +316,6 @@ func TestConcurrentIndexing(t *testing.T) {
 				documents[j] = mapping.IndexableDocument{
 					ID: fmt.Sprintf("concurrent_doc_w%d_%d", workerID, j),
 					Data: mapping.LogDocument{
-						TenantID:  "test-tenant",
 						Message:   fmt.Sprintf("Concurrent message from worker %d", workerID),
 						Service:   fmt.Sprintf("worker-service-%d", workerID),
 						Timestamp: time.Now(),
@@ -326,7 +323,7 @@ func TestConcurrentIndexing(t *testing.T) {
 				}
 			}
 
-			err := suite.shardManager.IndexDocuments(documents, "test-tenant")
+			err := suite.shardManager.IndexDocuments(documents)
 			assert.NoError(t, err)
 			done <- true
 		}(i)
@@ -361,7 +358,7 @@ func TestDataConsistency(t *testing.T) {
 	defer suite.Teardown()
 
 	// Initialize shards
-	err := suite.shardManager.InitializeShards("test-tenant")
+	err := suite.shardManager.InitializeShards()
 	require.NoError(t, err)
 
 	// Index initial data
@@ -369,7 +366,6 @@ func TestDataConsistency(t *testing.T) {
 		{
 			ID: "consistency_test_1",
 			Data: mapping.LogDocument{
-				TenantID:  "test-tenant",
 				Message:   "Initial message",
 				Service:   "consistency-service",
 				Timestamp: time.Now(),
@@ -377,13 +373,13 @@ func TestDataConsistency(t *testing.T) {
 		},
 	}
 
-	err = suite.shardManager.IndexDocuments(initialDocs, "test-tenant")
+	err = suite.shardManager.IndexDocuments(initialDocs)
 	require.NoError(t, err)
 
 	// Verify initial data
 	query := bleve.NewQueryStringQuery("initial")
 	request := bleve.NewSearchRequest(query)
-	result1, err := suite.shardManager.Search(request, "test-tenant")
+	result1, err := suite.shardManager.Search(request)
 	require.NoError(t, err)
 	assert.Equal(t, uint64(1), result1.Total)
 
@@ -392,7 +388,6 @@ func TestDataConsistency(t *testing.T) {
 		{
 			ID: "consistency_test_2",
 			Data: mapping.LogDocument{
-				TenantID:  "test-tenant",
 				Message:   "Additional message",
 				Service:   "consistency-service",
 				Timestamp: time.Now(),
@@ -400,91 +395,23 @@ func TestDataConsistency(t *testing.T) {
 		},
 	}
 
-	err = suite.shardManager.IndexDocuments(additionalDocs, "test-tenant")
+	err = suite.shardManager.IndexDocuments(additionalDocs)
 	require.NoError(t, err)
 
 	// Verify both documents are searchable
-	result2, err := suite.shardManager.Search(request, "test-tenant")
+	result2, err := suite.shardManager.Search(request)
 	require.NoError(t, err)
 	assert.Equal(t, uint64(1), result2.Total) // Only "initial" should match
 
 	query = bleve.NewQueryStringQuery("consistency-service")
-	result3, err := suite.shardManager.Search(request, "test-tenant")
+	result3, err := suite.shardManager.Search(request)
 	require.NoError(t, err)
 	assert.Equal(t, uint64(1), result3.Total) // Should find one document
 
 	// Test broader search
 	query = bleve.NewQueryStringQuery("message")
 	request = bleve.NewSearchRequest(query)
-	result4, err := suite.shardManager.Search(request, "test-tenant")
+	result4, err := suite.shardManager.Search(request)
 	require.NoError(t, err)
 	assert.Equal(t, uint64(2), result4.Total) // Should find both documents
-}
-
-// TestTenantIsolation tests that data from different tenants is properly isolated
-func TestTenantIsolation(t *testing.T) {
-	suite := SetupIntegrationTest(t)
-	defer suite.Teardown()
-
-	// Initialize shards for both tenants
-	err := suite.shardManager.InitializeShards("tenant-a")
-	require.NoError(t, err)
-
-	err = suite.shardManager.InitializeShards("tenant-b")
-	require.NoError(t, err)
-
-	// Index data for tenant A
-	tenantADocs := []mapping.IndexableDocument{
-		{
-			ID: "tenant_a_doc",
-			Data: mapping.LogDocument{
-				TenantID:  "tenant-a",
-				Message:   "Tenant A message",
-				Service:   "service-a",
-				Timestamp: time.Now(),
-			},
-		},
-	}
-
-	err = suite.shardManager.IndexDocuments(tenantADocs, "tenant-a")
-	require.NoError(t, err)
-
-	// Index data for tenant B
-	tenantBDocs := []mapping.IndexableDocument{
-		{
-			ID: "tenant_b_doc",
-			Data: mapping.LogDocument{
-				TenantID:  "tenant-b",
-				Message:   "Tenant B message",
-				Service:   "service-b",
-				Timestamp: time.Now(),
-			},
-		},
-	}
-
-	err = suite.shardManager.IndexDocuments(tenantBDocs, "tenant-b")
-	require.NoError(t, err)
-
-	// Search in tenant A - should only find tenant A data
-	query := bleve.NewQueryStringQuery("message")
-	request := bleve.NewSearchRequest(query)
-	resultA, err := suite.shardManager.Search(request, "tenant-a")
-	require.NoError(t, err)
-	assert.Equal(t, uint64(1), resultA.Total)
-
-	// Search in tenant B - should only find tenant B data
-	resultB, err := suite.shardManager.Search(request, "tenant-b")
-	require.NoError(t, err)
-	assert.Equal(t, uint64(1), resultB.Total)
-
-	// Verify tenant isolation by checking specific terms
-	query = bleve.NewQueryStringQuery("message")
-	request = bleve.NewSearchRequest(query)
-	resultServiceA, err := suite.shardManager.Search(request, "tenant-a")
-	require.NoError(t, err)
-	assert.Equal(t, uint64(1), resultServiceA.Total)
-
-	resultServiceAInB, err := suite.shardManager.Search(request, "tenant-b")
-	require.NoError(t, err)
-	assert.Equal(t, uint64(1), resultServiceAInB.Total) // Should find tenant B data
 }

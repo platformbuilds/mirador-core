@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -40,9 +39,9 @@ type MetricsMetadataSynchronizerImpl struct {
 	logger  logger.Logger
 
 	// State management
-	syncStates   map[string]*models.MetricMetadataSyncState
-	syncStatuses map[string]*models.MetricMetadataSyncStatus
-	stateMutex   sync.RWMutex
+	syncState  *models.MetricMetadataSyncState
+	syncStatus *models.MetricMetadataSyncStatus
+	stateMutex sync.RWMutex
 
 	// Control channels
 	stopCh chan struct{}
@@ -59,14 +58,14 @@ func NewMetricsMetadataSynchronizer(
 	logger logger.Logger,
 ) MetricsMetadataSynchronizer {
 	return &MetricsMetadataSynchronizerImpl{
-		indexer:      indexer,
-		cache:        cache,
-		config:       config,
-		logger:       logger,
-		syncStates:   make(map[string]*models.MetricMetadataSyncState),
-		syncStatuses: make(map[string]*models.MetricMetadataSyncStatus),
-		stopCh:       make(chan struct{}),
-		doneCh:       make(chan struct{}),
+		indexer:    indexer,
+		cache:      cache,
+		config:     config,
+		logger:     logger,
+		syncState:  &models.MetricMetadataSyncState{},
+		syncStatus: &models.MetricMetadataSyncStatus{Status: "never_run"},
+		stopCh:     make(chan struct{}),
+		doneCh:     make(chan struct{}),
 	}
 }
 
@@ -122,8 +121,8 @@ func (s *MetricsMetadataSynchronizerImpl) syncLoop(ctx context.Context) {
 	s.ticker = time.NewTicker(s.config.Interval)
 	defer s.ticker.Stop()
 
-	// Do initial sync for all known tenants
-	if err := s.syncAllTenants(ctx, false); err != nil {
+	// Do initial sync
+	if err := s.sync(ctx, false); err != nil {
 		s.logger.Error("Initial sync failed", "error", err)
 	}
 
@@ -134,27 +133,22 @@ func (s *MetricsMetadataSynchronizerImpl) syncLoop(ctx context.Context) {
 		case <-s.stopCh:
 			return
 		case <-s.ticker.C:
-			if err := s.syncAllTenants(ctx, false); err != nil {
+			if err := s.sync(ctx, false); err != nil {
 				s.logger.Error("Periodic sync failed", "error", err)
 			}
 		}
 	}
 }
 
-// syncTenant synchronizes a specific tenant
-func (s *MetricsMetadataSynchronizerImpl) syncTenant(ctx context.Context, forceFull bool) error {
+// sync performs the synchronization
+func (s *MetricsMetadataSynchronizerImpl) sync(ctx context.Context, forceFull bool) error {
 	s.stateMutex.Lock()
-	state := s.syncStates[]
-	if state == nil {
-		state = &models.MetricMetadataSyncState{
-			IsCurrentlySyncing: false,}
-		s.syncStates[] = state
-	}
+	state := s.syncState
 	s.stateMutex.Unlock()
 
 	// Check if sync is already running
 	if state.IsCurrentlySyncing {
-		s.logger.Debug("Sync already running for tenant")
+		s.logger.Debug("Sync already running")
 		return nil
 	}
 
@@ -175,7 +169,7 @@ func (s *MetricsMetadataSynchronizerImpl) syncTenant(ctx context.Context, forceF
 	}
 
 	s.stateMutex.Lock()
-	s.syncStatuses[] = status
+	s.syncStatus = status
 	s.stateMutex.Unlock()
 
 	// Perform the sync
@@ -194,7 +188,7 @@ func (s *MetricsMetadataSynchronizerImpl) syncTenant(ctx context.Context, forceF
 		state.LastError = err.Error()
 		state.LastErrorTime = time.Now()
 
-		s.logger.Error("Sync failed" "error", err)
+		s.logger.Error("Sync failed", "error", err)
 	} else {
 		status.Status = "completed"
 		status.MetricsProcessed = result.MetricsProcessed
@@ -298,7 +292,7 @@ func (s *MetricsMetadataSynchronizerImpl) GetSyncState() (*models.MetricMetadata
 	s.stateMutex.RLock()
 	defer s.stateMutex.RUnlock()
 
-	state := s.syncStates[]
+	state := s.syncState
 	if state == nil {
 		return &models.MetricMetadataSyncState{}, nil
 	}
@@ -313,7 +307,7 @@ func (s *MetricsMetadataSynchronizerImpl) GetSyncStatus() (*models.MetricMetadat
 	s.stateMutex.RLock()
 	defer s.stateMutex.RUnlock()
 
-	status := s.syncStatuses[]
+	status := s.syncStatus
 	if status == nil {
 		return &models.MetricMetadataSyncStatus{Status: "never_run"}, nil
 	}
@@ -345,10 +339,10 @@ func (s *MetricsMetadataSynchronizerImpl) getSyncState() *models.MetricMetadataS
 	s.stateMutex.RLock()
 	defer s.stateMutex.RUnlock()
 
-	state := s.syncStates[]
+	state := s.syncState
 	if state == nil {
 		state = &models.MetricMetadataSyncState{}
-		s.syncStates[] = state
+		s.syncState = state
 	}
 	return state
 }

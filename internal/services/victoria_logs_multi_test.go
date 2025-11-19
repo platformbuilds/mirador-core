@@ -73,7 +73,7 @@ func TestLogs_Aggregated_GetFields_Union(t *testing.T) {
 		NewVictoriaLogsService(config.VictoriaLogsConfig{Endpoints: []string{a.URL}, Timeout: 2000}, log),
 		NewVictoriaLogsService(config.VictoriaLogsConfig{Endpoints: []string{b.URL}, Timeout: 2000}, log),
 	})
-	fields, err := parent.GetFields(context.Background(), "")
+	fields, err := parent.GetFields(context.Background())
 	if err != nil {
 		t.Fatalf("GetFields: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestLogs_Aggregated_GetStreams_Union(t *testing.T) {
 		NewVictoriaLogsService(config.VictoriaLogsConfig{Endpoints: []string{a.URL}, Timeout: 2000}, log),
 		NewVictoriaLogsService(config.VictoriaLogsConfig{Endpoints: []string{b.URL}, Timeout: 2000}, log),
 	})
-	streams, err := parent.GetStreams(context.Background(), "", 10)
+	streams, err := parent.GetStreams(context.Background(), 10)
 	if err != nil {
 		t.Fatalf("GetStreams: %v", err)
 	}

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
@@ -21,12 +20,8 @@ func TestServer_Start_And_Handler(t *testing.T) {
 		Logs:    services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log),
 		Traces:  services.NewVictoriaTracesService(config.VictoriaTracesConfig{}, log),
 	}
-	grpc, err := clients.NewGRPCClients(cfg, log, services.NewDynamicConfigService(cch, log))
-	if err != nil {
-		t.Fatalf("grpc clients: %v", err)
-	}
 
-	s := NewServer(cfg, log, cch, grpc, vms, nil)
+	s := NewServer(cfg, log, cch, vms, nil)
 
 	// call Handler() to cover that method
 	if s.Handler() == nil {
@@ -58,10 +53,8 @@ func TestServer_Start_Fails(t *testing.T) {
 		Logs:    services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log),
 		Traces:  services.NewVictoriaTracesService(config.VictoriaTracesConfig{}, log),
 	}
-	// Provide grpc clients with non-nil logger to avoid nil deref during Close (not reached here)
-	grpc, _ := clients.NewGRPCClients(&config.Config{Environment: "development"}, log, services.NewDynamicConfigService(cch, log))
 
-	s := NewServer(cfg, log, cch, grpc, vms, nil)
+	s := NewServer(cfg, log, cch, vms, nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 	// Expect immediate error due to invalid port

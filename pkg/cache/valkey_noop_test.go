@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -23,23 +22,6 @@ func TestNoopValkey_BasicOps(t *testing.T) {
 	}
 	if err := cch.Delete(ctx, "k1"); err != nil {
 		t.Fatalf("del: %v", err)
-	}
-
-	// session helpers
-	s := &models.UserSession{ID: "tok", UserID: "u1"}
-	if err := cch.SetSession(ctx, s); err != nil {
-		t.Fatalf("set session: %v", err)
-	}
-	got, err := cch.GetSession(ctx, "tok")
-	if err != nil || got.UserID != "u1" {
-		t.Fatalf("get session: %v %+v", err, got)
-	}
-	act, _ := cch.GetActiveSessions(ctx)
-	if len(act) == 0 {
-		t.Fatalf("active sessions empty")
-	}
-	if err := cch.InvalidateSession(ctx, "tok"); err != nil {
-		t.Fatalf("invalidate: %v", err)
 	}
 
 	// query cache

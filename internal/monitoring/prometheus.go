@@ -572,7 +572,7 @@ func RecordWeaviateOperation(operation, collection string, duration time.Duratio
 }
 
 // RecordBleveIndexOperation records Bleve index operation metrics
-func RecordBleveIndexOperation(operation, duration time.Duration, success bool) {
+func RecordBleveIndexOperation(operation string, duration time.Duration, success bool) {
 	status := "success"
 	if !success {
 		status = "error"

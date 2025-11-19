@@ -37,15 +37,6 @@ type CorrelationEvent struct {
 	CreatedAt  time.Time       `json:"created_at"`
 }
 
-// UserSession for Valkey cluster session management
-type UserSession struct {
-	ID           string                 `json:"id"`
-	UserID       string                 `json:"user_id"`
-	CreatedAt    time.Time              `json:"created_at"`
-	LastActivity time.Time              `json:"last_activity"`
-	Settings     map[string]interface{} `json:"user_settings"` // User-driven settings
-}
-
 // TimelineEvent represents events in incident correlation
 type TimelineEvent struct {
 	Time         time.Time `json:"time"`

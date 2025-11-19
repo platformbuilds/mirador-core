@@ -66,7 +66,7 @@ func TestTraces_Aggregated_GetServices_Union(t *testing.T) {
 		NewVictoriaTracesService(config.VictoriaTracesConfig{Name: "A", Endpoints: []string{a.URL}, Timeout: 2000}, log),
 		NewVictoriaTracesService(config.VictoriaTracesConfig{Name: "B", Endpoints: []string{b.URL}, Timeout: 2000}, log),
 	})
-	svcs, err := parent.GetServices(context.Background(), "")
+	svcs, err := parent.GetServices(context.Background())
 	if err != nil {
 		t.Fatalf("GetServices: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestTraces_Aggregated_GetTrace_FirstFound(t *testing.T) {
 		NewVictoriaTracesService(config.VictoriaTracesConfig{Endpoints: []string{a.URL}, Timeout: 2000}, log),
 		NewVictoriaTracesService(config.VictoriaTracesConfig{Endpoints: []string{b.URL}, Timeout: 2000}, log),
 	})
-	tr, err := parent.GetTrace(context.Background(), "abc", "")
+	tr, err := parent.GetTrace(context.Background(), "abc")
 	if err != nil {
 		t.Fatalf("GetTrace: %v", err)
 	}

@@ -31,15 +31,14 @@ func TestBleveDocumentMapper_MapLogs(t *testing.T) {
 		},
 	}
 
-	documents, err := mapper.MapLogs(logs, "tenant-123")
+	documents, err := mapper.MapLogs(logs)
 	require.NoError(t, err)
 	assert.Len(t, documents, 2)
 
 	// Check first document
 	doc1 := documents[0]
-	assert.Contains(t, doc1.ID, "log_tenant-123_")
+	assert.Contains(t, doc1.ID, "log_")
 	logDoc1 := doc1.Data.(*LogDocument)
-	assert.Equal(t, "tenant-123", logDoc1.TenantID)
 	assert.Equal(t, "INFO", logDoc1.Level)
 	assert.Equal(t, "Test log message", logDoc1.Message)
 	assert.Equal(t, "test-service", logDoc1.Service)
@@ -48,9 +47,8 @@ func TestBleveDocumentMapper_MapLogs(t *testing.T) {
 
 	// Check second document
 	doc2 := documents[1]
-	assert.Contains(t, doc2.ID, "log_tenant-123_")
+	assert.Contains(t, doc2.ID, "log_")
 	logDoc2 := doc2.Data.(*LogDocument)
-	assert.Equal(t, "tenant-123", logDoc2.TenantID)
 	assert.Equal(t, "ERROR", logDoc2.Level)
 	assert.Equal(t, "Another test message", logDoc2.Message)
 	assert.Equal(t, "another-service", logDoc2.Service)
@@ -86,14 +84,13 @@ func TestBleveDocumentMapper_MapTraces(t *testing.T) {
 		},
 	}
 
-	documents, err := mapper.MapTraces(traces, "tenant-456")
+	documents, err := mapper.MapTraces(traces)
 	require.NoError(t, err)
 	assert.Len(t, documents, 1)
 
 	doc := documents[0]
-	assert.Contains(t, doc.ID, "trace_tenant-456_trace-123")
+	assert.Contains(t, doc.ID, "trace_trace-123")
 	traceDoc := doc.Data.(*TraceDocument)
-	assert.Equal(t, "tenant-456", traceDoc.TenantID)
 	assert.Equal(t, "trace-123", traceDoc.TraceID)
 	assert.Equal(t, "web-service", traceDoc.ServiceName) // First span's service
 	assert.Equal(t, "http_request", traceDoc.Operation)  // First span's operation
@@ -103,8 +100,8 @@ func TestBleveDocumentMapper_MapTraces(t *testing.T) {
 func TestBleveDocumentMapper_GetIndexName(t *testing.T) {
 	mapper := NewBleveDocumentMapper(logger.New("test"))
 
-	assert.Equal(t, "mirador_logs_tenant-123", mapper.GetIndexName("logs", "tenant-123"))
-	assert.Equal(t, "mirador_traces_tenant-456", mapper.GetIndexName("traces", "tenant-456"))
+	assert.Equal(t, "mirador_logs", mapper.GetIndexName("logs"))
+	assert.Equal(t, "mirador_traces", mapper.GetIndexName("traces"))
 }
 
 func TestBleveDocumentMapper_ExtractTimestamp(t *testing.T) {

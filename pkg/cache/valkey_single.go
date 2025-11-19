@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -95,69 +94,6 @@ func (v *valkeySingleImpl) Delete(ctx context.Context, key string) error {
 	}
 	monitoring.RecordCacheOperation("delete", "success")
 	return nil
-}
-
-func (v *valkeySingleImpl) SetSession(ctx context.Context, session *models.UserSession) error {
-	session.LastActivity = time.Now()
-	key := fmt.Sprintf("session:%s", session.ID)
-	if err := v.Set(ctx, key, session, 24*time.Hour); err != nil {
-		monitoring.RecordCacheOperation("set_session", "error")
-		return err
-	}
-	activeKey := fmt.Sprintf("active_sessions:%s")
-	err := v.client.SAdd(ctx, activeKey, session.ID).Err()
-	if err != nil {
-		monitoring.RecordCacheOperation("set_session", "error")
-		return err
-	}
-	monitoring.RecordCacheOperation("set_session", "success")
-	return nil
-}
-
-func (v *valkeySingleImpl) GetSession(ctx context.Context, sessionID string) (*models.UserSession, error) {
-	key := fmt.Sprintf("session:%s", sessionID)
-	data, err := v.Get(ctx, key)
-	if err != nil {
-		monitoring.RecordCacheOperation("get_session", "miss")
-		return nil, err
-	}
-	var session models.UserSession
-	if err := json.Unmarshal(data, &session); err != nil {
-		monitoring.RecordCacheOperation("get_session", "error")
-		return nil, fmt.Errorf("failed to unmarshal session: %w", err)
-	}
-	monitoring.RecordCacheOperation("get_session", "hit")
-	return &session, nil
-}
-
-func (v *valkeySingleImpl) InvalidateSession(ctx context.Context, sessionID string) error {
-	activeKey := fmt.Sprintf("active_sessions:%s")
-	_ = v.client.SRem(ctx, activeKey, sessionID).Err()
-
-	err := v.Delete(ctx, fmt.Sprintf("session:%s", sessionID))
-	if err != nil {
-		monitoring.RecordCacheOperation("invalidate_session", "error")
-		return err
-	}
-	monitoring.RecordCacheOperation("invalidate_session", "success")
-	return nil
-}
-
-func (v *valkeySingleImpl) GetActiveSessions(ctx context.Context) ([]*models.UserSession, error) {
-	activeKey := fmt.Sprintf("active_sessions:%s")
-	sessionIDs, err := v.client.SMembers(ctx, activeKey).Result()
-	if err != nil {
-		return nil, err
-	}
-	sessions := make([]*models.UserSession, 0, len(sessionIDs))
-	for _, sessionID := range sessionIDs {
-		if session, err := v.GetSession(ctx, sessionID); err == nil {
-			sessions = append(sessions, session)
-		} else {
-			_ = v.client.SRem(ctx, activeKey, sessionID).Err()
-		}
-	}
-	return sessions, nil
 }
 
 func (v *valkeySingleImpl) CacheQueryResult(ctx context.Context, queryHash string, result interface{}, ttl time.Duration) error {

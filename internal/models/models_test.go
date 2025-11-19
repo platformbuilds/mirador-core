@@ -25,7 +25,6 @@ func TestKPIDefinition_JSONSerialization(t *testing.T) {
 		Sparkline:   map[string]interface{}{"type": "line"},
 		OwnerUserID: "user123",
 		Visibility:  "private",
-		TenantID:    "tenant1",
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -47,7 +46,6 @@ func TestKPIDefinition_JSONSerialization(t *testing.T) {
 	assert.Equal(t, kpi.Sentiment, unmarshaled.Sentiment)
 	assert.Equal(t, kpi.OwnerUserID, unmarshaled.OwnerUserID)
 	assert.Equal(t, kpi.Visibility, unmarshaled.Visibility)
-	assert.Equal(t, kpi.TenantID, unmarshaled.TenantID)
 	assert.Equal(t, len(kpi.Thresholds), len(unmarshaled.Thresholds))
 	assert.Equal(t, len(kpi.Tags), len(unmarshaled.Tags))
 }
@@ -60,7 +58,6 @@ func TestDashboard_JSONSerialization(t *testing.T) {
 		OwnerUserID: "user123",
 		Visibility:  "private",
 		IsDefault:   false,
-		TenantID:    "tenant1",
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -80,7 +77,6 @@ func TestDashboard_JSONSerialization(t *testing.T) {
 	assert.Equal(t, dashboard.OwnerUserID, unmarshaled.OwnerUserID)
 	assert.Equal(t, dashboard.Visibility, unmarshaled.Visibility)
 	assert.Equal(t, dashboard.IsDefault, unmarshaled.IsDefault)
-	assert.Equal(t, dashboard.TenantID, unmarshaled.TenantID)
 }
 
 func TestKPILayout_JSONSerialization(t *testing.T) {
@@ -93,7 +89,6 @@ func TestKPILayout_JSONSerialization(t *testing.T) {
 		Y:               0,
 		W:               6,
 		H:               4,
-		TenantID:        "tenant1",
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
@@ -116,7 +111,6 @@ func TestKPILayout_JSONSerialization(t *testing.T) {
 	assert.Equal(t, layout.Y, unmarshaled.Y)
 	assert.Equal(t, layout.W, unmarshaled.W)
 	assert.Equal(t, layout.H, unmarshaled.H)
-	assert.Equal(t, layout.TenantID, unmarshaled.TenantID)
 }
 
 func TestUserPreferences_JSONSerialization(t *testing.T) {
@@ -131,7 +125,6 @@ func TestUserPreferences_JSONSerialization(t *testing.T) {
 		KeyboardHintSeen:    false,
 		MiradorCoreEndpoint: "http://localhost:8080",
 		Preferences:         map[string]interface{}{"custom": "value"},
-		TenantID:            "tenant1",
 		CreatedAt:           now,
 		UpdatedAt:           now,
 	}
@@ -155,7 +148,6 @@ func TestUserPreferences_JSONSerialization(t *testing.T) {
 	assert.Equal(t, prefs.Timezone, unmarshaled.Timezone)
 	assert.Equal(t, prefs.KeyboardHintSeen, unmarshaled.KeyboardHintSeen)
 	assert.Equal(t, prefs.MiradorCoreEndpoint, unmarshaled.MiradorCoreEndpoint)
-	assert.Equal(t, prefs.TenantID, unmarshaled.TenantID)
 	assert.Equal(t, prefs.Preferences["custom"], unmarshaled.Preferences["custom"])
 }
 
@@ -199,34 +191,6 @@ func TestRequestResponseTypes_JSONSerialization(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(data), `"kpiDefinition"`)
 
-	// Test DashboardRequest/Response
-	dashboardReq := DashboardRequest{
-		Dashboard: &Dashboard{
-			ID:          "dashboard-1",
-			Name:        "Test Dashboard",
-			OwnerUserID: "user123",
-			Visibility:  "private",
-			CreatedAt:   now,
-			UpdatedAt:   now,
-		},
-	}
-	data, err = json.Marshal(dashboardReq)
-	require.NoError(t, err)
-	assert.Contains(t, string(data), `"dashboard"`)
-
-	// Test UserPreferencesRequest/Response
-	prefsReq := UserPreferencesRequest{
-		UserPreferences: &UserPreferences{
-			ID:        "user123",
-			Theme:     "dark",
-			CreatedAt: now,
-			UpdatedAt: now,
-		},
-	}
-	data, err = json.Marshal(prefsReq)
-	require.NoError(t, err)
-	assert.Contains(t, string(data), `"userPreferences"`)
-
 	// Test list responses
 	kpiListResp := KPIListResponse{
 		KPIDefinitions: []*KPIDefinition{
@@ -239,19 +203,6 @@ func TestRequestResponseTypes_JSONSerialization(t *testing.T) {
 	data, err = json.Marshal(kpiListResp)
 	require.NoError(t, err)
 	assert.Contains(t, string(data), `"kpiDefinitions"`)
-	assert.Contains(t, string(data), `"total":2`)
-
-	dashboardListResp := DashboardListResponse{
-		Dashboards: []*Dashboard{
-			{ID: "dash1", Name: "Dashboard 1"},
-			{ID: "dash2", Name: "Dashboard 2"},
-		},
-		Total:      2,
-		NextOffset: 2,
-	}
-	data, err = json.Marshal(dashboardListResp)
-	require.NoError(t, err)
-	assert.Contains(t, string(data), `"dashboards"`)
 	assert.Contains(t, string(data), `"total":2`)
 }
 

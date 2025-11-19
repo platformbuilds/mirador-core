@@ -54,7 +54,7 @@ func TestServiceGraphService_AggregatesMetrics(t *testing.T) {
 	end := start.Add(5 * time.Minute)
 	req := &models.ServiceGraphRequest{Start: models.FlexibleTime{Time: start}, End: models.FlexibleTime{Time: end}}
 
-	data, err := svc.FetchServiceGraph(context.Background(), "", req)
+	data, err := svc.FetchServiceGraph(context.Background(), req)
 	if err != nil {
 		t.Fatalf("FetchServiceGraph error: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestServiceGraphService_InvalidRange(t *testing.T) {
 	start := end.Add(5 * time.Minute)
 	req := &models.ServiceGraphRequest{Start: models.FlexibleTime{Time: start}, End: models.FlexibleTime{Time: end}}
 
-	_, err := svc.FetchServiceGraph(context.Background(), "", req)
+	_, err := svc.FetchServiceGraph(context.Background(), req)
 	if err == nil {
 		t.Fatalf("expected error for invalid range")
 	}

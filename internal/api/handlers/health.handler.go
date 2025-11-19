@@ -8,38 +8,34 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type HealthHandler struct {
-	grpcClients *clients.GRPCClients
-	vmServices  *services.VictoriaMetricsServices
-	cache       cache.ValkeyCluster // may be nil for legacy behavior
-	logger      logger.Logger
+	vmServices *services.VictoriaMetricsServices
+	cache      cache.ValkeyCluster // may be nil for legacy behavior
+	logger     logger.Logger
 }
 
 // NewHealthHandlerWithCache constructs a HealthHandler with explicit cache dependency.
-func NewHealthHandlerWithCache(grpcClients *clients.GRPCClients, vmServices *services.VictoriaMetricsServices, c cache.ValkeyCluster, logger logger.Logger) *HealthHandler {
+func NewHealthHandlerWithCache(vmServices *services.VictoriaMetricsServices, c cache.ValkeyCluster, logger logger.Logger) *HealthHandler {
 	return &HealthHandler{
-		grpcClients: grpcClients,
-		vmServices:  vmServices,
-		cache:       c,
-		logger:      logger,
+		vmServices: vmServices,
+		cache:      c,
+		logger:     logger,
 	}
 }
 
 // NewHealthHandler preserves the legacy constructor signature used by tests.
 // It creates a handler without a cache dependency; readiness will fall back
-// to legacy checks (VM/VL/VT + engines) when cache is nil.
-func NewHealthHandler(grpcClients *clients.GRPCClients, vmServices *services.VictoriaMetricsServices, logger logger.Logger) *HealthHandler {
+// to legacy checks (VM/VL/VT) when cache is nil.
+func NewHealthHandler(vmServices *services.VictoriaMetricsServices, logger logger.Logger) *HealthHandler {
 	return &HealthHandler{
-		grpcClients: grpcClients,
-		vmServices:  vmServices,
-		cache:       nil,
-		logger:      logger,
+		vmServices: vmServices,
+		cache:      nil,
+		logger:     logger,
 	}
 }
 
@@ -112,26 +108,6 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 	} else {
 		checks["victoria_traces"] = map[string]interface{}{"status": "healthy"}
 	}
-	if h.grpcClients.RCAEngine != nil {
-		if err := h.grpcClients.RCAEngine.HealthCheck(); err != nil {
-			checks["rca_engine"] = map[string]interface{}{"status": "unhealthy", "error": err.Error()}
-			overallHealthy = false
-		} else {
-			checks["rca_engine"] = map[string]interface{}{"status": "healthy"}
-		}
-	} else {
-		checks["rca_engine"] = map[string]interface{}{"status": "disabled"}
-	}
-	if h.grpcClients.AlertEngine != nil {
-		if err := h.grpcClients.AlertEngine.HealthCheck(); err != nil {
-			checks["alert_engine"] = map[string]interface{}{"status": "unhealthy", "error": err.Error()}
-			overallHealthy = false
-		} else {
-			checks["alert_engine"] = map[string]interface{}{"status": "healthy"}
-		}
-	} else {
-		checks["alert_engine"] = map[string]interface{}{"status": "disabled"}
-	}
 
 	status := "healthy"
 	httpStatus := http.StatusOK
@@ -187,37 +163,6 @@ func (h *HealthHandler) MicroservicesStatus(c *gin.Context) {
 		}
 	} else {
 		checks["victoria_traces"] = map[string]interface{}{"status": "healthy"}
-	}
-
-	// AI engines
-	if h.grpcClients.RCAEngine != nil {
-		if err := h.grpcClients.RCAEngine.HealthCheck(); err != nil {
-			checks["rca_engine"] = map[string]interface{}{"status": "unhealthy", "error": err.Error()}
-			overallHealthy = false
-		} else {
-			status := "healthy"
-			if !h.grpcClients.RCAEnabled {
-				status = "disabled"
-			}
-			checks["rca_engine"] = map[string]interface{}{"status": status}
-		}
-	} else {
-		checks["rca_engine"] = map[string]interface{}{"status": "disabled"}
-	}
-
-	if h.grpcClients.AlertEngine != nil {
-		if err := h.grpcClients.AlertEngine.HealthCheck(); err != nil {
-			checks["alert_engine"] = map[string]interface{}{"status": "unhealthy", "error": err.Error()}
-			overallHealthy = false
-		} else {
-			status := "healthy"
-			if !h.grpcClients.AlertEnabled {
-				status = "disabled"
-			}
-			checks["alert_engine"] = map[string]interface{}{"status": status}
-		}
-	} else {
-		checks["alert_engine"] = map[string]interface{}{"status": "disabled"}
 	}
 
 	httpStatus := http.StatusOK

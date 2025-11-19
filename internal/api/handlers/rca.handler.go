@@ -3,12 +3,10 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/rca"
 	"github.com/platformbuilds/mirador-core/internal/services"
@@ -17,7 +15,6 @@ import (
 )
 
 type RCAHandler struct {
-	rcaClient          clients.RCAClient
 	logsService        *services.VictoriaLogsService
 	serviceGraph       services.ServiceGraphFetcher
 	cache              cache.ValkeyCluster
@@ -27,7 +24,6 @@ type RCAHandler struct {
 }
 
 func NewRCAHandler(
-	rcaClient clients.RCAClient,
 	logsService *services.VictoriaLogsService,
 	serviceGraph services.ServiceGraphFetcher,
 	cache cache.ValkeyCluster,
@@ -35,7 +31,6 @@ func NewRCAHandler(
 	rcaEngine services.RCAEngine,
 ) *RCAHandler {
 	return &RCAHandler{
-		rcaClient:          rcaClient,
 		logsService:        logsService,
 		serviceGraph:       serviceGraph,
 		cache:              cache,
@@ -47,7 +42,7 @@ func NewRCAHandler(
 
 // checkFeatureEnabled checks if the RCA feature is enabled for the current
 func (h *RCAHandler) checkFeatureEnabled(c *gin.Context) bool {
-	flags, err := h.featureFlagService.GetFeatureFlags(c.Request.Context(), "system")
+	flags, err := h.featureFlagService.GetFeatureFlags(c.Request.Context())
 	if err != nil {
 		h.logger.Error("Failed to check feature flags", "error", err)
 		return false
@@ -66,39 +61,11 @@ func (h *RCAHandler) StartInvestigation(c *gin.Context) {
 		return
 	}
 
-	var request models.RCAInvestigationRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  "Invalid investigation request",
-		})
-		return
-	}
-
-	// Call MIRADOR-RCA-ENGINE for correlation analysis
-	correlation, err := h.rcaClient.InvestigateIncident(c.Request.Context(), &request)
-	if err != nil {
-		h.logger.Error("RCA investigation failed", "incident", request.IncidentID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "error",
-			"error":  "RCA investigation failed",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data": gin.H{
-			// Return the struct directly so json tags (snake_case) are preserved
-			"correlation": correlation,
-			"investigation": gin.H{
-				"startedAt":       correlation.CreatedAt,
-				"processingTime":  time.Since(correlation.CreatedAt).Milliseconds(),
-				"dataSourcesUsed": []string{"metrics", "logs", "traces"},
-				"anchorsFound":    len(correlation.RedAnchors),
-			},
-		},
-		"timestamp": time.Now().Format(time.RFC3339),
+	// RCA investigation via external AI engines has been removed
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"status":  "error",
+		"error":   "RCA investigation via external AI engines is no longer supported",
+		"message": "Use the local RCA engine via /api/v1/unified/rca endpoint instead",
 	})
 }
 
@@ -144,7 +111,7 @@ func (h *RCAHandler) StoreCorrelation(c *gin.Context) {
 		"correlation": correlationEvent,
 	}
 
-	if err := h.logsService.StoreJSONEvent(c.Request.Context(), logEntry, "system"); err != nil {
+	if err := h.logsService.StoreJSONEvent(c.Request.Context(), logEntry); err != nil {
 		h.logger.Error("Failed to store correlation", "correlationId", correlationEvent.ID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status": "error",
@@ -165,7 +132,7 @@ func (h *RCAHandler) StoreCorrelation(c *gin.Context) {
 	})
 }
 
-// GET /api/v1/rca/correlations - List active correlations (stubbed; fill with gRPC later)
+// GET /api/v1/rca/correlations - List active correlations (disabled)
 func (h *RCAHandler) GetActiveCorrelations(c *gin.Context) {
 	// Check if RCA feature is enabled
 	if !h.checkFeatureEnabled(c) {
@@ -175,59 +142,16 @@ func (h *RCAHandler) GetActiveCorrelations(c *gin.Context) {
 		})
 		return
 	}
-	// Optional filters
-	service := c.Query("service")
-	pageSizeStr := c.DefaultQuery("limit", "50")
-	startTimeStr := c.Query("start_time")
-	endTimeStr := c.Query("end_time")
 
-	// Parse page size
-	pageSize := int32(50)
-	if ps, err := strconv.Atoi(pageSizeStr); err == nil && ps > 0 && ps <= 1000 {
-		pageSize = int32(ps)
-	}
-
-	// Parse time filters
-	var startTime, endTime *time.Time
-	if startTimeStr != "" {
-		if t, err := time.Parse(time.RFC3339, startTimeStr); err == nil {
-			startTime = &t
-		}
-	}
-	if endTimeStr != "" {
-		if t, err := time.Parse(time.RFC3339, endTimeStr); err == nil {
-			endTime = &t
-		}
-	}
-
-	request := &models.ListCorrelationsRequest{
-		Service:   service,
-		StartTime: startTime,
-		EndTime:   endTime,
-		PageSize:  pageSize,
-	}
-
-	response, err := h.rcaClient.ListCorrelations(c.Request.Context(), request)
-	if err != nil {
-		h.logger.Error("Failed to list correlations", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "error",
-			"error":  "Failed to retrieve correlations",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data": gin.H{
-			"correlations":    response.Correlations,
-			"next_page_token": response.NextPageToken,
-		},
-		"timestamp": time.Now().Format(time.RFC3339),
+	// External AI engine correlation listing has been removed
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"status":  "error",
+		"error":   "Correlation listing via external AI engines is no longer supported",
+		"message": "Use the local RCA engine for analysis",
 	})
 }
 
-// GET /api/v1/rca/patterns - List known failure patterns (stubbed; fill with gRPC later)
+// GET /api/v1/rca/patterns - List known failure patterns (disabled)
 func (h *RCAHandler) GetFailurePatterns(c *gin.Context) {
 	// Check if RCA feature is enabled
 	if !h.checkFeatureEnabled(c) {
@@ -237,29 +161,12 @@ func (h *RCAHandler) GetFailurePatterns(c *gin.Context) {
 		})
 		return
 	}
-	// Optional filters
-	service := c.Query("service")
 
-	request := &models.GetPatternsRequest{
-		Service: service,
-	}
-
-	response, err := h.rcaClient.GetPatterns(c.Request.Context(), request)
-	if err != nil {
-		h.logger.Error("Failed to get patterns", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "error",
-			"error":  "Failed to retrieve patterns",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data": gin.H{
-			"patterns": response.Patterns,
-		},
-		"timestamp": time.Now().Format(time.RFC3339),
+	// External AI engine pattern retrieval has been removed
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"status":  "error",
+		"error":   "Failure pattern retrieval via external AI engines is no longer supported",
+		"message": "Use the local RCA engine for analysis",
 	})
 }
 
@@ -298,7 +205,7 @@ func (h *RCAHandler) GetServiceGraph(c *gin.Context) {
 		})
 		return
 	}
-	data, err := h.serviceGraph.FetchServiceGraph(c.Request.Context(), "system", &request)
+	data, err := h.serviceGraph.FetchServiceGraph(c.Request.Context(), &request)
 	if err != nil {
 		h.logger.Error("service graph fetch failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{

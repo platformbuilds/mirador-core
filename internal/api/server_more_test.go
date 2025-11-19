@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/grpc/clients"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
@@ -22,10 +21,9 @@ func TestServer_OpenAPI_AndRootRedirect(t *testing.T) {
 		Logs:    services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log),
 		Traces:  services.NewVictoriaTracesService(config.VictoriaTracesConfig{}, log),
 	}
-	grpc := &clients.GRPCClients{}
 	cch := cache.NewNoopValkeyCache(log)
 
-	s := NewServer(cfg, log, cch, grpc, vms, nil)
+	s := NewServer(cfg, log, cch, vms, nil)
 	ts := httptest.NewServer(s.router)
 	defer ts.Close()
 

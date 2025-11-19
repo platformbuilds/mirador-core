@@ -4,7 +4,7 @@ SHELL := /bin/bash
 	localdev localdev-up localdev-down localdev-wait localdev-test localdev-test-all-api localdev-test-api-only localdev-test-code-only localdev-seed-otel localdev-seed-data \
 	build build-native build-linux-multi build-linux-amd64 build-linux-arm64 build-darwin-arm64 build-windows-amd64 build-all \
 	docker docker-build docker-build-native dockerx-build dockerx-push docker-publish-release docker-publish-canary docker-publish-pr \
-	release test clean proto vendor lint run dev setup tools check-tools dev-stack dev-stack-down fmt version proto-clean clean-build \
+	release test clean vendor lint run dev setup tools check-tools dev-stack dev-stack-down fmt version clean-build \
 	tag-release helm-bump version-human version-ci vuln dockerx-build-local-multi buildx-ensure helm-sync-deps helm-dep-update
 
 BASE_URL ?= http://localhost:8010
@@ -58,9 +58,7 @@ help:
 	"  localdev-down             Tear down localdev stack and remove volumes."
 	"" \
 	"Development & Build:" \
-	"  setup                     Install tools, generate proto, download deps." \
-	"  proto                     Generate Protocol Buffer code from .proto files." \
-	"  proto-clean               Remove generated .pb.go then regenerate proto code." \
+	"  setup                     Install tools, download deps." \
 	"  build                     Static linux/amd64 build to bin/$(BINARY_NAME)." \
 	"  build-native              Build for host OS/Arch to bin/$(BINARY_NAME)-<os>-<arch>." \
 	"  build-linux-amd64         Build for linux/amd64." \
@@ -81,7 +79,7 @@ help:
 	"  test                      Run unit tests with race detector and coverage." \
 	"  fmt                       Format code (go fmt, goimports)." \
 	"  lint                      Run golangci-lint on the repo." \
-	"  tools                     Install dev tools (protoc-gen-*, lint, swag, govulncheck)." \
+	"  tools                     Install dev tools (lint, swag, govulncheck)." \
 	"  check-tools               Verify required tools are installed." \
 	"  vuln                      Run govulncheck vulnerability scan." \
 	"" \
@@ -201,50 +199,44 @@ localdev-down:
 # Setup development environment
 setup:
 	@echo "🚀 Setting up MIRADOR-CORE development environment..."
-	@./scripts/generate-proto-code.sh
 	@go mod download
 	@echo "✅ Setup complete! Run 'make dev' to start development server."
 
-# Generate Protocol Buffers from existing proto files
-proto:
-	@echo "🔧 Generating Protocol Buffer code from existing files..."
-	@./scripts/generate-proto-code.sh
-
 # Build
-build: proto ## Release-style static build for Linux/amd64 (default)
+build: ## Release-style static build for Linux/amd64 (default)
 	@echo "🔨 Building MIRADOR-CORE (linux/amd64)..."
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 		-ldflags="$(LDFLAGS)" \
 		-o bin/$(BINARY_NAME) \
 		cmd/server/main.go
 
-build-native: proto ## Build native (HOST_OS/HOST_ARCH)
+build-native: ## Build native (HOST_OS/HOST_ARCH)
 	@echo "🔨 Building MIRADOR-CORE (native: $(HOST_OS)/$(HOST_ARCH))..."
 	CGO_ENABLED=0 GOOS=$(HOST_OS) GOARCH=$(HOST_ARCH) go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY_NAME)-$(HOST_OS)-$(HOST_ARCH) cmd/server/main.go
 
-build-linux-amd64: proto ## Build linux/amd64
+build-linux-amd64: ## Build linux/amd64
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY_NAME)-linux-amd64 cmd/server/main.go
 
-build-linux-arm64: proto ## Build linux/arm64
+build-linux-arm64: ## Build linux/arm64
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY_NAME)-linux-arm64 cmd/server/main.go
 
 build-linux-multi: build-linux-amd64 build-linux-arm64 ## Build linux binaries for amd64 and arm64
 
-build-darwin-arm64: proto ## Build darwin/arm64 (Apple Silicon)
+build-darwin-arm64: ## Build darwin/arm64 (Apple Silicon)
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY_NAME)-darwin-arm64 cmd/server/main.go
 
-build-windows-amd64: proto ## Build windows/amd64
+build-windows-amd64: ## Build windows/amd64
 	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY_NAME)-windows-amd64.exe cmd/server/main.go
 
 build-all: build-linux-amd64 build-linux-arm64 build-darwin-arm64 build-windows-amd64 ## Build all common targets
 
 # Development build (with debug symbols)
-dev-build: proto
+dev-build:
 	@echo "🔨 Building MIRADOR-CORE for development..."
 	go build -o bin/$(BINARY_NAME)-dev cmd/server/main.go
 
 # Run development server
-dev: proto
+dev:
 	@echo "🚀 Starting MIRADOR-CORE in development mode..."
 	@echo "Make sure you have the VictoriaMetrics ecosystem running!"
 	@echo "Run 'docker-compose up -d' to start dependencies."
@@ -260,12 +252,12 @@ e2e: ## Run the full E2E pipeline (localdev up, seed OTEL, run e2e tests/lint)
 	@bash hack/e2e-core.sh
 
 # Clean and regenerate everything
-clean-build: clean proto
-	@echo "🧹 Clean build with fresh protobuf generation..."
+clean-build: clean
+	@echo "🧹 Clean build..."
 	@go build -o bin/$(BINARY_NAME) cmd/server/main.go
 
-# Run tests (generate proto first)
-test: proto
+# Run tests
+test:
 	@echo "🧪 Running tests..."
 	@packages=$$(find . -name "*_test.go" -type f -exec dirname {} \; | sort | uniq | sed 's|^\./||' | xargs -I {} sh -c 'pkg=$$(go list ./{} 2>/dev/null); [ -n "$$pkg" ] && echo $$pkg'); \
 	if [ -n "$$packages" ]; then \
@@ -289,23 +281,10 @@ clean:
 	rm -rf bin/
 	rm -rf vendor/
 	rm -f coverage.out
-	# Remove generated protobuf files to force regeneration
-	find internal/grpc/proto -name "*.pb.go" -delete
-	find internal/grpc/proto -name "*_grpc.pb.go" -delete
-
-# Force regenerate proto files
-proto-clean:
-	@echo "🗑️  Removing generated protobuf files..."
-	find internal/grpc/proto -name "*.pb.go" -delete
-	find internal/grpc/proto -name "*_grpc.pb.go" -delete
-	@echo "🔧 Regenerating protobuf files..."
-	@./scripts/generate-proto-code.sh
 
 # Install development tools
 tools:
 	@echo "🛠️  Installing development tools..."
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install github.com/swaggo/swag/cmd/swag@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -313,13 +292,10 @@ tools:
 # Check if all tools are available
 check-tools:
 	@echo "🔍 Checking development tools..."
-	@command -v protoc >/dev/null 2>&1 || { echo "❌ protoc is not installed"; exit 1; }
-	@command -v protoc-gen-go >/dev/null 2>&1 || { echo "❌ protoc-gen-go is not installed. Run 'make tools'"; exit 1; }
-	@command -v protoc-gen-go-grpc >/dev/null 2>&1 || { echo "❌ protoc-gen-go-grpc is not installed. Run 'make tools'"; exit 1; }
 	@echo "✅ All tools are available"
 
 # Lint code
-lint: proto
+lint:
 	@echo "🔍 Running linters..."
 	golangci-lint run ./...
 

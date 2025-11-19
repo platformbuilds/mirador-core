@@ -1592,6 +1592,83 @@ func (r *WeaviateRepo) DeleteKPI(ctx context.Context, id string) error {
 	return err
 }
 
+// SchemaAsKPI methods - unified schema operations
+func (r *WeaviateRepo) UpsertSchemaAsKPI(ctx context.Context, schemaDef *models.SchemaDefinition, author string) error {
+	// Convert SchemaDefinition to KPIDefinition for storage
+	kpi := &models.KPIDefinition{
+		ID:         schemaDef.ID,
+		Kind:       schemaDef.Kind,
+		Name:       schemaDef.Name,
+		Unit:       schemaDef.Unit,
+		Format:     schemaDef.Format,
+		Query:      schemaDef.Query,
+		Thresholds: schemaDef.Thresholds,
+		Tags:       schemaDef.Tags,
+		Sparkline:  schemaDef.Sparkline,
+		Visibility: schemaDef.Visibility,
+		CreatedAt:  schemaDef.CreatedAt,
+		UpdatedAt:  schemaDef.UpdatedAt,
+	}
+	return r.UpsertKPI(ctx, kpi)
+}
+
+func (r *WeaviateRepo) GetSchemaAsKPI(ctx context.Context, schemaType, id string) (*models.SchemaDefinition, error) {
+	kpi, err := r.GetKPI(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert KPIDefinition to SchemaDefinition
+	schemaDef := &models.SchemaDefinition{
+		ID:         kpi.ID,
+		Kind:       kpi.Kind,
+		Name:       kpi.Name,
+		Unit:       kpi.Unit,
+		Format:     kpi.Format,
+		Query:      kpi.Query,
+		Thresholds: kpi.Thresholds,
+		Tags:       kpi.Tags,
+		Sparkline:  kpi.Sparkline,
+		Visibility: kpi.Visibility,
+		CreatedAt:  kpi.CreatedAt,
+		UpdatedAt:  kpi.UpdatedAt,
+		Type:       models.SchemaType(schemaType), // Convert string to SchemaType
+	}
+	return schemaDef, nil
+}
+
+func (r *WeaviateRepo) ListSchemasAsKPIs(ctx context.Context, schemaType string, limit, offset int) ([]*models.SchemaDefinition, int, error) {
+	kpis, total, err := r.ListKPIs(ctx, nil, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Convert KPIDefinitions to SchemaDefinitions
+	schemas := make([]*models.SchemaDefinition, len(kpis))
+	for i, kpi := range kpis {
+		schemas[i] = &models.SchemaDefinition{
+			ID:         kpi.ID,
+			Kind:       kpi.Kind,
+			Name:       kpi.Name,
+			Unit:       kpi.Unit,
+			Format:     kpi.Format,
+			Query:      kpi.Query,
+			Thresholds: kpi.Thresholds,
+			Tags:       kpi.Tags,
+			Sparkline:  kpi.Sparkline,
+			Visibility: kpi.Visibility,
+			CreatedAt:  kpi.CreatedAt,
+			UpdatedAt:  kpi.UpdatedAt,
+			Type:       models.SchemaType(schemaType),
+		}
+	}
+	return schemas, total, nil
+}
+
+func (r *WeaviateRepo) DeleteSchemaAsKPI(ctx context.Context, id string) error {
+	return r.DeleteKPI(ctx, id)
+}
+
 // Helper functions for type conversion
 func getString(m map[string]any, key string) string {
 	if v, ok := m[key]; ok && v != nil {

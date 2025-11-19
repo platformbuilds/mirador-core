@@ -55,7 +55,7 @@ func (h *TracesHandler) GetServices(c *gin.Context) {
 		}
 	}
 
-	services, err := h.tracesService.GetServices(c.Request.Context(), "system")
+	services, err := h.tracesService.GetServices(c.Request.Context())
 	if err != nil {
 		// Degraded mode: log and return empty list so UI can continue to load.
 		h.logger.Error("Failed to get trace services", "system", "error", err)
@@ -90,9 +90,9 @@ func (h *TracesHandler) GetTrace(c *gin.Context) {
 	}
 
 	// Get trace from VictoriaTraces
-	trace, err := h.tracesService.GetTrace(c.Request.Context(), traceID, "system")
+	trace, err := h.tracesService.GetTrace(c.Request.Context(), traceID)
 	if err != nil {
-		h.logger.Error("Failed to get trace", "traceId", traceID, "system", "error", err)
+		h.logger.Error("Failed to get trace", "traceId", traceID, "error", err)
 		c.JSON(http.StatusNotFound, gin.H{
 			"status": "error",
 			"error":  "Trace not found",
@@ -370,7 +370,7 @@ func (h *TracesHandler) GetFlameGraph(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "Trace ID is required"})
 		return
 	}
-	tr, err := h.tracesService.GetTrace(c.Request.Context(), traceID, "system")
+	tr, err := h.tracesService.GetTrace(c.Request.Context(), traceID)
 	if err != nil {
 		h.logger.Error("Failed to get trace for flamegraph", "traceId", traceID, "system", "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "error": "Trace not found"})
