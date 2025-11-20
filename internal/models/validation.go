@@ -9,18 +9,17 @@ import (
 
 // Validation errors
 var (
-	ErrEmptyID                      = errors.New("ID cannot be empty")
-	ErrEmptyName                    = errors.New("name cannot be empty")
-	ErrInvalidKind                  = errors.New("kind must be 'business' or 'tech'")
-	ErrInvalidVisibility            = errors.New("visibility must be 'private', 'team', or 'org'")
-	ErrInvalidSentiment             = errors.New("sentiment must be 'NEGATIVE', 'POSITIVE', or 'NEUTRAL'")
-	ErrEmptyOwnerUserID             = errors.New("ownerUserId cannot be empty")
-	ErrInvalidThresholdOperator     = errors.New("threshold operator must be 'gt', 'lt', 'eq', 'gte', 'lte'")
-	ErrThresholdsNotOrdered         = errors.New("thresholds must be ordered by value (ascending for positive sentiment, descending for negative)")
-	ErrInvalidGridCoordinates       = errors.New("grid coordinates must be non-negative")
-	ErrInvalidGridDimensions        = errors.New("grid dimensions must be positive and fit within 12-column system")
-	ErrCannotDeleteDefaultDashboard = errors.New("cannot delete the default dashboard")
-	ErrInvalidVisibilityHierarchy   = errors.New("visibility hierarchy violation")
+	ErrEmptyID                    = errors.New("ID cannot be empty")
+	ErrEmptyName                  = errors.New("name cannot be empty")
+	ErrInvalidKind                = errors.New("kind must be 'business' or 'tech'")
+	ErrInvalidVisibility          = errors.New("visibility must be 'private', 'team', or 'org'")
+	ErrInvalidSentiment           = errors.New("sentiment must be 'NEGATIVE', 'POSITIVE', or 'NEUTRAL'")
+	ErrEmptyOwnerUserID           = errors.New("ownerUserId cannot be empty")
+	ErrInvalidThresholdOperator   = errors.New("threshold operator must be 'gt', 'lt', 'eq', 'gte', 'lte'")
+	ErrThresholdsNotOrdered       = errors.New("thresholds must be ordered by value (ascending for positive sentiment, descending for negative)")
+	ErrInvalidGridCoordinates     = errors.New("grid coordinates must be non-negative")
+	ErrInvalidGridDimensions      = errors.New("grid dimensions must be positive and fit within 12-column system")
+	ErrInvalidVisibilityHierarchy = errors.New("visibility hierarchy violation")
 )
 
 // ValidateKPIDefinition validates a KPI definition
@@ -161,72 +160,6 @@ func hasBalancedParentheses(s string) bool {
 		}
 	}
 	return count == 0
-}
-
-// ValidateDashboard validates a dashboard
-func (d *Dashboard) Validate() error {
-	if strings.TrimSpace(d.ID) == "" {
-		return ErrEmptyID
-	}
-
-	if strings.TrimSpace(d.Name) == "" {
-		return ErrEmptyName
-	}
-
-	if d.Visibility != "private" && d.Visibility != "team" && d.Visibility != "org" {
-		return ErrInvalidVisibility
-	}
-
-	if strings.TrimSpace(d.OwnerUserID) == "" {
-		return ErrEmptyOwnerUserID
-	}
-
-	return nil
-}
-
-// ValidateDashboardDeletion validates if a dashboard can be deleted
-func (d *Dashboard) ValidateDeletion() error {
-	if d.IsDefault {
-		return ErrCannotDeleteDefaultDashboard
-	}
-	return nil
-}
-
-// ValidateKPILayout validates a KPI layout
-func (l *KPILayout) Validate() error {
-	if strings.TrimSpace(l.ID) == "" {
-		return ErrEmptyID
-	}
-
-	if strings.TrimSpace(l.KPIDefinitionID) == "" {
-		return errors.New("kpiDefinitionId cannot be empty")
-	}
-
-	if strings.TrimSpace(l.DashboardID) == "" {
-		return errors.New("dashboardId cannot be empty")
-	}
-
-	// Validate grid coordinates
-	if l.X < 0 || l.Y < 0 {
-		return ErrInvalidGridCoordinates
-	}
-
-	// Validate dimensions
-	if l.W <= 0 || l.H <= 0 {
-		return ErrInvalidGridDimensions
-	}
-
-	// Check if layout fits within 12-column grid system
-	if l.X+l.W > 12 {
-		return ErrInvalidGridDimensions
-	}
-
-	// Reasonable bounds for grid dimensions
-	if l.W > 12 || l.H > 20 {
-		return ErrInvalidGridDimensions
-	}
-
-	return nil
 }
 
 // ValidateVisibilityHierarchy validates visibility hierarchy rules

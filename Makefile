@@ -50,7 +50,7 @@ help:
 	"  localdev-up               Start localdev compose stack in background." \
 	"  localdev-wait             Wait for readiness at $(BASE_URL)/ready." \
 	"  localdev-seed-otel        Seed synthetic OTEL metrics/logs/traces via financial transaction simulator." \
-	"  localdev-seed-data        Seed default dashboard and sample KPIs in Weaviate." \
+	"  localdev-seed-data        Seed sample KPIs in Weaviate." \
 	"  localdev-test             Run E2E tests against a running localdev server."
 	"  localdev-test-all-api     Run comprehensive E2E pipeline (code quality + API tests)."
 	"  localdev-test-api-only    Run API endpoint tests only (skip code quality checks)."
@@ -184,7 +184,7 @@ localdev-seed-otel:
 	OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 OTEL_EXPORTER_OTLP_INSECURE=true ./bin/otel-fintrans-simulator --transactions 50000 --concurrency 250 --failure-mode mixed --failure-rate 0.35
 
 localdev-seed-data:
-	@echo "Seeding default dashboard and sample KPIs in Weaviate..."
+	@echo "Seeding sample KPIs in Weaviate..."
 	@go build -o bin/schemactl cmd/schemactl/main.go
 	WEAVIATE_HOST=localhost WEAVIATE_PORT=8080 ./bin/schemactl -mode=seed -tenant=PLATFORMBUILDS
 

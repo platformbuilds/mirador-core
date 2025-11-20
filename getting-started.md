@@ -398,32 +398,6 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
   -d '{"query": {"type": "correlation", "query": "logs:duration:>5000 WITHIN 1m OF traces:operation:GET"}}'
 ```
 
-### Workflow 3: Real-Time Monitoring Dashboard
-
-Create a dashboard that queries all three data types:
-
-```bash
-# Query 1: Service health (metrics)
-curl -X POST http://localhost:8010/api/v1/unified/query \
-  -H "Authorization: Bearer $API_KEY" \
-  -d '{"query": {"type": "metrics", "query": "up", "cache_options": {"enabled": true, "ttl": "30s"}}}'
-
-# Query 2: Recent errors (logs)
-curl -X POST http://localhost:8010/api/v1/unified/query \
-  -H "Authorization: Bearer $API_KEY" \
-  -d '{"query": {"type": "logs", "query": "_time:5m level:error", "cache_options": {"enabled": true, "ttl": "30s"}}}'
-
-# Query 3: Active traces (traces)
-curl -X POST http://localhost:8010/api/v1/unified/query \
-  -H "Authorization: Bearer $API_KEY" \
-  -d '{"query": {"type": "traces", "query": "_time:5m", "cache_options": {"enabled": true, "ttl": "30s"}}}'
-
-# Query 4: Cross-engine correlation
-curl -X POST http://localhost:8010/api/v1/unified/query \
-  -H "Authorization: Bearer $API_KEY" \
-  -d '{"query": {"type": "correlation", "query": "logs:error WITHIN 2m OF traces:status:error"}}'
-```
-
 ## 12. Troubleshooting
 
 - Run `docker compose logs -f <service>` to inspect any container.
@@ -438,11 +412,10 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
 With the stack running and data flowing:
 
 1. **Explore Unified Query Language (UQL)**: See [docs/uql-language-guide.md](docs/uql-language-guide.md) for advanced query syntax
-2. **Build Dashboards**: Use unified queries to build comprehensive monitoring dashboards
-3. **Set Up Alerts**: Configure alerting based on correlation queries
-4. **Optimize Performance**: Tune cache settings and timeouts based on your workload
-5. **Production Deployment**: Follow [docs/deployment.md](docs/deployment.md) for Kubernetes deployment
-6. **Migration Guide**: If migrating from engine-specific APIs, see [docs/migration-guide.md](docs/migration-guide.md)
-7. **Operations Guide**: For production operations, see [docs/unified-query-operations.md](docs/unified-query-operations.md)
+2. **Set Up Alerts**: Configure alerting based on correlation queries
+3. **Optimize Performance**: Tune cache settings and timeouts based on your workload
+4. **Production Deployment**: Follow [docs/deployment.md](docs/deployment.md) for Kubernetes deployment
+5. **Migration Guide**: If migrating from engine-specific APIs, see [docs/migration-guide.md](docs/migration-guide.md)
+6. **Operations Guide**: For production operations, see [docs/unified-query-operations.md](docs/unified-query-operations.md)
 
 With the stack running, explore the API via the OpenAPI spec or the Postman collection in `deployments/localdev/postman`. Happy debugging!

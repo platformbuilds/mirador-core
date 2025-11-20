@@ -203,7 +203,7 @@ With these optimizations, we anticipate:
 ## Next Steps
 
 1. Implement adaptive cache sizing
-2. Add memory usage monitoring to dashboards
+2. Add memory usage monitoring
 3. Conduct A/B testing with different configurations
 4. Implement query result caching
 5. Add memory pressure handling

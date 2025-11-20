@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "MIRADOR-CORE API",
-    "description": "Mirador Core is a comprehensive observability and analytics platform that provides KPI definitions, layouts, dashboards, user preferences, metrics, logs, traces, and RBAC management for monitoring and analyzing system metrics.",
+    "description": "Mirador Core is a comprehensive observability and analytics platform that provides KPI definitions, metrics, logs, traces, and correlation analysis for monitoring and analyzing system metrics. Authentication and authorization are handled externally.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -24,7 +24,7 @@
               "query": []
             {
               "name": "RBAC (REMOVED)",
-              "description": "RBAC and role-based endpoints were removed from Mirador Core. Manage roles/permissions externally.",
+              "description": "RBAC and role-based endpoints were removed from Mirador Core in v9.0.0. Authentication and authorization are now handled externally by API gateways, identity providers, or service mesh. These examples are kept for historical reference only.",
               "item": []
         {
           "name": "Readiness check",
@@ -108,7 +108,7 @@
     },
     {
       "name": "Api Keys (REMOVED)",
-      "description": "Removed: API key endpoints are not supported. Manage API keys externally.",
+      "description": "API key endpoints were removed from Mirador Core in v9.0.0. API keys should be managed externally by your identity provider or API gateway. These examples are kept for historical reference only.",
       "item": [],
         {
           "name": "List API keys",
@@ -1085,266 +1085,6 @@
                 "v1",
                 "kpi",
                 "defs",
-                "{{id}}"
-              ],
-              "query": [
-                {
-                  "key": "confirm",
-                  "value": "{{confirm}}",
-                  "description": "Confirmation flag"
-                }
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Kpi Layouts",
-      "item": [
-        {
-          "name": "Get KPI layouts for dashboard",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/kpi/layouts",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "kpi",
-                "layouts"
-              ],
-              "query": [
-                {
-                  "key": "dashboard",
-                  "value": "{{dashboard}}",
-                  "description": "Dashboard ID"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Batch update KPI layouts",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/kpi/layouts/batch",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "kpi",
-                "layouts",
-                "batch"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Dashboards",
-      "item": [
-        {
-          "name": "Get dashboards",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/kpi/dashboards",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "kpi",
-                "dashboards"
-              ],
-              "query": [
-                {
-                  "key": "tenant_id",
-                  "value": "",
-                  "description": "Tenant ID (optional, defaults to request context)"
-                },
-                {
-                  "key": "limit",
-                  "value": "",
-                  "description": "Maximum number of results"
-                },
-                {
-                  "key": "offset",
-                  "value": "",
-                  "description": "Pagination offset"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create dashboard",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/kpi/dashboards",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "kpi",
-                "dashboards"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update dashboard",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/kpi/dashboards/{{id}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "kpi",
-                "dashboards",
-                "{{id}}"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete dashboard",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/kpi/dashboards/{{id}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "kpi",
-                "dashboards",
                 "{{id}}"
               ],
               "query": [

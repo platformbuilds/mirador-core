@@ -378,19 +378,6 @@ jobs:
    - VictoriaTraces query latency
    - Database connection count
 
-### Grafana Dashboards
-
-Create dashboards to monitor:
-
-```
-- Query Rate (QPS) by engine
-- Query Latency (P50, P95, P99) by engine
-- Error Rate by engine and error type
-- Cache Performance (hit rate, evictions)
-- Resource Utilization (CPU, memory, network)
-- Query Queue Depth
-```
-
 ## Troubleshooting
 
 ### High Latency

@@ -29,10 +29,7 @@
 //
 //	// Weaviate operations
 //	monitoring.RecordWeaviateOperation("search", "documents", time.Since(start), true)
-//
-//	// Authentication attempts
-//	monitoring.RecordAuthAttempt("ldap", "success")
-//
+
 // Available Metrics:
 //
 // HTTP Metrics (from existing middleware):
@@ -46,9 +43,6 @@
 //
 // Cache Metrics:
 //   - mirador_core_cache_operations_total{operation, result}
-//
-// Authentication Metrics:
-//   - mirador_core_auth_attempts_total{method, result}
 //
 // API Operation Metrics:
 //   - mirador_core_api_operations_total{operation, resource, status}
@@ -142,15 +136,6 @@ var (
 			Help: "Total number of cache operations",
 		},
 		[]string{"operation", "result"}, // result: hit, miss, error
-	)
-
-	// Authentication metrics
-	authAttemptsTotal = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "mirador_core_auth_attempts_total",
-			Help: "Total number of authentication attempts",
-		},
-		[]string{"method", "result"}, // result: success, failure
 	)
 
 	// API operation metrics
@@ -435,7 +420,6 @@ func SetupPrometheusMetrics(router gin.IRoutes) {
 	_ = prometheus.Register(dbOperationsTotal)            //nolint:errcheck
 	_ = prometheus.Register(dbOperationDuration)          //nolint:errcheck
 	_ = prometheus.Register(cacheOperationsTotal)         //nolint:errcheck
-	_ = prometheus.Register(authAttemptsTotal)            //nolint:errcheck
 	_ = prometheus.Register(apiOperationsTotal)           //nolint:errcheck
 	_ = prometheus.Register(apiOperationDuration)         //nolint:errcheck
 	_ = prometheus.Register(victoriaMetricsQueriesTotal)  //nolint:errcheck
@@ -524,14 +508,6 @@ func RecordCacheOperation(operation, result string) {
 	cacheOperationsTotal.WithLabelValues(operation, result).Inc()
 	if result == "error" {
 		errorsTotal.WithLabelValues("cache", operation).Inc()
-	}
-}
-
-// RecordAuthAttempt records authentication attempt metrics
-func RecordAuthAttempt(method, result string) {
-	authAttemptsTotal.WithLabelValues(method, result).Inc()
-	if result == "failure" {
-		errorsTotal.WithLabelValues("auth", method).Inc()
 	}
 }
 

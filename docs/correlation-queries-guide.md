@@ -449,7 +449,7 @@ curl -X POST http://localhost:8080/api/v1/unified/correlation \
 1. **Experiment**: Try the example queries with your data
 2. **Customize**: Adapt queries for your specific services and metrics
 3. **Monitor**: Track query performance and result quality
-4. **Automate**: Build alerts and dashboards based on correlation patterns
+4. **Automate**: Build alerts based on correlation patterns
 5. **Extend**: Create custom correlation rules for your domain
 
 ## Support

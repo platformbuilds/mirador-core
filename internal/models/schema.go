@@ -8,15 +8,12 @@ import (
 type SchemaType string
 
 const (
-	SchemaTypeLabel           SchemaType = "label"
-	SchemaTypeMetric          SchemaType = "metric"
-	SchemaTypeLogField        SchemaType = "log_field"
-	SchemaTypeTraceService    SchemaType = "trace_service"
-	SchemaTypeTraceOperation  SchemaType = "trace_operation"
-	SchemaTypeKPI             SchemaType = "kpi"
-	SchemaTypeDashboard       SchemaType = "dashboard"
-	SchemaTypeLayout          SchemaType = "layout"
-	SchemaTypeUserPreferences SchemaType = "user_preferences"
+	SchemaTypeLabel          SchemaType = "label"
+	SchemaTypeMetric         SchemaType = "metric"
+	SchemaTypeLogField       SchemaType = "log_field"
+	SchemaTypeTraceService   SchemaType = "trace_service"
+	SchemaTypeTraceOperation SchemaType = "trace_operation"
+	SchemaTypeKPI            SchemaType = "kpi"
 )
 
 // SchemaDefinition represents a unified schema definition that can encompass
@@ -64,15 +61,6 @@ type SchemaExtensions struct {
 
 	// Trace-specific fields
 	Trace *TraceExtension `json:"trace,omitempty"`
-
-	// Dashboard-specific fields
-	Dashboard *DashboardExtension `json:"dashboard,omitempty"`
-
-	// Layout-specific fields
-	Layout *LayoutExtension `json:"layout,omitempty"`
-
-	// User preferences-specific fields
-	UserPreferences *UserPreferencesExtension `json:"userPreferences,omitempty"`
 }
 
 // LabelExtension contains fields specific to label schema definitions
@@ -101,33 +89,6 @@ type TraceExtension struct {
 	Operation      string `json:"operation,omitempty"`      // Operation name
 	ServicePurpose string `json:"servicePurpose,omitempty"` // Purpose of the service/operation
 	Owner          string `json:"owner,omitempty"`          // Owner of the service/operation
-}
-
-// DashboardExtension contains fields specific to dashboard schema definitions
-type DashboardExtension struct {
-	IsDefault bool `json:"isDefault,omitempty"` // Whether this is the default dashboard
-}
-
-// LayoutExtension contains fields specific to layout schema definitions
-type LayoutExtension struct {
-	KPIDefinitionID string `json:"kpiDefinitionId,omitempty"` // Reference to KPI definition
-	DashboardID     string `json:"dashboardId,omitempty"`     // Reference to dashboard
-	X               int    `json:"x,omitempty"`               // X coordinate on grid
-	Y               int    `json:"y,omitempty"`               // Y coordinate on grid
-	W               int    `json:"w,omitempty"`               // Width in grid units
-	H               int    `json:"h,omitempty"`               // Height in grid units
-}
-
-// UserPreferencesExtension contains fields specific to user preferences
-type UserPreferencesExtension struct {
-	CurrentDashboardID  string                 `json:"currentDashboardId,omitempty"`  // Current dashboard ID
-	Theme               string                 `json:"theme,omitempty"`               // UI theme preference
-	SidebarCollapsed    bool                   `json:"sidebarCollapsed,omitempty"`    // Sidebar collapse state
-	DefaultDashboardID  string                 `json:"defaultDashboardId,omitempty"`  // Default dashboard ID
-	Timezone            string                 `json:"timezone,omitempty"`            // User timezone
-	KeyboardHintSeen    bool                   `json:"keyboardHintSeen,omitempty"`    // Whether keyboard hint was seen
-	MiradorCoreEndpoint string                 `json:"miradorCoreEndpoint,omitempty"` // Custom API endpoint
-	Preferences         map[string]interface{} `json:"preferences,omitempty"`         // Extensible preferences
 }
 
 // Threshold represents a threshold configuration for KPIs

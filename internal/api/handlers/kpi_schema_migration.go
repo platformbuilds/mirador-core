@@ -55,6 +55,8 @@ func kpiToSchemaDefinition(k *models.KPIDefinition, schemaType models.SchemaType
 			ServicePurpose: k.Definition,
 			Owner:          "",
 		}
+	case models.SchemaTypeKPI:
+		// KPI type doesn't have specific extensions, leave empty
 	default:
 		// leave other types empty
 	}

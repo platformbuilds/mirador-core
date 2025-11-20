@@ -41,8 +41,6 @@ The collection is organized into folders based on API functionality:
 
 - **System** - Health checks and system status
 - **Kpi Definitions** - KPI definition management
-- **Kpi Layouts** - Dashboard layout configuration
-- **Dashboards** - Dashboard CRUD operations
 - **Metrics** - VictoriaMetrics integration (queries, metadata)
 - **Logs** - VictoriaLogs integration (queries, streams, search)
 - **Traces** - Trace data queries and flamegraphs
@@ -54,8 +52,6 @@ The collection is organized into folders based on API functionality:
 
 > NOTE: Authentication, RBAC, and API-key management features were removed from Mirador Core. Use your existing identity provider for auth management and API key issuance.
 - **Kpi Definitions** - KPI definition management
-- **Kpi Layouts** - Dashboard layout configuration
-- **Dashboards** - Dashboard CRUD operations
 - **Metrics** - VictoriaMetrics integration (queries, metadata)
 - **Logs** - VictoriaLogs integration (queries, streams, search)
 - **Traces** - Trace data queries and flamegraphs

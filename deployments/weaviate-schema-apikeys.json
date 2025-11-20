@@ -1,6 +1,0 @@
-{
-  "class": "RBACAPIKey",
-  "description": "DEPRECATED: local API key schema removed from Mirador Core. See dev/archived-rbac/ for the previous schema.",
-  "vectorizer": "none",
-  "properties": []
-}

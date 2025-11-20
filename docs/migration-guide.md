@@ -487,7 +487,7 @@ curl -X POST https://mirador-core/api/v1/unified/query \
 
 ## Common Patterns
 
-### Pattern 1: Dashboard Queries
+### Pattern 1: Cross-Domain Observability Queries
 
 **Before - Multiple API Calls:**
 ```go
@@ -501,7 +501,7 @@ logsResp, _ := logsClient.Search(ctx, "level:error")
 tracesResp, _ := tracesClient.Search(ctx, "service:api")
 
 // Manually correlate in application code
-dashboard := correlateDashboardData(metricsResp, logsResp, tracesResp)
+result := correlateObservabilityData(metricsResp, logsResp, tracesResp)
 ```
 
 **After - Unified Query:**
@@ -512,7 +512,7 @@ unifiedResp, _ := unifiedClient.ExecuteQuery(ctx, UnifiedQuery{
     Query: "metrics:http_requests_total AND logs:level:error AND traces:service:api",
 })
 
-dashboard := buildDashboard(unifiedResp)
+result := processUnifiedResponse(unifiedResp)
 ```
 
 ### Pattern 2: Incident Investigation
@@ -816,7 +816,7 @@ This section covers the process for evolving and managing Weaviate schemas in mi
 
 ### Schema Architecture Overview
 
-Mirador-core uses Weaviate as its vector database backend for storing API entities like KPIDefinition, KPILayout, Dashboard, and UserPreferences. The schema is defined in Go code and deployed automatically through the `EnsureSchema()` function.
+Mirador-core uses Weaviate as its vector database backend for storing API entities like KPIDefinition. The schema is defined in Go code and deployed automatically through the `EnsureSchema()` function.
 
 **Key Files:**
 - `internal/storage/weaviate/schema.go` - Schema class definitions
@@ -976,8 +976,6 @@ func TestSchemaDefinitions(t *testing.T) {
     }
     
     assert.Contains(t, classNames, "KPIDefinition")
-    assert.Contains(t, classNames, "Dashboard")
-    assert.Contains(t, classNames, "UserPreferences")
 }
 
 func TestEnsureSchema(t *testing.T) {
@@ -1012,7 +1010,7 @@ func TestSchemaDeployment(t *testing.T) {
     
     // Verify all expected classes exist
     expectedClasses := []string{
-        "KPIDefinition", "KPILayout", "Dashboard", "UserPreferences",
+        "KPIDefinition",
     }
     
     for _, className := range expectedClasses {
@@ -1135,7 +1133,7 @@ After completing migration:
 
 1. **Explore New Capabilities**: Try correlation queries to gain cross-domain insights
 2. **Optimize Caching**: Tune cache TTLs based on your workload
-3. **Monitor Performance**: Track unified query metrics in your dashboards
+3. **Monitor Performance**: Track unified query metrics
 4. **Cleanup**: Remove legacy code paths and dependencies
 5. **Documentation**: Update internal documentation and runbooks
 6. **Training**: Educate team on new unified query patterns

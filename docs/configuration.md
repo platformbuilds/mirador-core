@@ -228,7 +228,6 @@ features:
   queryOptimization: true
   userSettings: true
   notifications: true
-  dashboards: true
 ```
 
 **Environment Variables:**
@@ -242,7 +241,6 @@ features:
 - `FEATURE_QUERY_OPTIMIZATION`
 - `FEATURE_USER_SETTINGS`
 - `FEATURE_NOTIFICATIONS`
-- `FEATURE_DASHBOARDS`
 
 ## Metrics and Monitoring
 

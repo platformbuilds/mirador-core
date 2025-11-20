@@ -139,12 +139,6 @@ func uuidV5(ns [16]byte, name string) string {
 	)
 }
 
-// makeRBACID generates deterministic IDs for RBAC objects
-func makeRBACID(class, parts string) string {
-	allParts := []string{class, parts}
-	return makeID(allParts...)
-}
-
 // dumpedObject is a portable representation used for restore.
 type dumpedObject struct {
 	Class      string         `json:"class"`
@@ -202,11 +196,6 @@ func dump(ctx context.Context, c *client, outPath string) error {
 }
 
 func seed(ctx context.Context, c *client) error {
-	// Seed default dashboard
-	if err := seedDefaultDashboard(ctx, c); err != nil {
-		return fmt.Errorf("failed to seed default dashboard: %w", err)
-	}
-
 	// Seed sample KPIs
 	if err := seedSampleKPIs(ctx, c); err != nil {
 		return fmt.Errorf("failed to seed sample KPIs: %w", err)
@@ -216,45 +205,11 @@ func seed(ctx context.Context, c *client) error {
 	return nil
 }
 
-func seedDefaultDashboard(ctx context.Context, c *client) error {
-	dashboardID := makeRBACID("Dashboard", "default")
-	dashboard := map[string]interface{}{
-		"class": "Dashboard",
-		"id":    dashboardID,
-		"properties": map[string]interface{}{
-			"name":        "Default Dashboard",
-			"ownerUserId": "system",
-			"visibility":  "org",
-			"isDefault":   true,
-			"createdAt":   time.Now().Format(time.RFC3339),
-			"updatedAt":   time.Now().Format(time.RFC3339),
-		},
-	}
-
-	// Check if dashboard already exists
-	var existing struct {
-		Properties map[string]interface{} `json:"properties"`
-	}
-	err := c.do(ctx, http.MethodGet, "/v1/objects/"+dashboardID, nil, &existing)
-	if err == nil {
-		fmt.Printf("Default dashboard already exists\n")
-		return nil
-	}
-
-	// Create dashboard
-	if err := c.do(ctx, http.MethodPost, "/v1/objects", dashboard, nil); err != nil {
-		return fmt.Errorf("failed to create dashboard: %w", err)
-	}
-
-	fmt.Printf("Created default dashboard\n")
-	return nil
-}
-
 func seedSampleKPIs(ctx context.Context, c *client) error {
 	sampleKPIs := []map[string]interface{}{
 		{
 			"class": "KPIDefinition",
-			"id":    makeRBACID("KPIDefinition", "http_request_duration"),
+			"id":    makeID("KPIDefinition", "http_request_duration"),
 			"properties": map[string]interface{}{
 				"kind":   "tech",
 				"name":   "HTTP Request Duration",
@@ -298,7 +253,7 @@ func seedSampleKPIs(ctx context.Context, c *client) error {
 		},
 		{
 			"class": "KPIDefinition",
-			"id":    makeRBACID("KPIDefinition", "error_rate"),
+			"id":    makeID("KPIDefinition", "error_rate"),
 			"properties": map[string]interface{}{
 				"kind":   "tech",
 				"name":   "Error Rate",

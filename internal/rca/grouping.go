@@ -86,7 +86,7 @@ func GroupEnrichedAnomalies(events []*EnrichedAnomalyEvent, cfg GroupingConfig) 
 		group.FinalizeStats()
 
 		// Apply filtering constraints
-		if !passesFilers(group, cfg) {
+		if !passesFilters(group, cfg) {
 			continue
 		}
 
@@ -112,8 +112,8 @@ func computeTimeBucket(ts time.Time, bucketWidth time.Duration) int64 {
 	return bucketStart
 }
 
-// passesFilers checks if an AnomalyGroup passes all filtering constraints.
-func passesFilers(group *AnomalyGroup, cfg GroupingConfig) bool {
+// passesFilters checks if an AnomalyGroup passes all filtering constraints.
+func passesFilters(group *AnomalyGroup, cfg GroupingConfig) bool {
 	// Check minimum event count
 	if cfg.MinEventsPerGroup > 0 && group.EventCount < cfg.MinEventsPerGroup {
 		return false

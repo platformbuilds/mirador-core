@@ -1,0 +1,228 @@
+basePath: /api/v1
+definitions:
+  github_com_platformbuilds_mirador-core_internal_models.KPIDefinition:
+    properties:
+      createdAt:
+        type: string
+      definition:
+        description: Definition of what the signal means
+        type: string
+      format:
+        type: string
+      id:
+        type: string
+      kind:
+        description: '"business" or "tech"'
+        type: string
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      query:
+        additionalProperties: true
+        description: JSON query definition
+        type: object
+      sentiment:
+        description: '"NEGATIVE", "POSITIVE", or "NEUTRAL" - increase sentiment'
+        type: string
+      sparkline:
+        additionalProperties: true
+        description: JSON sparkline config
+        type: object
+      tags:
+        items:
+          type: string
+        type: array
+      thresholds:
+        description: JSON thresholds array
+        items:
+          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.Threshold'
+        type: array
+      unit:
+        type: string
+      updatedAt:
+        type: string
+      visibility:
+        description: '"private", "team", "org"'
+        type: string
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.KPIDefinitionRequest:
+    properties:
+      kpiDefinition:
+        $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIDefinition'
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.KPIListResponse:
+    properties:
+      kpiDefinitions:
+        items:
+          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIDefinition'
+        type: array
+      nextOffset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.Threshold:
+    properties:
+      color:
+        description: Display color
+        type: string
+      description:
+        description: Description of the threshold
+        type: string
+      level:
+        description: e.g., "warning", "critical"
+        type: string
+      operator:
+        description: e.g., "gt", "lt", "eq"
+        type: string
+      value:
+        description: Threshold value
+        type: number
+    type: object
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+host: localhost:8010
+info:
+  contact:
+    email: support@platformbuilds.org
+    name: Platform Builds Team
+    url: https://github.com/platformbuilds/mirador-core
+  description: Mirador Core is a comprehensive observability and analytics platform
+    that provides KPI definitions and unified queries for monitoring
+    and analyzing system metrics.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Mirador Core API
+  version: 8.0.0
+paths:
+  /api/v1/kpi/defs:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a paginated list of KPI definitions with optional filtering
+        by tags
+      parameters:
+      - collectionFormat: csv
+        description: Filter by tags (comma-separated)
+        in: query
+        items:
+          type: string
+        name: tags
+        type: array
+      - description: 'Maximum number of results (default: 10)'
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      - description: 'Pagination offset (default: 0)'
+        in: query
+        minimum: 0
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIListResponse'
+        "400":
+          description: 'error: invalid query parameters'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to list KPIs'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get KPI definitions
+      tags:
+      - kpi-definitions
+    post:
+      consumes:
+      - application/json
+      description: Create a new KPI definition or update an existing one. If ID is
+        not provided, a new UUID will be generated.
+      parameters:
+      - description: KPI definition payload
+        in: body
+        name: kpi
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: ok, id: kpi_id'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'error: invalid payload or validation error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to upsert KPI'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create or update KPI definition
+      tags:
+      - kpi-definitions
+  /api/v1/kpi/defs/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a KPI definition by its ID. Requires confirmation via query
+        parameter.
+      parameters:
+      - description: KPI definition ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Confirmation flag (1, true, or yes)
+        enum:
+        - "1"
+        - "true"
+        - "yes"
+        in: query
+        name: confirm
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: deleted'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'error: missing id or confirmation required'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to delete KPI'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete KPI definition
+      tags:
+      - kpi-definitions
+swagger: "2.0"

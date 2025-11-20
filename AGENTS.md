@@ -63,7 +63,7 @@ This comprehensive test includes:
 1. Starting the local development stack (`make localdev-up`)
 2. Waiting for services to be ready (`make localdev-wait`)
 3. Seeding synthetic OpenTelemetry data (`make localdev-seed-otel`)
-4. Seeding default dashboard and KPIs (`make localdev-seed-data`)
+4. Seeding sample KPIs (`make localdev-seed-data`)
 5. Running E2E tests (`make localdev-test`)
 6. Tearing down the stack (`make localdev-down`)
 

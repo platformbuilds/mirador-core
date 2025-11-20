@@ -96,10 +96,6 @@ type AlertEngineConfig struct {
 	Timeout   int    `mapstructure:"timeout" yaml:"timeout"`
 }
 
-// AuthConfig is deprecated and kept empty for backward compatibility
-// Authentication and RBAC are now handled externally (API gateway, service mesh, etc.)
-type AuthConfig struct{}
-
 // CacheConfig handles Valkey cluster caching configuration
 type CacheConfig struct {
 	Nodes    []string `mapstructure:"nodes" yaml:"nodes"`
