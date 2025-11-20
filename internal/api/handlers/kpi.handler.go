@@ -16,7 +16,7 @@ import (
 ) // KPIRepo extends SchemaStore with KPI-specific operations
 // KPIRepo interface is defined in the repo package
 
-// KPIHandler provides API endpoints for KPI definitions, layouts, dashboards, and user preferences.
+// KPIHandler provides API endpoints for KPI definitions.
 // This handler implements the separate KPI APIs as defined in the API contract.
 type KPIHandler struct {
 	repo   repo.KPIRepo
@@ -189,8 +189,4 @@ func (h *KPIHandler) listKPIs(ctx context.Context, tags []string, limit, offset 
 
 func (h *KPIHandler) deleteKPI(ctx context.Context, id string) error {
 	return h.repo.DeleteKPI(ctx, id)
-}
-
-func (h *KPIHandler) batchUpsertKPILayouts(ctx context.Context, dashboardID string, layouts map[string]interface{}) error {
-	return h.repo.BatchUpsertKPILayouts(ctx, dashboardID, layouts)
 }

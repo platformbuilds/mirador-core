@@ -23,45 +23,6 @@ type KPIDefinition struct {
 	UpdatedAt   time.Time              `json:"updatedAt"`
 }
 
-// Dashboard represents a dashboard configuration stored in Weaviate
-type Dashboard struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	OwnerUserID string    `json:"ownerUserId"`
-	Visibility  string    `json:"visibility"` // "private", "team", "org"
-	IsDefault   bool      `json:"isDefault"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-}
-
-// KPILayout represents a KPI layout configuration on a dashboard
-type KPILayout struct {
-	ID              string    `json:"id"`
-	KPIDefinitionID string    `json:"kpiDefinitionId"` // Reference to KPI definition
-	DashboardID     string    `json:"dashboardId"`     // Reference to dashboard
-	X               int       `json:"x"`               // X coordinate on grid
-	Y               int       `json:"y"`               // Y coordinate on grid
-	W               int       `json:"w"`               // Width in grid units
-	H               int       `json:"h"`               // Height in grid units
-	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt       time.Time `json:"updatedAt"`
-}
-
-// UserPreferences represents user preferences and UI state
-type UserPreferences struct {
-	ID                  string                 `json:"id"` // User ID
-	CurrentDashboardID  string                 `json:"currentDashboardId,omitempty"`
-	Theme               string                 `json:"theme,omitempty"`
-	SidebarCollapsed    bool                   `json:"sidebarCollapsed,omitempty"`
-	DefaultDashboardID  string                 `json:"defaultDashboardId,omitempty"`
-	Timezone            string                 `json:"timezone,omitempty"`
-	KeyboardHintSeen    bool                   `json:"keyboardHintSeen,omitempty"`
-	MiradorCoreEndpoint string                 `json:"miradorCoreEndpoint,omitempty"`
-	Preferences         map[string]interface{} `json:"preferences,omitempty"` // JSON extensible preferences
-	CreatedAt           time.Time              `json:"createdAt"`
-	UpdatedAt           time.Time              `json:"updatedAt"`
-}
-
 // KPIDefinitionRequest represents a request to create/update a KPI definition
 type KPIDefinitionRequest struct {
 	KPIDefinition *KPIDefinition `json:"kpiDefinition"`

@@ -52,7 +52,7 @@ This command starts all required services in containers:
 # Seed synthetic OpenTelemetry data
 make localdev-seed-otel
 
-# Seed default dashboard and KPIs
+# Seed sample KPIs
 make localdev-seed-data
 ```
 
@@ -139,7 +139,6 @@ docker run -d \
   -e VM_ENDPOINTS="vm-cluster:8481" \
   -e VL_ENDPOINTS="vl-cluster:9428" \
   -e VT_ENDPOINTS="vt-cluster:10428" \
-  -e RBAC_ENABLED=true \
   platformbuilds/mirador-core:v9.0.0
 ```
 
@@ -179,9 +178,8 @@ export VM_ENDPOINTS="vm-cluster:8481"
 export VL_ENDPOINTS="vl-cluster:9428"
 export VT_ENDPOINTS="vt-cluster:10428"
 
-# Authentication
-export LDAP_URL="ldap://ldap.corp.company.com"
-export RBAC_ENABLED=true
+# External Authentication (Mirador Core assumes external auth/authorization)
+# Authentication and authorization should be handled by external proxies, API gateways, or service mesh
 ```
 
 ## First API Call

@@ -186,7 +186,6 @@ func (h *ConfigHandler) UpdateFeatureFlags(c *gin.Context) {
 			currentFlags.RCAEnabled = enabled
 		case "user_settings_enabled":
 			currentFlags.UserSettingsEnabled = enabled
-		case "rbac_enabled":
 		default:
 			c.JSON(http.StatusBadRequest, gin.H{
 				"status": "error",

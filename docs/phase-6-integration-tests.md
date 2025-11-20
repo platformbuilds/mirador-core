@@ -75,7 +75,7 @@ Validates data consistency and isolation:
   
 - **TestSchemaManagement**: Weaviate schema operations
   - KPI definition storage
-  - Dashboard layout persistence
+  - Layout persistence
   - Metadata indexing
   
 - **TestLoadBalancing**: Multi-instance coordination
@@ -200,7 +200,7 @@ Tests validate integration with:
 5. **Weaviate** (localhost:8080)
    - Schema storage and retrieval
    - KPI definition management
-   - Dashboard metadata persistence
+   - Metadata persistence
 
 ## Issues Resolved During Implementation
 

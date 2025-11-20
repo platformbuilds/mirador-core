@@ -175,23 +175,3 @@ uploads:
   # Bulk CSV upload limit (bytes); default 5 MiB.
   bulk_max_bytes: 5242880
   jaeger_endpoint: "http://jaeger:14268/api/traces"
-
-# API Key Management Configuration
-api_keys:
-  enabled: true
-  # Default limits applied system-wide unless overridden
-  default_limits:
-    max_keys_per_user: 10
-    max_keys_per_tenant_admin: 25
-    max_keys_per_global_admin: 100
-  # Tenant-specific limit overrides (empty by default)
-  tenant_limits: []
-  # Global system-wide overrides (null = use default_limits)
-  global_limits_override: null
-  # Permission settings
-  allow_tenant_override: true   # Allow tenant admins to override limits
-  allow_admin_override: true    # Allow global admins to override limits
-  # Expiry settings
-  max_expiry_days: 365         # Maximum days for API key expiry (0 = unlimited)
-  min_expiry_days: 1           # Minimum days for API key expiry
-  enforce_expiry: false        # Require expiry date on all new keys

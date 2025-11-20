@@ -43,15 +43,6 @@ func TestErrorHandler(t *testing.T) {
 			expectLog:      true,
 		},
 		{
-			name: "not found error",
-			setupError: func(c *gin.Context) {
-				c.Error(errors.New("dashboard not found"))
-			},
-			expectedStatus: http.StatusNotFound,
-			expectedBody:   `{"error":"dashboard not found","code":"NOT_FOUND"}`,
-			expectLog:      true,
-		},
-		{
 			name: "forbidden error",
 			setupError: func(c *gin.Context) {
 				c.Error(errors.New("access forbidden"))
@@ -142,7 +133,6 @@ func TestDetermineStatusCode(t *testing.T) {
 		{"unauthorized", errors.New("unauthorized access"), http.StatusForbidden},
 		{"already exists", errors.New("user already exists"), http.StatusConflict},
 		{"conflict", errors.New("version conflict"), http.StatusConflict},
-		{"cannot delete", errors.New("cannot delete default dashboard"), http.StatusUnprocessableEntity},
 		{"malformed", errors.New("malformed JSON"), http.StatusUnprocessableEntity},
 		{"timeout", errors.New("request timeout"), http.StatusInternalServerError},
 		{"connection error", errors.New("connection failed"), http.StatusInternalServerError},

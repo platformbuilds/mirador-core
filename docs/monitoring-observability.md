@@ -1,16 +1,15 @@
 # Mirador Core  - Monitoring and Observability Guide
 
-This document provides comprehensive guidance for monitoring and observing Mirador Core , including metrics collection, distributed tracing, performance dashboards, and alerting rules.
+This document provides comprehensive guidance for monitoring and observing Mirador Core , including metrics collection, distributed tracing, performance monitoring, and alerting rules.
 
 ## Table of Contents
 
 1. [Overview](#overview)
 2. [Metrics Collection](#metrics-collection)
 3. [Distributed Tracing](#distributed-tracing)
-4. [Grafana Dashboards](#grafana-dashboards)
-5. [Alerting Rules](#alerting-rules)
-6. [Configuration](#configuration)
-7. [Troubleshooting](#troubleshooting)
+4. [Alerting Rules](#alerting-rules)
+5. [Configuration](#configuration)
+6. [Troubleshooting](#troubleshooting)
 
 ## Overview
 
@@ -18,7 +17,6 @@ Mirador Core  implements comprehensive monitoring and observability capabilities
 
 - **Prometheus** for metrics collection and storage
 - **OpenTelemetry** for distributed tracing
-- **Grafana** for visualization and dashboards
 - **AlertManager** for alerting and notifications
 
 ## Metrics Collection
@@ -109,50 +107,6 @@ Tracing uses adaptive sampling based on:
 - Error rate (failed queries are always sampled)
 - System load (reduced sampling under high load)
 
-## Grafana Dashboards
-
-### Available Dashboards
-
-1. **Unified Query Performance** (`unified-query-performance.json`)
-   - Query operations overview and success rates
-   - Query latency by type (50th and 95th percentiles)
-   - Engine routing distribution
-   - Cache hit rates
-   - Correlation operations and latency
-   - Error rates by component
-
-2. **Correlation Engine Performance** (`correlation-engine-performance.json`)
-   - Correlation operations rate and success rates
-   - Correlation latency by type
-   - Engine query performance breakdown
-   - Parallel execution coordination metrics
-   - Result merging performance
-   - Cache performance and error tracking
-   - Resource usage (memory and CPU)
-
-3. **Distributed Tracing** (`distributed-tracing.json`)
-   - Active traces and completion rates
-   - Query and correlation trace durations
-   - Span count by operation
-   - Trace errors and export success rates
-   - Service dependency visualization
-   - Trace sampling and buffer usage
-
-### Dashboard Installation
-
-1. Import the JSON files into Grafana:
-   ```bash
-   # Using Grafana CLI
-   grafana-cli dashboards import --file deployments/grafana/dashboards/unified-query-performance.json
-   grafana-cli dashboards import --file deployments/grafana/dashboards/correlation-engine-performance.json
-   grafana-cli dashboards import --file deployments/grafana/dashboards/distributed-tracing.json
-   ```
-
-2. Or import manually through the Grafana UI:
-   - Navigate to Dashboard → Import
-   - Upload each JSON file
-   - Configure data sources (Prometheus for metrics, Jaeger/Tempo for traces)
-
 ## Alerting Rules
 
 ### Alert Categories
@@ -242,24 +196,6 @@ tracing:
     deployment.environment: "${ENVIRONMENT}"
 ```
 
-### Grafana Configuration
-
-```yaml
-# grafana/provisioning/datasources/prometheus.yml
-apiVersion: 1
-datasources:
-  - name: Prometheus
-    type: prometheus
-    url: http://prometheus:9090
-    access: proxy
-    isDefault: true
-
-  - name: Jaeger
-    type: jaeger
-    url: http://jaeger:16686
-    access: proxy
-```
-
 ## Troubleshooting
 
 ### Common Issues
@@ -280,14 +216,7 @@ datasources:
 1. Verify OpenTelemetry configuration is correct
 2. Check network connectivity to Jaeger endpoint
 3. Ensure proper sampling configuration
-4. Review Mirador Core logs for tracing errors
-
-#### Dashboard Panels Showing No Data
-
-1. Confirm data sources are properly configured in Grafana
-2. Check metric names match exactly (case-sensitive)
-3. Verify time range includes data collection period
-4. Ensure Prometheus has scraped recent metrics
+2. Check Mirador Core logs for tracing errors
 
 #### Alerts Not Firing
 

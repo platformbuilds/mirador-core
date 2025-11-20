@@ -34,16 +34,6 @@ DELETE /api/v1/schema/:type/:id
 GET    /api/v1/kpi/defs
 POST   /api/v1/kpi/defs
 DELETE /api/v1/kpi/defs/:id
-
-# KPI Layouts
-GET    /api/v1/kpi/layouts
-POST   /api/v1/kpi/layouts/batch
-
-# KPI Dashboards
-GET    /api/v1/kpi/dashboards
-POST   /api/v1/kpi/dashboards
-PUT    /api/v1/kpi/dashboards/:id
-DELETE /api/v1/kpi/dashboards/:id
 ```
 
 ## Migration Status: ✅ COMPLETE
@@ -83,8 +73,6 @@ Where `:type` can be:
 - `trace_service`
 - `trace_operation`
 - `kpi`
-- `dashboard`
-- `layout`
 - `user_preferences`
 
 ## Migration Examples
@@ -158,61 +146,6 @@ Response:
 }
 ```
 
-### Managing KPI Layouts
-
-**Current KPI API:**
-```bash
-# Get layouts
-GET /api/v1/kpi/layouts?tenantId=tenant1
-
-# Batch update layouts
-POST /api/v1/kpi/layouts/batch
-{
-  "layouts": [
-    {
-      "kpiId": "error_rate",
-      "position": {"x": 0, "y": 0, "w": 6, "h": 4},
-      "chartType": "line"
-    },
-    {
-      "kpiId": "response_time",
-      "position": {"x": 6, "y": 0, "w": 6, "h": 4},
-      "chartType": "gauge"
-    }
-  ]
-}
-```
-
-### Managing Dashboards
-
-**Current KPI API:**
-```bash
-# Create dashboard
-POST /api/v1/kpi/dashboards
-{
-  "name": "API Performance Dashboard",
-  "description": "Monitor API performance metrics",
-  "shared": false,
-  "layout": {
-    "panels": []
-  }
-}
-
-# Update dashboard
-PUT /api/v1/kpi/dashboards/{dashboardId}
-{
-  "name": "Updated API Dashboard",
-  "description": "Updated dashboard for monitoring API endpoints",
-  "shared": true,
-  "layout": {
-    "panels": []
-  }
-}
-
-# Delete dashboard
-DELETE /api/v1/kpi/dashboards/{dashboardId}
-```
-
 ## Migration Timeline
 
 - **Phase 1** ✅: Implement KPI APIs alongside legacy schema APIs
@@ -221,12 +154,10 @@ DELETE /api/v1/kpi/dashboards/{dashboardId}
 
 ## Benefits of KPI Management APIs
 
-1. **Unified Management:** Single interface for KPI definitions, layouts, and dashboards
+1. **Unified Management:** Single interface for KPI definitions
 2. **Rich Metadata:** KPIs include thresholds, formatting, units, and visualization preferences
-3. **Dashboard Integration:** Direct support for dashboard creation and management
-4. **Layout Control:** Granular control over KPI positioning and chart types
-5. **User Preferences:** Integrated user preference management via `/config/user-preferences`
-6. **Multi-tenancy:** Built-in tenant isolation and access control
+3. **User Preferences:** Integrated user preference management via `/config/user-preferences`
+4. **Multi-tenancy:** Built-in tenant isolation and access control
 
 ## Current API Endpoints
 
@@ -237,16 +168,6 @@ All KPI management is now handled through the `/api/v1/kpi/*` endpoints:
 - `POST /api/v1/kpi/defs` - Create or update a KPI definition
 - `DELETE /api/v1/kpi/defs/:id` - Delete a KPI definition
 
-### KPI Layouts
-- `GET /api/v1/kpi/layouts` - Get KPI layout configurations
-- `POST /api/v1/kpi/layouts/batch` - Batch update KPI layouts
-
-### KPI Dashboards
-- `GET /api/v1/kpi/dashboards` - List dashboards
-- `POST /api/v1/kpi/dashboards` - Create a new dashboard
-- `PUT /api/v1/kpi/dashboards/:id` - Update an existing dashboard
-- `DELETE /api/v1/kpi/dashboards/:id` - Delete a dashboard
-
 ## Migration Checklist
 
 - [x] Review existing schema API usage in your codebase
@@ -255,4 +176,4 @@ All KPI management is now handled through the `/api/v1/kpi/*` endpoints:
 - [x] Update documentation and API specifications
 - [x] Remove all legacy schema API endpoints
 - [x] Update monitoring and alerting for new API patterns
-- [x] Verify KPI definitions, layouts, and dashboards are working correctly
+- [x] Verify KPI definitions are working correctly

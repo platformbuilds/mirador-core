@@ -49,18 +49,6 @@ func (ds *DataSeeder) SeedSampleKPIs(ctx context.Context) error {
 	return nil
 }
 
-// SeedDefaultUserPreferences creates default user preferences for a user
-func (ds *DataSeeder) SeedDefaultUserPreferences(ctx context.Context, userID string) error {
-	ds.logger.Info("Seeding default user preferences", "user_id", userID)
-
-	// Note: User preferences are currently stored in cache, not Weaviate
-	// This is a placeholder for when they might be moved to Weaviate
-	// For now, we'll just log that this would create default preferences
-
-	ds.logger.Info("Default user preferences seeding placeholder - currently stored in cache", "user_id", userID)
-	return nil
-}
-
 // getSampleKPIs returns a list of sample KPI definitions
 func (ds *DataSeeder) getSampleKPIs() []*models.KPIDefinition {
 	now := time.Now()
@@ -270,8 +258,6 @@ func (ds *DataSeeder) SeedAll(ctx context.Context) error {
 	if err := ds.SeedSampleKPIs(ctx); err != nil {
 		return fmt.Errorf("failed to seed sample KPIs: %w", err)
 	}
-
-	// Note: User preferences seeding is a placeholder since they're stored in cache
 
 	ds.logger.Info("Completed complete data seeding")
 	return nil

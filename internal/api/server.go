@@ -164,7 +164,7 @@ func (s *Server) setupRoutes() {
 		c.Redirect(http.StatusFound, "/swagger/index.html")
 	})
 
-	// API v1 group (protected by RBAC)
+	// API v1 group
 	v1 := s.router.Group("/api/v1")
 
 	// Back-compat: expose health under /api/v1 as well
@@ -185,7 +185,7 @@ func (s *Server) setupRoutes() {
 
 	// Register metrics endpoints conditionally - retired when unified query is enabled
 	if !s.config.UnifiedQuery.Enabled {
-		// New metrics endpoints under /metrics/* - no RBAC protection
+		// New metrics endpoints under /metrics/*
 		metricsGroup := v1.Group("/metrics")
 		{
 			metricsGroup.POST("/query", metricsHandler.ExecuteQuery)
@@ -195,7 +195,7 @@ func (s *Server) setupRoutes() {
 			metricsGroup.POST("/labels", metricsHandler.GetLabels)
 			metricsGroup.GET("/label/:name/values", metricsHandler.GetLabelValues)
 		}
-		// Back-compat (deprecated): keep old routes registered without RBAC protection
+		// Back-compat (deprecated): keep old routes registered
 		v1.POST("/query", metricsHandler.ExecuteQuery)
 		v1.POST("/query_range", metricsHandler.ExecuteRangeQuery)
 		s.router.POST("/query", metricsHandler.ExecuteQuery)
@@ -209,25 +209,25 @@ func (s *Server) setupRoutes() {
 	queryHandler := handlers.NewMetricsQLQueryHandler(s.vmServices.Query, s.cache, s.logger)
 	validationMiddleware := middleware.NewMetricsQLQueryValidationMiddleware(s.logger)
 
-	// Rollup functions - no RBAC protection
+	// Rollup functions
 	rollupGroup := v1.Group("/metrics/query/rollup")
 	{
 		rollupGroup.POST("/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteRollupFunction)
 		rollupGroup.POST("/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteRollupRangeFunction)
 	}
-	// Transform functions - no RBAC protection
+	// Transform functions
 	transformGroup := v1.Group("/metrics/query/transform")
 	{
 		transformGroup.POST("/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteTransformFunction)
 		transformGroup.POST("/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteTransformRangeFunction)
 	}
-	// Label functions - no RBAC protection
+	// Label functions
 	labelGroup := v1.Group("/metrics/query/label")
 	{
 		labelGroup.POST("/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteLabelFunction)
 		labelGroup.POST("/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteLabelRangeFunction)
 	}
-	// Aggregate functions - no RBAC protection
+	// Aggregate functions
 	aggregateGroup := v1.Group("/metrics/query/aggregate")
 	{
 		aggregateGroup.POST("/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteAggregateFunction)
@@ -374,7 +374,7 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 	// Create unified query handler
 	unifiedHandler := handlers.NewUnifiedQueryHandler(unifiedEngine, s.logger)
 
-	// Register unified query routes without RBAC protection
+	// Register unified query routes
 	unifiedGroup := router.Group("/unified")
 	{
 		unifiedGroup.POST("/query", unifiedHandler.HandleUnifiedQuery)
@@ -394,7 +394,7 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 		})
 	}
 
-	// Register UQL routes without RBAC protection
+	// Register UQL routes
 	uqlGroup := router.Group("/uql")
 	{
 		uqlGroup.POST("/query", unifiedHandler.HandleUQLQuery)

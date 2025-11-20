@@ -761,7 +761,7 @@ generate_failures_table() {
 
 ## Failed Tests Summary
 
-The following table provides detailed information about failed API tests, including the specific endpoints, error reasons, and suggested fixes for the RBAC-enabled Mirador Core.
+The following table provides detailed information about failed API tests, including the specific endpoints, error reasons, and suggested fixes for Mirador Core (observability platform with external authentication).
 
 | Test Name | API Endpoint | Expected Status | Actual Status | Error Reason | Suggested Fix |
 |-----------|--------------|-----------------|---------------|--------------|---------------|
@@ -831,14 +831,12 @@ generate_summary() {
     echo "📅 Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "🏢 Tenant: $TENANT_ID"
     echo ""
-    echo "🔐 RBAC & Multi-Tenant Features Tested:"
-    echo "   ✅ Authentication & JWT Sessions"
-    echo "   ✅ Tenant Management & Isolation"
-    echo "   ✅ User Management & Associations"
-    echo "   ✅ RBAC Roles & Permissions"
-    echo "   ✅ Bootstrap Validation"
+    echo "🔐 External Authentication & Observability Features Tested:"
     echo "   ✅ Unified Query Engine"
-    echo "   ⚠️  Federation (Placeholders Only)"
+    echo "   ✅ Tenant Management & Isolation"
+    echo "   ✅ KPI Definitions & Layouts"
+    echo "   ✅ Bootstrap Validation"
+    echo "   ⚠️  Authentication (External Only)"
     echo ""
 
     if [[ "$RUN_CODE_TESTS" == "true" ]]; then
@@ -870,13 +868,11 @@ generate_summary() {
         "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
         "tenant_id": "$TENANT_ID",
         "features_tested": [
-            "authentication_jwt",
-            "tenant_management",
-            "user_management",
-            "rbac_enforcement",
-            "bootstrap_validation",
             "unified_query_engine",
-            "multi_tenant_isolation"
+            "tenant_management",
+            "kpi_definitions",
+            "bootstrap_validation",
+            "external_authentication"
         ],
         "code_quality": {
             "tests_run": $RUN_CODE_TESTS,
@@ -1038,7 +1034,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         -h|--help)
             echo "Usage: $0 [OPTIONS]"
-            echo "Comprehensive E2E testing pipeline for Mirador Core v9.0.0 (RBAC & Multi-Tenant)"
+            echo "Comprehensive E2E testing pipeline for Mirador Core (observability platform with external authentication)"
             echo ""
             echo "Options:"
             echo "  -v, --verbose              Enable verbose output"

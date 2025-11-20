@@ -1138,14 +1138,6 @@ func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
 			},
 			text("definition"), text("sentiment"), text("visibility"), date("createdAt"), date("updatedAt"),
 		))},
-		{"Dashboard", class("Dashboard", props(
-			text("name"), text("visibility"), boolp("isDefault"),
-			date("createdAt"), date("updatedAt"),
-		))},
-		{"KPILayout", class("KPILayout", props(
-			refp("kpiDefinition", "KPIDefinition"), refp("dashboard", "Dashboard"),
-			intp("x"), intp("y"), intp("w"), intp("h"), date("createdAt"), date("updatedAt"),
-		))},
 		// UserPreferences removed - user management not part of core deployment
 		// Version classes with proper payload schemas
 		{"MetricVersion", class("MetricVersion", props(text("name"), intp("version"), metricVersionPayload(), text("author"), date("createdAt")))},
@@ -1153,7 +1145,6 @@ func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
 		{"LogFieldVersion", class("LogFieldVersion", props(text("name"), intp("version"), logFieldVersionPayload(), text("author"), date("createdAt")))},
 		{"ServiceVersion", class("ServiceVersion", props(text("name"), intp("version"), serviceVersionPayload(), text("author"), date("createdAt")))},
 		{"OperationVersion", class("OperationVersion", props(text("service"), text("name"), intp("version"), operationVersionPayload(), text("author"), date("createdAt")))},
-		// RBAC removed from core; definitions were removed to simplify the schema.
 	}
 
 	// Create classes individually to better handle failures
@@ -1690,18 +1681,6 @@ func getBool(m map[string]any, key string) bool {
 
 func getInt(m map[string]any, key string) int {
 	if v, ok := m[key]; ok && v != nil {
-		switch val := v.(type) {
-		case int:
-			return val
-		case float64:
-			return int(val)
-		}
-	}
-	return 0
-}
-
-func getIntFromLayout(layout map[string]interface{}, key string) int {
-	if v, ok := layout[key]; ok && v != nil {
 		switch val := v.(type) {
 		case int:
 			return val

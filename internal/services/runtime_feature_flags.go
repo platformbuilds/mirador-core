@@ -10,7 +10,6 @@ import (
 )
 
 // RuntimeFeatureFlags represents the runtime-togglable feature flags
-// RBAC and auth-related flags have been removed as authentication is now handled externally
 type RuntimeFeatureFlags struct {
 	RCAEnabled          bool `json:"rca_enabled" yaml:"rca_enabled"`
 	UserSettingsEnabled bool `json:"user_settings_enabled" yaml:"user_settings_enabled"`

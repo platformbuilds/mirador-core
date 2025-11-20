@@ -15,14 +15,4 @@ type KPIRepo interface {
 	GetKPI(ctx context.Context, id string) (*models.KPIDefinition, error)
 	ListKPIs(ctx context.Context, tags []string, limit, offset int) ([]*models.KPIDefinition, int, error)
 	DeleteKPI(ctx context.Context, id string) error
-
-	// Layout operations
-	GetKPILayoutsForDashboard(ctx context.Context, dashboardID string) (map[string]interface{}, error)
-	BatchUpsertKPILayouts(ctx context.Context, dashboardID string, layouts map[string]interface{}) error
-
-	// Dashboard operations
-	UpsertDashboard(ctx context.Context, dashboard *models.Dashboard) error
-	GetDashboard(ctx context.Context, id string) (*models.Dashboard, error)
-	ListDashboards(ctx context.Context, limit, offset int) ([]*models.Dashboard, int, error)
-	DeleteDashboard(ctx context.Context, id string) error
 }

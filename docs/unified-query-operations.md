@@ -144,37 +144,6 @@ histogram_quantile(0.95,
 )
 ```
 
-### Grafana Dashboards
-
-#### Unified Query Performance Dashboard
-
-Deploy the provided Grafana dashboard:
-
-```bash
-kubectl apply -f deployments/grafana/dashboards/unified-query-performance.json
-```
-
-**Key Panels:**
-- Query latency over time (p50, p95, p99)
-- Query throughput by type (metrics, logs, traces, correlation)
-- Success rate and error breakdown
-- Cache hit rate and efficiency
-- Engine health status
-- Resource utilization
-
-#### Correlation Engine Dashboard
-
-```bash
-kubectl apply -f deployments/grafana/dashboards/correlation-engine.json
-```
-
-**Key Panels:**
-- Correlation query volume
-- Time-window correlation latency
-- Label-based correlation success rate
-- Confidence score distribution
-- Cross-engine coordination metrics
-
 ### Alerting Rules
 
 Deploy Prometheus alerting rules:
@@ -277,7 +246,6 @@ unified_query:
 ```
 
 **Caching Recommendations:**
-- **Dashboard queries**: 1-5 minutes
 - **Analytical queries**: 5-15 minutes
 - **Historical queries**: 15-60 minutes
 - **Real-time queries**: Disable caching
@@ -556,7 +524,6 @@ kubectl rollout restart deployment/mirador-core -n mirador-system
 
 **Symptoms:**
 - P95 latency > 5 seconds
-- Slow dashboard loading
 - Query timeouts
 
 **Diagnosis:**
@@ -780,21 +747,19 @@ go tool pprof http://localhost:6060/debug/pprof/heap
 Calculate expected query load:
 
 ```
-Daily Queries = (Dashboard Panels × Refresh Rate × Users × Hours)
-              + (Ad-hoc Queries × Users × Hours)
+Daily Queries = (Ad-hoc Queries × Users × Hours)
               + (Alert Evaluations × Rules × Hours)
 
 QPS = Daily Queries / 86400
 ```
 
 **Example:**
-- 100 dashboard panels, 10s refresh, 50 users, 8 hours: 144,000 queries
 - 10 ad-hoc queries per user, 50 users, 8 hours: 4,000 queries
 - 100 alert rules, 30s evaluation: 28,800 queries
 
-Total: ~177,000 queries/day = ~2 QPS average
+Total: ~33,000 queries/day = ~0.4 QPS average
 
-Peak load (assume 5x average): ~10 QPS
+Peak load (assume 5x average): ~2 QPS
 
 ### Resource Requirements
 

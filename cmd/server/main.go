@@ -23,7 +23,7 @@ import (
 
 // @title Mirador Core API
 // @version 8.0.0
-// @description Mirador Core is a comprehensive observability and analytics platform that provides KPI definitions, layouts, dashboards, and user preferences for monitoring and analyzing system metrics.
+// @description Mirador Core is a comprehensive observability and analytics platform that provides KPI definitions and unified queries for monitoring and analyzing system metrics.
 // @termsOfService http://swagger.io/terms/
 
 // @contact.name Platform Builds Team

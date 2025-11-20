@@ -79,7 +79,7 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	// Validate (JWT secret is validated in secrets.go: LoadSecrets)
+	// Validate (config validation)
 	if err := validateConfig(&cfg); err != nil {
 		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
@@ -336,7 +336,6 @@ func overrideWithEnvVars(v *viper.Viper) {
 
 /* ------------------------------- validation ------------------------------ */
 
-// Note: JWT secret enforcement is handled in secrets.go (LoadSecrets).
 func validateConfig(cfg *Config) error {
 	// Metrics must have at least one source: either legacy single-source
 	// config or at least one item in metrics_sources list where endpoints

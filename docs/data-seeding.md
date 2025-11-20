@@ -1,14 +1,13 @@
 # Data Seeding
 
-This document describes the data seeding functionality for MIRADOR-CORE, which populates Weaviate with default dashboards and sample KPIs for demonstration and development purposes.
+This document describes the data seeding functionality for MIRADOR-CORE, which populates Weaviate with sample KPIs for demonstration and development purposes.
 
 ## Overview
 
 The data seeding system provides:
 
-1. **Default Dashboard**: A pre-configured dashboard that serves as the main landing page
-2. **Sample KPIs**: Example KPI definitions demonstrating different types of metrics (technical and business)
-3. **Default User Preferences**: Sensible defaults for user interface settings
+1. **Sample KPIs**: Example KPI definitions demonstrating different types of metrics (technical and business)
+2. **Default User Preferences**: Sensible defaults for user interface settings
 
 ## Usage
 
@@ -48,14 +47,6 @@ make localdev
 
 ## Seeded Data
 
-### Default Dashboard
-
-- **ID**: `default`
-- **Name**: `Default Dashboard`
-- **Visibility**: `org` (organization-wide)
-- **Default**: `true`
-- **Owner**: `system`
-
 ### Sample KPIs
 
 #### Technical KPIs
@@ -91,15 +82,13 @@ make localdev
 
 All seeded data follows the established Weaviate schema:
 
-- **Dashboard**: Stored in `Dashboard` class with properties for metadata
 - **KPIDefinition**: Stored in `KPIDefinition` class with query definitions and thresholds
-- **UserPreferences**: Stored in `UserPreferences` class (planned for future implementation)
 
 ## Idempotent Operations
 
 The seeding operations are designed to be idempotent:
 
-- Existing dashboards and KPIs are not overwritten
+- Existing KPIs are not overwritten
 - The system checks for existing data before creating new entries
 - Multiple runs of the seeding command are safe
 
@@ -107,16 +96,14 @@ The seeding operations are designed to be idempotent:
 
 The seeded data integrates with:
 
-- **Dashboard API**: Default dashboard appears in dashboard listings
-- **KPI API**: Sample KPIs are available for dashboard configuration
-- **User Interface**: Default dashboard serves as the landing page
+- **KPI API**: Sample KPIs are available for configuration
 - **Query Engine**: KPIs can be used in unified queries and correlations
 
 ## Development
 
 ### Adding New Sample Data
 
-To add new sample KPIs or dashboards:
+To add new sample KPIs:
 
 1. Update the `seedSampleKPIs()` function in `cmd/schemactl/main.go`
 2. Follow the existing data structure patterns

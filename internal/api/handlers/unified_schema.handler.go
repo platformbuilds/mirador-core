@@ -220,8 +220,7 @@ func (h *UnifiedSchemaHandler) DeleteSchemaDefinition(c *gin.Context) {
 func isValidSchemaType(schemaType models.SchemaType) bool {
 	switch schemaType {
 	case models.SchemaTypeLabel, models.SchemaTypeMetric, models.SchemaTypeLogField,
-		models.SchemaTypeTraceService, models.SchemaTypeTraceOperation, models.SchemaTypeKPI,
-		models.SchemaTypeDashboard, models.SchemaTypeLayout, models.SchemaTypeUserPreferences:
+		models.SchemaTypeTraceService, models.SchemaTypeTraceOperation, models.SchemaTypeKPI:
 		return true
 	default:
 		return false

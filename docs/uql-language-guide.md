@@ -766,7 +766,7 @@ ORDER BY p95 DESC
 metrics:cpu_usage > 80 NEAR 2m OF metrics:memory_usage > 85 AND logs:service:api:level:error
 ```
 
-### Service Health Dashboard
+### Service Health Analysis
 
 ```text
 -- Comprehensive service health
