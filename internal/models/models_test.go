@@ -12,21 +12,20 @@ import (
 func TestKPIDefinition_JSONSerialization(t *testing.T) {
 	now := time.Now()
 	kpi := KPIDefinition{
-		ID:          "test-kpi",
-		Kind:        "tech",
-		Name:        "Test KPI",
-		Unit:        "%",
-		Format:      "percentage",
-		Query:       map[string]interface{}{"metric": "cpu_usage"},
-		Thresholds:  []Threshold{{Level: "warning", Operator: "gt", Value: 80.0}},
-		Tags:        []string{"cpu", "performance"},
-		Definition:  "CPU usage percentage",
-		Sentiment:   "NEGATIVE",
-		Sparkline:   map[string]interface{}{"type": "line"},
-		OwnerUserID: "user123",
-		Visibility:  "private",
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:         "test-kpi",
+		Kind:       "tech",
+		Name:       "Test KPI",
+		Unit:       "%",
+		Format:     "percentage",
+		Query:      map[string]interface{}{"metric": "cpu_usage"},
+		Thresholds: []Threshold{{Level: "warning", Operator: "gt", Value: 80.0}},
+		Tags:       []string{"cpu", "performance"},
+		Definition: "CPU usage percentage",
+		Sentiment:  "NEGATIVE",
+		Sparkline:  map[string]interface{}{"type": "line"},
+		Visibility: "private",
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
 
 	// Test JSON marshaling
@@ -44,7 +43,6 @@ func TestKPIDefinition_JSONSerialization(t *testing.T) {
 	assert.Equal(t, kpi.Name, unmarshaled.Name)
 	assert.Equal(t, kpi.Unit, unmarshaled.Unit)
 	assert.Equal(t, kpi.Sentiment, unmarshaled.Sentiment)
-	assert.Equal(t, kpi.OwnerUserID, unmarshaled.OwnerUserID)
 	assert.Equal(t, kpi.Visibility, unmarshaled.Visibility)
 	assert.Equal(t, len(kpi.Thresholds), len(unmarshaled.Thresholds))
 	assert.Equal(t, len(kpi.Tags), len(unmarshaled.Tags))
@@ -56,13 +54,12 @@ func TestRequestResponseTypes_JSONSerialization(t *testing.T) {
 	// Test KPIDefinitionRequest
 	kpiReq := KPIDefinitionRequest{
 		KPIDefinition: &KPIDefinition{
-			ID:          "test-kpi",
-			Name:        "Test KPI",
-			OwnerUserID: "user123",
-			Visibility:  "private",
-			Query:       map[string]interface{}{"metric": "test"},
-			CreatedAt:   now,
-			UpdatedAt:   now,
+			ID:         "test-kpi",
+			Name:       "Test KPI",
+			Visibility: "private",
+			Query:      map[string]interface{}{"metric": "test"},
+			CreatedAt:  now,
+			UpdatedAt:  now,
 		},
 	}
 	data, err := json.Marshal(kpiReq)
@@ -77,13 +74,12 @@ func TestRequestResponseTypes_JSONSerialization(t *testing.T) {
 	// Test KPIDefinitionResponse
 	kpiResp := KPIDefinitionResponse{
 		KPIDefinition: &KPIDefinition{
-			ID:          "test-kpi",
-			Name:        "Test KPI",
-			OwnerUserID: "user123",
-			Visibility:  "private",
-			Query:       map[string]interface{}{"metric": "test"},
-			CreatedAt:   now,
-			UpdatedAt:   now,
+			ID:         "test-kpi",
+			Name:       "Test KPI",
+			Visibility: "private",
+			Query:      map[string]interface{}{"metric": "test"},
+			CreatedAt:  now,
+			UpdatedAt:  now,
 		},
 	}
 	data, err = json.Marshal(kpiResp)

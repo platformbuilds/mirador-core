@@ -18,6 +18,7 @@ type correlationAnomalyProvider struct {
 	logger logger.Logger
 }
 
+//nolint:gocyclo // Signal filtering and conversion logic is inherently complex
 func (p *correlationAnomalyProvider) GetAnomalies(ctx context.Context, startTime time.Time, endTime time.Time, servicesFilter []string) ([]*rca.AnomalyEvent, error) {
 	tr := models.TimeRange{Start: startTime, End: endTime}
 

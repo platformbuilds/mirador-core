@@ -6,13 +6,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/weavstore"
-	wv "github.com/weaviate/weaviate-go-client/v5/weaviate"
-	"go.uber.org/zap"
-
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	wv "github.com/weaviate/weaviate-go-client/v5/weaviate"
+	"go.uber.org/zap"
 
 	_ "github.com/platformbuilds/mirador-core/api" // Import generated Swagger docs
 	"github.com/platformbuilds/mirador-core/internal/api/handlers"
@@ -28,6 +26,7 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve/mapping"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve/storage"
 	"github.com/platformbuilds/mirador-core/internal/utils/search"
+	"github.com/platformbuilds/mirador-core/internal/weavstore"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -459,19 +458,6 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 	}
 
 	s.logger.Info("Unified query engine initialized and routes registered")
-}
-
-// noOpAnomalyProvider is a minimal implementation of AnomalyEventsProvider for Phase 4
-type noOpAnomalyProvider struct{}
-
-func (p *noOpAnomalyProvider) GetAnomalies(
-	ctx context.Context,
-	startTime time.Time,
-	endTime time.Time,
-	services []string,
-) ([]*rca.AnomalyEvent, error) {
-	// Return empty list; in production, this would query VictoriaMetrics/VictoriaLogs
-	return make([]*rca.AnomalyEvent, 0), nil
 }
 
 func (s *Server) Start(ctx context.Context) error {
