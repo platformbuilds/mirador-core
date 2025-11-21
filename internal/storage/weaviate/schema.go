@@ -28,6 +28,21 @@ func KPIDefinitionClass() *models.Class {
 				Description: "Display name of the KPI",
 			},
 			{
+				Name:        "namespace",
+				DataType:    []string{"string"},
+				Description: "Groups related KPIs (e.g., file or collection name)",
+			},
+			{
+				Name:        "source",
+				DataType:    []string{"string"},
+				Description: "Where this KPI definition originated (seed file, tool, etc.)",
+			},
+			{
+				Name:        "sourceId",
+				DataType:    []string{"string"},
+				Description: "Short identifier within the source (e.g., CSV row key)",
+			},
+			{
 				Name:        "unit",
 				DataType:    []string{"string"},
 				Description: "Unit of measurement",
@@ -39,13 +54,43 @@ func KPIDefinitionClass() *models.Class {
 			},
 			{
 				Name:        "query",
-				DataType:    []string{"string"}, // JSON string
-				Description: "Query definition as JSON",
+				DataType:    []string{"object"},
+				Description: "Query definition as JSON object",
+			},
+			{
+				Name:        "layer",
+				DataType:    []string{"string"},
+				Description: "Impact or cause indicator (impact, cause)",
+			},
+			{
+				Name:        "signalType",
+				DataType:    []string{"string"},
+				Description: "Signal kind (metrics, traces, logs, business, synthetic)",
+			},
+			{
+				Name:        "classifier",
+				DataType:    []string{"string"},
+				Description: "Measurement category (latency, errors, cpu_utilization, etc.)",
+			},
+			{
+				Name:        "datastore",
+				DataType:    []string{"string"},
+				Description: "Telemetry/metrics store (victoriametrics, clickhouse, etc.)",
+			},
+			{
+				Name:        "queryType",
+				DataType:    []string{"string"},
+				Description: "Query language (PromQL, MetricsQL, SQL, etc.)",
+			},
+			{
+				Name:        "formula",
+				DataType:    []string{"string"},
+				Description: "Raw query/formula string",
 			},
 			{
 				Name:        "thresholds",
-				DataType:    []string{"string"}, // JSON string
-				Description: "Threshold configuration as JSON array",
+				DataType:    []string{"object[]"},
+				Description: "Threshold configuration as array of objects",
 			},
 			{
 				Name:        "tags",
@@ -53,9 +98,59 @@ func KPIDefinitionClass() *models.Class {
 				Description: "Tags for categorization",
 			},
 			{
+				Name:        "definition",
+				DataType:    []string{"string"},
+				Description: "Human-readable definition of what the signal means",
+			},
+			{
+				Name:        "sentiment",
+				DataType:    []string{"string"},
+				Description: "Increase sentiment (POSITIVE, NEGATIVE, NEUTRAL)",
+			},
+			{
+				Name:        "category",
+				DataType:    []string{"string"},
+				Description: "Free-form category for additional grouping/classification",
+			},
+			{
+				Name:        "retryAllowed",
+				DataType:    []string{"boolean"},
+				Description: "Whether automated retry logic is permitted for incidents",
+			},
+			{
+				Name:        "domain",
+				DataType:    []string{"string"},
+				Description: "Business or technical domain (payments, kafka, cassandra, infra)",
+			},
+			{
+				Name:        "serviceFamily",
+				DataType:    []string{"string"},
+				Description: "Groups related services (apigw, oltp, issuer-bank)",
+			},
+			{
+				Name:        "componentType",
+				DataType:    []string{"string"},
+				Description: "Component type (springboot, kafka-broker, cassandra-node, valkey)",
+			},
+			{
+				Name:        "businessImpact",
+				DataType:    []string{"string"},
+				Description: "User/business consequence when this KPI degrades",
+			},
+			{
+				Name:        "emotionalImpact",
+				DataType:    []string{"string"},
+				Description: "Optional severity/emotive hint for narrative generation",
+			},
+			{
+				Name:        "examples",
+				DataType:    []string{"object[]"},
+				Description: "Example values/contexts stored as JSON objects",
+			},
+			{
 				Name:        "sparkline",
-				DataType:    []string{"string"}, // JSON string
-				Description: "Sparkline configuration as JSON",
+				DataType:    []string{"object"},
+				Description: "Sparkline configuration as JSON object",
 			},
 			{
 				Name:        "visibility",
