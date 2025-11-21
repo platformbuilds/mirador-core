@@ -2,6 +2,7 @@ package weavstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -10,8 +11,6 @@ import (
 	"github.com/gofrs/uuid/v5"
 	wv "github.com/weaviate/weaviate-go-client/v5/weaviate"
 	"go.uber.org/zap"
-
-	"github.com/platformbuilds/mirador-core/internal/models"
 )
 
 // WeaviateKPIStore is a small wrapper around the official weaviate v5 client
@@ -27,11 +26,21 @@ func NewWeaviateKPIStore(client *wv.Client, logger *zap.Logger) *WeaviateKPIStor
 	return &WeaviateKPIStore{client: client, logger: logger}
 }
 
-// helper: object id generation consistent with previous behaviour
-var nsMirador = func() uuid.UUID {
-	u, _ := uuid.FromString("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
-	return u
-}()
+// helper: object id generation consistent with previous behavior
+var (
+	nsMirador = func() uuid.UUID {
+		u, _ := uuid.FromString("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
+		return u
+	}()
+
+	// Static errors for err113 compliance
+	ErrKPIIsNil   = errors.New("kpi is nil")
+	ErrKPIIDEmpty = errors.New("kpi id is empty")
+	ErrIDEmpty    = errors.New("id is empty")
+
+	// maxKPIListLimit is the maximum limit for listing KPIs in a single query
+	maxKPIListLimit = 10000
+)
 
 func makeObjectID(class, id string) string {
 	return uuid.NewV5(nsMirador, fmt.Sprintf("%s|%s", class, id)).String()
@@ -39,12 +48,12 @@ func makeObjectID(class, id string) string {
 
 // CreateOrUpdateKPI creates a KPI if missing, updates if present. It returns
 // the KPI model, a status string ("created","updated","no-change"), and an error.
-func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *models.KPIDefinition) (*models.KPIDefinition, string, error) {
+func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *KPIDefinition) (*KPIDefinition, string, error) {
 	if k == nil {
-		return nil, "", fmt.Errorf("kpi is nil")
+		return nil, "", ErrKPIIsNil
 	}
 	if k.ID == "" {
-		return nil, "", fmt.Errorf("kpi id is empty")
+		return nil, "", ErrKPIIDEmpty
 	}
 
 	objID := makeObjectID("KPIDefinition", k.ID)
@@ -122,7 +131,9 @@ func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *models.KPID
 // kpiEqual compares two KPIDefinition objects field-by-field. It is intentionally
 // conservative: it returns false if any field differs. This allows callers to
 // detect and apply updates only when necessary.
-func kpiEqual(a, b *models.KPIDefinition) bool {
+//
+//nolint:gocyclo // Field-by-field comparison is inherently complex
+func kpiEqual(a, b *KPIDefinition) bool {
 	if a == nil || b == nil {
 		return false
 	}
@@ -209,7 +220,7 @@ func deepEqualAny(x, y any) bool {
 
 func (s *WeaviateKPIStore) DeleteKPI(ctx context.Context, id string) error {
 	if id == "" {
-		return fmt.Errorf("id is empty")
+		return ErrIDEmpty
 	}
 	objID := makeObjectID("KPIDefinition", id)
 	if err := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(objID).Do(ctx); err != nil {
@@ -218,7 +229,8 @@ func (s *WeaviateKPIStore) DeleteKPI(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*models.KPIDefinition, error) {
+//nolint:gocyclo // Property parsing from Weaviate requires many field mappings
+func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinition, error) {
 	if id == "" {
 		return nil, nil
 	}
@@ -242,11 +254,6 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*models.KPIDe
 			if o.Properties != nil {
 				if m, ok := o.Properties.(map[string]any); ok {
 					props = m
-				} else if m2, ok2 := o.Properties.(map[string]interface{}); ok2 {
-					props = make(map[string]any)
-					for kk, vv := range m2 {
-						props[kk] = vv
-					}
 				}
 			}
 			found = true
@@ -256,7 +263,7 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*models.KPIDe
 	if !found || props == nil {
 		return nil, nil
 	}
-	k := &models.KPIDefinition{ID: id}
+	k := &KPIDefinition{ID: id}
 	if v, ok := props["name"].(string); ok {
 		k.Name = v
 	}
@@ -354,12 +361,6 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*models.KPIDe
 		for _, ex := range v {
 			if m, ok := ex.(map[string]any); ok {
 				k.Examples = append(k.Examples, m)
-			} else if m2, ok := ex.(map[string]interface{}); ok {
-				converted := make(map[string]any)
-				for kk, vv := range m2 {
-					converted[kk] = vv
-				}
-				k.Examples = append(k.Examples, converted)
 			}
 		}
 	}
@@ -373,7 +374,9 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*models.KPIDe
 }
 
 // ListKPIs returns objects for a simple pagination/filters request.
-func (s *WeaviateKPIStore) ListKPIs(ctx context.Context, req *models.KPIListRequest) ([]*models.KPIDefinition, int64, error) {
+//
+//nolint:gocyclo // Property parsing from Weaviate requires many field mappings
+func (s *WeaviateKPIStore) ListKPIs(ctx context.Context, req *KPIListRequest) ([]*KPIDefinition, int64, error) {
 	limit := req.Limit
 	if limit <= 0 {
 		limit = 10
@@ -384,27 +387,22 @@ func (s *WeaviateKPIStore) ListKPIs(ctx context.Context, req *models.KPIListRequ
 	}
 
 	// Use ObjectsGetter to fetch class instances; apply limit/offset.
-	resp, err := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").WithLimit(int(limit)).WithOffset(int(offset)).Do(ctx)
+	resp, err := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").WithLimit(int(limit)).WithOffset(offset).Do(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
-	out := make([]*models.KPIDefinition, 0, len(resp))
+	out := make([]*KPIDefinition, 0, len(resp))
 	for _, o := range resp {
 		if o == nil {
 			continue
 		}
-		k := &models.KPIDefinition{}
+		k := &KPIDefinition{}
 
 		// Extract all properties from the Weaviate object
 		var props map[string]any
 		if o.Properties != nil {
 			if m, ok := o.Properties.(map[string]any); ok {
 				props = m
-			} else if m2, ok := o.Properties.(map[string]interface{}); ok {
-				props = make(map[string]any)
-				for kk, vv := range m2 {
-					props[kk] = vv
-				}
 			}
 		}
 
@@ -490,12 +488,6 @@ func (s *WeaviateKPIStore) ListKPIs(ctx context.Context, req *models.KPIListRequ
 				for _, ex := range v {
 					if m, ok := ex.(map[string]any); ok {
 						k.Examples = append(k.Examples, m)
-					} else if m2, ok := ex.(map[string]interface{}); ok {
-						converted := make(map[string]any)
-						for kk, vv := range m2 {
-							converted[kk] = vv
-						}
-						k.Examples = append(k.Examples, converted)
 					}
 				}
 			}
@@ -537,9 +529,9 @@ func (s *WeaviateKPIStore) ListKPIs(ctx context.Context, req *models.KPIListRequ
 	// Try to fetch the full count of KPIDefinition objects from Weaviate.
 	// This is a best-effort call: if it fails, fall back to the page length
 	// to avoid breaking callers. Counting requires an additional SDK call.
-	// Note: Weaviate ObjectsGetter has a default limit of 25, so we set a high limit (10000)
+	// Note: Weaviate ObjectsGetter has a default limit of 25, so we set a high limit
 	// to get an accurate count. For very large datasets, consider using GraphQL aggregation.
-	if all, terr := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").WithLimit(10000).Do(ctx); terr == nil {
+	if all, terr := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").WithLimit(maxKPIListLimit).Do(ctx); terr == nil {
 		total = int64(len(all))
 	} else {
 		s.logger.Warn("weaviate: failed to get total KPI count; falling back to page size", zap.Error(terr))
@@ -548,9 +540,9 @@ func (s *WeaviateKPIStore) ListKPIs(ctx context.Context, req *models.KPIListRequ
 	return out, total, nil
 }
 
-// thresholdsToProps converts models.Threshold slice into the Weaviate nested
+// thresholdsToProps converts Threshold slice into the Weaviate nested
 // property representation expected by the KPIDefinition class schema.
-func thresholdsToProps(ths []models.Threshold) []map[string]any {
+func thresholdsToProps(ths []Threshold) []map[string]any {
 	if len(ths) == 0 {
 		return nil
 	}
@@ -568,9 +560,9 @@ func thresholdsToProps(ths []models.Threshold) []map[string]any {
 }
 
 // propsToThresholds converts a raw thresholds property (from Weaviate) into
-// []models.Threshold. The raw value can be []map[string]any, []interface{}, or
+// []Threshold. The raw value can be []map[string]any, []interface{}, or
 // other types depending on the SDK decoding.
-func propsToThresholds(raw any) []models.Threshold {
+func propsToThresholds(raw any) []Threshold {
 	if raw == nil {
 		return nil
 	}
@@ -580,7 +572,7 @@ func propsToThresholds(raw any) []models.Threshold {
 	}
 	// Handle []any / []interface{} where each element is a map
 	if arr, ok := raw.([]any); ok {
-		out := make([]models.Threshold, 0, len(arr))
+		out := make([]Threshold, 0, len(arr))
 		for _, it := range arr {
 			if m, ok := it.(map[string]any); ok {
 				out = append(out, mapToThreshold(m))
@@ -600,16 +592,16 @@ func propsToThresholds(raw any) []models.Threshold {
 	return nil
 }
 
-func convertFromMapArray(arr []map[string]any) []models.Threshold {
-	out := make([]models.Threshold, 0, len(arr))
+func convertFromMapArray(arr []map[string]any) []Threshold {
+	out := make([]Threshold, 0, len(arr))
 	for _, m := range arr {
 		out = append(out, mapToThreshold(m))
 	}
 	return out
 }
 
-func mapToThreshold(m map[string]any) models.Threshold {
-	var th models.Threshold
+func mapToThreshold(m map[string]any) Threshold {
+	var th Threshold
 	if s, ok := m["severity"].(string); ok {
 		th.Level = s
 	} else if s, ok := m["level"].(string); ok {
@@ -618,9 +610,10 @@ func mapToThreshold(m map[string]any) models.Threshold {
 	if op, ok := m["operator"].(string); ok {
 		th.Operator = op
 	}
-	if val, ok := m["value"].(float64); ok {
+	switch val := m["value"].(type) {
+	case float64:
 		th.Value = val
-	} else if val, ok := m["value"].(int); ok {
+	case int:
 		th.Value = float64(val)
 	}
 	if msg, ok := m["message"].(string); ok {
@@ -629,4 +622,22 @@ func mapToThreshold(m map[string]any) models.Threshold {
 		th.Description = msg
 	}
 	return th
+}
+
+// Public API methods that work with models package types
+// These are wrappers that convert between models and weavstore types
+
+// CreateOrUpdateKPIModels is a wrapper that accepts and returns models.KPIDefinition
+func (s *WeaviateKPIStore) CreateOrUpdateKPIModels(ctx context.Context, k *KPIDefinition) (*KPIDefinition, string, error) {
+	return s.CreateOrUpdateKPI(ctx, k)
+}
+
+// GetKPIModels is a wrapper that returns models.KPIDefinition
+func (s *WeaviateKPIStore) GetKPIModels(ctx context.Context, id string) (*KPIDefinition, error) {
+	return s.GetKPI(ctx, id)
+}
+
+// ListKPIsModels is a wrapper that works with models types
+func (s *WeaviateKPIStore) ListKPIsModels(ctx context.Context, req *KPIListRequest) ([]*KPIDefinition, int64, error) {
+	return s.ListKPIs(ctx, req)
 }

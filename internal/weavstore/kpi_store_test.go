@@ -3,12 +3,10 @@ package weavstore
 import (
 	"reflect"
 	"testing"
-
-	"github.com/platformbuilds/mirador-core/internal/models"
 )
 
 func TestThresholdsConversionRoundTrip(t *testing.T) {
-	in := []models.Threshold{
+	in := []Threshold{
 		{Level: "warning", Operator: "gt", Value: 10.5, Description: "warn"},
 		{Level: "critical", Operator: "gt", Value: 20.0, Description: "critical"},
 	}
