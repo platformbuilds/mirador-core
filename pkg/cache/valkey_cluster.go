@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-redis/redis/v8"
-
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
+	valkey "github.com/valkey-io/valkey-go"
+	"github.com/valkey-io/valkey-go/valkeycompat"
 )
 
 // CacheMemoryInfo contains memory usage information for adaptive cache sizing
@@ -53,30 +53,33 @@ type ValkeyCluster interface {
 }
 
 type valkeyClusterImpl struct {
-	client *redis.ClusterClient
+	client valkeycompat.Cmdable
 	logger logger.Logger
 	ttl    time.Duration
 }
 
 func NewValkeyCluster(nodes []string, defaultTTL time.Duration) (ValkeyCluster, error) {
-	client := redis.NewClusterClient(&redis.ClusterOptions{
-		Addrs:        nodes,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
-		PoolSize:     10,
-		MinIdleConns: 5,
+	// Create underlying valkey client and wrap with compatibility adapter.
+	cli, err := valkey.NewClient(valkey.ClientOption{
+		InitAddress: nodes,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create valkey cluster client: %w", err)
+	}
+
+	adapter := valkeycompat.NewAdapter(cli)
 
 	// Test connection to Valkey cluster
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := client.Ping(ctx).Err(); err != nil {
+	if err := adapter.Ping(ctx).Err(); err != nil {
+		cli.Close()
 		return nil, fmt.Errorf("failed to connect to Valkey cluster: %w", err)
 	}
 
 	return &valkeyClusterImpl{
-		client: client,
+		client: adapter,
 		logger: logger.New("info"),
 		ttl:    defaultTTL,
 	}, nil
@@ -97,7 +100,7 @@ func (v *valkeyClusterImpl) HealthCheck(ctx context.Context) error {
 func (v *valkeyClusterImpl) Get(ctx context.Context, key string) ([]byte, error) {
 	b, err := v.client.Get(ctx, key).Bytes()
 
-	if err == redis.Nil {
+	if err == valkeycompat.Nil {
 		monitoring.RecordCacheOperation("get", "miss")
 		return nil, fmt.Errorf("key not found: %s", key)
 	}

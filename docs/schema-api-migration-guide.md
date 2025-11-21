@@ -108,7 +108,6 @@ POST /api/v1/kpi/defs
     }
   ],
   "tags": ["reliability", "slo"],
-  "ownerUserId": "user123",
   "visibility": "team",
   "tenantId": "tenant1"
 }
@@ -138,7 +137,6 @@ Response:
         {"level": "critical", "value": 10.0}
       ],
       "tags": ["reliability", "slo"],
-      "ownerUserId": "user123",
       "visibility": "team"
     }
   ],

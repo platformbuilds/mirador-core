@@ -6,38 +6,41 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis/v8"
-
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
+	valkey "github.com/valkey-io/valkey-go"
+	"github.com/valkey-io/valkey-go/valkeycompat"
 )
 
-// valkeySingleImpl implements ValkeyCluster against a single-node Valkey/Redis instance.
+// valkeySingleImpl implements ValkeyCluster against a single-node Valkey instance.
 type valkeySingleImpl struct {
-	client *redis.Client
+	client valkeycompat.Cmdable
 	logger logger.Logger
 	ttl    time.Duration
 }
 
 func NewValkeySingle(addr string, db int, password string, defaultTTL time.Duration) (ValkeyCluster, error) {
-	client := redis.NewClient(&redis.Options{
-		Addr:         addr,
-		Password:     password,
-		DB:           db,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
-		PoolSize:     10,
-		MinIdleConns: 5,
+	// Create underlying valkey client and wrap with compatibility adapter so existing
+	// go-redis style calls continue to work via valkeycompat.Cmdable.
+	cli, err := valkey.NewClient(valkey.ClientOption{
+		InitAddress: []string{addr},
+		Password:    password,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create valkey client: %w", err)
+	}
+
+	adapter := valkeycompat.NewAdapter(cli)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := client.Ping(ctx).Err(); err != nil {
+	if err := adapter.Ping(ctx).Err(); err != nil {
+		cli.Close()
 		return nil, fmt.Errorf("failed to connect to Valkey single-node: %w", err)
 	}
 
 	return &valkeySingleImpl{
-		client: client,
+		client: adapter,
 		logger: logger.New("info"),
 		ttl:    defaultTTL,
 	}, nil
@@ -45,7 +48,7 @@ func NewValkeySingle(addr string, db int, password string, defaultTTL time.Durat
 
 func (v *valkeySingleImpl) Get(ctx context.Context, key string) ([]byte, error) {
 	b, err := v.client.Get(ctx, key).Bytes()
-	if err == redis.Nil {
+	if err == valkeycompat.Nil {
 		monitoring.RecordCacheOperation("get", "miss")
 		return nil, fmt.Errorf("key not found: %s", key)
 	}

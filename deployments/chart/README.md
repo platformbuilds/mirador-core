@@ -153,14 +153,14 @@ mirador-core already tolerates late Valkey by using an in-memory cache and
 auto-reconnecting when Valkey becomes available.
 
 If you still want a hard wait, enable the optional init container that pings
-Valkey using `redis-cli` from the Bitnami Redis image:
+Valkey using `valkey-cli` from the Bitnami Valkey image:
 
 ```yaml
 waitFor:
   valkey:
     enabled: true
     image:
-      repository: bitnami/redis
+      repository: bitnami/valkey
       tag: "7.2.5-debian-12-r0"
       pullPolicy: IfNotPresent
     timeoutSeconds: 120
@@ -207,7 +207,7 @@ valkey:
     enabled: true
     # secretName defaults to <release>-valkey, passwordKey defaults to valkey-password
 
-# The chart will set REDIS_PASSWORD from that Secret automatically.
+  # The chart will set VALKEY_PASSWORD from that Secret automatically.
 ```
 
 To manage app credentials in a single Secret created by this chart, set `secrets.create: true` and fill `LDAP_PASSWORD`, `SMTP_PASSWORD`, `REDIS_PASSWORD`, `VM_PASSWORD`.
@@ -378,7 +378,7 @@ serviceMonitor:
 By default the chart creates a ConfigMap with a production-ready example config.
 You can override with your own file using `config.existingConfigMap` and set `env.CONFIG_PATH=/etc/mirador/config.yaml`.
 
-Secrets such as LDAP, Redis, or SMTP are expected via environment variables or mounted secrets; wire them via `envFrom` or `env.extra`.
+Secrets such as LDAP, Valkey, or SMTP are expected via environment variables or mounted secrets; wire them via `envFrom` or `env.extra`.
 
 ## Notes
 

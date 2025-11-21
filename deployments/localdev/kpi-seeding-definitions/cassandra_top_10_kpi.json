@@ -1,0 +1,114 @@
+{
+  "cassandra_jmx_top_10_kpis": [
+    {
+      "kpi_name": "Cluster Read Latency",
+      "kpi_formula": "rate(org_apache_cassandra_metrics_clientrequest_latency{name=\"Latency\", scope=\"Read\"}[5m])",
+      "kpi_definition": "The average time taken to read data from the database. High latency means slow query responses, leading to poor application performance and frustrated users.",
+      "layer": "cause",
+      "classifier": "read_performance",
+      "sentiment": "negative",
+      "signal_type": "metrics",
+      "query_type": "PromQL",
+      "datastore": "victoriametrics"
+    },
+    {
+      "kpi_name": "Cluster Write Latency", 
+      "kpi_formula": "rate(org_apache_cassandra_metrics_clientrequest_latency{name=\"Latency\", scope=\"Write\"}[5m])",
+      "kpi_definition": "The average time taken to write data to the database. High latency means slow data ingestion, causing delays in application operations and data processing.",
+      "layer": "cause",
+      "classifier": "write_performance",
+      "sentiment": "negative",
+      "signal_type": "metrics",
+      "query_type": "PromQL",
+      "datastore": "victoriametrics"
+    },
+    {
+      "kpi_name": "Pending Compactions",
+      "kpi_formula": "org_apache_cassandra_metrics_compaction_pendingtasks",
+      "kpi_definition": "The number of pending compaction tasks. High values indicate the database is struggling to manage its data files, which can lead to slower reads/writes and increased disk usage.",
+      "layer": "cause",
+      "classifier": "storage_efficiency",
+      "sentiment": "negative",
+      "signal_type": "metrics",
+      "query_type": "PromQL",
+      "datastore": "victoriametrics"
+    },
+    {
+      "kpi_name": "Active Connections",
+      "kpi_formula": "org_apache_cassandra_metrics_client_connectednativeclients",
+      "kpi_definition": "The number of active client connections to the database. Approaching the maximum connection limit can cause new application instances to fail connecting to the database.",
+      "layer": "cause",
+      "classifier": "connection_capacity",
+      "sentiment": "negative",
+      "signal_type": "metrics",
+      "query_type": "PromQL",
+      "datastore": "victoriametrics"
+    },
+    {
+      "kpi_name": "Dropped Mutations",
+      "kpi_formula": "rate(org_apache_cassandra_metrics_storage_totalmutationdropped[5m])",
+      "kpi_definition": "The rate of write requests that were rejected by the database. This indicates the node is overloaded and cannot keep up with write traffic, leading to data loss.",
+      "layer": "cause",
+      "classifier": "write_reliability",
+      "sentiment": "negative",
+      "signal_type": "metrics",
+      "query_type": "PromQL",
+      "datastore": "victoriametrics"
+    },
+    {
+      "kpi_name": "Cache Hit Rate",
+      "kpi_formula": "org_apache_cassandra_metrics_cache_hitrate{name=\"HitRate\", cache=\"KeyCache\"}",
+      "kpi_definition": "The percentage of read requests served from cache instead of disk. Low hit rates force more disk reads, significantly slowing down query performance and increasing I/O load.",
+      "layer": "cause",
+      "classifier": "read_efficiency",
+      "sentiment": "positive",
+      "signal_type": "metrics",
+      "query_type": "PromQL",
+      "datastore": "victoriametrics"
+    },
+    {
+      "kpi_name": "Thread Pool Active Tasks",
+      "kpi_formula": "org_apache_cassandra_metrics_threadpools_activetasks{pool=~\"InternalStage|Native-Transport-Requests.*\"}",
+      "kpi_definition": "The number of active tasks in critical internal thread pools. High values indicate the database is struggling to process internal operations, which can lead to timeouts and failures.",
+      "layer": "cause",
+      "classifier": "internal_throughput",
+      "sentiment": "negative",
+      "signal_type": "metrics",
+      "query_type": "PromQL",
+      "datastore": "victoriametrics"
+    },
+    {
+      "kpi_name": "Storage Load",
+      "kpi_formula": "org_apache_cassandra_metrics_storage_load",
+      "kpi_definition": "The total amount of data stored on this node. High values approaching disk capacity can lead to performance degradation and potential node failures.",
+      "layer": "cause",
+      "classifier": "storage_capacity",
+      "sentiment": "negative",
+      "signal_type": "metrics",
+      "query_type": "PromQL",
+      "datastore": "victoriametrics"
+    },
+    {
+      "kpi_name": "Read Timeouts",
+      "kpi_formula": "rate(org_apache_cassandra_metrics_clientrequest_timeouts{scope=\"Read\"}[5m])",
+      "kpi_definition": "The rate of read requests that timed out. High timeout rates indicate the database cannot serve read requests within expected timeframes, causing application errors.",
+      "layer": "cause",
+      "classifier": "read_reliability",
+      "sentiment": "negative",
+      "signal_type": "metrics",
+      "query_type": "PromQL",
+      "datastore": "victoriametrics"
+    },
+    {
+      "kpi_name": "Write Timeouts",
+      "kpi_formula": "rate(org_apache_cassandra_metrics_clientrequest_timeouts{scope=\"Write\"}[5m])",
+      "kpi_definition": "The rate of write requests that timed out. High timeout rates indicate the database cannot process writes within expected timeframes, causing data consistency issues.",
+      "layer": "cause",
+      "classifier": "write_reliability",
+      "sentiment": "negative",
+      "signal_type": "metrics",
+      "query_type": "PromQL",
+      "datastore": "victoriametrics"
+    }
+  ]
+}

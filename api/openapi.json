@@ -3644,9 +3644,6 @@
             "type": "object",
             "additionalProperties": true
           },
-          "ownerUserId": {
-            "type": "string"
-          },
           "visibility": {
             "type": "string",
             "enum": [

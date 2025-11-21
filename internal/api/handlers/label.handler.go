@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
+	"github.com/gofrs/uuid/v5"
 
 	models "github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
+	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -17,17 +18,19 @@ import (
 // LabelHandler provides API endpoints for label definitions.
 // This handler implements separate label APIs as defined in the API contract.
 type LabelHandler struct {
-	repo   repo.SchemaStore
-	cache  cache.ValkeyCluster
-	logger logger.Logger
+	repo    repo.SchemaStore
+	kpiRepo repo.KPIRepo
+	cache   cache.ValkeyCluster
+	logger  logger.Logger
 }
 
 // NewLabelHandler creates a new label handler
-func NewLabelHandler(r repo.SchemaStore, cache cache.ValkeyCluster, l logger.Logger) *LabelHandler {
+func NewLabelHandler(r repo.SchemaStore, kpirepo repo.KPIRepo, cache cache.ValkeyCluster, l logger.Logger) *LabelHandler {
 	return &LabelHandler{
-		repo:   r,
-		cache:  cache,
-		logger: l,
+		repo:    r,
+		kpiRepo: kpirepo,
+		cache:   cache,
+		logger:  l,
 	}
 }
 
@@ -63,14 +66,33 @@ func (h *LabelHandler) CreateOrUpdateLabel(c *gin.Context) {
 	}
 
 	if schemaDef.ID == "" {
-		schemaDef.ID = uuid.New().String()
+		schemaDef.ID = uuid.Must(uuid.NewV4()).String()
 	}
 
-	// Use unified KPI-based storage
-	err := h.repo.UpsertSchemaAsKPI(c.Request.Context(), schemaDef, schemaDef.Author)
-	if err != nil {
-		h.logger.Error("label upsert failed", "error", err, "name", req.Name)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upsert label"})
+	// Convert to KPI and persist via KPIRepo
+	kpi := &models.KPIDefinition{
+		Name:      req.Name,
+		Kind:      "tech",
+		Tags:      schemaDef.Tags,
+		Category:  schemaDef.Category,
+		Sentiment: schemaDef.Sentiment,
+		CreatedAt: schemaDef.CreatedAt,
+		UpdatedAt: schemaDef.UpdatedAt,
+	}
+	if kpi.ID == "" {
+		id, err := services.GenerateDeterministicKPIID(kpi)
+		if err == nil {
+			kpi.ID = id
+		}
+	}
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not available for label handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "kpi repo unavailable"})
+		return
+	}
+	if _, _, err := h.kpiRepo.CreateKPI(c.Request.Context(), kpi); err != nil {
+		h.logger.Error("label create failed", "error", err, "name", req.Name)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create label"})
 		return
 	}
 
@@ -85,32 +107,36 @@ func (h *LabelHandler) GetLabel(c *gin.Context) {
 		return
 	}
 
-	// Use unified KPI-based retrieval
-	schemaDef, err := h.repo.GetSchemaAsKPI(c.Request.Context(), string(models.SchemaTypeLabel), name)
+	// Retrieve KPI by deterministic id
+	tmp := &models.KPIDefinition{Name: name}
+	detID, err := services.GenerateDeterministicKPIID(tmp)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{"error": "label not found"})
-		} else {
-			h.logger.Error("label get failed", "error", err, "name", name)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get label"})
-		}
+		h.logger.Error("failed to compute deterministic id for label", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get label"})
+		return
+	}
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not available for label handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "kpi repo unavailable"})
+		return
+	}
+	schemaDefKPI, err := h.kpiRepo.GetKPI(c.Request.Context(), detID)
+	if err != nil {
+		h.logger.Error("label get failed", "error", err, "name", name)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get label"})
+		return
+	}
+	if schemaDefKPI == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "label not found"})
 		return
 	}
 
 	// Convert SchemaDefinition back to Label for backward compatibility
 	label := &models.Label{
-		Name:      schemaDef.Name,
-		Category:  schemaDef.Category,
-		Sentiment: schemaDef.Sentiment,
-		Author:    schemaDef.Author,
-		UpdatedAt: schemaDef.UpdatedAt,
-	}
-
-	if schemaDef.Extensions.Label != nil {
-		label.Type = schemaDef.Extensions.Label.Type
-		label.Required = schemaDef.Extensions.Label.Required
-		label.AllowedVals = schemaDef.Extensions.Label.AllowedVals
-		label.Description = schemaDef.Extensions.Label.Description
+		Name:      schemaDefKPI.Name,
+		Category:  schemaDefKPI.Category,
+		Sentiment: schemaDefKPI.Sentiment,
+		UpdatedAt: schemaDefKPI.UpdatedAt,
 	}
 
 	c.JSON(http.StatusOK, models.LabelResponse{Label: label})
@@ -133,49 +159,33 @@ func (h *LabelHandler) ListLabels(c *gin.Context) {
 	}
 
 	// Use KPIRepo to list KPI-backed schema types (labels are stored as KPIs)
-	var schemaDefs []*models.SchemaDefinition
+	var labels []*models.Label
 	var total int
 	var err error
+
 	if kpirepo, ok := h.repo.(repo.KPIRepo); ok {
-		kpis, totalKpis, lerr := kpirepo.ListKPIs(c.Request.Context(), []string{string(models.SchemaTypeLabel)}, req.Limit, req.Offset)
+		kpis, totalKpis, lerr := kpirepo.ListKPIs(c.Request.Context(), models.KPIListRequest{Tags: []string{string(models.SchemaTypeLabel)}, Limit: req.Limit, Offset: req.Offset})
 		if lerr != nil {
 			err = lerr
 		} else {
-			total = totalKpis
-			schemaDefs = make([]*models.SchemaDefinition, 0, len(kpis))
+			total = int(totalKpis)
+			labels = make([]*models.Label, 0, len(kpis))
 			for _, k := range kpis {
-				schemaDefs = append(schemaDefs, kpiToSchemaDefinition(k, models.SchemaTypeLabel))
+				labels = append(labels, &models.Label{
+					Name:      k.Name,
+					Category:  k.Category,
+					Sentiment: k.Sentiment,
+					UpdatedAt: k.UpdatedAt,
+					// Type, Required, AllowedVals, Description are not present in KPIDefinition; omit for now
+				})
 			}
 		}
-	} else {
-		// Fallback to older method if underlying repo has not been migrated
-		schemaDefs, total, err = h.repo.ListSchemasAsKPIs(c.Request.Context(), string(models.SchemaTypeLabel), req.Limit, req.Offset)
 	}
+
 	if err != nil {
 		h.logger.Error("label list failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "list failed"})
 		return
-	}
-
-	// Convert SchemaDefinitions back to Labels for backward compatibility
-	labels := make([]*models.Label, 0, len(schemaDefs))
-	for _, schemaDef := range schemaDefs {
-		label := &models.Label{
-			Name:      schemaDef.Name,
-			Category:  schemaDef.Category,
-			Sentiment: schemaDef.Sentiment,
-			Author:    schemaDef.Author,
-			UpdatedAt: schemaDef.UpdatedAt,
-		}
-
-		if schemaDef.Extensions.Label != nil {
-			label.Type = schemaDef.Extensions.Label.Type
-			label.Required = schemaDef.Extensions.Label.Required
-			label.AllowedVals = schemaDef.Extensions.Label.AllowedVals
-			label.Description = schemaDef.Extensions.Label.Description
-		}
-
-		labels = append(labels, label)
 	}
 
 	nextOffset := req.Offset + len(labels)

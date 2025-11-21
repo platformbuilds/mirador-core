@@ -9,6 +9,7 @@ import (
 
 	models "github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
+	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -16,17 +17,19 @@ import (
 // TraceServiceHandler provides API endpoints for trace service definitions.
 // This handler implements separate trace service APIs as defined in the API contract.
 type TraceServiceHandler struct {
-	repo   repo.SchemaStore
-	cache  cache.ValkeyCluster
-	logger logger.Logger
+	repo    repo.SchemaStore
+	kpiRepo repo.KPIRepo
+	cache   cache.ValkeyCluster
+	logger  logger.Logger
 }
 
 // NewTraceServiceHandler creates a new trace service handler
-func NewTraceServiceHandler(r repo.SchemaStore, cache cache.ValkeyCluster, l logger.Logger) *TraceServiceHandler {
+func NewTraceServiceHandler(r repo.SchemaStore, kpirepo repo.KPIRepo, cache cache.ValkeyCluster, l logger.Logger) *TraceServiceHandler {
 	return &TraceServiceHandler{
-		repo:   r,
-		cache:  cache,
-		logger: l,
+		repo:    r,
+		kpiRepo: kpirepo,
+		cache:   cache,
+		logger:  l,
 	}
 }
 
@@ -46,31 +49,33 @@ func (h *TraceServiceHandler) CreateOrUpdateTraceService(c *gin.Context) {
 	traceService := req.TraceService
 
 	// Convert TraceService to SchemaDefinition
-	schemaDef := &models.SchemaDefinition{
-		ID:        traceService.Service, // Use service name as ID
+	kpi := &models.KPIDefinition{
 		Name:      traceService.Service,
-		Type:      models.SchemaTypeTraceService,
+		Kind:      "tech",
+		Tags:      traceService.Tags,
 		Category:  traceService.Category,
 		Sentiment: traceService.Sentiment,
-		Author:    traceService.Author,
-		Tags:      traceService.Tags,
-		Extensions: models.SchemaExtensions{
-			Trace: &models.TraceExtension{
-				Service:        traceService.Service,
-				ServicePurpose: traceService.ServicePurpose,
-				Owner:          traceService.Owner,
-			},
-		},
+		CreatedAt: traceService.UpdatedAt,
+		UpdatedAt: traceService.UpdatedAt,
 	}
-
-	err := h.repo.UpsertSchemaAsKPI(context.Background(), schemaDef, traceService.Author)
-	if err != nil {
-		h.logger.Error("trace service upsert failed", "error", err, "service", traceService.Service)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upsert trace service"})
+	if kpi.ID == "" {
+		id, err := services.GenerateDeterministicKPIID(kpi)
+		if err == nil {
+			kpi.ID = id
+		}
+	}
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not configured for trace service handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "kpi repo unavailable"})
+		return
+	}
+	if _, _, err := h.kpiRepo.CreateKPI(context.Background(), kpi); err != nil {
+		h.logger.Error("failed to create trace service kpi", "error", err, "service", traceService.Service)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save trace service"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "service": traceService.Service})
+	c.JSON(http.StatusOK, gin.H{"message": "trace service upserted"})
 }
 
 // GetTraceService retrieves a trace service definition by service name
@@ -81,27 +86,35 @@ func (h *TraceServiceHandler) GetTraceService(c *gin.Context) {
 		return
 	}
 
-	schemaDef, err := h.repo.GetSchemaAsKPI(context.Background(), "trace_service", serviceName)
+	tmp := &models.KPIDefinition{Name: serviceName}
+	detID, err := services.GenerateDeterministicKPIID(tmp)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{"error": "trace service not found"})
-		} else {
-			h.logger.Error("trace service get failed", "error", err, "service", serviceName)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get trace service"})
-		}
+		h.logger.Error("failed to compute deterministic id for trace service", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get trace service"})
+		return
+	}
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not configured for trace service handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "kpi repo unavailable"})
+		return
+	}
+	kdef, err := h.kpiRepo.GetKPI(context.Background(), detID)
+	if err != nil {
+		h.logger.Error("trace service get failed", "error", err, "service", serviceName)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get trace service"})
+		return
+	}
+	if kdef == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "trace service not found"})
 		return
 	}
 
-	// Convert SchemaDefinition back to TraceService
 	traceService := &models.TraceService{
-		Service:        schemaDef.Name,
-		ServicePurpose: schemaDef.Extensions.Trace.ServicePurpose,
-		Owner:          schemaDef.Extensions.Trace.Owner,
-		Tags:           schemaDef.Tags,
-		Category:       schemaDef.Category,
-		Sentiment:      schemaDef.Sentiment,
-		Author:         schemaDef.Author,
-		UpdatedAt:      schemaDef.UpdatedAt,
+		Service:   kdef.Name,
+		Tags:      kdef.Tags,
+		Category:  kdef.Category,
+		Sentiment: kdef.Sentiment,
+		UpdatedAt: kdef.UpdatedAt,
 	}
 
 	c.JSON(http.StatusOK, models.TraceServiceResponse{TraceService: traceService})
@@ -123,42 +136,33 @@ func (h *TraceServiceHandler) ListTraceServices(c *gin.Context) {
 		req.Offset = 0
 	}
 
-	var schemaDefs []*models.SchemaDefinition
+	var traceServices []*models.TraceService
 	var total int
 	var err error
 	if kpirepo, ok := h.repo.(repo.KPIRepo); ok {
-		kpis, totalKpis, lerr := kpirepo.ListKPIs(context.Background(), []string{"trace_service"}, req.Limit, req.Offset)
+		kpis, totalKpis, lerr := kpirepo.ListKPIs(context.Background(), models.KPIListRequest{Tags: []string{"trace_service"}, Limit: req.Limit, Offset: req.Offset})
 		if lerr != nil {
 			err = lerr
 		} else {
-			total = totalKpis
-			schemaDefs = make([]*models.SchemaDefinition, 0, len(kpis))
+			total = int(totalKpis)
+			traceServices = make([]*models.TraceService, 0, len(kpis))
 			for _, k := range kpis {
-				schemaDefs = append(schemaDefs, kpiToSchemaDefinition(k, models.SchemaTypeTraceService))
+				traceServices = append(traceServices, &models.TraceService{
+					Service:   k.Name,
+					Tags:      k.Tags,
+					Category:  k.Category,
+					Sentiment: k.Sentiment,
+					UpdatedAt: k.UpdatedAt,
+					// Description, ServicePurpose, Owner are not present in KPIDefinition; omit for now
+				})
 			}
 		}
-	} else {
-		schemaDefs, total, err = h.repo.ListSchemasAsKPIs(context.Background(), "trace_service", req.Limit, req.Offset)
 	}
+
 	if err != nil {
 		h.logger.Error("trace service list failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list trace services"})
 		return
-	}
-
-	// Convert SchemaDefinitions back to TraceServices
-	traceServices := make([]*models.TraceService, len(schemaDefs))
-	for i, schemaDef := range schemaDefs {
-		traceServices[i] = &models.TraceService{
-			Service:        schemaDef.Name,
-			ServicePurpose: schemaDef.Extensions.Trace.ServicePurpose,
-			Owner:          schemaDef.Extensions.Trace.Owner,
-			Tags:           schemaDef.Tags,
-			Category:       schemaDef.Category,
-			Sentiment:      schemaDef.Sentiment,
-			Author:         schemaDef.Author,
-			UpdatedAt:      schemaDef.UpdatedAt,
-		}
 	}
 
 	nextOffset := req.Offset + len(traceServices)
@@ -187,7 +191,19 @@ func (h *TraceServiceHandler) DeleteTraceService(c *gin.Context) {
 		return
 	}
 
-	err := h.repo.DeleteSchemaAsKPI(context.Background(), serviceName)
+	tmp := &models.KPIDefinition{Name: serviceName}
+	detID, err := services.GenerateDeterministicKPIID(tmp)
+	if err != nil {
+		h.logger.Error("failed to compute deterministic id for trace service delete", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete trace service"})
+		return
+	}
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not configured for trace service handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "kpi repo unavailable"})
+		return
+	}
+	err = h.kpiRepo.DeleteKPI(context.Background(), detID)
 	if err != nil {
 		h.logger.Error("trace service delete failed", "error", err, "service", serviceName)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete trace service"})

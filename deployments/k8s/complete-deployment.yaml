@@ -54,9 +54,9 @@ data:
     
     cache:
       nodes:
-        - "redis-cluster-0.redis-cluster:6379"
-        - "redis-cluster-1.redis-cluster:6379" 
-        - "redis-cluster-2.redis-cluster:6379"
+        - "valkey-cluster-0.valkey-cluster:6379"
+        - "valkey-cluster-1.valkey-cluster:6379" 
+        - "valkey-cluster-2.valkey-cluster:6379"
       ttl: 300
     
     # Weaviate vector database configuration
@@ -409,8 +409,8 @@ require (
     google.golang.org/grpc v1.59.0
     google.golang.org/protobuf v1.31.0
     
-    // Redis cluster for Valkey caching
-    github.com/go-redis/redis/v8 v8.11.5
+    // Valkey cluster for Valkey caching
+    github.com/valkey-io/valkey-go v0.0.0
     
     // LDAP/AD authentication
     github.com/go-ldap/ldap/v3 v3.4.6

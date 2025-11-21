@@ -181,12 +181,15 @@ localdev-test-code-only:
 localdev-seed-otel:
 	@echo "Seeding synthetic OpenTelemetry data via financial transaction simulator..."
 	@go build -o bin/otel-fintrans-simulator ./cmd/otel-fintrans-simulator
-	OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 OTEL_EXPORTER_OTLP_INSECURE=true ./bin/otel-fintrans-simulator --transactions 50000 --concurrency 250 --failure-mode mixed --failure-rate 0.35
+	#OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 OTEL_EXPORTER_OTLP_INSECURE=true ./bin/otel-fintrans-simulator --transactions 50000 --concurrency 250 --failure-mode mixed --failure-rate 0.35
+	@echo "Seeding KPI and signal definitions via bulk API (idempotent; deterministic IDs)"
+	@# Uses scripts/localdev_seed_kpis.py to POST KPI JSON registries and signal definitions to the server's bulk-json endpoints
+	@python3 scripts/localdev_seed_kpis.py --base-url "$(BASE_URL)" --seed-signals || true
 
 localdev-seed-data:
 	@echo "Seeding sample KPIs in Weaviate..."
 	@go build -o bin/schemactl cmd/schemactl/main.go
-	WEAVIATE_HOST=localhost WEAVIATE_PORT=8080 ./bin/schemactl -mode=seed -tenant=PLATFORMBUILDS
+	WEAVIATE_HOST=127.0.0.1 WEAVIATE_PORT=8010 ./bin/schemactl -mode=seed
 
 localdev-down:
 	@docker-compose -f deployments/localdev/docker-compose.yaml down -v
@@ -486,7 +489,7 @@ dev-stack:
 	@echo "VictoriaMetrics: http://localhost:8481"
 	@echo "VictoriaLogs: http://localhost:9428" 
 	@echo "VictoriaTraces: http://localhost:10428"
-	@echo "Redis: localhost:6379"
+	@echo "Valkey: localhost:6379"
 
 # Stop local development stack
 dev-stack-down:

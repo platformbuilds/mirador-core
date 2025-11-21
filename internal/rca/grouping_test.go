@@ -15,8 +15,8 @@ func TestGroupEnrichedAnomalies_BasicGrouping(t *testing.T) {
 		GroupByComponent:  true,
 	}
 
-	// Create synthetic events
-	now := time.Now()
+	// Create synthetic events (truncate to 10s to avoid bucket-boundary flakiness)
+	now := time.Now().Truncate(10 * time.Second)
 	events := []*EnrichedAnomalyEvent{
 		{
 			AnomalyEvent: &AnomalyEvent{
@@ -210,7 +210,8 @@ func TestGroupEnrichedAnomalies_MixedGraphDirections(t *testing.T) {
 		GroupByComponent:  true,
 	}
 
-	now := time.Now()
+	// Truncate to 10s to avoid bucket-boundary flakiness
+	now := time.Now().Truncate(10 * time.Second)
 	events := []*EnrichedAnomalyEvent{
 		{
 			AnomalyEvent: &AnomalyEvent{
@@ -260,7 +261,8 @@ func TestGroupEnrichedAnomalies_FilteringByMinEventsPerGroup(t *testing.T) {
 		GroupByComponent:  true,
 	}
 
-	now := time.Now()
+	// Truncate to 10s to avoid bucket-boundary flakiness
+	now := time.Now().Truncate(10 * time.Second)
 	events := []*EnrichedAnomalyEvent{
 		{
 			AnomalyEvent: &AnomalyEvent{

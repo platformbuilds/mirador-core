@@ -107,7 +107,7 @@ func (c *Config) ValidateEndpoints() error {
 
 	// Validate Valkey cluster nodes
 	for _, node := range c.Cache.Nodes {
-		if err := ValidateRedisNode(node); err != nil {
+		if err := ValidateCacheNode(node); err != nil {
 			return fmt.Errorf("invalid Valkey cluster node %s: %w", node, err)
 		}
 	}

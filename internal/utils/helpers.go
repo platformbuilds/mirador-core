@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/gofrs/uuid/v5"
 
 	"github.com/platformbuilds/mirador-core/internal/models"
 )
 
 // GenerateSessionID creates a secure session identifier
 func GenerateSessionID() string {
-	return uuid.New().String()
+	return uuid.Must(uuid.NewV4()).String()
 }
 
 // GenerateClientID creates WebSocket client identifier

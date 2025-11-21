@@ -217,3 +217,30 @@ When adding new tests or modifying testing procedures:
 3. Add appropriate targets to the Makefile if needed
 4. Test in both local and CI environments</content>
 <parameter name="filePath">/Users/aarvee/repos/github/public/miradorstack/mirador-core/AGENTS.md
+
+## Weaviate Client Usage
+
+When working on any code in **mirador-core** that interacts with Weaviate, follow these rules:
+
+1. **Always use the official Go client library (v5)**  
+   - Repository: `github.com/weaviate/weaviate-go-client/v5`  
+   - Reference docs: https://docs.weaviate.io/weaviate/client-libraries/go
+
+2. **Do NOT:**
+   - Hand-craft raw HTTP/REST calls to Weaviate
+   - Hand-craft GraphQL strings in handlers or repos
+   - Talk to Weaviate directly from random packages
+
+3. **Do:**
+   - Centralize all Weaviate interactions in well-defined store/repo layers
+   - Keep the SDK usage wrapped in small, testable helpers (e.g., a `WeaviateKPIStore`)
+   - Make sure all KPI-related Weaviate operations (Create, Update, Delete, List, Get) go through the shared KPI repo / store instead of ad-hoc calls.
+
+4. **Versioning:**
+   - New work must target the latest agreed major version: **v5** of the Go client.
+   - If you need to upgrade the client version, update:
+     - `go.mod`
+     - Any wrapper/store that uses the SDK
+     - This section of `AGENTS.md` to reflect the new version.
+
+This ensures Weaviate access is consistent, testable, and easy to evolve as the schema and vector usage grow.

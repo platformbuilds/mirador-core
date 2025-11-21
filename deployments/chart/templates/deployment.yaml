@@ -52,7 +52,7 @@ spec:
             - >-
               echo "Waiting for Valkey at {{ include "mirador-core.valkeyHeadlessHost" . }}:6379";
               START=$(date +%s);
-              until redis-cli -h {{ include "mirador-core.valkeyHeadlessHost" . }} -p 6379 PING 2>/dev/null | grep -q PONG; do
+              until valkey-cli -h {{ include "mirador-core.valkeyHeadlessHost" . }} -p 6379 PING 2>/dev/null | grep -q PONG; do
                 NOW=$(date +%s);
                 ELAPSED=$((NOW-START));
                 if [ $ELAPSED -ge {{ .Values.waitFor.valkey.timeoutSeconds }} ]; then
@@ -105,7 +105,7 @@ spec:
             {{- end }}
             {{- /* Optionally source REDIS_PASSWORD directly from valkey subchart secret */ -}}
             {{- if and .Values.valkey.enabled .Values.valkey.auth.enabled (not .Values.secrets.create) }}
-            - name: REDIS_PASSWORD
+            - name: VALKEY_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ default (printf "%s-valkey" .Release.Name) .Values.valkey.auth.secretName }}

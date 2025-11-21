@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Database Test Cases: live Valkey/Redis single-node if VALKEY_ADDR is set.
+// Database Test Cases: live Valkey single-node if VALKEY_ADDR is set.
 func TestValkeySingle_DB(t *testing.T) {
 	addr := os.Getenv("VALKEY_ADDR")
 	if addr == "" {

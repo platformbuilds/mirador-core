@@ -21,6 +21,8 @@ type RCAHandler struct {
 	logger             logger.Logger
 	featureFlagService *services.RuntimeFeatureFlagService
 	rcaEngine          services.RCAEngine
+	// Optional KPI resolver used to resolve KPI definitions into impact signals
+	kpiResolver *services.KPIResolver
 }
 
 func NewRCAHandler(
@@ -38,6 +40,16 @@ func NewRCAHandler(
 		rcaEngine:          rcaEngine,
 		featureFlagService: services.NewRuntimeFeatureFlagService(cache, logger),
 	}
+}
+
+// SetKPIResolver sets an optional KPIResolver on the handler. It is safe to call with nil.
+func (h *RCAHandler) SetKPIResolver(resolver *services.KPIResolver) {
+	h.kpiResolver = resolver
+}
+
+// SetEngine sets the RCA engine for the handler. Used in tests to inject a fake engine.
+func (h *RCAHandler) SetEngine(engine services.RCAEngine) {
+	h.rcaEngine = engine
 }
 
 // checkFeatureEnabled checks if the RCA feature is enabled for the current
@@ -312,6 +324,48 @@ func (h *RCAHandler) HandleComputeRCA(c *gin.Context) {
 		CreatedAt:     time.Now().UTC(),
 	}
 
+	// If a KPI ID was provided and a KPI resolver is available, resolve it to an ImpactSignal
+	if request.ImpactKPIID != "" && h.kpiResolver != nil {
+		// Use temporary diagnostics for KPI resolution
+		kpiDiags := rca.NewRCADiagnostics()
+		signal, kmeta, warnings, err := h.kpiResolver.ResolveKPIToSignal(c.Request.Context(), request.ImpactKPIID, kpiDiags)
+		if err != nil {
+			h.logger.Warn("KPI resolution returned error", "kpi_id", request.ImpactKPIID, "error", err)
+		}
+		// Attach KPI impact ID and metadata to incident context
+		incidentContext.KPIImpactID = request.ImpactKPIID
+		if kmeta != nil {
+			incidentContext.KPIMetadata = &rca.KPIIncidentMetadata{
+				KPIDefinitionID: kmeta.ID,
+				KPIName:         kmeta.Name,
+				KPIKind:         kmeta.Kind,
+				KPISentiment:    kmeta.Sentiment,
+				ImpactIsKPI:     true,
+			}
+		}
+
+		// If resolver returned a signal, use it to override the ImpactSignal
+		if signal != nil {
+			// Ensure service name is set; fall back to request.ImpactService
+			if signal.ServiceName == "" {
+				signal.ServiceName = request.ImpactService
+			}
+			incidentContext.ImpactSignal = *signal
+		}
+
+		// Convert any warnings into incident diagnostics
+		for _, w := range warnings {
+			// Add to top-level diagnostics via a note in logs (engine will pick up diagnostics during processing)
+			h.logger.Debug("KPI resolver warning", "kpi_id", request.ImpactKPIID, "warning", w)
+		}
+		// Merge any KPI resolver diagnostics into handler logs for observability
+		if kpiDiags != nil && len(kpiDiags.ReducedAccuracyReasons) > 0 {
+			for _, r := range kpiDiags.ReducedAccuracyReasons {
+				h.logger.Debug("KPI diagnostic", "note", r)
+			}
+		}
+	}
+
 	// Build RCAOptions
 	opts := rca.DefaultRCAOptions()
 	if request.MaxChains > 0 {
@@ -322,6 +376,16 @@ func (h *RCAHandler) HandleComputeRCA(c *gin.Context) {
 	}
 	if request.MinScoreThreshold > 0 {
 		opts.MinScoreThreshold = request.MinScoreThreshold
+	}
+
+	// If the request provided a DimensionConfig DTO, merge it into options
+	if request.DimensionConfig != nil {
+		opts.DimensionConfig = rca.RCADimensionConfig{
+			ExtraDimensions:  request.DimensionConfig.ExtraDimensions,
+			DimensionWeights: request.DimensionConfig.DimensionWeights,
+			AlignmentPenalty: request.DimensionConfig.AlignmentPenalty,
+			AlignmentBonus:   request.DimensionConfig.AlignmentBonus,
+		}
 	}
 
 	// Call RCA engine

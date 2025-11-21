@@ -9,6 +9,7 @@ import (
 
 	models "github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
+	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -16,17 +17,19 @@ import (
 // TraceOperationHandler provides API endpoints for trace operation definitions.
 // This handler implements separate trace operation APIs as defined in the API contract.
 type TraceOperationHandler struct {
-	repo   repo.SchemaStore
-	cache  cache.ValkeyCluster
-	logger logger.Logger
+	repo    repo.SchemaStore
+	kpiRepo repo.KPIRepo
+	cache   cache.ValkeyCluster
+	logger  logger.Logger
 }
 
 // NewTraceOperationHandler creates a new trace operation handler
-func NewTraceOperationHandler(r repo.SchemaStore, cache cache.ValkeyCluster, l logger.Logger) *TraceOperationHandler {
+func NewTraceOperationHandler(r repo.SchemaStore, kpirepo repo.KPIRepo, cache cache.ValkeyCluster, l logger.Logger) *TraceOperationHandler {
 	return &TraceOperationHandler{
-		repo:   r,
-		cache:  cache,
-		logger: l,
+		repo:    r,
+		kpiRepo: kpirepo,
+		cache:   cache,
+		logger:  l,
 	}
 }
 
@@ -45,31 +48,34 @@ func (h *TraceOperationHandler) CreateOrUpdateTraceOperation(c *gin.Context) {
 
 	traceOperation := req.TraceOperation
 
-	// Convert TraceOperation to SchemaDefinition
-	// Use composite ID "service:operation" for unique identification
-	compositeID := traceOperation.Service + ":" + traceOperation.Operation
-	schemaDef := &models.SchemaDefinition{
-		ID:        compositeID,
-		Name:      traceOperation.Operation,
-		Type:      models.SchemaTypeTraceOperation,
-		Category:  traceOperation.Category,
-		Sentiment: traceOperation.Sentiment,
-		Author:    traceOperation.Author,
-		Tags:      traceOperation.Tags,
-		Extensions: models.SchemaExtensions{
-			Trace: &models.TraceExtension{
-				Service:        traceOperation.Service,
-				Operation:      traceOperation.Operation,
-				ServicePurpose: traceOperation.ServicePurpose,
-				Owner:          traceOperation.Owner,
-			},
-		},
+	// Convert TraceOperation into a KPI-backed object and persist via KPIRepo
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not configured for trace operation handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
+		return
 	}
 
-	err := h.repo.UpsertSchemaAsKPI(context.Background(), schemaDef, traceOperation.Author)
-	if err != nil {
-		h.logger.Error("trace operation upsert failed", "error", err, "service", traceOperation.Service, "operation", traceOperation.Operation)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upsert trace operation"})
+	kpi := &models.KPIDefinition{
+		Name:      traceOperation.Operation,
+		Namespace: traceOperation.Service,
+		Kind:      "tech",
+		Tags:      traceOperation.Tags,
+		Category:  traceOperation.Category,
+		Sentiment: traceOperation.Sentiment,
+		CreatedAt: traceOperation.UpdatedAt,
+		UpdatedAt: traceOperation.UpdatedAt,
+	}
+
+	if kpi.ID == "" {
+		id, err := services.GenerateDeterministicKPIID(kpi)
+		if err == nil {
+			kpi.ID = id
+		}
+	}
+
+	if _, _, err := h.kpiRepo.CreateKPI(context.Background(), kpi); err != nil {
+		h.logger.Error("trace operation create failed", "error", err, "service", traceOperation.Service, "operation", traceOperation.Operation)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create trace operation"})
 		return
 	}
 
@@ -85,29 +91,40 @@ func (h *TraceOperationHandler) GetTraceOperation(c *gin.Context) {
 		return
 	}
 
-	compositeID := serviceName + ":" + operationName
-	schemaDef, err := h.repo.GetSchemaAsKPI(context.Background(), "trace_operation", compositeID)
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{"error": "trace operation not found"})
-		} else {
-			h.logger.Error("trace operation get failed", "error", err, "service", serviceName, "operation", operationName)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get trace operation"})
-		}
+	// Build deterministic KPI ID from service+operation and fetch via KPIRepo
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not configured for trace operation handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
 		return
 	}
 
-	// Convert SchemaDefinition back to TraceOperation
+	tmp := &models.KPIDefinition{Name: operationName, Namespace: serviceName}
+	detID, err := services.GenerateDeterministicKPIID(tmp)
+	if err != nil {
+		h.logger.Error("failed to compute deterministic id for trace operation", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get trace operation"})
+		return
+	}
+
+	kdef, err := h.kpiRepo.GetKPI(context.Background(), detID)
+	if err != nil {
+		h.logger.Error("trace operation get failed", "error", err, "service", serviceName, "operation", operationName)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get trace operation"})
+		return
+	}
+	if kdef == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "trace operation not found"})
+		return
+	}
+
 	traceOperation := &models.TraceOperation{
-		Service:        schemaDef.Extensions.Trace.Service,
-		Operation:      schemaDef.Extensions.Trace.Operation,
-		ServicePurpose: schemaDef.Extensions.Trace.ServicePurpose,
-		Owner:          schemaDef.Extensions.Trace.Owner,
-		Tags:           schemaDef.Tags,
-		Category:       schemaDef.Category,
-		Sentiment:      schemaDef.Sentiment,
-		Author:         schemaDef.Author,
-		UpdatedAt:      schemaDef.UpdatedAt,
+		Service:        kdef.Namespace,
+		Operation:      kdef.Name,
+		ServicePurpose: kdef.Definition,
+		Tags:           kdef.Tags,
+		Category:       kdef.Category,
+		Sentiment:      kdef.Sentiment,
+		UpdatedAt:      kdef.UpdatedAt,
 	}
 
 	c.JSON(http.StatusOK, models.TraceOperationResponse{TraceOperation: traceOperation})
@@ -129,52 +146,42 @@ func (h *TraceOperationHandler) ListTraceOperations(c *gin.Context) {
 		req.Offset = 0
 	}
 
-	var schemaDefs []*models.SchemaDefinition
+	var traceOps []*models.TraceOperation
 	var total int
 	var err error
-	if kpirepo, ok := h.repo.(repo.KPIRepo); ok {
-		kpis, totalKpis, lerr := kpirepo.ListKPIs(context.Background(), []string{"trace_operation"}, req.Limit, req.Offset)
+	if h.kpiRepo != nil {
+		kpis, totalKpis, lerr := h.kpiRepo.ListKPIs(context.Background(), models.KPIListRequest{Tags: []string{"trace_operation"}, Limit: req.Limit, Offset: req.Offset})
 		if lerr != nil {
 			err = lerr
 		} else {
-			total = totalKpis
-			schemaDefs = make([]*models.SchemaDefinition, 0, len(kpis))
+			total = int(totalKpis)
+			traceOps = make([]*models.TraceOperation, 0, len(kpis))
 			for _, k := range kpis {
-				schemaDefs = append(schemaDefs, kpiToSchemaDefinition(k, models.SchemaTypeTraceOperation))
+				traceOps = append(traceOps, &models.TraceOperation{
+					Operation: k.Name,
+					Service:   k.Namespace,
+					Tags:      k.Tags,
+					Category:  k.Category,
+					Sentiment: k.Sentiment,
+					UpdatedAt: k.UpdatedAt,
+				})
 			}
 		}
-	} else {
-		schemaDefs, total, err = h.repo.ListSchemasAsKPIs(context.Background(), "trace_operation", req.Limit, req.Offset)
 	}
+
 	if err != nil {
 		h.logger.Error("trace operation list failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list trace operations"})
 		return
 	}
 
-	// Convert SchemaDefinitions back to TraceOperations
-	traceOperations := make([]*models.TraceOperation, len(schemaDefs))
-	for i, schemaDef := range schemaDefs {
-		traceOperations[i] = &models.TraceOperation{
-			Service:        schemaDef.Extensions.Trace.Service,
-			Operation:      schemaDef.Extensions.Trace.Operation,
-			ServicePurpose: schemaDef.Extensions.Trace.ServicePurpose,
-			Owner:          schemaDef.Extensions.Trace.Owner,
-			Tags:           schemaDef.Tags,
-			Category:       schemaDef.Category,
-			Sentiment:      schemaDef.Sentiment,
-			Author:         schemaDef.Author,
-			UpdatedAt:      schemaDef.UpdatedAt,
-		}
-	}
-
-	nextOffset := req.Offset + len(traceOperations)
+	nextOffset := req.Offset + len(traceOps)
 	if nextOffset >= total {
 		nextOffset = 0
 	}
 
 	c.JSON(http.StatusOK, models.TraceOperationListResponse{
-		TraceOperations: traceOperations,
+		TraceOperations: traceOps,
 		Total:           total,
 		NextOffset:      nextOffset,
 	})
@@ -195,7 +202,21 @@ func (h *TraceOperationHandler) DeleteTraceOperation(c *gin.Context) {
 		return
 	}
 
-	err := h.repo.DeleteTraceOperation(c.Request.Context(), serviceName, operationName)
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not configured for trace operation handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
+		return
+	}
+
+	tmp := &models.KPIDefinition{Name: operationName, Namespace: serviceName}
+	detID, err := services.GenerateDeterministicKPIID(tmp)
+	if err != nil {
+		h.logger.Error("failed to compute deterministic id for trace operation delete", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete trace operation"})
+		return
+	}
+
+	err = h.kpiRepo.DeleteKPI(c.Request.Context(), detID)
 	if err != nil {
 		h.logger.Error("trace operation delete failed", "error", err, "service", serviceName, "operation", operationName)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete trace operation"})

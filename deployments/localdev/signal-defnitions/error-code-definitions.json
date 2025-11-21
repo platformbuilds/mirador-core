@@ -1,0 +1,196 @@
+{  
+  "error_codes": {
+    "business_declines": {
+      "BD01": {
+        "code": "BD01",
+        "description": "Insufficient Funds",
+        "category": "account_balance",
+        "resolution": "Customer needs to add money to account",
+        "retry_allowed": true
+      },
+      "BD02": {
+        "code": "BD02", 
+        "description": "Account Frozen/Locked",
+        "category": "account_status",
+        "resolution": "Contact bank to unfreeze account",
+        "retry_allowed": false
+      },
+      "BD03": {
+        "code": "BD03",
+        "description": "Daily Transaction Limit Exceeded",
+        "category": "transaction_limits", 
+        "resolution": "Wait for next day or increase limit",
+        "retry_allowed": false
+      },
+      "BD04": {
+        "code": "BD04",
+        "description": "Invalid Beneficiary Account",
+        "category": "beneficiary_validation",
+        "resolution": "Verify beneficiary details and retry",
+        "retry_allowed": true
+      },
+      "BD05": {
+        "code": "BD05",
+        "description": "Suspected Fraud Transaction", 
+        "category": "security_risk",
+        "resolution": "Bank has flagged transaction for review",
+        "retry_allowed": false
+      },
+      "BD06": {
+        "code": "BD06",
+        "description": "KYC Incomplete/Expired",
+        "category": "compliance",
+        "resolution": "Complete KYC process with bank", 
+        "retry_allowed": false
+      },
+      "BD07": {
+        "code": "BD07",
+        "description": "Card Expired/Blocked",
+        "category": "card_issues",
+        "resolution": "Update card details or get new card",
+        "retry_allowed": false
+      },
+      "BD08": {
+        "code": "BD08",
+        "description": "Invalid PIN/Password", 
+        "category": "authentication",
+        "resolution": "Reset PIN/password and retry",
+        "retry_allowed": true
+      },
+      "BD09": {
+        "code": "BD09",
+        "description": "Merchant Not Supported",
+        "category": "merchant_issues",
+        "resolution": "Try different payment method", 
+        "retry_allowed": false
+      },
+      "BD10": {
+        "code": "BD10",
+        "description": "Transaction Amount Too Small/Large",
+        "category": "amount_validation",
+        "resolution": "Adjust transaction amount",
+        "retry_allowed": true
+      }
+    },
+    
+    "technical_declines": {
+      "TD01": {
+        "code": "TD01",
+        "description": "Bank Server Timeout", 
+        "category": "connectivity",
+        "resolution": "Bank systems are slow, retry after some time",
+        "retry_allowed": true,
+        "timeout_seconds": 30
+      },
+      "TD02": {
+        "code": "TD02",
+        "description": "Network Connectivity Issue",
+        "category": "network",
+        "resolution": "Check internet connection and retry", 
+        "retry_allowed": true
+      },
+      "TD03": {
+        "code": "TD03",
+        "description": "Database Connection Pool Exhausted",
+        "category": "database",
+        "resolution": "System overloaded, retry after some time",
+        "retry_allowed": true
+      },
+      "TD04": {
+        "code": "TD04", 
+        "description": "Third Party Service Unavailable",
+        "category": "dependency",
+        "resolution": "External service down, wait for resolution",
+        "retry_allowed": true
+      },
+      "TD05": {
+        "code": "TD05",
+        "description": "Message Queue Overflow",
+        "category": "throughput",
+        "resolution": "System processing backlog, retry later", 
+        "retry_allowed": true
+      },
+      "TD06": {
+        "code": "TD06",
+        "description": "SSL/TLS Handshake Failure",
+        "category": "security",
+        "resolution": "Security protocol issue, retry with stable connection",
+        "retry_allowed": true
+      },
+      "TD07": {
+        "code": "TD07", 
+        "description": "Memory Allocation Failure",
+        "category": "resources",
+        "resolution": "System resource constraint, retry after system recovery",
+        "retry_allowed": true
+      },
+      "TD08": {
+        "code": "TD08",
+        "description": "Database Deadlock Detected",
+        "category": "database",
+        "resolution": "Database conflict, system will auto-retry", 
+        "retry_allowed": true
+      },
+      "TD09": {
+        "code": "TD09",
+        "description": "API Rate Limit Exceeded",
+        "category": "throttling",
+        "resolution": "Too many requests, wait and retry",
+        "retry_allowed": true
+      },
+      "TD10": {
+        "code": "TD10", 
+        "description": "Data Format/Validation Error",
+        "category": "data_integrity",
+        "resolution": "Invalid request format, check input data",
+        "retry_allowed": true
+      },
+      "TD11": {
+        "code": "TD11",
+        "description": "Session Timeout/Expired",
+        "category": "session_management", 
+        "resolution": "User session expired, restart transaction",
+        "retry_allowed": true
+      },
+      "TD12": {
+        "code": "TD12",
+        "description": "Cryptographic Operation Failed",
+        "category": "security",
+        "resolution": "Encryption/decryption error, retry with new session",
+        "retry_allowed": true
+      },
+      "TD13": {
+        "code": "TD13", 
+        "description": "Load Balancer Timeout",
+        "category": "infrastructure",
+        "resolution": "Infrastructure routing issue, retry",
+        "retry_allowed": true
+      },
+      "TD14": {
+        "code": "TD14",
+        "description": "Cache Server Unavailable",
+        "category": "caching",
+        "resolution": "Cache system down, retrying with primary systems", 
+        "retry_allowed": true
+      },
+      "TD15": {
+        "code": "TD15",
+        "description": "Database Primary Key Violation",
+        "category": "database",
+        "resolution": "Duplicate transaction detected, check transaction status",
+        "retry_allowed": false
+      }
+    }
+  },
+  
+  "transaction_categories": {
+    "P2P": "Person to Person Transfer",
+    "P2M": "Person to Merchant Payment", 
+    "M2P": "Merchant to Person Refund",
+    "M2M": "Merchant to Merchant",
+    "BILL": "Utility Bill Payment",
+    "RECHARGE": "Mobile/DTH Recharge",
+    "COLLECT": "Payment Request",
+    "SUBSCRIBE": "Recurring Payment"
+  }
+}

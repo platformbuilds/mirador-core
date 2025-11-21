@@ -58,11 +58,6 @@ func KPIDefinitionClass() *models.Class {
 				Description: "Sparkline configuration as JSON",
 			},
 			{
-				Name:        "ownerUserId",
-				DataType:    []string{"string"},
-				Description: "ID of the user who owns this KPI",
-			},
-			{
 				Name:        "visibility",
 				DataType:    []string{"string"},
 				Description: "Visibility level (private, team, org)",

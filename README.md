@@ -74,7 +74,7 @@ MIRADOR-CORE implements a layered architecture with clear separation of concerns
 - **Docker**: For containerized development and testing
 - **VictoriaMetrics Ecosystem**: VM (metrics), VL (logs), VT (traces) clusters
 - **Weaviate**: Vector database for schema storage
-- **Valkey/Redis**: Cluster for caching
+- **Valkey**: Cluster for caching
 
 ### Development Setup
 

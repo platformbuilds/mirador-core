@@ -49,10 +49,7 @@ expect_200() {
 }
 
 # Test payloads
-TENANT=""
-
 METRIC_BODY='{
-  "tenantId": "',"$TENANT"'",
   "metric": "cpu_usage",
   "description": "CPU usage over time",
   "owner": "team-core",
@@ -61,7 +58,6 @@ METRIC_BODY='{
 }'
 
 LOG_FIELD_BODY='{
-  "tenantId": "',"$TENANT"'",
   "field": "trace_id",
   "type": "string",
   "description": "Trace identifier",
@@ -71,7 +67,6 @@ LOG_FIELD_BODY='{
 }'
 
 SERVICE_BODY='{
-  "tenantId": "',"$TENANT"'",
   "service": "api-gateway",
   "purpose": "Routes and aggregates API calls",
   "owner": "team-core",
@@ -80,7 +75,6 @@ SERVICE_BODY='{
 }'
 
 OP_BODY='{
-  "tenantId": "',"$TENANT"'",
   "service": "api-gateway",
   "operation": "get_users",
   "purpose": "GET /users",

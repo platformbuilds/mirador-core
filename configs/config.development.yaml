@@ -4,15 +4,15 @@ port: 8010
 log_level: debug
 
 database:
-  victoria_metrics:
+  victoriametrics:
     endpoints:
       - "http://127.0.0.1:8428"
     timeout: 10000
-  victoria_logs:
+  victorialogs:
     endpoints:
       - "http://127.0.0.1:9428"
     timeout: 10000
-  victoria_traces:
+  victoriatraces:
     endpoints:
       - "http://127.0.0.1:10428"
     timeout: 10000

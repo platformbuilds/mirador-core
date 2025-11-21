@@ -9,6 +9,7 @@ import (
 
 	models "github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
+	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -16,17 +17,19 @@ import (
 // LogFieldHandler provides API endpoints for log field definitions.
 // This handler implements separate log field APIs as defined in the API contract.
 type LogFieldHandler struct {
-	repo   repo.SchemaStore
-	cache  cache.ValkeyCluster
-	logger logger.Logger
+	repo    repo.SchemaStore
+	kpiRepo repo.KPIRepo
+	cache   cache.ValkeyCluster
+	logger  logger.Logger
 }
 
 // NewLogFieldHandler creates a new log field handler
-func NewLogFieldHandler(r repo.SchemaStore, cache cache.ValkeyCluster, l logger.Logger) *LogFieldHandler {
+func NewLogFieldHandler(r repo.SchemaStore, kpirepo repo.KPIRepo, cache cache.ValkeyCluster, l logger.Logger) *LogFieldHandler {
 	return &LogFieldHandler{
-		repo:   r,
-		cache:  cache,
-		logger: l,
+		repo:    r,
+		kpiRepo: kpirepo,
+		cache:   cache,
+		logger:  l,
 	}
 }
 
@@ -45,27 +48,33 @@ func (h *LogFieldHandler) CreateOrUpdateLogField(c *gin.Context) {
 
 	logField := req.LogField
 
-	// Convert LogField to SchemaDefinition
-	schemaDef := &models.SchemaDefinition{
-		ID:        logField.Field, // Use field name as ID
-		Name:      logField.Field,
-		Type:      models.SchemaTypeLogField,
-		Category:  logField.Category,
-		Sentiment: logField.Sentiment,
-		Author:    logField.Author,
-		Tags:      logField.Tags,
-		Extensions: models.SchemaExtensions{
-			LogField: &models.LogFieldExtension{
-				FieldType:   logField.Type,
-				Description: logField.Description,
-			},
-		},
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not configured for log field handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
+		return
 	}
 
-	err := h.repo.UpsertSchemaAsKPI(context.Background(), schemaDef, logField.Author)
-	if err != nil {
-		h.logger.Error("log field upsert failed", "error", err, "field", logField.Field)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upsert log field"})
+	kpi := &models.KPIDefinition{
+		Name:       logField.Field,
+		Kind:       "tech",
+		Tags:       append(logField.Tags, string(models.SchemaTypeLogField)),
+		Category:   logField.Category,
+		Sentiment:  logField.Sentiment,
+		Definition: logField.Description,
+		CreatedAt:  logField.UpdatedAt,
+		UpdatedAt:  logField.UpdatedAt,
+	}
+
+	if kpi.ID == "" {
+		id, err := services.GenerateDeterministicKPIID(kpi)
+		if err == nil {
+			kpi.ID = id
+		}
+	}
+
+	if _, _, err := h.kpiRepo.CreateKPI(context.Background(), kpi); err != nil {
+		h.logger.Error("log field create failed", "error", err, "field", logField.Field)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create log field"})
 		return
 	}
 
@@ -80,7 +89,21 @@ func (h *LogFieldHandler) GetLogField(c *gin.Context) {
 		return
 	}
 
-	schemaDef, err := h.repo.GetSchemaAsKPI(context.Background(), "log_field", fieldName)
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not configured for log field handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
+		return
+	}
+
+	tmp := &models.KPIDefinition{Name: fieldName}
+	detID, err := services.GenerateDeterministicKPIID(tmp)
+	if err != nil {
+		h.logger.Error("failed to compute deterministic id for log field", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get log field"})
+		return
+	}
+
+	kdef, err := h.kpiRepo.GetKPI(context.Background(), detID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "log field not found"})
@@ -91,16 +114,14 @@ func (h *LogFieldHandler) GetLogField(c *gin.Context) {
 		return
 	}
 
-	// Convert SchemaDefinition back to LogField
 	logField := &models.LogField{
-		Field:       schemaDef.Name,
-		Type:        schemaDef.Extensions.LogField.FieldType,
-		Description: schemaDef.Extensions.LogField.Description,
-		Tags:        schemaDef.Tags,
-		Category:    schemaDef.Category,
-		Sentiment:   schemaDef.Sentiment,
-		Author:      schemaDef.Author,
-		UpdatedAt:   schemaDef.UpdatedAt,
+		Field:       kdef.Name,
+		Type:        "", // type not stored in KPI
+		Description: kdef.Definition,
+		Tags:        kdef.Tags,
+		Category:    kdef.Category,
+		Sentiment:   kdef.Sentiment,
+		UpdatedAt:   kdef.UpdatedAt,
 	}
 
 	c.JSON(http.StatusOK, models.LogFieldResponse{LogField: logField})
@@ -122,42 +143,33 @@ func (h *LogFieldHandler) ListLogFields(c *gin.Context) {
 		req.Offset = 0
 	}
 
-	var schemaDefs []*models.SchemaDefinition
+	var logFields []*models.LogField
 	var total int
 	var err error
-	if kpirepo, ok := h.repo.(repo.KPIRepo); ok {
-		kpis, totalKpis, lerr := kpirepo.ListKPIs(context.Background(), []string{"log_field"}, req.Limit, req.Offset)
+	if h.kpiRepo != nil {
+		kpis, totalKpis, lerr := h.kpiRepo.ListKPIs(context.Background(), models.KPIListRequest{Tags: []string{"log_field"}, Limit: req.Limit, Offset: req.Offset})
 		if lerr != nil {
 			err = lerr
 		} else {
-			total = totalKpis
-			schemaDefs = make([]*models.SchemaDefinition, 0, len(kpis))
+			total = int(totalKpis)
+			logFields = make([]*models.LogField, 0, len(kpis))
 			for _, k := range kpis {
-				schemaDefs = append(schemaDefs, kpiToSchemaDefinition(k, models.SchemaTypeLogField))
+				logFields = append(logFields, &models.LogField{
+					Field:     k.Name,
+					Tags:      k.Tags,
+					Category:  k.Category,
+					Sentiment: k.Sentiment,
+					UpdatedAt: k.UpdatedAt,
+					// Type, Description are not present in KPIDefinition; omit for now
+				})
 			}
 		}
-	} else {
-		schemaDefs, total, err = h.repo.ListSchemasAsKPIs(context.Background(), "log_field", req.Limit, req.Offset)
 	}
+
 	if err != nil {
 		h.logger.Error("log field list failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list log fields"})
 		return
-	}
-
-	// Convert SchemaDefinitions back to LogFields
-	logFields := make([]*models.LogField, len(schemaDefs))
-	for i, schemaDef := range schemaDefs {
-		logFields[i] = &models.LogField{
-			Field:       schemaDef.Name,
-			Type:        schemaDef.Extensions.LogField.FieldType,
-			Description: schemaDef.Extensions.LogField.Description,
-			Tags:        schemaDef.Tags,
-			Category:    schemaDef.Category,
-			Sentiment:   schemaDef.Sentiment,
-			Author:      schemaDef.Author,
-			UpdatedAt:   schemaDef.UpdatedAt,
-		}
 	}
 
 	nextOffset := req.Offset + len(logFields)
@@ -186,7 +198,21 @@ func (h *LogFieldHandler) DeleteLogField(c *gin.Context) {
 		return
 	}
 
-	err := h.repo.DeleteLogField(c.Request.Context(), fieldName)
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not configured for log field handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
+		return
+	}
+
+	tmp := &models.KPIDefinition{Name: fieldName}
+	detID, err := services.GenerateDeterministicKPIID(tmp)
+	if err != nil {
+		h.logger.Error("failed to compute deterministic id for log field delete", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete log field"})
+		return
+	}
+
+	err = h.kpiRepo.DeleteKPI(c.Request.Context(), detID)
 	if err != nil {
 		h.logger.Error("log field delete failed", "error", err, "field", fieldName)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete log field"})

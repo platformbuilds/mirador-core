@@ -104,11 +104,11 @@ spec:
       port: 9092
     - protocol: TCP
       port: 9093
-  # Allow egress to Valkey cluster (Redis)
+  # Allow egress to Valkey cluster
   - to:
     - podSelector:
         matchLabels:
-          app: redis-cluster
+          app: valkey-cluster
     ports:
     - protocol: TCP
       port: 6379
