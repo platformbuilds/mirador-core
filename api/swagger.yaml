@@ -16,8 +16,6 @@ definitions:
         type: string
       name:
         type: string
-      ownerUserId:
-        type: string
       query:
         additionalProperties: true
         description: JSON query definition

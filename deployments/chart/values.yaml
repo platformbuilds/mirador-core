@@ -98,9 +98,9 @@ extraVolumes: []
 waitFor:
   valkey:
     enabled: false # default disabled to avoid pulling extra images
-    # Image providing redis-cli to probe Valkey readiness
+    # Image providing valkey-cli to probe Valkey readiness
     image:
-      repository: bitnami/redis
+      repository: bitnami/valkey
       tag: "7.2.5-debian-12-r0"
       pullPolicy: IfNotPresent
     # Max seconds to wait before giving up (pod will restart per restartPolicy)
@@ -122,7 +122,7 @@ secrets:
     LDAP_PASSWORD: ""
     # SMTP_PASSWORD: Password for SMTP authentication
     SMTP_PASSWORD: ""
-    # REDIS_PASSWORD: Password for Redis/Valkey authentication
+    # VALKEY_PASSWORD: Password for Valkey authentication
     REDIS_PASSWORD: ""
     # VM_PASSWORD: Password for VictoriaMetrics authentication
     VM_PASSWORD: ""
@@ -189,10 +189,10 @@ mirador:
       timeout: 30000
 
   cache:
-    # Cache nodes for Valkey/Redis. Leave empty when using the embedded Bitnami
+    # Cache nodes for Valkey. Leave empty when using the embedded Bitnami
     # Valkey subchart (valkey.enabled=true); the chart will auto-wire the
     # headless service ("<release>-valkey-headless:6379") into the rendered config.
-    # Otherwise, specify your external Valkey/Redis endpoints here.
+    # Otherwise, specify your external Valkey endpoints here.
     nodes: []
     ttl: 300
 

@@ -6,6 +6,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/platformbuilds/mirador-core/internal/weavstore"
+	wv "github.com/weaviate/weaviate-go-client/v5/weaviate"
+	"go.uber.org/zap"
+
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -34,6 +38,7 @@ type Server struct {
 	cache                       cache.ValkeyCluster
 	vmServices                  *services.VictoriaMetricsServices
 	schemaRepo                  repo.SchemaStore
+	kpiRepo                     repo.KPIRepo
 	searchRouter                *search.SearchRouter
 	searchThrottling            *middleware.SearchQueryThrottlingMiddleware
 	metricsMetadataIndexer      services.MetricsMetadataIndexer
@@ -74,12 +79,52 @@ func NewServer(
 		}
 	}
 
+	// Instantiate a Weaviate v5 client and build a WeaviateKPIStore if enabled.
+	var kpiStore *weavstore.WeaviateKPIStore
+	if cfg.Weaviate.Enabled {
+		hostPort := cfg.Weaviate.Host
+		if cfg.Weaviate.Port != 0 {
+			hostPort = fmt.Sprintf("%s:%d", cfg.Weaviate.Host, cfg.Weaviate.Port)
+		}
+		conf := wv.Config{Scheme: cfg.Weaviate.Scheme, Host: hostPort}
+		if client, err := wv.NewClient(conf); err == nil {
+			var zapLogger *zap.Logger
+			if zl, ok := log.(interface{ ZapLogger() *zap.Logger }); ok {
+				zapLogger = zl.ZapLogger()
+			} else {
+				zapLogger = zap.NewNop()
+			}
+			kpiStore = weavstore.NewWeaviateKPIStore(client, zapLogger)
+		} else {
+			log.Error("Failed to create Weaviate v5 client", "error", err)
+		}
+	}
+
+	// KPI repo wiring: prefer schemaRepo if it implements KPIRepo, otherwise
+	// construct DefaultKPIRepo with the new weaviate store (may be nil).
+	var kpiRepo repo.KPIRepo
+	if schemaRepo != nil {
+		if kp, ok := schemaRepo.(repo.KPIRepo); ok {
+			kpiRepo = kp
+		}
+	}
+	if kpiRepo == nil {
+		var zapLogger *zap.Logger
+		if zl, ok := log.(interface{ ZapLogger() *zap.Logger }); ok {
+			zapLogger = zl.ZapLogger()
+		} else {
+			zapLogger = zap.NewNop()
+		}
+		kpiRepo = repo.NewDefaultKPIRepo(kpiStore, zapLogger)
+	}
+
 	server := &Server{
 		config:         cfg,
 		logger:         log,
 		cache:          valkeyCache,
 		vmServices:     vmServices,
 		schemaRepo:     schemaRepo,
+		kpiRepo:        kpiRepo,
 		router:         router,
 		tracerProvider: tracerProvider,
 	}
@@ -279,8 +324,17 @@ func (s *Server) setupRoutes() {
 	// Create an empty service graph (will be enhanced from metrics in production)
 	rcaServiceGraphForEngine := rca.NewServiceGraph()
 
-	// Create a mock anomaly events provider (no-op for now)
-	anomalyProviderForEngine := &noOpAnomalyProvider{}
+	// Create a correlation engine-backed anomaly provider so RCA endpoints
+	// can fetch real failure signals from the unified engines.
+	correlationEngineForProvider := services.NewCorrelationEngine(
+		s.vmServices.Metrics,
+		s.vmServices.Logs,
+		s.vmServices.Traces,
+		s.cache,
+		s.logger,
+	)
+
+	anomalyProviderForEngine := &correlationAnomalyProvider{ce: correlationEngineForProvider, logger: s.logger}
 
 	// Create anomaly collector and candidate cause service
 	incidentAnomalyCollectorForEngine := rca.NewIncidentAnomalyCollector(
@@ -306,14 +360,16 @@ func (s *Server) setupRoutes() {
 	}
 
 	// KPI APIs (primary interface for schema definitions)
-	if s.schemaRepo != nil {
-		kpiHandler := handlers.NewKPIHandler(s.schemaRepo, s.cache, s.logger)
+	if s.kpiRepo != nil {
+		kpiHandler := handlers.NewKPIHandler(s.config, s.kpiRepo, s.cache, s.logger)
 		if kpiHandler != nil {
 			// KPI Definitions API
 			kpiDefsGroup := v1.Group("/kpi/defs")
 			{
 				kpiDefsGroup.GET("", kpiHandler.GetKPIDefinitions)
 				kpiDefsGroup.POST("", kpiHandler.CreateOrUpdateKPIDefinition)
+				kpiDefsGroup.POST("/bulk-json", kpiHandler.BulkIngestJSON)
+				kpiDefsGroup.POST("/bulk-csv", kpiHandler.BulkIngestCSV)
 				kpiDefsGroup.DELETE("/:id", kpiHandler.DeleteKPIDefinition)
 			}
 		}

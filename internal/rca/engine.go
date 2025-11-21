@@ -163,6 +163,12 @@ func (engine *RCAEngineImpl) ComputeRCA(
 		for i := range candidates {
 			candidates[i].Rank = i + 1
 		}
+
+		// Apply KPI sentiment bias if the incident contains KPI metadata
+		if incident.KPIMetadata != nil && incident.KPIMetadata.ImpactIsKPI {
+			// Default bias magnitude (matches tests): 0.05
+			ApplyKPISentimentBias(candidates, incident, 0.05, result.Diagnostics)
+		}
 	}
 
 	// Step 2: For each top candidate, build an RCA chain

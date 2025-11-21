@@ -75,10 +75,10 @@ database:
 - `DATABASE_CONNECTION_MAX_LIFETIME`
 - `DATABASE_CONNECTION_MAX_IDLE_TIME`
 
-### Redis Configuration
+### Valkey Configuration
 
 ```yaml
-redis:
+valkey:
   host: "localhost"
   port: 6379
   password: ""
@@ -266,7 +266,7 @@ health:
   livenessPath: "/live"
   checks:
     database: true
-    redis: true
+    valkey: true
     datasources: true
     dependencies: true
 ```
@@ -303,7 +303,7 @@ cache:
   enabled: true
   ttl: "5m"
   maxSize: "1GB"
-  redis:
+  valkey:
     prefix: "mirador:cache:"
   memory:
     enabled: true
@@ -318,7 +318,7 @@ rateLimit:
   requestsPerMinute: 1000
   burst: 2000
   cleanupInterval: "1m"
-  storage: "redis"  # memory or redis
+  storage: "valkey"  # memory or valkey
 ```
 
 ## KPI Management
@@ -581,7 +581,7 @@ Sensitive configuration should be managed through environment variables or exter
 ```bash
 # Using environment variables
 export DATABASE_PASSWORD="secure-password"
-export REDIS_PASSWORD="redis-password"
+export VALKEY_PASSWORD="valkey-password"
 export LDAP_BIND_PASSWORD="ldap-password"
 
 # Using Docker secrets

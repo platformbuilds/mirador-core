@@ -208,111 +208,104 @@ func seed(ctx context.Context, c *client) error {
 func seedSampleKPIs(ctx context.Context, c *client) error {
 	sampleKPIs := []map[string]interface{}{
 		{
-			"class": "KPIDefinition",
-			"id":    makeID("KPIDefinition", "http_request_duration"),
-			"properties": map[string]interface{}{
-				"kind":   "tech",
-				"name":   "HTTP Request Duration",
-				"unit":   "seconds",
-				"format": "duration",
-				"query": map[string]interface{}{
-					"metric": "http_request_duration_seconds",
-					"labels": map[string]interface{}{
-						"method": "{{method}}",
-						"status": "{{status}}",
-					},
+			"id":     makeID("KPIDefinition", "http_request_duration"),
+			"kind":   "tech",
+			"name":   "HTTP Request Duration",
+			"unit":   "seconds",
+			"format": "duration",
+			"query": map[string]interface{}{
+				"metric": "http_request_duration_seconds",
+				"labels": map[string]interface{}{
+					"method": "{{method}}",
+					"status": "{{status}}",
 				},
-				"thresholds": []map[string]interface{}{
-					{
-						"operator": "gt",
-						"value":    1.0,
-						"severity": "warning",
-						"message":  "Request duration is high",
-					},
-					{
-						"operator": "gt",
-						"value":    5.0,
-						"severity": "critical",
-						"message":  "Request duration is critically high",
-					},
-				},
-				"tags":       []string{"http", "performance", "latency"},
-				"definition": "Average HTTP request duration across all endpoints",
-				"sentiment":  "NEGATIVE",
-				"sparkline": map[string]interface{}{
-					"type": "line",
-					"query": map[string]interface{}{
-						"range": "1h",
-					},
-				},
-				"ownerUserId": "system",
-				"visibility":  "org",
-				"createdAt":   time.Now().Format(time.RFC3339),
-				"updatedAt":   time.Now().Format(time.RFC3339),
 			},
+			"thresholds": []map[string]interface{}{
+				{
+					"operator": "gt",
+					"value":    1.0,
+					"severity": "warning",
+					"message":  "Request duration is high",
+				},
+				{
+					"operator": "gt",
+					"value":    5.0,
+					"severity": "critical",
+					"message":  "Request duration is critically high",
+				},
+			},
+			"tags":       []string{"http", "performance", "latency"},
+			"definition": "Average HTTP request duration across all endpoints",
+			"sentiment":  "NEGATIVE",
+			"sparkline": map[string]interface{}{
+				"type": "line",
+				"query": map[string]interface{}{
+					"range": "1h",
+				},
+			},
+			"visibility": "org",
+			"createdAt":  time.Now().Format(time.RFC3339),
+			"updatedAt":  time.Now().Format(time.RFC3339),
 		},
 		{
-			"class": "KPIDefinition",
-			"id":    makeID("KPIDefinition", "error_rate"),
-			"properties": map[string]interface{}{
-				"kind":   "tech",
-				"name":   "Error Rate",
-				"unit":   "percent",
-				"format": "percentage",
-				"query": map[string]interface{}{
-					"metric": "http_requests_total",
-					"labels": map[string]interface{}{
-						"status": ">=400",
-					},
-					"aggregation": "rate",
+			"id":     makeID("KPIDefinition", "error_rate"),
+			"kind":   "tech",
+			"name":   "Error Rate",
+			"unit":   "percent",
+			"format": "percentage",
+			"query": map[string]interface{}{
+				"metric": "http_requests_total",
+				"labels": map[string]interface{}{
+					"status": ">=400",
 				},
-				"thresholds": []map[string]interface{}{
-					{
-						"operator": "gt",
-						"value":    5.0,
-						"severity": "warning",
-						"message":  "Error rate is elevated",
-					},
-					{
-						"operator": "gt",
-						"value":    10.0,
-						"severity": "critical",
-						"message":  "Error rate is critically high",
-					},
-				},
-				"tags":       []string{"errors", "reliability", "http"},
-				"definition": "Percentage of HTTP requests that result in errors (4xx/5xx)",
-				"sentiment":  "NEGATIVE",
-				"sparkline": map[string]interface{}{
-					"type": "area",
-					"query": map[string]interface{}{
-						"range": "1h",
-					},
-				},
-				"ownerUserId": "system",
-				"visibility":  "org",
-				"createdAt":   time.Now().Format(time.RFC3339),
-				"updatedAt":   time.Now().Format(time.RFC3339),
+				"aggregation": "rate",
 			},
+			"thresholds": []map[string]interface{}{
+				{
+					"operator": "gt",
+					"value":    5.0,
+					"severity": "warning",
+					"message":  "Error rate is elevated",
+				},
+				{
+					"operator": "gt",
+					"value":    10.0,
+					"severity": "critical",
+					"message":  "Error rate is critically high",
+				},
+			},
+			"tags":       []string{"errors", "reliability", "http"},
+			"definition": "Percentage of HTTP requests that result in errors (4xx/5xx)",
+			"sentiment":  "NEGATIVE",
+			"sparkline": map[string]interface{}{
+				"type": "area",
+				"query": map[string]interface{}{
+					"range": "1h",
+				},
+			},
+			"visibility": "org",
+			"createdAt":  time.Now().Format(time.RFC3339),
+			"updatedAt":  time.Now().Format(time.RFC3339),
 		},
 	}
 
 	for _, kpi := range sampleKPIs {
 		kpiID := kpi["id"].(string)
-		kpiName := kpi["properties"].(map[string]interface{})["name"].(string)
+		kpiName := kpi["name"].(string)
 
-		// Check if KPI already exists
+		// Check if KPI already exists via KPI API
 		var existing struct {
-			Properties map[string]interface{} `json:"properties"`
+			KPIDefinition map[string]interface{} `json:"kpiDefinition"`
 		}
-		err := c.do(ctx, http.MethodGet, "/v1/objects/"+kpiID, nil, &existing)
-		if err == nil {
+		err := c.do(ctx, http.MethodGet, "/api/v1/kpi/defs?id="+kpiID, nil, &existing)
+		if err == nil && existing.KPIDefinition != nil {
 			fmt.Printf("KPI %s already exists\n", kpiName)
 			continue
 		}
 
-		// Create KPI
-		if err := c.do(ctx, http.MethodPost, "/v1/objects", kpi, nil); err != nil {
+		// Create KPI via KPI API
+		req := map[string]interface{}{"kpiDefinition": kpi}
+		if err := c.do(ctx, http.MethodPost, "/api/v1/kpi/defs", req, nil); err != nil {
 			return fmt.Errorf("failed to create KPI %s: %w", kpiName, err)
 		}
 

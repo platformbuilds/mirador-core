@@ -8,7 +8,7 @@ This guide covers deploying MIRADOR-CORE in various environments.
 - Helm 3.x
 - Docker registry access
 - PostgreSQL database
-- Redis cache
+- Valkey cache
 - LDAP/AD for authentication (optional)
 
 ## Quick Start with Helm
@@ -45,8 +45,8 @@ config:
     database: "mirador_core"
     username: "mirador_user"
 
-  redis:
-    host: "redis.observability.svc.cluster.local"
+  valkey:
+    host: "valkey.observability.svc.cluster.local"
     port: 6379
 
   auth:
@@ -147,10 +147,10 @@ services:
       - "8080:8080"
     environment:
       - DATABASE_URL=postgresql://user:pass@postgres:5432/mirador_core
-      - REDIS_URL=redis://redis:6379
+      - VALKEY_URL=valkey://valkey:6379
     depends_on:
       - postgres
-      - redis
+      - valkey
 
   postgres:
     image: postgres:15
@@ -161,8 +161,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  redis:
-    image: redis:7-alpine
+  valkey:
+    image: valkey:latest
     volumes:
       - redis_data:/data
 ```

@@ -560,7 +560,7 @@ func (s *Simulator) simulateKeyDBOp(ctx context.Context, transactionID, operatio
 		trace.WithAttributes(
 			attribute.String("transaction_id", transactionID),
 			attribute.String("service_name", "keydb-client"),
-			attribute.String("db.system", "redis"),
+			attribute.String("db.system", "valkey"),
 			attribute.String("db.operation", operation),
 		))
 	defer span.End()
@@ -582,8 +582,8 @@ func (s *Simulator) simulateKeyDBOp(ctx context.Context, transactionID, operatio
 	time.Sleep(time.Duration(5+rand.Intn(15)) * time.Millisecond)
 	duration := time.Since(start).Seconds()
 
-	s.dbOpsTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("db_system", "redis")))
-	s.dbLatency.Record(ctx, duration, metric.WithAttributes(attribute.String("db_system", "redis")))
+	s.dbOpsTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("db_system", "valkey")))
+	s.dbLatency.Record(ctx, duration, metric.WithAttributes(attribute.String("db_system", "valkey")))
 
 	return nil
 }

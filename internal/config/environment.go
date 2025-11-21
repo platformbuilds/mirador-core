@@ -83,7 +83,7 @@ func applyTestConfig(config *Config) *Config {
 	config.Integrations.Email.Enabled = false
 
 	// Use in-memory cache for tests
-	config.Cache.Nodes = []string{"localhost:6380"} // Different port for test Redis
+	config.Cache.Nodes = []string{"localhost:6380"} // Different port for test Valkey
 
 	return config
 }

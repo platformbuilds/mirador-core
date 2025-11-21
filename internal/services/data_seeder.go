@@ -31,17 +31,9 @@ func (ds *DataSeeder) SeedSampleKPIs(ctx context.Context) error {
 	sampleKPIs := ds.getSampleKPIs()
 
 	for _, kpi := range sampleKPIs {
-		// Check if KPI already exists
-		existing, err := ds.repo.GetKPI(ctx, kpi.ID)
-		if err == nil && existing != nil {
-			ds.logger.Info("KPI already exists, skipping", "kpi_id", kpi.ID)
-			continue
-		}
-
-		if err := ds.repo.UpsertKPI(ctx, kpi); err != nil {
+		if _, _, err := ds.repo.CreateKPI(ctx, kpi); err != nil {
 			return fmt.Errorf("failed to create KPI %s: %w", kpi.ID, err)
 		}
-
 		ds.logger.Info("Created sample KPI", "kpi_id", kpi.ID, "name", kpi.Name)
 	}
 
@@ -90,10 +82,9 @@ func (ds *DataSeeder) getSampleKPIs() []*models.KPIDefinition {
 					"range": "1h",
 				},
 			},
-			OwnerUserID: "system",
-			Visibility:  "org",
-			CreatedAt:   now,
-			UpdatedAt:   now,
+			Visibility: "org",
+			CreatedAt:  now,
+			UpdatedAt:  now,
 		},
 		{
 			ID:     "error_rate",
@@ -131,10 +122,9 @@ func (ds *DataSeeder) getSampleKPIs() []*models.KPIDefinition {
 					"range": "1h",
 				},
 			},
-			OwnerUserID: "system",
-			Visibility:  "org",
-			CreatedAt:   now,
-			UpdatedAt:   now,
+			Visibility: "org",
+			CreatedAt:  now,
+			UpdatedAt:  now,
 		},
 		{
 			ID:     "user_satisfaction",
@@ -169,10 +159,9 @@ func (ds *DataSeeder) getSampleKPIs() []*models.KPIDefinition {
 					"range": "24h",
 				},
 			},
-			OwnerUserID: "system",
-			Visibility:  "org",
-			CreatedAt:   now,
-			UpdatedAt:   now,
+			Visibility: "org",
+			CreatedAt:  now,
+			UpdatedAt:  now,
 		},
 		{
 			ID:     "revenue_per_user",
@@ -204,10 +193,9 @@ func (ds *DataSeeder) getSampleKPIs() []*models.KPIDefinition {
 					"range": "30d",
 				},
 			},
-			OwnerUserID: "system",
-			Visibility:  "org",
-			CreatedAt:   now,
-			UpdatedAt:   now,
+			Visibility: "org",
+			CreatedAt:  now,
+			UpdatedAt:  now,
 		},
 		{
 			ID:     "system_uptime",
@@ -242,10 +230,9 @@ func (ds *DataSeeder) getSampleKPIs() []*models.KPIDefinition {
 					"range": "7d",
 				},
 			},
-			OwnerUserID: "system",
-			Visibility:  "org",
-			CreatedAt:   now,
-			UpdatedAt:   now,
+			Visibility: "org",
+			CreatedAt:  now,
+			UpdatedAt:  now,
 		},
 	}
 }

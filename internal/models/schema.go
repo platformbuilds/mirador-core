@@ -22,17 +22,16 @@ const (
 // with type-specific extensions.
 type SchemaDefinition struct {
 	// Core KPI fields (all schema types map to these)
-	ID          string                 `json:"id"`
-	Kind        string                 `json:"kind,omitempty"` // "business" or "tech" for KPIs
-	Name        string                 `json:"name"`
-	Unit        string                 `json:"unit,omitempty"`        // Unit of measurement for KPIs
-	Format      string                 `json:"format,omitempty"`      // Display format for KPIs
-	Query       map[string]interface{} `json:"query,omitempty"`       // Query definition as JSON for KPIs
-	Thresholds  []Threshold            `json:"thresholds,omitempty"`  // Threshold configuration for KPIs
-	Tags        []string               `json:"tags,omitempty"`        // Tags for categorization
-	Sparkline   map[string]interface{} `json:"sparkline,omitempty"`   // Sparkline configuration for KPIs
-	OwnerUserID string                 `json:"ownerUserId,omitempty"` // ID of the user who owns this KPI
-	Visibility  string                 `json:"visibility,omitempty"`  // Visibility level (private, team, org)
+	ID         string                 `json:"id"`
+	Kind       string                 `json:"kind,omitempty"` // "business" or "tech" for KPIs
+	Name       string                 `json:"name"`
+	Unit       string                 `json:"unit,omitempty"`       // Unit of measurement for KPIs
+	Format     string                 `json:"format,omitempty"`     // Display format for KPIs
+	Query      map[string]interface{} `json:"query,omitempty"`      // Query definition as JSON for KPIs
+	Thresholds []Threshold            `json:"thresholds,omitempty"` // Threshold configuration for KPIs
+	Tags       []string               `json:"tags,omitempty"`       // Tags for categorization
+	Sparkline  map[string]interface{} `json:"sparkline,omitempty"`  // Sparkline configuration for KPIs
+	Visibility string                 `json:"visibility,omitempty"` // Visibility level (private, team, org)
 
 	// Schema type classification
 	Type SchemaType `json:"type"` // The schema type this definition represents

@@ -2,18 +2,23 @@ package handlers
 
 import (
 	"context"
+	"encoding/csv"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
+	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/services"
 
 	models "github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
-) // KPIRepo extends SchemaStore with KPI-specific operations
+)
+
+// KPIRepo extends SchemaStore with KPI-specific operations
 // KPIRepo interface is defined in the repo package
 
 // KPIHandler provides API endpoints for KPI definitions.
@@ -22,19 +27,31 @@ type KPIHandler struct {
 	repo   repo.KPIRepo
 	cache  cache.ValkeyCluster
 	logger logger.Logger
+	cfg    *config.Config
+}
+
+// Validation response types for API consumers
+type validationProblem struct {
+	Field string `json:"field"`
+	Error string `json:"error"`
+}
+
+type validationErrorResponse struct {
+	Message string              `json:"message"`
+	Details []validationProblem `json:"details"`
 }
 
 // NewKPIHandler creates a new KPI handler
-func NewKPIHandler(r repo.SchemaStore, cache cache.ValkeyCluster, l logger.Logger) *KPIHandler {
-	kpiRepo, ok := r.(repo.KPIRepo)
-	if !ok {
-		l.Error("SchemaStore does not implement KPIRepo interface - KPI functionality will not be available")
+func NewKPIHandler(cfg *config.Config, kpiRepo repo.KPIRepo, cache cache.ValkeyCluster, l logger.Logger) *KPIHandler {
+	if kpiRepo == nil {
+		l.Error("KPIRepo is nil - KPI functionality will not be available")
 		return nil
 	}
 	return &KPIHandler{
 		repo:   kpiRepo,
 		cache:  cache,
 		logger: l,
+		cfg:    cfg,
 	}
 } // ------------------- KPI Definitions API -------------------
 
@@ -67,7 +84,7 @@ func (h *KPIHandler) GetKPIDefinitions(c *gin.Context) {
 		req.Offset = 0
 	}
 
-	kpis, total, err := h.listKPIs(c.Request.Context(), req.Tags, req.Limit, req.Offset)
+	kpis, total, err := h.listKPIs(c.Request.Context(), req)
 	if err != nil {
 		h.logger.Error("KPI list failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list KPIs"})
@@ -112,14 +129,34 @@ func (h *KPIHandler) CreateOrUpdateKPIDefinition(c *gin.Context) {
 
 	kpi := req.KPIDefinition
 
-	// Validate sentiment field
-	if kpi.Sentiment != "" && kpi.Sentiment != "NEGATIVE" && kpi.Sentiment != "POSITIVE" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "sentiment must be either 'NEGATIVE' or 'POSITIVE'"})
+	// Run semantic validation before generating IDs or persisting
+	if err := services.ValidateKPIDefinition(h.cfg, kpi); err != nil {
+		// If it's a ValidationError, respond with 400 and structured details
+		if ve, ok := err.(*services.ValidationError); ok {
+			resp := validationErrorResponse{
+				Message: "invalid KPI definition",
+				Details: make([]validationProblem, 0, len(ve.Problems)),
+			}
+			for _, p := range ve.Problems {
+				resp.Details = append(resp.Details, validationProblem{Field: p.Field, Error: p.Message})
+			}
+			c.JSON(http.StatusBadRequest, resp)
+			return
+		}
+		// Unexpected error from validator
+		h.logger.Error("KPI validation failed", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to validate KPI definition"})
 		return
 	}
 
 	if kpi.ID == "" {
-		kpi.ID = uuid.New().String()
+		id, err := services.GenerateDeterministicKPIID(kpi)
+		if err != nil {
+			h.logger.Error("failed to generate deterministic KPI id", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate kpi id"})
+			return
+		}
+		kpi.ID = id
 	}
 
 	kpi.UpdatedAt = time.Now()
@@ -127,14 +164,283 @@ func (h *KPIHandler) CreateOrUpdateKPIDefinition(c *gin.Context) {
 		kpi.CreatedAt = kpi.UpdatedAt
 	}
 
-	err := h.upsertKPI(c.Request.Context(), kpi)
+	var err error
+	var status string
+	if kpi.ID == "" {
+		_, status, err = h.repo.CreateKPI(c.Request.Context(), kpi)
+	} else {
+		_, status, err = h.repo.ModifyKPI(c.Request.Context(), kpi)
+	}
 	if err != nil {
-		h.logger.Error("KPI upsert failed", "error", err, "id", kpi.ID)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upsert KPI"})
+		h.logger.Error("KPI create/modify failed", "error", err, "id", kpi.ID)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create/modify KPI"})
 		return
 	}
 
+	// HTTP semantics: created -> 201; no-change -> 204 No Content; updated -> 200 OK with id
+	if status == "created" {
+		c.JSON(http.StatusCreated, gin.H{"status": "created", "id": kpi.ID})
+		return
+	}
+	if status == "no-change" {
+		c.Status(http.StatusNoContent)
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"status": "ok", "id": kpi.ID})
+}
+
+// BulkJSONRequest represents a bulk JSON payload for KPI definitions
+type BulkJSONRequest struct {
+	Items []*models.KPIDefinition `json:"items"`
+}
+
+// BulkFailureDetail describes a field-level validation failure
+type BulkFailureDetail struct {
+	Field string `json:"field"`
+	Error string `json:"error"`
+}
+
+// BulkFailure is an entry for a single failed item in a bulk request
+type BulkFailure struct {
+	Index   int                 `json:"index,omitempty"`
+	Row     int                 `json:"row,omitempty"`
+	Message string              `json:"message"`
+	Details []BulkFailureDetail `json:"details,omitempty"`
+}
+
+// BulkSummary is the response for bulk ingest operations
+type BulkSummary struct {
+	Total        int           `json:"total"`
+	SuccessCount int           `json:"successCount"`
+	FailureCount int           `json:"failureCount"`
+	Failures     []BulkFailure `json:"failures"`
+}
+
+// BulkIngestJSON handles POST /api/v1/kpi/defs/bulk-json
+func (h *KPIHandler) BulkIngestJSON(c *gin.Context) {
+	var req BulkJSONRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	total := len(req.Items)
+	summary := BulkSummary{Total: total, Failures: []BulkFailure{}}
+
+	for i, item := range req.Items {
+		if item == nil {
+			summary.Failures = append(summary.Failures, BulkFailure{Index: i, Message: "item is null"})
+			continue
+		}
+
+		if err := services.ValidateKPIDefinition(h.cfg, item); err != nil {
+			if ve, ok := err.(*services.ValidationError); ok {
+				details := make([]BulkFailureDetail, 0, len(ve.Problems))
+				for _, p := range ve.Problems {
+					details = append(details, BulkFailureDetail{Field: p.Field, Error: p.Message})
+				}
+				summary.Failures = append(summary.Failures, BulkFailure{Index: i, Message: "invalid KPI definition", Details: details})
+				continue
+			}
+			h.logger.Error("KPI validation failed", "error", err)
+			summary.Failures = append(summary.Failures, BulkFailure{Index: i, Message: "validation error"})
+			continue
+		}
+
+		if item.ID == "" {
+			id, err := services.GenerateDeterministicKPIID(item)
+			if err != nil {
+				h.logger.Error("failed to generate deterministic KPI id", "error", err)
+				summary.Failures = append(summary.Failures, BulkFailure{Index: i, Message: "failed to generate id"})
+				continue
+			}
+			item.ID = id
+		}
+
+		item.UpdatedAt = time.Now()
+		if item.CreatedAt.IsZero() {
+			item.CreatedAt = item.UpdatedAt
+		}
+
+		_, _, kpiErr := h.repo.CreateKPI(c.Request.Context(), item)
+		if kpiErr != nil {
+			h.logger.Error("KPI create/modify failed", "error", kpiErr, "id", item.ID)
+			// Record the repository error message as the failure message so callers
+			// can see why the upsert failed (e.g. Weaviate 422 invalid prop).
+			summary.Failures = append(summary.Failures, BulkFailure{Index: i, Message: kpiErr.Error()})
+			continue
+		}
+		summary.SuccessCount++
+	}
+
+	summary.FailureCount = len(summary.Failures)
+	c.JSON(http.StatusOK, summary)
+}
+
+// BulkIngestCSV handles POST /api/v1/kpi/defs/bulk-csv
+func (h *KPIHandler) BulkIngestCSV(c *gin.Context) {
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
+		return
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.TrimLeadingSpace = true
+
+	headers, err := reader.Read()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read csv header"})
+		return
+	}
+
+	// normalize headers
+	for i := range headers {
+		headers[i] = strings.ToLower(strings.TrimSpace(headers[i]))
+	}
+
+	var summary BulkSummary
+	summary.Failures = []BulkFailure{}
+
+	rowIndex := 1 // header row consumed
+	for {
+		row, err := reader.Read()
+		if err != nil {
+			if err.Error() == "EOF" {
+				break
+			}
+			summary.Failures = append(summary.Failures, BulkFailure{Row: rowIndex + 1, Message: "failed to read csv row"})
+			rowIndex++
+			continue
+		}
+		rowIndex++
+		summary.Total++
+
+		k := &models.KPIDefinition{}
+		parseExamplesError := false
+		for ci, cell := range row {
+			if ci >= len(headers) {
+				continue
+			}
+			hname := headers[ci]
+			val := strings.TrimSpace(cell)
+			switch hname {
+			case "id":
+				k.ID = val
+			case "name":
+				k.Name = val
+			case "namespace":
+				k.Namespace = val
+			case "source":
+				k.Source = val
+			case "sourceid", "source_id":
+				k.SourceID = val
+			case "kind":
+				k.Kind = val
+			case "signaltype", "signal_type":
+				k.SignalType = val
+			case "classifier":
+				k.Classifier = val
+			case "layer":
+				k.Layer = val
+			case "querytype", "query_type":
+				k.QueryType = val
+			case "datastore":
+				k.Datastore = val
+			case "formula":
+				k.Formula = val
+			case "definition":
+				k.Definition = val
+			case "tags":
+				if val != "" {
+					// split by comma or semicolon
+					parts := strings.FieldsFunc(val, func(r rune) bool { return r == ',' || r == ';' })
+					for _, p := range parts {
+						t := strings.TrimSpace(p)
+						if t != "" {
+							k.Tags = append(k.Tags, t)
+						}
+					}
+				}
+			case "sentiment":
+				k.Sentiment = val
+			case "domain":
+				k.Domain = val
+			case "servicefamily", "service_family":
+				k.ServiceFamily = val
+			case "componenttype", "component_type":
+				k.ComponentType = val
+			case "retryallowed", "retry_allowed":
+				v := strings.ToLower(val)
+				if v == "true" || v == "1" || v == "yes" {
+					k.RetryAllowed = true
+				} else {
+					k.RetryAllowed = false
+				}
+			case "examples":
+				if val != "" {
+					var ex []map[string]interface{}
+					if err := json.Unmarshal([]byte(val), &ex); err != nil {
+						// examples column JSON parse failed; record as a parse error for this row
+						summary.Failures = append(summary.Failures, BulkFailure{Row: rowIndex, Message: "invalid examples JSON"})
+						parseExamplesError = true
+						// break out of the column loop; outer loop will skip validation/upsert
+						break
+					}
+					k.Examples = ex
+				}
+			}
+		}
+
+		// If examples parsing failed for this row, it is already recorded as a failure
+		// and should not be validated or upserted.
+		if parseExamplesError {
+			continue
+		}
+
+		// Validate
+		if err := services.ValidateKPIDefinition(h.cfg, k); err != nil {
+			if ve, ok := err.(*services.ValidationError); ok {
+				details := make([]BulkFailureDetail, 0, len(ve.Problems))
+				for _, p := range ve.Problems {
+					details = append(details, BulkFailureDetail{Field: p.Field, Error: p.Message})
+				}
+				summary.Failures = append(summary.Failures, BulkFailure{Row: rowIndex, Message: "invalid KPI definition", Details: details})
+				continue
+			}
+			h.logger.Error("KPI validation failed", "error", err)
+			summary.Failures = append(summary.Failures, BulkFailure{Row: rowIndex, Message: "validation error"})
+			continue
+		}
+
+		if k.ID == "" {
+			id, err := services.GenerateDeterministicKPIID(k)
+			if err != nil {
+				h.logger.Error("failed to generate deterministic KPI id", "error", err)
+				summary.Failures = append(summary.Failures, BulkFailure{Row: rowIndex, Message: "failed to generate id"})
+				continue
+			}
+			k.ID = id
+		}
+
+		k.UpdatedAt = time.Now()
+		if k.CreatedAt.IsZero() {
+			k.CreatedAt = k.UpdatedAt
+		}
+
+		_, _, kpiErr := h.repo.CreateKPI(c.Request.Context(), k)
+		if kpiErr != nil {
+			h.logger.Error("KPI create/modify failed", "error", kpiErr, "id", k.ID)
+			// Include the underlying error message in the CSV failure entry.
+			summary.Failures = append(summary.Failures, BulkFailure{Row: rowIndex, Message: kpiErr.Error()})
+			continue
+		}
+		summary.SuccessCount++
+	}
+
+	summary.FailureCount = len(summary.Failures)
+	c.JSON(http.StatusOK, summary)
 }
 
 // DeleteKPIDefinition deletes a KPI definition by ID
@@ -175,16 +481,9 @@ func (h *KPIHandler) DeleteKPIDefinition(c *gin.Context) {
 
 // ------------------- Implementation methods (extracted from unified handler) -------------------
 
-func (h *KPIHandler) upsertKPI(ctx context.Context, kpi *models.KPIDefinition) error {
-	return h.repo.UpsertKPI(ctx, kpi)
-}
-
-func (h *KPIHandler) getKPI(ctx context.Context, id string) (*models.KPIDefinition, error) {
-	return h.repo.GetKPI(ctx, id)
-}
-
-func (h *KPIHandler) listKPIs(ctx context.Context, tags []string, limit, offset int) ([]*models.KPIDefinition, int, error) {
-	return h.repo.ListKPIs(ctx, tags, limit, offset)
+func (h *KPIHandler) listKPIs(ctx context.Context, req models.KPIListRequest) ([]*models.KPIDefinition, int, error) {
+	kpis, total, err := h.repo.ListKPIs(ctx, req)
+	return kpis, int(total), err
 }
 
 func (h *KPIHandler) deleteKPI(ctx context.Context, id string) error {

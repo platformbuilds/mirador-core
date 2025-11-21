@@ -389,7 +389,7 @@ kubectl set resources deployment mirador-core \
 kubectl scale statefulset valkey -n cache-system --replicas=6
 
 # Rebalance cluster slots
-kubectl exec -it valkey-0 -n cache-system -- redis-cli --cluster rebalance
+kubectl exec -it valkey-0 -n cache-system -- valkey-cli --cluster rebalance
 ```
 
 ### Load Balancing
@@ -589,7 +589,7 @@ curl https://mirador-core/api/v1/metrics | grep "cache_"
 kubectl get configmap mirador-config -n mirador-system -o yaml | grep cache
 
 # Check Valkey cluster health
-kubectl exec -it valkey-0 -n cache-system -- redis-cli cluster info
+kubectl exec -it valkey-0 -n cache-system -- valkey-cli cluster info
 ```
 
 **Resolution:**

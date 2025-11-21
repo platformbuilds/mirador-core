@@ -2,8 +2,6 @@ package repo
 
 import (
 	"context"
-
-	"github.com/platformbuilds/mirador-core/internal/models"
 )
 
 // SchemaStore defines the storage contract used by handlers and metrics.
@@ -48,10 +46,4 @@ type SchemaStore interface {
 	DeleteLogField(ctx context.Context, field string) error
 	DeleteTraceService(ctx context.Context, service string) error
 	DeleteTraceOperation(ctx context.Context, service, operation string) error
-
-	// Unified KPI-based schema operations (migrating traditional schema types to KPIs)
-	UpsertSchemaAsKPI(ctx context.Context, schemaDef *models.SchemaDefinition, author string) error
-	GetSchemaAsKPI(ctx context.Context, schemaType, id string) (*models.SchemaDefinition, error)
-	ListSchemasAsKPIs(ctx context.Context, schemaType string, limit, offset int) ([]*models.SchemaDefinition, int, error)
-	DeleteSchemaAsKPI(ctx context.Context, id string) error
 }

@@ -14,6 +14,14 @@ import (
 	storageweaviate "github.com/platformbuilds/mirador-core/internal/storage/weaviate"
 )
 
+// Helper: convert interface{} to string
+func toString(v interface{}) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
+}
+
 // WeaviateRepo implements SchemaStore using Weaviate objects + GraphQL queries.
 type WeaviateRepo struct {
 	t       storageweaviate.Transport
@@ -1102,6 +1110,7 @@ func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
 		))},
 		// New API classes for mirador-core v8.0.0
 		{"KPIDefinition", class("KPIDefinition", props(
+			// Core fields
 			text("kind"), text("name"), text("unit"), text("format"),
 			map[string]any{
 				"name":     "query",
@@ -1136,7 +1145,22 @@ func (r *WeaviateRepo) EnsureSchema(ctx context.Context) error {
 						"nestedProperties": []any{map[string]any{"name": "range", "dataType": []string{"text"}}}},
 				},
 			},
-			text("definition"), text("sentiment"), text("visibility"), date("createdAt"), date("updatedAt"),
+			// Semantic fields for correlation/RCA engine discovery
+			text("definition"), text("sentiment"), text("layer"), text("signalType"), text("classifier"),
+			text("datastore"), text("queryType"), text("formula"), text("domain"), text("serviceFamily"),
+			text("componentType"), text("namespace"), text("source"), text("sourceId"), text("category"),
+			text("businessImpact"), text("emotionalImpact"),
+			map[string]any{
+				"name":     "examples",
+				"dataType": []string{"object[]"},
+				"nestedProperties": []any{
+					map[string]any{"name": "description", "dataType": []string{"text"}},
+					map[string]any{"name": "value", "dataType": []string{"text"}},
+				},
+			},
+			boolp("retryAllowed"),
+			// Metadata
+			text("visibility"), date("createdAt"), date("updatedAt"),
 		))},
 		// UserPreferences removed - user management not part of core deployment
 		// Version classes with proper payload schemas
@@ -1365,213 +1389,119 @@ func (r *WeaviateRepo) Transport() storageweaviate.Transport {
 	return r.t
 }
 
-// ------------------- KPIRepo Interface Implementation -------------------
+// ...existing code...
 
-func (r *WeaviateRepo) UpsertKPI(ctx context.Context, kpi *models.KPIDefinition) error {
-	r.ensureOnce(ctx)
-	now := time.Now().UTC()
-	kpi.UpdatedAt = now
-	if kpi.CreatedAt.IsZero() {
-		kpi.CreatedAt = now
+func toBool(v interface{}) bool {
+	if b, ok := v.(bool); ok {
+		return b
 	}
-
-	props := map[string]any{
-		"kind":       kpi.Kind,
-		"name":       kpi.Name,
-		"unit":       kpi.Unit,
-		"format":     kpi.Format,
-		"query":      kpi.Query,
-		"thresholds": kpi.Thresholds,
-		"tags":       kpi.Tags,
-		"sparkline":  kpi.Sparkline,
-		// ownerUserId removed
-		"visibility": kpi.Visibility,
-		"createdAt":  kpi.CreatedAt.Format(time.RFC3339Nano),
-		"updatedAt":  kpi.UpdatedAt.Format(time.RFC3339Nano),
-	}
-
-	id := makeID("KPIDefinition", kpi.ID)
-	return r.putObject(ctx, "KPIDefinition", id, props)
+	return false
 }
 
-func (r *WeaviateRepo) GetKPI(ctx context.Context, id string) (*models.KPIDefinition, error) {
-	r.ensureOnce(ctx)
-	q := fmt.Sprintf(`{
-	  Get {
-	    KPIDefinition(
-	      where: {
-	        operator: And,
-	        operands: [
-							{ path: ["id"], operator: Equal, valueString: "%s" }
-	        ]
-	      },
-	      limit: 1
-	    ) {
-		  id kind name unit format query thresholds tags sparkline visibility createdAt updatedAt
-	    }
-	  }
-	}`, id)
-
-	var resp struct {
-		Data struct {
-			Get struct {
-				KPIDefinition []map[string]any `json:"KPIDefinition"`
-			} `json:"Get"`
-		} `json:"data"`
+func toMap(v interface{}) map[string]interface{} {
+	if m, ok := v.(map[string]interface{}); ok {
+		return m
 	}
+	return nil
+}
 
-	if err := r.gql(ctx, q, nil, &resp); err != nil {
-		return nil, fmt.Errorf("weaviate query failed for KPI '%s': %w", id, err)
-	}
-
-	arr := resp.Data.Get.KPIDefinition
-	if len(arr) == 0 {
-		return nil, fmt.Errorf("KPI '%s' not found", id)
-	}
-
-	it := arr[0]
-
-	// Parse timestamps
-	var createdAt, updatedAt time.Time
-	if s, ok := it["createdAt"].(string); ok {
-		createdAt, _ = time.Parse(time.RFC3339Nano, s)
-	}
-	if s, ok := it["updatedAt"].(string); ok {
-		updatedAt, _ = time.Parse(time.RFC3339Nano, s)
-	}
-
-	// Parse tags
-	var tags []string
-	if raw, ok := it["tags"].([]interface{}); ok {
-		tags = make([]string, 0, len(raw))
-		for _, v := range raw {
-			if s, ok := v.(string); ok {
-				tags = append(tags, s)
+func toStringArray(v interface{}) []string {
+	if arr, ok := v.([]interface{}); ok {
+		result := make([]string, 0, len(arr))
+		for _, item := range arr {
+			if s, ok := item.(string); ok {
+				result = append(result, s)
 			}
 		}
+		return result
 	}
-
-	// Parse complex fields with type assertions
-	var query map[string]interface{}
-	if q, ok := it["query"].(map[string]interface{}); ok {
-		query = q
-	}
-
-	var thresholds []models.Threshold
-	if _, _ = it["thresholds"].([]interface{}); false {
-		// ...existing code...
-	}
-
-	var sparkline map[string]interface{}
-	if s, ok := it["sparkline"].(map[string]interface{}); ok {
-		sparkline = s
-	}
-
-	return &models.KPIDefinition{
-		ID:         getString(it, "id"),
-		Kind:       getString(it, "kind"),
-		Name:       getString(it, "name"),
-		Unit:       getString(it, "unit"),
-		Format:     getString(it, "format"),
-		Query:      query,
-		Thresholds: thresholds,
-		Tags:       tags,
-		Sparkline:  sparkline,
-		// OwnerUserID removed
-		Visibility: getString(it, "visibility"),
-		CreatedAt:  createdAt,
-		UpdatedAt:  updatedAt,
-	}, nil
+	return nil
 }
 
-func (r *WeaviateRepo) ListKPIs(ctx context.Context, tags []string, limit, offset int) ([]*models.KPIDefinition, int, error) {
-	r.ensureOnce(ctx)
-	q := fmt.Sprintf(`{
-	  Get {
-	    KPIDefinition(
-	      limit: %d
-	      offset: %d
-	    ) {
-				id kind name unit format query thresholds tags sparkline visibility createdAt updatedAt
-	    }
-	  }
-	}`, limit, offset)
-
-	var resp struct {
-		Data struct {
-			Get struct {
-				KPIDefinition []map[string]any `json:"KPIDefinition"`
-			} `json:"Get"`
-		} `json:"data"`
-	}
-
-	if err := r.gql(ctx, q, nil, &resp); err != nil {
-		return nil, 0, err
-	}
-
-	var kpis []*models.KPIDefinition
-	for _, it := range resp.Data.Get.KPIDefinition {
-		// Parse timestamps
-		var createdAt, updatedAt time.Time
-		if s, ok := it["createdAt"].(string); ok {
-			createdAt, _ = time.Parse(time.RFC3339Nano, s)
+func toMapArray(v interface{}) []map[string]interface{} {
+	if arr, ok := v.([]interface{}); ok {
+		result := make([]map[string]interface{}, 0, len(arr))
+		for _, item := range arr {
+			if m, ok := item.(map[string]interface{}); ok {
+				result = append(result, m)
+			}
 		}
-		if s, ok := it["updatedAt"].(string); ok {
-			updatedAt, _ = time.Parse(time.RFC3339Nano, s)
-		}
+		return result
+	}
+	return nil
+}
 
-		// Parse tags
-		var kpiTags []string
-		if raw, ok := it["tags"].([]interface{}); ok {
-			kpiTags = make([]string, 0, len(raw))
-			for _, v := range raw {
-				if s, ok := v.(string); ok {
-					kpiTags = append(kpiTags, s)
+func toThresholds(v interface{}) []models.Threshold {
+	if arr, ok := v.([]interface{}); ok {
+		result := make([]models.Threshold, 0, len(arr))
+		for _, item := range arr {
+			if m, ok := item.(map[string]interface{}); ok {
+				th := models.Threshold{
+					Operator:    toString(m["operator"]),
+					Value:       toFloat(m["value"]),
+					Level:       toString(m["severity"]),
+					Description: toString(m["message"]),
 				}
+				result = append(result, th)
 			}
 		}
-
-		// Parse complex fields with type assertions
-		var query map[string]interface{}
-		if q, ok := it["query"].(map[string]interface{}); ok {
-			query = q
-		}
-
-		var thresholds []models.Threshold
-		if _, _ = it["thresholds"].([]interface{}); false {
-			// ...existing code...
-		}
-
-		var sparkline map[string]interface{}
-		if s, ok := it["sparkline"].(map[string]interface{}); ok {
-			sparkline = s
-		}
-
-		kpis = append(kpis, &models.KPIDefinition{
-			ID:         getString(it, "id"),
-			Kind:       getString(it, "kind"),
-			Name:       getString(it, "name"),
-			Unit:       getString(it, "unit"),
-			Format:     getString(it, "format"),
-			Query:      query,
-			Thresholds: thresholds,
-			Tags:       kpiTags,
-			Sparkline:  sparkline,
-			Visibility: getString(it, "visibility"),
-			CreatedAt:  createdAt,
-			UpdatedAt:  updatedAt,
-		})
+		return result
 	}
+	return nil
+}
 
-	// For total count, we'd need a separate aggregation query
-	// For now, return the length of results as approximate total
-	total := len(kpis)
-	if limit > 0 && len(kpis) == limit {
-		// If we got a full page, there might be more
-		total += offset
+func toFloat(v interface{}) float64 {
+	if f, ok := v.(float64); ok {
+		return f
 	}
+	return 0
+}
 
-	return kpis, total, nil
+// convertThresholds converts Weaviate threshold maps to models.Threshold slice
+func convertThresholds(thresholds []map[string]interface{}) []models.Threshold {
+	if len(thresholds) == 0 {
+		return nil
+	}
+	result := make([]models.Threshold, len(thresholds))
+	for i, t := range thresholds {
+		result[i] = models.Threshold{
+			Operator:    getStringVal(t, "operator"),
+			Value:       getFloatVal(t, "value"),
+			Level:       getStringVal(t, "severity"),
+			Description: getStringVal(t, "message"),
+		}
+	}
+	return result
+}
+
+// getStringVal gets a string value from a map
+func getStringVal(m map[string]interface{}, key string) string {
+	if v, ok := m[key].(string); ok {
+		return v
+	}
+	return ""
+}
+
+// getFloatVal gets a float64 value from a map
+func getFloatVal(m map[string]interface{}, key string) float64 {
+	if v, ok := m[key].(float64); ok {
+		return v
+	}
+	return 0
+}
+
+// parseTime parses a timestamp string
+func parseTime(s string) time.Time {
+	if s == "" {
+		return time.Time{}
+	}
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return t
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t
+	}
+	return time.Time{}
 }
 
 func (r *WeaviateRepo) DeleteKPI(ctx context.Context, id string) error {
@@ -1584,81 +1514,9 @@ func (r *WeaviateRepo) DeleteKPI(ctx context.Context, id string) error {
 }
 
 // SchemaAsKPI methods - unified schema operations
-func (r *WeaviateRepo) UpsertSchemaAsKPI(ctx context.Context, schemaDef *models.SchemaDefinition, author string) error {
-	// Convert SchemaDefinition to KPIDefinition for storage
-	kpi := &models.KPIDefinition{
-		ID:         schemaDef.ID,
-		Kind:       schemaDef.Kind,
-		Name:       schemaDef.Name,
-		Unit:       schemaDef.Unit,
-		Format:     schemaDef.Format,
-		Query:      schemaDef.Query,
-		Thresholds: schemaDef.Thresholds,
-		Tags:       schemaDef.Tags,
-		Sparkline:  schemaDef.Sparkline,
-		Visibility: schemaDef.Visibility,
-		CreatedAt:  schemaDef.CreatedAt,
-		UpdatedAt:  schemaDef.UpdatedAt,
-	}
-	return r.UpsertKPI(ctx, kpi)
-}
-
-func (r *WeaviateRepo) GetSchemaAsKPI(ctx context.Context, schemaType, id string) (*models.SchemaDefinition, error) {
-	kpi, err := r.GetKPI(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert KPIDefinition to SchemaDefinition
-	schemaDef := &models.SchemaDefinition{
-		ID:         kpi.ID,
-		Kind:       kpi.Kind,
-		Name:       kpi.Name,
-		Unit:       kpi.Unit,
-		Format:     kpi.Format,
-		Query:      kpi.Query,
-		Thresholds: kpi.Thresholds,
-		Tags:       kpi.Tags,
-		Sparkline:  kpi.Sparkline,
-		Visibility: kpi.Visibility,
-		CreatedAt:  kpi.CreatedAt,
-		UpdatedAt:  kpi.UpdatedAt,
-		Type:       models.SchemaType(schemaType), // Convert string to SchemaType
-	}
-	return schemaDef, nil
-}
-
-func (r *WeaviateRepo) ListSchemasAsKPIs(ctx context.Context, schemaType string, limit, offset int) ([]*models.SchemaDefinition, int, error) {
-	kpis, total, err := r.ListKPIs(ctx, nil, limit, offset)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// Convert KPIDefinitions to SchemaDefinitions
-	schemas := make([]*models.SchemaDefinition, len(kpis))
-	for i, kpi := range kpis {
-		schemas[i] = &models.SchemaDefinition{
-			ID:         kpi.ID,
-			Kind:       kpi.Kind,
-			Name:       kpi.Name,
-			Unit:       kpi.Unit,
-			Format:     kpi.Format,
-			Query:      kpi.Query,
-			Thresholds: kpi.Thresholds,
-			Tags:       kpi.Tags,
-			Sparkline:  kpi.Sparkline,
-			Visibility: kpi.Visibility,
-			CreatedAt:  kpi.CreatedAt,
-			UpdatedAt:  kpi.UpdatedAt,
-			Type:       models.SchemaType(schemaType),
-		}
-	}
-	return schemas, total, nil
-}
-
-func (r *WeaviateRepo) DeleteSchemaAsKPI(ctx context.Context, id string) error {
-	return r.DeleteKPI(ctx, id)
-}
+// NOTE: legacy SchemaAsKPI helpers were removed. KPI-backed schema operations
+// must be performed via the repo.KPIRepo implementation (CreateKPI, GetKPI,
+// ListKPIs, DeleteKPI, etc.).
 
 // Helper functions for type conversion
 func getString(m map[string]any, key string) string {
@@ -1689,4 +1547,19 @@ func getInt(m map[string]any, key string) int {
 		}
 	}
 	return 0
+}
+
+func getExamples(m map[string]any, key string) []map[string]interface{} {
+	if v, ok := m[key]; ok && v != nil {
+		if arr, ok := v.([]interface{}); ok {
+			examples := make([]map[string]interface{}, 0, len(arr))
+			for _, item := range arr {
+				if ex, ok := item.(map[string]interface{}); ok {
+					examples = append(examples, ex)
+				}
+			}
+			return examples
+		}
+	}
+	return nil
 }

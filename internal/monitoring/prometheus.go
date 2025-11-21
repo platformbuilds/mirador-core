@@ -552,7 +552,8 @@ func RecordBleveIndexOperation(operation string, duration time.Duration, success
 	status := "success"
 	if !success {
 		status = "error"
-		errorsTotal.WithLabelValues("bleve_index").Inc()
+		// Record error with subsystem type and component (operation)
+		errorsTotal.WithLabelValues("bleve", operation).Inc()
 	}
 
 	bleveIndexOperationsTotal.WithLabelValues(operation, status).Inc()
@@ -564,7 +565,8 @@ func RecordBleveSearchOperation(duration time.Duration, resultCount int, success
 	status := "success"
 	if !success {
 		status = "error"
-		errorsTotal.WithLabelValues("bleve_search").Inc()
+		// Record error with subsystem type and component
+		errorsTotal.WithLabelValues("bleve", "search").Inc()
 	}
 
 	bleveSearchOperationsTotal.WithLabelValues(status).Inc()

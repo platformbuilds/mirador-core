@@ -296,7 +296,7 @@ func TestDimensionAlignmentScoringWithMissingDimensions(t *testing.T) {
 	// Candidate missing a dimension
 	candidateGroup := &AnomalyGroup{
 		Service:              "cache",
-		Component:            "redis",
+		Component:            "valkey",
 		ExtraDimensionValues: map[string]string{"env": "prod"}, // region is missing
 	}
 

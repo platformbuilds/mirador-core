@@ -1,7 +1,6 @@
 #!/bin/bash
 
 API_BASE="http://localhost:8010/api/v1"
-TENANT_ID="PLATFORMBUILDS"
 username="aarvee"
 password="password123"
 
@@ -14,7 +13,6 @@ echo "login_data: $login_data"
 
 response1=$(curl -s -X POST "$API_BASE/auth/login" \
     -H "Content-Type: application/json" \
-    -H "x-tenant-id: $TENANT_ID" \
     -d "$login_data")
 echo "Response 1: $response1"
 
@@ -31,7 +29,6 @@ fi
 echo "Second auth:"
 response2=$(curl -s -X POST "$API_BASE/auth/login" \
     -H "Content-Type: application/json" \
-    -H "x-tenant-id: $TENANT_ID" \
     -d "$login_data")
 echo "Response 2: $response2"
 

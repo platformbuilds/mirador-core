@@ -73,10 +73,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
               }
             ],
             "body": {
@@ -105,10 +101,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
               }
             ],
             "body": {
@@ -131,14 +123,9 @@
         },
         {
           "name": "GET /api/v1/labels",
-          "request": {
+            "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/labels",
               "host": [
@@ -154,14 +141,9 @@
         },
         {
           "name": "GET /api/v1/metrics/names",
-          "request": {
+            "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/metrics/names?start={{start_rfc}}&end={{now_rfc}}",
               "host": [
@@ -188,14 +170,9 @@
         },
         {
           "name": "GET /api/v1/label/__name__/values",
-          "request": {
+            "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/label/__name__/values?start={{start_rfc}}&end={{now_rfc}}",
               "host": [
@@ -234,10 +211,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
               }
             ],
             "body": {
@@ -266,10 +239,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
               }
             ],
             "body": {
@@ -292,14 +261,9 @@
         },
         {
           "name": "GET /api/v1/logs/fields",
-          "request": {
+            "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/logs/fields",
               "host": [
@@ -316,14 +280,9 @@
         },
         {
           "name": "GET /api/v1/logs/streams",
-          "request": {
+            "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/logs/streams",
               "host": [
@@ -345,14 +304,9 @@
       "item": [
         {
           "name": "GET /api/v1/traces/services",
-          "request": {
+            "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/traces/services",
               "host": [
@@ -369,14 +323,9 @@
         },
         {
           "name": "GET /api/v1/traces/services/:service/operations",
-          "request": {
+            "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/traces/services/{{traceService}}/operations",
               "host": [
@@ -401,10 +350,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
               }
             ],
             "body": {
@@ -427,14 +372,9 @@
         },
         {
           "name": "GET /api/v1/traces/:traceId/flamegraph",
-          "request": {
+            "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/traces/{{traceId}}/flamegraph?mode={{flame_mode}}",
               "host": [
@@ -464,10 +404,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
               }
             ],
             "body": {
@@ -508,10 +444,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
               }
             ],
             "body": {
@@ -595,10 +527,6 @@
     {
       "key": "baseUrl",
       "value": "http://localhost:8010"
-    },
-    {
-      "key": "tenantId",
-      "value": "0"
     },
     {
       "key": "now_rfc",

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
+	"github.com/gofrs/uuid/v5"
 
 	models "github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
@@ -20,6 +20,7 @@ import (
 // a single handler with type-based dispatch.
 type UnifiedSchemaHandler struct {
 	repo           repo.SchemaStore
+	kpiRepo        repo.KPIRepo
 	metricsService *services.VictoriaMetricsService
 	logsService    *services.VictoriaLogsService
 	cache          cache.ValkeyCluster
@@ -28,12 +29,13 @@ type UnifiedSchemaHandler struct {
 }
 
 // NewUnifiedSchemaHandler creates a new unified schema handler
-func NewUnifiedSchemaHandler(r repo.SchemaStore, ms *services.VictoriaMetricsService, ls *services.VictoriaLogsService, cache cache.ValkeyCluster, l logger.Logger, maxUploadBytes int64) *UnifiedSchemaHandler {
+func NewUnifiedSchemaHandler(r repo.SchemaStore, kpirepo repo.KPIRepo, ms *services.VictoriaMetricsService, ls *services.VictoriaLogsService, cache cache.ValkeyCluster, l logger.Logger, maxUploadBytes int64) *UnifiedSchemaHandler {
 	if maxUploadBytes <= 0 {
 		maxUploadBytes = 5 << 20
 	}
 	return &UnifiedSchemaHandler{
 		repo:           r,
+		kpiRepo:        kpirepo,
 		metricsService: ms,
 		logsService:    ls,
 		cache:          cache,
@@ -77,7 +79,7 @@ func (h *UnifiedSchemaHandler) UpsertSchemaDefinition(c *gin.Context) {
 	def.Type = schemaType
 
 	if def.ID == "" {
-		def.ID = uuid.New().String()
+		def.ID = uuid.Must(uuid.NewV4()).String()
 	}
 
 	def.UpdatedAt = time.Now()
@@ -85,15 +87,61 @@ func (h *UnifiedSchemaHandler) UpsertSchemaDefinition(c *gin.Context) {
 		def.CreatedAt = def.UpdatedAt
 	}
 
-	// Use unified KPI-based storage for all schema types
-	err := h.repo.UpsertSchemaAsKPI(c.Request.Context(), def, def.Author)
-	if err != nil {
+	// Convert SchemaDefinition into KPI-backed object and persist via KPIRepo
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not configured for unified schema handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
+		return
+	}
+
+	// Map generic schema definition into KPI model
+	// Map extension-specific description into KPI.Definition where available
+	var defText string
+	if def.Extensions != (models.SchemaExtensions{}) {
+		if def.Extensions.Metric != nil {
+			defText = def.Extensions.Metric.Description
+		} else if def.Extensions.LogField != nil {
+			defText = def.Extensions.LogField.Description
+		} else if def.Extensions.Trace != nil {
+			defText = def.Extensions.Trace.ServicePurpose
+		}
+	}
+
+	kpi := &models.KPIDefinition{
+		Name:       def.Name,
+		Kind:       "tech",
+		Tags:       append(def.Tags, string(schemaType)),
+		Category:   def.Category,
+		Sentiment:  def.Sentiment,
+		Definition: defText,
+		CreatedAt:  def.CreatedAt,
+		UpdatedAt:  def.UpdatedAt,
+	}
+	// For trace operation type, populate namespace from extension if available
+	if schemaType == models.SchemaTypeTraceOperation && def.Extensions.Trace != nil {
+		if def.Extensions.Trace.Service != "" {
+			kpi.Namespace = def.Extensions.Trace.Service
+		}
+		if def.Extensions.Trace.Operation != "" {
+			kpi.Name = def.Extensions.Trace.Operation
+		}
+		kpi.Definition = def.Extensions.Trace.ServicePurpose
+	}
+
+	if kpi.ID == "" {
+		id, err := services.GenerateDeterministicKPIID(kpi)
+		if err == nil {
+			kpi.ID = id
+		}
+	}
+
+	if _, _, err := h.kpiRepo.CreateKPI(c.Request.Context(), kpi); err != nil {
 		h.logger.Error("schema upsert failed", "error", err, "type", schemaType)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "upsert failed"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "id": def.ID})
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "id": kpi.ID})
 }
 
 // GetSchemaDefinition retrieves a schema definition by ID and type
@@ -106,7 +154,24 @@ func (h *UnifiedSchemaHandler) GetSchemaDefinition(c *gin.Context) {
 		return
 	}
 
-	def, err := h.repo.GetSchemaAsKPI(c.Request.Context(), string(schemaType), id)
+	// For trace operation, id may be in format service:operation
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not configured for unified schema handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
+		return
+	}
+
+	var detID string
+	if schemaType == models.SchemaTypeTraceOperation && strings.Contains(id, ":") {
+		parts := strings.SplitN(id, ":", 2)
+		tmp := &models.KPIDefinition{Name: parts[1], Namespace: parts[0]}
+		pid, _ := services.GenerateDeterministicKPIID(tmp)
+		detID = pid
+	} else {
+		detID = id
+	}
+
+	kdef, err := h.kpiRepo.GetKPI(c.Request.Context(), detID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
@@ -117,7 +182,8 @@ func (h *UnifiedSchemaHandler) GetSchemaDefinition(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.SchemaDefinitionResponse{SchemaDefinition: def})
+	// Map KPIDefinition back to SchemaDefinition for response
+	c.JSON(http.StatusOK, models.SchemaDefinitionResponse{SchemaDefinition: kpiToSchemaDefinition(kdef, schemaType)})
 }
 
 // ListSchemaDefinitions lists schema definitions with optional filtering
@@ -134,18 +200,16 @@ func (h *UnifiedSchemaHandler) ListSchemaDefinitions(c *gin.Context) {
 	var total int
 	var err error
 	if kpirepo, ok := h.repo.(repo.KPIRepo); ok {
-		kpis, totalKpis, lerr := kpirepo.ListKPIs(c.Request.Context(), []string{string(schemaType)}, req.Limit, req.Offset)
+		kpis, totalKpis, lerr := kpirepo.ListKPIs(c.Request.Context(), models.KPIListRequest{Tags: []string{string(schemaType)}, Limit: req.Limit, Offset: req.Offset})
 		if lerr != nil {
 			err = lerr
 		} else {
-			total = totalKpis
+			total = int(totalKpis)
 			definitions = make([]*models.SchemaDefinition, 0, len(kpis))
 			for _, k := range kpis {
 				definitions = append(definitions, kpiToSchemaDefinition(k, schemaType))
 			}
 		}
-	} else {
-		definitions, total, err = h.repo.ListSchemasAsKPIs(c.Request.Context(), string(schemaType), req.Limit, req.Offset)
 	}
 	if err != nil {
 		h.logger.Error("schema list failed", "error", err, "type", schemaType)
@@ -185,11 +249,20 @@ func (h *UnifiedSchemaHandler) DeleteSchemaDefinition(c *gin.Context) {
 	var err error
 	switch schemaType {
 	case models.SchemaTypeLabel:
+		// Labels remain stored in Label class; delete via repo
 		err = h.repo.DeleteLabel(c.Request.Context(), id)
 	case models.SchemaTypeMetric:
 		err = h.repo.DeleteMetric(c.Request.Context(), id)
 	case models.SchemaTypeLogField:
-		err = h.repo.DeleteLogField(c.Request.Context(), id)
+		// Migrate: delete KPI-backed log field via KPIRepo
+		if h.kpiRepo == nil {
+			h.logger.Error("KPIRepo not configured for unified schema handler")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
+			return
+		}
+		tmp := &models.KPIDefinition{Name: id}
+		detID, _ := services.GenerateDeterministicKPIID(tmp)
+		err = h.kpiRepo.DeleteKPI(c.Request.Context(), detID)
 	case models.SchemaTypeTraceService:
 		err = h.repo.DeleteTraceService(c.Request.Context(), id)
 	case models.SchemaTypeTraceOperation:
@@ -199,9 +272,21 @@ func (h *UnifiedSchemaHandler) DeleteSchemaDefinition(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "trace operation id must be in format 'service:operation'"})
 			return
 		}
-		err = h.repo.DeleteTraceOperation(c.Request.Context(), parts[0], parts[1])
+		if h.kpiRepo == nil {
+			h.logger.Error("KPIRepo not configured for unified schema handler")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
+			return
+		}
+		tmp := &models.KPIDefinition{Name: parts[1], Namespace: parts[0]}
+		detID, _ := services.GenerateDeterministicKPIID(tmp)
+		err = h.kpiRepo.DeleteKPI(c.Request.Context(), detID)
 	case models.SchemaTypeKPI:
-		err = h.repo.DeleteSchemaAsKPI(c.Request.Context(), id)
+		if h.kpiRepo == nil {
+			h.logger.Error("KPIRepo not configured for unified schema handler")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
+			return
+		}
+		err = h.kpiRepo.DeleteKPI(c.Request.Context(), id)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported schema type"})
 		return

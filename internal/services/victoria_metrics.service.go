@@ -152,7 +152,6 @@ func (s *VictoriaMetricsService) ExecuteQuery(ctx context.Context, request *mode
 		"endpoint", endpoint,
 		"took", executionTime,
 		"seriesCount", result.SeriesCount,
-		
 	)
 	return result, nil
 }
@@ -341,7 +340,6 @@ func (s *VictoriaMetricsService) executeQuerySingleEndpoint(ctx context.Context,
 		"endpoint", endpoint,
 		"took", executionTime,
 		"seriesCount", result.SeriesCount,
-		
 	)
 	return result, nil
 }

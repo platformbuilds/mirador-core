@@ -9,13 +9,13 @@ import (
 
 // LoadSecrets loads sensitive configuration from environment or files
 func LoadSecrets(config *Config) error {
-	// Load Redis password for Valkey cluster
-	if redisPassword := os.Getenv("REDIS_PASSWORD"); redisPassword != "" {
-		config.Cache.Password = redisPassword
-	} else if passwordFile := os.Getenv("REDIS_PASSWORD_FILE"); passwordFile != "" {
+	// Load Valkey password for Valkey cluster
+	if valkeyPassword := os.Getenv("VALKEY_PASSWORD"); valkeyPassword != "" {
+		config.Cache.Password = valkeyPassword
+	} else if passwordFile := os.Getenv("VALKEY_PASSWORD_FILE"); passwordFile != "" {
 		password, err := os.ReadFile(passwordFile)
 		if err != nil {
-			return fmt.Errorf("failed to read Redis password file: %w", err)
+			return fmt.Errorf("failed to read Valkey password file: %w", err)
 		}
 		config.Cache.Password = strings.TrimSpace(string(password))
 	}

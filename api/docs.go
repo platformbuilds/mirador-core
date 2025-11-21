@@ -231,9 +231,6 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
-                "ownerUserId": {
-                    "type": "string"
-                },
                 "query": {
                     "description": "JSON query definition",
                     "type": "object",

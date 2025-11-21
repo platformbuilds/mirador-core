@@ -99,9 +99,9 @@ func (h *LogsHandler) Histogram(c *gin.Context) {
 		start, end = 0, 0
 	}
 	_, err := h.logs.ExecuteQueryStream(c.Request.Context(), &models.LogsQLQueryRequest{
-		Query:    req.Query,
-		Start:    start,
-		End:      end,
+		Query: req.Query,
+		Start: start,
+		End:   end,
 	}, func(row map[string]any) error {
 		n := atomic.AddInt64(&rowsSeen, 1)
 		if sampleN > 1 && (n%int64(sampleN)) != 0 {
@@ -196,9 +196,9 @@ func (h *LogsHandler) Facets(c *gin.Context) {
 		start, end = 0, 0
 	}
 	_, err := h.logs.ExecuteQueryStream(c.Request.Context(), &models.LogsQLQueryRequest{
-		Query:    req.Query,
-		Start:    start,
-		End:      end,
+		Query: req.Query,
+		Start: start,
+		End:   end,
 	}, func(row map[string]any) error {
 		n := atomic.AddInt64(&rowsSeen, 1)
 		if sampleN > 1 && (n%int64(sampleN)) != 0 {
@@ -303,9 +303,9 @@ func (h *LogsHandler) Search(c *gin.Context) {
 		start, end = 0, 0
 	}
 	res, err := h.logs.ExecuteQueryStream(c.Request.Context(), &models.LogsQLQueryRequest{
-		Query:    req.Query,
-		Start:    start,
-		End:      end,
+		Query: req.Query,
+		Start: start,
+		End:   end,
 	}, func(row map[string]any) error {
 		ts := extractTS(row)
 		if skipUntilCursor(ts, &offsetInMS) {

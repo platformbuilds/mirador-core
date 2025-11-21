@@ -2,6 +2,7 @@ package weaviate
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	wv "github.com/weaviate/weaviate-go-client/v5/weaviate"
@@ -33,7 +34,30 @@ func (o *officialTransport) PutObject(ctx context.Context, class, id string, pro
 }
 
 func (o *officialTransport) GraphQL(ctx context.Context, query string, variables map[string]any, out any) error {
-	// Delegate to lightweight HTTP transport for maximum compatibility
+	// Prefer using the official v5 client for GraphQL requests so we centralize
+	// SDK usage here. Keep variables support and decode into `out`.
+	if o.client != nil {
+		// Use Raw() to execute arbitrary GraphQL queries. The SDK decodes JSON
+		// into the provided `out` value. Callers that relied on variables should
+		// inline variables into the query string (existing code often does so).
+		resp, err := o.client.GraphQL().Raw().WithQuery(query).Do(ctx)
+		if err != nil {
+			return err
+		}
+		// Marshal the generic response and unmarshal into out to preserve the
+		// previous behavior of decoding into the provided out value.
+		b, err := json.Marshal(resp)
+		if err != nil {
+			return err
+		}
+		if out != nil {
+			if err := json.Unmarshal(b, out); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	// Fallback to HTTP transport if client missing
 	return o.httpT.GraphQL(ctx, query, variables, out)
 }
 

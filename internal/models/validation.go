@@ -14,7 +14,6 @@ var (
 	ErrInvalidKind                = errors.New("kind must be 'business' or 'tech'")
 	ErrInvalidVisibility          = errors.New("visibility must be 'private', 'team', or 'org'")
 	ErrInvalidSentiment           = errors.New("sentiment must be 'NEGATIVE', 'POSITIVE', or 'NEUTRAL'")
-	ErrEmptyOwnerUserID           = errors.New("ownerUserId cannot be empty")
 	ErrInvalidThresholdOperator   = errors.New("threshold operator must be 'gt', 'lt', 'eq', 'gte', 'lte'")
 	ErrThresholdsNotOrdered       = errors.New("thresholds must be ordered by value (ascending for positive sentiment, descending for negative)")
 	ErrInvalidGridCoordinates     = errors.New("grid coordinates must be non-negative")
@@ -42,10 +41,6 @@ func (k *KPIDefinition) Validate() error {
 
 	if k.Sentiment != "" && k.Sentiment != "NEGATIVE" && k.Sentiment != "POSITIVE" && k.Sentiment != "NEUTRAL" {
 		return ErrInvalidSentiment
-	}
-
-	if strings.TrimSpace(k.OwnerUserID) == "" {
-		return ErrEmptyOwnerUserID
 	}
 
 	// Validate query field (must be present for formula-based KPIs)

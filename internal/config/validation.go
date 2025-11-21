@@ -62,24 +62,24 @@ func ValidateGRPCEndpoint(endpoint string) error {
 	return nil
 }
 
-// ValidateRedisNode validates Redis cluster node format
-func ValidateRedisNode(node string) error {
+// ValidateCacheNode validates cache cluster node format (Valkey)
+func ValidateCacheNode(node string) error {
 	if node == "" {
-		return fmt.Errorf("Redis node cannot be empty")
+		return fmt.Errorf("Valkey node cannot be empty")
 	}
 
 	// Check format: host:port
 	host, port, err := net.SplitHostPort(node)
 	if err != nil {
-		return fmt.Errorf("Redis node must be in format host:port: %w", err)
+		return fmt.Errorf("Valkey node must be in format host:port: %w", err)
 	}
 
 	if host == "" {
-		return fmt.Errorf("Redis node must include host")
+		return fmt.Errorf("Valkey node must include host")
 	}
 
 	if _, err := strconv.Atoi(port); err != nil {
-		return fmt.Errorf("invalid Redis port: %w", err)
+		return fmt.Errorf("invalid Valkey port: %w", err)
 	}
 
 	return nil

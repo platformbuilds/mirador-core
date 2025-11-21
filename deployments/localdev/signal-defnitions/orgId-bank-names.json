@@ -1,0 +1,74 @@
+{
+  "sample_banks": [
+    {
+      "OrgId": "0001",
+      "OrgName": "Bharat Shakti Bank",
+      "category": "national_leader",
+      "customer_base_millions": 150,
+      "focus_area": "pan_india_retail"
+    },
+    {
+      "OrgId": "0002", 
+      "OrgName": "Jan Kalyan Bank",
+      "category": "public_sector",
+      "customer_base_millions": 120,
+      "focus_area": "government_schemes"
+    },
+    {
+      "OrgId": "0003",
+      "OrgName": "Digital India Trust Bank", 
+      "category": "neo_bank",
+      "customer_base_millions": 80,
+      "focus_area": "digital_natives"
+    },
+    {
+      "OrgId": "0004",
+      "OrgName": "Udyog Sahayata Bank",
+      "category": "business_bank", 
+      "customer_base_millions": 45,
+      "focus_area": "msme_banking"
+    },
+    {
+      "OrgId": "0005",
+      "OrgName": "Gramin Vikas Bank",
+      "category": "rural_bank",
+      "customer_base_millions": 60, 
+      "focus_area": "agriculture_rural"
+    },
+    {
+      "OrgId": "0006",
+      "OrgName": "Nayi Umeed Bank",
+      "category": "youth_bank",
+      "customer_base_millions": 35,
+      "focus_area": "student_young_professionals"
+    },
+    {
+      "OrgId": "0007",
+      "OrgName": "Sabhyaata Bank",
+      "category": "premium_bank", 
+      "customer_base_millions": 25,
+      "focus_area": "hni_corporate"
+    },
+    {
+      "OrgId": "0008",
+      "OrgName": "Rozgar Garima Bank",
+      "category": "employment_bank",
+      "customer_base_millions": 40,
+      "focus_area": "salary_accounts"
+    },
+    {
+      "OrgId": "0009",
+      "OrgName": "Seva Bharati Bank",
+      "category": "cooperative_bank",
+      "customer_base_millions": 30,
+      "focus_area": "community_banking"
+    },
+    {
+      "OrgId": "0010", 
+      "OrgName": "Tech Maha Bank",
+      "category": "tech_focused",
+      "customer_base_millions": 55,
+      "focus_area": "it_professionals"
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import (
 
 	models "github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
+	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -16,17 +17,19 @@ import (
 // MetricHandler provides API endpoints for metric definitions.
 // This handler implements separate metric APIs as defined in the API contract.
 type MetricHandler struct {
-	repo   repo.SchemaStore
-	cache  cache.ValkeyCluster
-	logger logger.Logger
+	repo    repo.SchemaStore
+	kpiRepo repo.KPIRepo
+	cache   cache.ValkeyCluster
+	logger  logger.Logger
 }
 
 // NewMetricHandler creates a new metric handler
-func NewMetricHandler(r repo.SchemaStore, cache cache.ValkeyCluster, l logger.Logger) *MetricHandler {
+func NewMetricHandler(r repo.SchemaStore, kpirepo repo.KPIRepo, cache cache.ValkeyCluster, l logger.Logger) *MetricHandler {
 	return &MetricHandler{
-		repo:   r,
-		cache:  cache,
-		logger: l,
+		repo:    r,
+		kpiRepo: kpirepo,
+		cache:   cache,
+		logger:  l,
 	}
 }
 
@@ -45,27 +48,33 @@ func (h *MetricHandler) CreateOrUpdateMetric(c *gin.Context) {
 
 	metric := req.Metric
 
-	// Convert Metric to SchemaDefinition
-	schemaDef := &models.SchemaDefinition{
-		ID:        metric.Metric, // Use metric name as ID
+	// Convert Metric to KPI-backed object and persist via KPIRepo
+	kpi := &models.KPIDefinition{
 		Name:      metric.Metric,
-		Type:      models.SchemaTypeMetric,
+		Kind:      "tech",
+		Tags:      metric.Tags,
 		Category:  metric.Category,
 		Sentiment: metric.Sentiment,
-		Author:    metric.Author,
-		Tags:      metric.Tags,
-		Extensions: models.SchemaExtensions{
-			Metric: &models.MetricExtension{
-				Description: metric.Description,
-				Owner:       metric.Owner,
-			},
-		},
+		CreatedAt: metric.UpdatedAt,
+		UpdatedAt: metric.UpdatedAt,
 	}
 
-	err := h.repo.UpsertSchemaAsKPI(context.Background(), schemaDef, metric.Author)
-	if err != nil {
-		h.logger.Error("metric upsert failed", "error", err, "metric", metric.Metric)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upsert metric"})
+	if kpi.ID == "" {
+		id, err := services.GenerateDeterministicKPIID(kpi)
+		if err == nil {
+			kpi.ID = id
+		}
+	}
+
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not configured for metric handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
+		return
+	}
+
+	if _, _, err := h.kpiRepo.CreateKPI(context.Background(), kpi); err != nil {
+		h.logger.Error("metric create failed", "error", err, "metric", metric.Metric)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create metric"})
 		return
 	}
 
@@ -80,27 +89,36 @@ func (h *MetricHandler) GetMetric(c *gin.Context) {
 		return
 	}
 
-	schemaDef, err := h.repo.GetSchemaAsKPI(context.Background(), "metric", metricName)
+	// Build deterministic ID for metric-based KPI and fetch
+	tmp := &models.KPIDefinition{Name: metricName}
+	detID, err := services.GenerateDeterministicKPIID(tmp)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{"error": "metric not found"})
-		} else {
-			h.logger.Error("metric get failed", "error", err, "metric", metricName)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get metric"})
-		}
+		h.logger.Error("failed to compute deterministic id for metric", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get metric"})
+		return
+	}
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not configured for metric handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
+		return
+	}
+	kdef, err := h.kpiRepo.GetKPI(context.Background(), detID)
+	if err != nil {
+		h.logger.Error("metric get failed", "error", err, "metric", metricName)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get metric"})
+		return
+	}
+	if kdef == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "metric not found"})
 		return
 	}
 
-	// Convert SchemaDefinition back to Metric
 	metric := &models.Metric{
-		Metric:      schemaDef.Name,
-		Description: schemaDef.Extensions.Metric.Description,
-		Owner:       schemaDef.Extensions.Metric.Owner,
-		Tags:        schemaDef.Tags,
-		Category:    schemaDef.Category,
-		Sentiment:   schemaDef.Sentiment,
-		Author:      schemaDef.Author,
-		UpdatedAt:   schemaDef.UpdatedAt,
+		Metric:    kdef.Name,
+		Tags:      kdef.Tags,
+		Category:  kdef.Category,
+		Sentiment: kdef.Sentiment,
+		UpdatedAt: kdef.UpdatedAt,
 	}
 
 	c.JSON(http.StatusOK, models.MetricResponse{Metric: metric})
@@ -122,42 +140,33 @@ func (h *MetricHandler) ListMetrics(c *gin.Context) {
 		req.Offset = 0
 	}
 
-	var schemaDefs []*models.SchemaDefinition
+	var metrics []*models.Metric
 	var total int
 	var err error
 	if kpirepo, ok := h.repo.(repo.KPIRepo); ok {
-		kpis, totalKpis, lerr := kpirepo.ListKPIs(context.Background(), []string{"metric"}, req.Limit, req.Offset)
+		kpis, totalKpis, lerr := kpirepo.ListKPIs(context.Background(), models.KPIListRequest{Tags: []string{"metric"}, Limit: req.Limit, Offset: req.Offset})
 		if lerr != nil {
 			err = lerr
 		} else {
-			total = totalKpis
-			schemaDefs = make([]*models.SchemaDefinition, 0, len(kpis))
+			total = int(totalKpis)
+			metrics = make([]*models.Metric, 0, len(kpis))
 			for _, k := range kpis {
-				schemaDefs = append(schemaDefs, kpiToSchemaDefinition(k, models.SchemaTypeMetric))
+				metrics = append(metrics, &models.Metric{
+					Metric:    k.Name,
+					Tags:      k.Tags,
+					Category:  k.Category,
+					Sentiment: k.Sentiment,
+					UpdatedAt: k.UpdatedAt,
+					// Description, Owner are not present in KPIDefinition; omit for now
+				})
 			}
 		}
-	} else {
-		schemaDefs, total, err = h.repo.ListSchemasAsKPIs(context.Background(), "metric", req.Limit, req.Offset)
 	}
+
 	if err != nil {
 		h.logger.Error("metric list failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list metrics"})
 		return
-	}
-
-	// Convert SchemaDefinitions back to Metrics
-	metrics := make([]*models.Metric, len(schemaDefs))
-	for i, schemaDef := range schemaDefs {
-		metrics[i] = &models.Metric{
-			Metric:      schemaDef.Name,
-			Description: schemaDef.Extensions.Metric.Description,
-			Owner:       schemaDef.Extensions.Metric.Owner,
-			Tags:        schemaDef.Tags,
-			Category:    schemaDef.Category,
-			Sentiment:   schemaDef.Sentiment,
-			Author:      schemaDef.Author,
-			UpdatedAt:   schemaDef.UpdatedAt,
-		}
 	}
 
 	nextOffset := req.Offset + len(metrics)
@@ -186,8 +195,20 @@ func (h *MetricHandler) DeleteMetric(c *gin.Context) {
 		return
 	}
 
-	// Delete as KPI by id (metrics migrated to KPI-backed storage)
-	err := h.repo.DeleteSchemaAsKPI(context.Background(), metricName)
+	// Delete as KPI by deterministic id
+	tmp := &models.KPIDefinition{Name: metricName}
+	detID, err := services.GenerateDeterministicKPIID(tmp)
+	if err != nil {
+		h.logger.Error("failed to compute deterministic id for metric delete", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete metric"})
+		return
+	}
+	if h.kpiRepo == nil {
+		h.logger.Error("KPIRepo not configured for metric handler")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
+		return
+	}
+	err = h.kpiRepo.DeleteKPI(context.Background(), detID)
 	if err != nil {
 		h.logger.Error("metric delete failed", "error", err, "metric", metricName)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete metric"})
