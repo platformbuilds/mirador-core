@@ -88,20 +88,20 @@ type KPIListSemanticFilters struct {
 
 // KPIListRequest represents a request to list KPI definitions including semantic filters
 type KPIListRequestV2 struct {
-	Kind   string   `json:"kind,omitempty"`
-	Tags   []string `json:"tags,omitempty"`
-	Limit  int      `json:"limit,omitempty"`
-	Offset int      `json:"offset,omitempty"`
+	Kind   string   `form:"kind" json:"kind,omitempty"`
+	Tags   []string `form:"tags" json:"tags,omitempty"`
+	Limit  int      `form:"limit" json:"limit,omitempty"`
+	Offset int      `form:"offset" json:"offset,omitempty"`
 
 	// Semantic filters
-	Layer         string `json:"layer,omitempty"`
-	SignalType    string `json:"signalType,omitempty"`
-	Classifier    string `json:"classifier,omitempty"`
-	Datastore     string `json:"datastore,omitempty"`
-	Sentiment     string `json:"sentiment,omitempty"`
-	Domain        string `json:"domain,omitempty"`
-	ServiceFamily string `json:"serviceFamily,omitempty"`
-	ComponentType string `json:"componentType,omitempty"`
+	Layer         string `form:"layer" json:"layer,omitempty"`
+	SignalType    string `form:"signalType" json:"signalType,omitempty"`
+	Classifier    string `form:"classifier" json:"classifier,omitempty"`
+	Datastore     string `form:"datastore" json:"datastore,omitempty"`
+	Sentiment     string `form:"sentiment" json:"sentiment,omitempty"`
+	Domain        string `form:"domain" json:"domain,omitempty"`
+	ServiceFamily string `form:"serviceFamily" json:"serviceFamily,omitempty"`
+	ComponentType string `form:"componentType" json:"componentType,omitempty"`
 }
 
 // keep original name for compatibility in code that imported KPIListRequest

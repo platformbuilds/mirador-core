@@ -50,27 +50,36 @@ func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *models.KPID
 	objID := makeObjectID("KPIDefinition", k.ID)
 
 	props := map[string]any{
-		"name":          k.Name,
-		"kind":          k.Kind,
-		"namespace":     k.Namespace,
-		"source":        k.Source,
-		"sourceId":      k.SourceID,
-		"unit":          k.Unit,
-		"format":        k.Format,
-		"query":         k.Query,
-		"thresholds":    thresholdsToProps(k.Thresholds),
-		"tags":          k.Tags,
-		"definition":    k.Definition,
-		"sentiment":     k.Sentiment,
-		"category":      k.Category,
-		"retryAllowed":  k.RetryAllowed,
-		"domain":        k.Domain,
-		"serviceFamily": k.ServiceFamily,
-		"componentType": k.ComponentType,
-		"sparkline":     k.Sparkline,
-		"visibility":    k.Visibility,
-		"createdAt":     k.CreatedAt.Format(time.RFC3339Nano),
-		"updatedAt":     k.UpdatedAt.Format(time.RFC3339Nano),
+		"name":            k.Name,
+		"kind":            k.Kind,
+		"namespace":       k.Namespace,
+		"source":          k.Source,
+		"sourceId":        k.SourceID,
+		"unit":            k.Unit,
+		"format":          k.Format,
+		"query":           k.Query,
+		"layer":           k.Layer,
+		"signalType":      k.SignalType,
+		"classifier":      k.Classifier,
+		"datastore":       k.Datastore,
+		"queryType":       k.QueryType,
+		"formula":         k.Formula,
+		"thresholds":      thresholdsToProps(k.Thresholds),
+		"tags":            k.Tags,
+		"definition":      k.Definition,
+		"sentiment":       k.Sentiment,
+		"category":        k.Category,
+		"retryAllowed":    k.RetryAllowed,
+		"domain":          k.Domain,
+		"serviceFamily":   k.ServiceFamily,
+		"componentType":   k.ComponentType,
+		"businessImpact":  k.BusinessImpact,
+		"emotionalImpact": k.EmotionalImpact,
+		"examples":        k.Examples,
+		"sparkline":       k.Sparkline,
+		"visibility":      k.Visibility,
+		"createdAt":       k.CreatedAt.Format(time.RFC3339Nano),
+		"updatedAt":       k.UpdatedAt.Format(time.RFC3339Nano),
 	}
 	// Check if object already exists in Weaviate
 	existing, err := s.GetKPI(ctx, k.ID)
@@ -126,6 +135,15 @@ func kpiEqual(a, b *models.KPIDefinition) bool {
 	if a.Unit != b.Unit || a.Format != b.Format || a.Definition != b.Definition || a.Sentiment != b.Sentiment || a.Category != b.Category {
 		return false
 	}
+	if a.Layer != b.Layer || a.SignalType != b.SignalType || a.Classifier != b.Classifier {
+		return false
+	}
+	if a.Datastore != b.Datastore || a.QueryType != b.QueryType || a.Formula != b.Formula {
+		return false
+	}
+	if a.BusinessImpact != b.BusinessImpact || a.EmotionalImpact != b.EmotionalImpact {
+		return false
+	}
 	if a.RetryAllowed != b.RetryAllowed || a.Domain != b.Domain || a.ServiceFamily != b.ServiceFamily || a.ComponentType != b.ComponentType {
 		return false
 	}
@@ -139,6 +157,15 @@ func kpiEqual(a, b *models.KPIDefinition) bool {
 	}
 	for i := range a.Tags {
 		if a.Tags[i] != b.Tags[i] {
+			return false
+		}
+	}
+	// Compare Examples
+	if len(a.Examples) != len(b.Examples) {
+		return false
+	}
+	for i := range a.Examples {
+		if !deepEqualAny(a.Examples[i], b.Examples[i]) {
 			return false
 		}
 	}
@@ -299,6 +326,43 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*models.KPIDe
 			k.UpdatedAt = t
 		}
 	}
+	if v, ok := props["layer"].(string); ok {
+		k.Layer = v
+	}
+	if v, ok := props["signalType"].(string); ok {
+		k.SignalType = v
+	}
+	if v, ok := props["classifier"].(string); ok {
+		k.Classifier = v
+	}
+	if v, ok := props["datastore"].(string); ok {
+		k.Datastore = v
+	}
+	if v, ok := props["queryType"].(string); ok {
+		k.QueryType = v
+	}
+	if v, ok := props["formula"].(string); ok {
+		k.Formula = v
+	}
+	if v, ok := props["businessImpact"].(string); ok {
+		k.BusinessImpact = v
+	}
+	if v, ok := props["emotionalImpact"].(string); ok {
+		k.EmotionalImpact = v
+	}
+	if v, ok := props["examples"].([]any); ok {
+		for _, ex := range v {
+			if m, ok := ex.(map[string]any); ok {
+				k.Examples = append(k.Examples, m)
+			} else if m2, ok := ex.(map[string]interface{}); ok {
+				converted := make(map[string]any)
+				for kk, vv := range m2 {
+					converted[kk] = vv
+				}
+				k.Examples = append(k.Examples, converted)
+			}
+		}
+	}
 
 	// thresholds: convert nested properties back to models.Threshold
 	if raw, ok := props["thresholds"]; ok {
@@ -330,38 +394,141 @@ func (s *WeaviateKPIStore) ListKPIs(ctx context.Context, req *models.KPIListRequ
 			continue
 		}
 		k := &models.KPIDefinition{}
+
+		// Extract all properties from the Weaviate object
+		var props map[string]any
 		if o.Properties != nil {
-			// Properties can be map[string]any or map[string]interface{}
-			if ps, ok := o.Properties.(map[string]interface{}); ok {
-				if v, ok := ps["name"].(string); ok {
-					k.Name = v
-				}
-				if v, ok := ps["kind"].(string); ok {
-					k.Kind = v
+			if m, ok := o.Properties.(map[string]any); ok {
+				props = m
+			} else if m2, ok := o.Properties.(map[string]interface{}); ok {
+				props = make(map[string]any)
+				for kk, vv := range m2 {
+					props[kk] = vv
 				}
 			}
 		}
-		// Prefer the stored original KPI id property if present, otherwise
-		// fall back to the Weaviate object id.
-		if o.Properties != nil {
-			if ps, ok := o.Properties.(map[string]any); ok {
-				if vid, ok := ps["id"].(string); ok && vid != "" {
-					k.ID = vid
-				} else if add := o.ID.String(); add != "" {
-					k.ID = add
+
+		if props != nil {
+			// Map all fields (matching GetKPI pattern)
+			if v, ok := props["name"].(string); ok {
+				k.Name = v
+			}
+			if v, ok := props["kind"].(string); ok {
+				k.Kind = v
+			}
+			if v, ok := props["namespace"].(string); ok {
+				k.Namespace = v
+			}
+			if v, ok := props["source"].(string); ok {
+				k.Source = v
+			}
+			if v, ok := props["sourceId"].(string); ok {
+				k.SourceID = v
+			}
+			if v, ok := props["unit"].(string); ok {
+				k.Unit = v
+			}
+			if v, ok := props["format"].(string); ok {
+				k.Format = v
+			}
+			if v, ok := props["query"].(map[string]any); ok {
+				k.Query = v
+			}
+			if v, ok := props["layer"].(string); ok {
+				k.Layer = v
+			}
+			if v, ok := props["signalType"].(string); ok {
+				k.SignalType = v
+			}
+			if v, ok := props["classifier"].(string); ok {
+				k.Classifier = v
+			}
+			if v, ok := props["datastore"].(string); ok {
+				k.Datastore = v
+			}
+			if v, ok := props["queryType"].(string); ok {
+				k.QueryType = v
+			}
+			if v, ok := props["formula"].(string); ok {
+				k.Formula = v
+			}
+			if v, ok := props["tags"].([]any); ok {
+				for _, tv := range v {
+					if sstr, ok := tv.(string); ok {
+						k.Tags = append(k.Tags, sstr)
+					}
 				}
-			} else if ps2, ok := o.Properties.(map[string]interface{}); ok {
-				if vid, ok := ps2["id"].(string); ok && vid != "" {
-					k.ID = vid
-				} else if add := o.ID.String(); add != "" {
-					k.ID = add
+			}
+			if v, ok := props["definition"].(string); ok {
+				k.Definition = v
+			}
+			if v, ok := props["sentiment"].(string); ok {
+				k.Sentiment = v
+			}
+			if v, ok := props["category"].(string); ok {
+				k.Category = v
+			}
+			if v, ok := props["retryAllowed"].(bool); ok {
+				k.RetryAllowed = v
+			}
+			if v, ok := props["domain"].(string); ok {
+				k.Domain = v
+			}
+			if v, ok := props["serviceFamily"].(string); ok {
+				k.ServiceFamily = v
+			}
+			if v, ok := props["componentType"].(string); ok {
+				k.ComponentType = v
+			}
+			if v, ok := props["businessImpact"].(string); ok {
+				k.BusinessImpact = v
+			}
+			if v, ok := props["emotionalImpact"].(string); ok {
+				k.EmotionalImpact = v
+			}
+			if v, ok := props["examples"].([]any); ok {
+				for _, ex := range v {
+					if m, ok := ex.(map[string]any); ok {
+						k.Examples = append(k.Examples, m)
+					} else if m2, ok := ex.(map[string]interface{}); ok {
+						converted := make(map[string]any)
+						for kk, vv := range m2 {
+							converted[kk] = vv
+						}
+						k.Examples = append(k.Examples, converted)
+					}
 				}
+			}
+			if v, ok := props["sparkline"].(map[string]any); ok {
+				k.Sparkline = v
+			}
+			if v, ok := props["visibility"].(string); ok {
+				k.Visibility = v
+			}
+			if v, ok := props["createdAt"].(string); ok {
+				if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+					k.CreatedAt = t
+				}
+			}
+			if v, ok := props["updatedAt"].(string); ok {
+				if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+					k.UpdatedAt = t
+				}
+			}
+			if raw, ok := props["thresholds"]; ok {
+				k.Thresholds = propsToThresholds(raw)
+			}
+
+			// ID handling
+			if vid, ok := props["id"].(string); ok && vid != "" {
+				k.ID = vid
 			} else if add := o.ID.String(); add != "" {
 				k.ID = add
 			}
 		} else if add := o.ID.String(); add != "" {
 			k.ID = add
 		}
+
 		out = append(out, k)
 	}
 	// By default, set total to the number of items returned in this page.
@@ -370,7 +537,9 @@ func (s *WeaviateKPIStore) ListKPIs(ctx context.Context, req *models.KPIListRequ
 	// Try to fetch the full count of KPIDefinition objects from Weaviate.
 	// This is a best-effort call: if it fails, fall back to the page length
 	// to avoid breaking callers. Counting requires an additional SDK call.
-	if all, terr := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").Do(ctx); terr == nil {
+	// Note: Weaviate ObjectsGetter has a default limit of 25, so we set a high limit (10000)
+	// to get an accurate count. For very large datasets, consider using GraphQL aggregation.
+	if all, terr := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").WithLimit(10000).Do(ctx); terr == nil {
 		total = int64(len(all))
 	} else {
 		s.logger.Warn("weaviate: failed to get total KPI count; falling back to page size", zap.Error(terr))
