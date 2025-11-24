@@ -12,11 +12,12 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/rca"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // RCAHandler handles RCA HTTP endpoints.
@@ -24,19 +25,19 @@ type RCAHandler struct {
 	logsService             services.LogsService
 	serviceGraph            services.ServiceGraphFetcher
 	cache                   cache.ValkeyCluster
-	logger                  logger.Logger
+	logger                  logging.Logger
 	rcaEngine               rca.RCAEngine
 	engineCfg               config.EngineConfig
 	featureFlagService      *services.RuntimeFeatureFlagService
 	strictTimeWindowPayload bool
 }
 
-func NewRCAHandler(logs services.LogsService, sg services.ServiceGraphFetcher, cch cache.ValkeyCluster, logger logger.Logger, engine rca.RCAEngine, engCfg config.EngineConfig) *RCAHandler {
+func NewRCAHandler(logs services.LogsService, sg services.ServiceGraphFetcher, cch cache.ValkeyCluster, logger corelogger.Logger, engine rca.RCAEngine, engCfg config.EngineConfig) *RCAHandler {
 	return &RCAHandler{
 		logsService:             logs,
 		serviceGraph:            sg,
 		cache:                   cch,
-		logger:                  logger,
+		logger:                  logging.FromCoreLogger(logger),
 		rcaEngine:               engine,
 		engineCfg:               engCfg,
 		strictTimeWindowPayload: engCfg.StrictTimeWindowPayload,

@@ -12,8 +12,9 @@ import (
 
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/discovery"
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // VictoriaMetricsServices contains all VictoriaMetrics ecosystem services
@@ -30,7 +31,7 @@ type VictoriaTracesService struct {
 	endpoints []string
 	timeout   time.Duration
 	client    *http.Client
-	logger    logger.Logger
+	logger    logging.Logger
 	current   int // For round-robin load balancing
 	mu        sync.Mutex
 
@@ -46,7 +47,7 @@ type VictoriaTracesService struct {
 }
 
 // NewVictoriaTracesService creates a new VictoriaTraces service
-func NewVictoriaTracesService(cfg config.VictoriaTracesConfig, logger logger.Logger) *VictoriaTracesService {
+func NewVictoriaTracesService(cfg config.VictoriaTracesConfig, logger corelogger.Logger) *VictoriaTracesService {
 	return &VictoriaTracesService{
 		name:      cfg.Name,
 		endpoints: cfg.Endpoints,
@@ -54,7 +55,7 @@ func NewVictoriaTracesService(cfg config.VictoriaTracesConfig, logger logger.Log
 		client: &http.Client{
 			Timeout: time.Duration(cfg.Timeout) * time.Millisecond,
 		},
-		logger:    logger,
+		logger:    logging.FromCoreLogger(logger),
 		username:  cfg.Username,
 		password:  cfg.Password,
 		retries:   3,    // total attempts
@@ -798,7 +799,7 @@ func (s *VictoriaTracesService) selectEndpoint() string {
 }
 
 // NewVictoriaMetricsServices initializes all VictoriaMetrics services
-func NewVictoriaMetricsServices(dbConfig config.DatabaseConfig, logger logger.Logger) (*VictoriaMetricsServices, error) {
+func NewVictoriaMetricsServices(dbConfig config.DatabaseConfig, logger corelogger.Logger) (*VictoriaMetricsServices, error) {
 	// Initialize VictoriaMetrics service
 	metricsService := NewVictoriaMetricsService(dbConfig.VictoriaMetrics, logger)
 	// If multiple sources are configured, create child services and enable aggregation
@@ -852,7 +853,7 @@ func NewVictoriaMetricsServices(dbConfig config.DatabaseConfig, logger logger.Lo
 
 // StartDiscovery enables periodic DNS discovery for Victoria* services when configured.
 // It relies on headless Services (A/AAAA records per pod) or SRV records.
-func (s *VictoriaMetricsServices) StartDiscovery(ctx context.Context, dbConfig config.DatabaseConfig, log logger.Logger) {
+func (s *VictoriaMetricsServices) StartDiscovery(ctx context.Context, dbConfig config.DatabaseConfig, log corelogger.Logger) {
 	// VictoriaMetrics
 	if dbConfig.VictoriaMetrics.Discovery.Enabled && s.Metrics != nil {
 		cfg := dbConfig.VictoriaMetrics.Discovery

@@ -6,20 +6,21 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/services"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type MetricsSearchHandler struct {
 	metricsIndexer services.MetricsMetadataIndexer
-	logger         logger.Logger
+	logger         logging.Logger
 }
 
-func NewMetricsSearchHandler(metricsIndexer services.MetricsMetadataIndexer, logger logger.Logger) *MetricsSearchHandler {
+func NewMetricsSearchHandler(metricsIndexer services.MetricsMetadataIndexer, logger corelogger.Logger) *MetricsSearchHandler {
 	return &MetricsSearchHandler{
 		metricsIndexer: metricsIndexer,
-		logger:         logger,
+		logger:         logging.FromCoreLogger(logger),
 	}
 }
 

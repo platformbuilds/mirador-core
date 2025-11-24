@@ -8,8 +8,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // MetricsQuerier interface for querying servicegraph metrics.
@@ -23,14 +24,14 @@ type MetricsQuerier interface {
 // the dependency topology.
 type ServiceGraphBuilder struct {
 	metricsQuerier MetricsQuerier
-	logger         logger.Logger
+	logger         logging.Logger
 }
 
 // NewServiceGraphBuilder creates a new ServiceGraphBuilder.
-func NewServiceGraphBuilder(metricsQuerier MetricsQuerier, logger logger.Logger) *ServiceGraphBuilder {
+func NewServiceGraphBuilder(metricsQuerier MetricsQuerier, logger corelogger.Logger) *ServiceGraphBuilder {
 	return &ServiceGraphBuilder{
 		metricsQuerier: metricsQuerier,
-		logger:         logger,
+		logger:         logging.FromCoreLogger(logger),
 	}
 }
 

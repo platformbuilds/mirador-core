@@ -6,21 +6,22 @@ import (
 	"strings"
 	"time"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // VictoriaMetricsQueryService handles MetricsQL function-specific queries
 type VictoriaMetricsQueryService struct {
 	metricsService *VictoriaMetricsService
-	logger         logger.Logger
+	logger         logging.Logger
 }
 
 // NewVictoriaMetricsQueryService creates a new VictoriaMetrics query service
-func NewVictoriaMetricsQueryService(metricsService *VictoriaMetricsService, logger logger.Logger) *VictoriaMetricsQueryService {
+func NewVictoriaMetricsQueryService(metricsService *VictoriaMetricsService, logger corelogger.Logger) *VictoriaMetricsQueryService {
 	return &VictoriaMetricsQueryService{
 		metricsService: metricsService,
-		logger:         logger,
+		logger:         logging.FromCoreLogger(logger),
 	}
 }
 

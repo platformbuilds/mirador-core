@@ -8,10 +8,11 @@ import (
 
 	"github.com/blevesearch/bleve/v2"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	bleveUtils "github.com/platformbuilds/mirador-core/internal/utils/bleve"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve/mapping"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // MetricsMetadataIndexer provides functionality to index metrics metadata in Bleve
@@ -34,17 +35,17 @@ type MetricsMetadataIndexerImpl struct {
 	victoriaMetricsSvc *VictoriaMetricsService
 	shardManager       *bleveUtils.ShardManager
 	documentMapper     mapping.DocumentMapper
-	logger             logger.Logger
+	logger             logging.Logger
 }
 
 // NewStubMetricsMetadataIndexer creates a stub implementation for development/testing
-func NewStubMetricsMetadataIndexer(logger logger.Logger) MetricsMetadataIndexer {
-	return &StubMetricsMetadataIndexer{logger: logger}
+func NewStubMetricsMetadataIndexer(logger corelogger.Logger) MetricsMetadataIndexer {
+	return &StubMetricsMetadataIndexer{logger: logging.FromCoreLogger(logger)}
 }
 
 // StubMetricsMetadataIndexer provides stub implementations for metrics metadata operations
 type StubMetricsMetadataIndexer struct {
-	logger logger.Logger
+	logger logging.Logger
 }
 
 // SyncMetadata returns a stub sync result
@@ -96,13 +97,13 @@ func NewMetricsMetadataIndexer(
 	victoriaSvc *VictoriaMetricsService,
 	shardManager *bleveUtils.ShardManager,
 	documentMapper mapping.DocumentMapper,
-	logger logger.Logger,
+	logger corelogger.Logger,
 ) MetricsMetadataIndexer {
 	return &MetricsMetadataIndexerImpl{
 		victoriaMetricsSvc: victoriaSvc,
 		shardManager:       shardManager,
 		documentMapper:     documentMapper,
-		logger:             logger,
+		logger:             logging.FromCoreLogger(logger),
 	}
 }
 func (m *MetricsMetadataIndexerImpl) SyncMetadata(ctx context.Context, request *models.MetricMetadataSyncRequest) (*models.MetricMetadataSyncResult, error) {

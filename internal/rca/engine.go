@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // RCAOptions configures RCA computation behavior.
@@ -53,7 +54,7 @@ type RCAEngine interface {
 type RCAEngineImpl struct {
 	candidateCauseService    CandidateCauseService
 	serviceGraph             *ServiceGraph
-	logger                   logger.Logger
+	logger                   logging.Logger
 	labelDetector            *MetricsLabelDetector
 	dimensionAlignmentScorer *DimensionAlignmentScorer
 	engineCfg                config.EngineConfig
@@ -68,7 +69,7 @@ type RCAEngineImpl struct {
 func NewRCAEngine(
 	candidateCauseService CandidateCauseService,
 	serviceGraph *ServiceGraph,
-	logger logger.Logger,
+	logger corelogger.Logger,
 	cfg config.EngineConfig,
 	corrEngine interface {
 		Correlate(ctx context.Context, tr models.TimeRange) (*models.CorrelationResult, error)
@@ -80,7 +81,7 @@ func NewRCAEngine(
 	return &RCAEngineImpl{
 		candidateCauseService:    candidateCauseService,
 		serviceGraph:             serviceGraph,
-		logger:                   logger,
+		logger:                   logging.FromCoreLogger(logger),
 		labelDetector:            NewMetricsLabelDetector(logger, cfg.Labels),
 		dimensionAlignmentScorer: NewDimensionAlignmentScorer(logger),
 		engineCfg:                cfg,

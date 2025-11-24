@@ -36,6 +36,7 @@ import (
 type Server struct {
 	config                      *config.Config
 	logger                      logger.Logger
+	internalLogger              logging.Logger
 	cache                       cache.ValkeyCluster
 	vmServices                  *services.VictoriaMetricsServices
 	schemaRepo                  repo.SchemaStore
@@ -63,12 +64,13 @@ func NewServer(
 	router := gin.New()
 
 	server := &Server{
-		config:     cfg,
-		logger:     log,
-		cache:      valkeyCache,
-		vmServices: vmServices,
-		schemaRepo: schemaRepo,
-		router:     router,
+		config:         cfg,
+		logger:         log,
+		internalLogger: logging.FromCoreLogger(log),
+		cache:          valkeyCache,
+		vmServices:     vmServices,
+		schemaRepo:     schemaRepo,
+		router:         router,
 	}
 
 	// Initialize subsystems using helper methods to keep NewServer simple and
@@ -79,7 +81,7 @@ func NewServer(
 	server.initKPIRepo(schemaRepo, kpiStore, zapLogger)
 
 	// Bootstrap telemetry via the repo layer (keeps models out of bootstrap)
-	if err := bootstrap.BootstrapTelemetryStandards(context.Background(), &cfg.Engine, server.kpiRepo, server.logger); err != nil {
+	if err := bootstrap.BootstrapTelemetryStandards(context.Background(), &cfg.Engine, server.kpiRepo, server.internalLogger); err != nil {
 		log.Warn("failed to bootstrap telemetry standards", "error", err)
 	}
 

@@ -13,27 +13,28 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/internal/utils"
 	"github.com/platformbuilds/mirador-core/internal/utils/search"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type TracesHandler struct {
 	tracesService *services.VictoriaTracesService
 	cache         cache.ValkeyCluster
-	logger        logger.Logger
+	logger        logging.Logger
 	searchRouter  *search.SearchRouter
 	config        *config.Config
 }
 
-func NewTracesHandler(tracesService *services.VictoriaTracesService, cache cache.ValkeyCluster, logger logger.Logger, searchRouter *search.SearchRouter, config *config.Config) *TracesHandler {
+func NewTracesHandler(tracesService *services.VictoriaTracesService, cache cache.ValkeyCluster, logger corelogger.Logger, searchRouter *search.SearchRouter, config *config.Config) *TracesHandler {
 	return &TracesHandler{
 		tracesService: tracesService,
 		cache:         cache,
-		logger:        logger,
+		logger:        logging.FromCoreLogger(logger),
 		searchRouter:  searchRouter,
 		config:        config,
 	}
