@@ -174,7 +174,7 @@ func (r *QueryRouter) isSearchQuery(query string) bool {
 		"exception", "stacktrace", "log", "message",
 		"field:", "text:", "content:", "body:",
 		"level:", "timestamp:", "host:", "source:",
-		"kubernetes", "docker", "container", "pod",
+		"container", "pod",
 		"namespace", "deployment", "service", "ingress",
 	}
 
@@ -829,7 +829,7 @@ func (u *UnifiedQueryEngineImpl) shouldUseBleveForLogs(queryStr string) bool {
 	blevePatterns := []string{
 		"error", "exception", "stacktrace", "warning",
 		"text:", "content:", "message:",
-		"kubernetes", "docker", "container",
+		"container",
 	}
 
 	matchCount := 0
@@ -1257,6 +1257,11 @@ func (u *UnifiedQueryEngineImpl) executeParallelQuery(ctx context.Context, query
 	resultType := models.QueryTypeLogs
 	if len(subQueries) > 0 {
 		resultType = subQueries[0].Type
+	}
+
+	// Ensure correlations slice is non-nil so JSON marshals empty array instead of null
+	if allCorrelations == nil {
+		allCorrelations = make([]models.Correlation, 0)
 	}
 
 	// Create merged result

@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
@@ -130,7 +131,7 @@ func TestCorrelationEngineImpl_ExecuteCorrelation(t *testing.T) {
 	mockLogger := logger.New("info")
 
 	// Create correlation engine
-	engine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, mockCache, mockLogger)
+	engine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, nil, mockCache, mockLogger, config.EngineConfig{})
 
 	ctx := context.Background()
 
@@ -268,7 +269,7 @@ func TestCorrelationEngineImpl_ValidateCorrelationQuery(t *testing.T) {
 	mockCache := &MockValkeyCluster{}
 	mockLogger := logger.New("info")
 
-	engine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, mockCache, mockLogger)
+	engine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, nil, mockCache, mockLogger, config.EngineConfig{})
 
 	tests := []struct {
 		name        string
@@ -339,11 +340,55 @@ func TestCorrelationEngineImpl_GetCorrelationExamples(t *testing.T) {
 	mockCache := &MockValkeyCluster{}
 	mockLogger := logger.New("info")
 
-	engine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, mockCache, mockLogger)
+	engine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, nil, mockCache, mockLogger, config.EngineConfig{})
 
 	examples := engine.GetCorrelationExamples()
 
 	assert.NotEmpty(t, examples)
 	assert.Contains(t, examples, "logs:error AND metrics:high_latency")
 	assert.Contains(t, examples, "logs:service:checkout AND traces:service:checkout")
+}
+
+func TestCorrelationEngineImpl_Correlate(t *testing.T) {
+	// Setup mocks
+	mockMetrics := &MockVictoriaMetricsService{}
+	mockLogs := &MockVictoriaLogsService{}
+	mockTraces := &MockVictoriaTracesService{}
+	mockCache := &MockValkeyCluster{}
+	mockLogger := logger.New("info")
+
+	engine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, nil, mockCache, mockLogger, config.EngineConfig{
+		MinAnomalyScore: 0.5,
+		Buckets: config.BucketConfig{
+			CoreWindowSize: 5 * time.Minute,
+			PreRings:       1,
+			PostRings:      1,
+			RingStep:       2 * time.Minute,
+		},
+	})
+
+	ctx := context.Background()
+	now := time.Now()
+
+	// Prepare a generic metrics response with one series so probes detect KPIs
+	metricsResponse := &models.MetricsQLQueryResult{
+		Status:      "success",
+		SeriesCount: 1,
+		Data:        map[string]interface{}{"result": []interface{}{map[string]interface{}{"metric": map[string]string{"__name__": "probe_metric"}}}},
+	}
+
+	// Any probe should return the same mocked response
+	mockMetrics.On("ExecuteQuery", mock.Anything, mock.Anything).Return(metricsResponse, nil)
+
+	tr := models.TimeRange{Start: now.Add(-15 * time.Minute), End: now}
+
+	res, err := engine.Correlate(ctx, tr)
+
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.GreaterOrEqual(t, len(res.AffectedServices), 0)
+	// Confidence should be between 0 and 1
+	assert.True(t, res.Confidence >= 0.0 && res.Confidence <= 1.0)
+
+	mockMetrics.AssertExpectations(t)
 }

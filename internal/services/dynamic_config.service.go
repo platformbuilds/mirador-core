@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // DynamicGRPCConfig represents the configurable gRPC endpoint settings
@@ -34,14 +35,14 @@ type AlertEngineConfig struct {
 // DynamicConfigService manages dynamic configuration updates stored in cache
 type DynamicConfigService struct {
 	cache  cache.ValkeyCluster
-	logger logger.Logger
+	logger logging.Logger
 }
 
 // NewDynamicConfigService creates a new dynamic configuration service
-func NewDynamicConfigService(cache cache.ValkeyCluster, logger logger.Logger) *DynamicConfigService {
+func NewDynamicConfigService(cache cache.ValkeyCluster, logger corelogger.Logger) *DynamicConfigService {
 	return &DynamicConfigService{
 		cache:  cache,
-		logger: logger,
+		logger: logging.FromCoreLogger(logger),
 	}
 }
 

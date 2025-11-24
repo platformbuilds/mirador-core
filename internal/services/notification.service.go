@@ -6,20 +6,21 @@ import (
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/metrics"
 	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type NotificationService struct {
 	integrations *IntegrationsService
-	logger       logger.Logger
+	logger       logging.Logger
 }
 
-func NewNotificationService(cfg config.IntegrationsConfig, logger logger.Logger) *NotificationService {
+func NewNotificationService(cfg config.IntegrationsConfig, logger corelogger.Logger) *NotificationService {
 	return &NotificationService{
 		integrations: NewIntegrationsService(cfg, logger),
-		logger:       logger,
+		logger:       logging.FromCoreLogger(logger),
 	}
 }
 

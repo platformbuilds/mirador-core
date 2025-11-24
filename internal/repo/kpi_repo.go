@@ -2,7 +2,9 @@ package repo
 
 import (
 	"context"
+	"time"
 
+	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/weavstore"
 
@@ -20,6 +22,9 @@ type KPIRepo interface {
 	DeleteKPIBulk(ctx context.Context, ids []string) []error
 	GetKPI(ctx context.Context, id string) (*models.KPIDefinition, error)
 	ListKPIs(ctx context.Context, req models.KPIListRequest) ([]*models.KPIDefinition, int64, error)
+	// EnsureTelemetryStandards ensures platform telemetry KPI/processor schemas
+	// are present in the registry according to the provided engine config.
+	EnsureTelemetryStandards(ctx context.Context, cfg *config.EngineConfig) error
 }
 
 type DefaultKPIRepo struct {
@@ -242,4 +247,64 @@ func (r *DefaultKPIRepo) GetKPI(ctx context.Context, id string) (*models.KPIDefi
 		return nil, nil
 	}
 	return fromWeavstoreKPI(wk), nil
+}
+
+// EnsureTelemetryStandards ensures platform-standard telemetry KPI/processor
+// schemas are present in the KPI registry. This method centralizes model
+// creation inside the repo layer so bootstrap packages do not depend on
+// internal models directly.
+func (r *DefaultKPIRepo) EnsureTelemetryStandards(ctx context.Context, engCfg *config.EngineConfig) error {
+	if engCfg == nil {
+		return nil
+	}
+
+	now := time.Now().UTC()
+
+	// Use a safe logger (may be nil)
+	var sugar *zap.SugaredLogger
+	if r.logger != nil {
+		sugar = r.logger.Sugar()
+	} else {
+		sugar = zap.NewNop().Sugar()
+	}
+
+	// Connectors: create KPI definitions from connector metrics
+	for connectorName, connector := range engCfg.Telemetry.Connectors {
+		for _, m := range connector.Metrics {
+			k := &models.KPIDefinition{
+				Name:           m.Name,
+				Kind:           connectorName,
+				Source:         "platform-standard",
+				Definition:     m.Description,
+				DimensionsHint: m.Labels,
+				CreatedAt:      now,
+				UpdatedAt:      now,
+			}
+			if _, _, err := r.CreateKPI(ctx, k); err != nil {
+				sugar.Warnw("failed to upsert telemetry KPI", "name", m.Name, "error", err)
+			} else {
+				sugar.Infow("bootstrapped telemetry KPI", "name", m.Name, "connector", connectorName)
+			}
+		}
+	}
+
+	// Processors: treat processor label schemas as KPI-like objects
+	for procName, proc := range engCfg.Telemetry.Processors {
+		k := &models.KPIDefinition{
+			Name:           procName,
+			Kind:           procName,
+			Source:         "platform-standard",
+			Definition:     "processor label schema",
+			DimensionsHint: proc.Labels,
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		}
+		if _, _, err := r.CreateKPI(ctx, k); err != nil {
+			sugar.Warnw("failed to upsert telemetry processor schema", "processor", procName, "error", err)
+		} else {
+			sugar.Infow("bootstrapped telemetry processor schema", "processor", procName)
+		}
+	}
+
+	return nil
 }

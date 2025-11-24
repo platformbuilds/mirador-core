@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -121,7 +122,7 @@ func TestDetectComponentFailures_KafkaFailure(t *testing.T) {
 	}
 
 	log := logger.New("info")
-	engine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, nil, log)
+	engine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, nil, nil, log, config.EngineConfig{})
 
 	ctx := context.Background()
 	timeRange := models.TimeRange{
@@ -156,7 +157,7 @@ func TestFailureSignalGrouping(t *testing.T) {
 		searchResult: &models.TraceSearchResult{Traces: []map[string]interface{}{}},
 	}
 
-	engine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, nil, log).(*CorrelationEngineImpl)
+	engine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, nil, nil, log, config.EngineConfig{}).(*CorrelationEngineImpl)
 
 	signals := []models.FailureSignal{
 		createTestFailureSignal("tx-001", "kafka-producer", "log", nil),
@@ -187,7 +188,7 @@ func TestServiceToComponentMapping(t *testing.T) {
 		searchResult: &models.TraceSearchResult{Traces: []map[string]interface{}{}},
 	}
 
-	engine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, nil, log).(*CorrelationEngineImpl)
+	engine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, nil, nil, log, config.EngineConfig{}).(*CorrelationEngineImpl)
 
 	testCases := []struct {
 		service  string

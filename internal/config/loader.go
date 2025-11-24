@@ -79,6 +79,15 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	// Ensure telemetry maps are initialized to empty maps when not provided
+	// so consumers can safely range over them without nil checks.
+	if cfg.Engine.Telemetry.Connectors == nil {
+		cfg.Engine.Telemetry.Connectors = map[string]ConnectorConfig{}
+	}
+	if cfg.Engine.Telemetry.Processors == nil {
+		cfg.Engine.Telemetry.Processors = map[string]ProcessorConfig{}
+	}
+
 	// Validate (config validation)
 	if err := validateConfig(&cfg); err != nil {
 		return nil, fmt.Errorf("config validation failed: %w", err)
@@ -217,6 +226,22 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("unified_query.max_cache_ttl", "1h")
 	v.SetDefault("unified_query.default_limit", 1000)
 	v.SetDefault("unified_query.enable_correlation", false)
+
+	// Engine (Correlation & RCA) defaults (AT-004)
+	v.SetDefault("engine.min_window", "10s")
+	v.SetDefault("engine.max_window", "1h")
+	v.SetDefault("engine.default_graph_hops", 2)
+	v.SetDefault("engine.default_max_whys", 5)
+	v.SetDefault("engine.ring_strategy", "auto")
+	v.SetDefault("engine.buckets.core_window_size", "30s")
+	v.SetDefault("engine.buckets.pre_rings", 2)
+	v.SetDefault("engine.buckets.post_rings", 1)
+	v.SetDefault("engine.buckets.ring_step", "15s")
+	v.SetDefault("engine.min_correlation", 0.6)
+	v.SetDefault("engine.min_anomaly_score", 0.7)
+	v.SetDefault("engine.strict_time_window", false)
+	// AT-013: strict payload validation for correlation/rca endpoints
+	v.SetDefault("engine.strict_timewindow_payload", false)
 }
 
 /* ---------------------------- legacy overrides --------------------------- */

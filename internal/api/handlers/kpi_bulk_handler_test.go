@@ -81,6 +81,11 @@ func (m *mockRepo) ListKPIs(ctx context.Context, req models.KPIListRequest) ([]*
 }
 func (m *mockRepo) DeleteKPI(ctx context.Context, id string) error { return nil }
 
+// EnsureTelemetryStandards satisfies the KPIRepo interface for tests.
+func (m *mockRepo) EnsureTelemetryStandards(ctx context.Context, cfg *config.EngineConfig) error {
+	return nil
+}
+
 // --- SchemaStore stubs (many methods) ---
 func (m *mockRepo) UpsertMetric(ctx context.Context, def repo.MetricDef, author string) error {
 	return nil
@@ -541,6 +546,11 @@ func (m *mockRepoFail) DeleteMetric(ctx context.Context, metric string) error   
 func (m *mockRepoFail) DeleteLogField(ctx context.Context, field string) error       { return nil }
 func (m *mockRepoFail) DeleteTraceService(ctx context.Context, service string) error { return nil }
 func (m *mockRepoFail) DeleteTraceOperation(ctx context.Context, service, operation string) error {
+	return nil
+}
+
+// EnsureTelemetryStandards satisfies the KPIRepo interface for tests.
+func (m *mockRepoFail) EnsureTelemetryStandards(ctx context.Context, cfg *config.EngineConfig) error {
 	return nil
 }
 

@@ -321,6 +321,9 @@ linters:
         path: internal/tracing/
       - linters:
           - depguard
+        path: internal/logging/
+      - linters:
+          - depguard
         path: internal/discovery/
       - linters:
           - depguard

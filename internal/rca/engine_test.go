@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -84,7 +85,7 @@ func TestRCAEngineComputeRCA_BasicChain(t *testing.T) {
 	candidateService := NewCandidateCauseService(collector, mockLogger)
 
 	// Create RCA engine
-	engine := NewRCAEngine(candidateService, serviceGraph, mockLogger)
+	engine := NewRCAEngine(candidateService, serviceGraph, mockLogger, config.EngineConfig{}, nil)
 
 	// Create incident context
 	now := time.Now()
@@ -148,7 +149,7 @@ func TestRCAEngineComputeRCA_InvalidIncident(t *testing.T) {
 
 	collector := NewIncidentAnomalyCollector(mockProvider, serviceGraph, mockLogger)
 	candidateService := NewCandidateCauseService(collector, mockLogger)
-	engine := NewRCAEngine(candidateService, serviceGraph, mockLogger)
+	engine := NewRCAEngine(candidateService, serviceGraph, mockLogger, config.EngineConfig{}, nil)
 
 	// Create invalid incident (empty service name)
 	incident := &IncidentContext{
@@ -185,7 +186,7 @@ func TestRCAEngineComputeRCA_NoAnomalies(t *testing.T) {
 
 	collector := NewIncidentAnomalyCollector(mockProvider, serviceGraph, mockLogger)
 	candidateService := NewCandidateCauseService(collector, mockLogger)
-	engine := NewRCAEngine(candidateService, serviceGraph, mockLogger)
+	engine := NewRCAEngine(candidateService, serviceGraph, mockLogger, config.EngineConfig{}, nil)
 
 	now := time.Now()
 	incident := &IncidentContext{

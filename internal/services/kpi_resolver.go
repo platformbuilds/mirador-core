@@ -4,23 +4,24 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/rca"
 	"github.com/platformbuilds/mirador-core/internal/repo"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // KPIResolver resolves KPI definitions and maps them into RCA signal representations.
 type KPIResolver struct {
 	kpiRepo repo.KPIRepo
-	logger  logger.Logger
+	logger  logging.Logger
 }
 
 // NewKPIResolver creates a new KPI resolver.
-func NewKPIResolver(kpiRepo repo.KPIRepo, logger logger.Logger) *KPIResolver {
+func NewKPIResolver(kpiRepo repo.KPIRepo, logger corelogger.Logger) *KPIResolver {
 	return &KPIResolver{
 		kpiRepo: kpiRepo,
-		logger:  logger,
+		logger:  logging.FromCoreLogger(logger),
 	}
 }
 

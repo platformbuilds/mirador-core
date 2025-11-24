@@ -19,6 +19,93 @@ type Config struct {
 	Search       SearchConfig       `mapstructure:"search" yaml:"search"`
 	UnifiedQuery UnifiedQueryConfig `mapstructure:"unified_query" yaml:"unified_query"`
 	RCA          RCAConfig          `mapstructure:"rca" yaml:"rca"`
+
+	// Engine configuration for Correlation & RCA engines (AT-004)
+	Engine EngineConfig `mapstructure:"engine" yaml:"engine"`
+}
+
+// EngineConfig controls Correlation and RCA behavior (AT-004)
+type EngineConfig struct {
+	MinWindow time.Duration `mapstructure:"min_window" yaml:"min_window"`
+	MaxWindow time.Duration `mapstructure:"max_window" yaml:"max_window"`
+
+	DefaultGraphHops int    `mapstructure:"default_graph_hops" yaml:"default_graph_hops"`
+	DefaultMaxWhys   int    `mapstructure:"default_max_whys" yaml:"default_max_whys"`
+	RingStrategy     string `mapstructure:"ring_strategy" yaml:"ring_strategy"`
+
+	Buckets BucketConfig `mapstructure:"buckets" yaml:"buckets"`
+
+	MinCorrelation  float64 `mapstructure:"min_correlation" yaml:"min_correlation"`
+	MinAnomalyScore float64 `mapstructure:"min_anomaly_score" yaml:"min_anomaly_score"`
+
+	// When true, enforce Min/Max window validations as hard errors in handlers.
+	StrictTimeWindow bool `mapstructure:"strict_time_window" yaml:"strict_time_window"`
+	// When true, handlers will enforce a strict payload contract for
+	// correlation/rca endpoints: only the canonical TimeWindow JSON
+	// (`{startTime,endTime}`) is accepted. This is OFF by default.
+	StrictTimeWindowPayload bool `mapstructure:"strict_timewindow_payload" yaml:"strict_timewindow_payload"`
+	// Probes is a configurable list of metric names used as seed probes
+	// when attempting to discover impact and candidate KPIs.
+	Probes []string `mapstructure:"probes" yaml:"probes"`
+
+	// ServiceCandidates lists services used as fallbacks for traces/search heuristics.
+	ServiceCandidates []string `mapstructure:"service_candidates" yaml:"service_candidates"`
+
+	// DefaultQueryLimit is used as the default limit for logs queries when not provided.
+	DefaultQueryLimit int `mapstructure:"default_query_limit" yaml:"default_query_limit"`
+
+	// Labels defines raw-field mappings for canonical semantic labels used by the engines.
+	Labels LabelSchemaConfig `mapstructure:"labels" yaml:"labels"`
+
+	// Telemetry contains platform-standard telemetry connector and processor definitions
+	// (OTel spanmetrics, servicegraph connectors and isolationforest processor).
+	Telemetry TelemetryConfig `mapstructure:"telemetry" yaml:"telemetry"`
+}
+
+// TelemetryMetricConfig describes a single telemetry metric exposed by a connector
+// including its canonical label keys.
+type TelemetryMetricConfig struct {
+	Name        string   `mapstructure:"name" yaml:"name"`
+	Type        string   `mapstructure:"type" yaml:"type"` // e.g. "counter", "histogram"
+	Description string   `mapstructure:"description" yaml:"description"`
+	Labels      []string `mapstructure:"labels" yaml:"labels"`
+}
+
+// ConnectorConfig defines a telemetry connector and the metrics it exposes.
+type ConnectorConfig struct {
+	Kind    string                  `mapstructure:"kind" yaml:"kind"` // "connector"
+	Metrics []TelemetryMetricConfig `mapstructure:"metrics" yaml:"metrics"`
+}
+
+// ProcessorConfig defines a telemetry processor and the labels it emits.
+type ProcessorConfig struct {
+	Kind   string   `mapstructure:"kind" yaml:"kind"` // "processor"
+	Labels []string `mapstructure:"labels" yaml:"labels"`
+}
+
+// TelemetryConfig groups connectors and processors used by the engine.
+type TelemetryConfig struct {
+	Connectors map[string]ConnectorConfig `mapstructure:"connectors" yaml:"connectors"`
+	Processors map[string]ProcessorConfig `mapstructure:"processors" yaml:"processors"`
+}
+
+// LabelSchemaConfig maps canonical semantic labels to possible raw field names
+// found in logs/traces/metrics payloads. The engine will consult this config
+// to extract canonical labels without hardcoding raw keys.
+type LabelSchemaConfig struct {
+	Service    []string `mapstructure:"service" yaml:"service"`
+	Pod        []string `mapstructure:"pod" yaml:"pod"`
+	Namespace  []string `mapstructure:"namespace" yaml:"namespace"`
+	Deployment []string `mapstructure:"deployment" yaml:"deployment"`
+	Container  []string `mapstructure:"container" yaml:"container"`
+	Host       []string `mapstructure:"host" yaml:"host"`
+	Level      []string `mapstructure:"level" yaml:"level"`
+}
+type BucketConfig struct {
+	CoreWindowSize time.Duration `mapstructure:"core_window_size" yaml:"core_window_size"`
+	PreRings       int           `mapstructure:"pre_rings" yaml:"pre_rings"`
+	PostRings      int           `mapstructure:"post_rings" yaml:"post_rings"`
+	RingStep       time.Duration `mapstructure:"ring_step" yaml:"ring_step"`
 }
 
 // DatabaseConfig handles VictoriaMetrics ecosystem configuration

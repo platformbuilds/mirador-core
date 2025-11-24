@@ -38,6 +38,18 @@ func (f *fakeRCAEngine) ComputeRCA(ctx context.Context, incident *rca.IncidentCo
 	}, nil
 }
 
+func (f *fakeRCAEngine) ComputeRCAByTimeRange(ctx context.Context, tr rca.TimeRange) (*rca.RCAIncident, error) {
+	if f.resultToReturn != nil {
+		return f.resultToReturn, nil
+	}
+	return &rca.RCAIncident{
+		GeneratedAt: time.Now(),
+		Score:       0.5,
+		Notes:       []string{"test note"},
+		Chains:      []*rca.RCAChain{},
+	}, nil
+}
+
 func TestRCAHandler_PassesDimensionConfigToEngine(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	log := logger.New("error")
@@ -45,7 +57,7 @@ func TestRCAHandler_PassesDimensionConfigToEngine(t *testing.T) {
 	logs := services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log)
 
 	// Create handler with a stub engine (will be replaced)
-	rh := NewRCAHandler(logs, nil, cch, log, &fakeRCAEngine{t: t})
+	rh := NewRCAHandler(logs, nil, cch, log, &fakeRCAEngine{t: t}, config.EngineConfig{})
 
 	// Create fake engine to capture options
 	fakeEngine := &fakeRCAEngine{t: t}

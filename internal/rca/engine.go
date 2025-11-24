@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
+	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -40,7 +43,10 @@ func DefaultRCAOptions() RCAOptions {
 // RCAEngine computes root cause analysis for incidents.
 type RCAEngine interface {
 	// ComputeRCA analyzes an incident and produces one or more RCA chains with root cause candidates.
+	// Legacy incident-based API (kept as adapter)
 	ComputeRCA(ctx context.Context, incident *IncidentContext, opts RCAOptions) (*RCAIncident, error)
+	// TimeRange-based canonical API (Stage-01)
+	ComputeRCAByTimeRange(ctx context.Context, tr TimeRange) (*RCAIncident, error)
 }
 
 // RCAEngineImpl implements the RCAEngine interface.
@@ -50,6 +56,12 @@ type RCAEngineImpl struct {
 	logger                   logger.Logger
 	labelDetector            *MetricsLabelDetector
 	dimensionAlignmentScorer *DimensionAlignmentScorer
+	engineCfg                config.EngineConfig
+	// correlation engine dependency used by the new TimeRange-based API
+	// Use a minimal local interface to avoid import cycles with services.
+	corrEngine interface {
+		Correlate(ctx context.Context, tr models.TimeRange) (*models.CorrelationResult, error)
+	}
 }
 
 // NewRCAEngine creates a new RCAEngine implementation.
@@ -57,14 +69,215 @@ func NewRCAEngine(
 	candidateCauseService CandidateCauseService,
 	serviceGraph *ServiceGraph,
 	logger logger.Logger,
-) RCAEngine {
+	cfg config.EngineConfig,
+	corrEngine interface {
+		Correlate(ctx context.Context, tr models.TimeRange) (*models.CorrelationResult, error)
+	},
+) *RCAEngineImpl {
+	// Return concrete implementation pointer so callers can pass this to
+	// interfaces defined in other packages (avoids interface-to-interface
+	// conversion issues).
 	return &RCAEngineImpl{
 		candidateCauseService:    candidateCauseService,
 		serviceGraph:             serviceGraph,
 		logger:                   logger,
-		labelDetector:            NewMetricsLabelDetector(logger),
+		labelDetector:            NewMetricsLabelDetector(logger, cfg.Labels),
 		dimensionAlignmentScorer: NewDimensionAlignmentScorer(logger),
+		engineCfg:                cfg,
+		corrEngine:               corrEngine,
 	}
+}
+
+// ComputeRCAByTimeRange implements the new canonical TimeRange-based RCA API.
+// It calls the provided CorrelationEngine and deterministically builds a
+// template-based 5-Whys chain seeded from the correlation result.
+func (engine *RCAEngineImpl) ComputeRCAByTimeRange(ctx context.Context, tr TimeRange) (*RCAIncident, error) {
+	// If no correlation engine provided, return error
+	if engine.corrEngine == nil {
+		return nil, fmt.Errorf("correlation engine not configured for RCAEngine")
+	}
+
+	// Convert to models.TimeRange and call correlation
+	mtr := models.TimeRange{Start: tr.Start, End: tr.End}
+	corr, err := engine.corrEngine.Correlate(ctx, mtr)
+	if err != nil {
+		return nil, fmt.Errorf("correlation failed: %w", err)
+	}
+
+	// If correlation returned nil or no meaningful data, return low-confidence RCA
+	if corr == nil || (len(corr.AffectedServices) == 0 && len(corr.RedAnchors) == 0) {
+		// Build minimal incident with low confidence
+		incident := &IncidentContext{
+			ID:            "incident_unknown",
+			ImpactService: "unknown",
+			ImpactSignal: ImpactSignal{
+				ServiceName: "unknown",
+				MetricName:  "unknown",
+				Direction:   "higher_is_worse",
+			},
+			TimeBounds:    IncidentTimeWindow{TStart: tr.Start, TPeak: tr.End, TEnd: tr.End},
+			ImpactSummary: fmt.Sprintf("No correlation data for window %s - %s", tr.Start.String(), tr.End.String()),
+			Severity: func() float64 {
+				if corr == nil {
+					return 0.0
+				}
+				return corr.Confidence
+			}(),
+			CreatedAt: time.Now().UTC(),
+		}
+		res := NewRCAIncident(incident)
+		res.Notes = append(res.Notes, "Correlation produced no candidates; returning low-confidence RCA")
+		return res, nil
+	}
+
+	// Choose focal impact:
+	// Prefer explicit affected services from correlation. If absent, prefer
+	// the top-ranked Cause candidate by suspicion score (added in AT-007).
+	// Fallback to the first red anchor service if no causes present.
+	focal := "unknown"
+	if len(corr.AffectedServices) > 0 {
+		focal = corr.AffectedServices[0]
+	} else if len(corr.Causes) > 0 {
+		// pick highest suspicion score deterministically
+		bestIdx := 0
+		bestScore := corr.Causes[0].SuspicionScore
+		for i := 1; i < len(corr.Causes); i++ {
+			if corr.Causes[i].SuspicionScore > bestScore {
+				bestScore = corr.Causes[i].SuspicionScore
+				bestIdx = i
+			}
+		}
+		if corr.Causes[bestIdx].Service != "" {
+			focal = corr.Causes[bestIdx].Service
+		} else {
+			focal = corr.Causes[bestIdx].KPI
+		}
+	} else if len(corr.RedAnchors) > 0 {
+		focal = corr.RedAnchors[0].Service
+	}
+
+	// Build IncidentContext from correlation summary
+	incident := &IncidentContext{
+		ID:            corr.CorrelationID,
+		ImpactService: focal,
+		ImpactSignal: ImpactSignal{
+			ServiceName: focal,
+			MetricName: func() string {
+				if len(corr.RedAnchors) > 0 {
+					return corr.RedAnchors[0].Metric
+				}
+				return "unknown"
+			}(),
+			Direction: "higher_is_worse",
+		},
+		TimeBounds:    IncidentTimeWindow{TStart: tr.Start, TPeak: tr.End, TEnd: tr.End},
+		ImpactSummary: fmt.Sprintf("Impact detected on %s (correlation confidence %.2f)", focal, corr.Confidence),
+		Severity:      corr.Confidence,
+		CreatedAt:     corr.CreatedAt,
+	}
+
+	// If correlation provided candidate causes with stats, attach a concise
+	// template-based evidence note referencing the top candidate's stats.
+	if len(corr.Causes) > 0 {
+		bestIdx := 0
+		bestScore := corr.Causes[0].SuspicionScore
+		for i := 1; i < len(corr.Causes); i++ {
+			if corr.Causes[i].SuspicionScore > bestScore {
+				bestScore = corr.Causes[i].SuspicionScore
+				bestIdx = i
+			}
+		}
+		if corr.Causes[bestIdx].Stats != nil {
+			s := corr.Causes[bestIdx].Stats
+			// NOTE(AT-012): include partial correlation and anomaly hint in Stage-01
+			anomalyHint := "LOW"
+			for _, rt := range corr.Causes[bestIdx].Reasons {
+				if rt == "high_anomaly_density" {
+					anomalyHint = "HIGH"
+					break
+				}
+			}
+			incident.ImpactSummary = fmt.Sprintf("%s. Top-candidate %s: pearson=%.2f spearman=%.2f partial=%.2f cross_max=%.2f lag=%d anomalies=%s", incident.ImpactSummary, corr.Causes[bestIdx].KPI, s.Pearson, s.Spearman, s.Partial, s.CrossCorrMax, s.CrossCorrLag, anomalyHint)
+		}
+	}
+
+	result := NewRCAIncident(incident)
+
+	// Build candidate chains from top red anchors (deterministic template)
+	maxChains := 3
+	for i, anchor := range corr.RedAnchors {
+		if i >= maxChains {
+			break
+		}
+		chain := NewRCAChain()
+
+		// Step 1: Business impact (Why 1)
+		s1 := NewRCAStep(1, incident.ImpactService, incident.ImpactSignal.MetricName)
+		s1.TimeRange = tr
+		s1.Ring = RingImmediate
+		s1.Direction = DirectionSame
+		s1.Score = corr.Confidence
+		s1.AddEvidence("red_anchor", anchor.Service, fmt.Sprintf("anchor_score=%.3f", anchor.Score))
+		s1.Summary = TemplateBasedSummary(s1, incident.ImpactService, result.Diagnostics)
+		chain.AddStep(s1)
+
+		// Step 2: Entry service degradation (anchor service)
+		s2 := NewRCAStep(2, anchor.Service, anchor.Metric)
+		s2.TimeRange = tr
+		s2.Ring = RingImmediate
+		s2.Direction = DirectionUpstream
+		s2.Score = anchor.Score
+		s2.AddEvidence("red_anchor", anchor.Service, fmt.Sprintf("metric=%s score=%.3f", anchor.Metric, anchor.Score))
+		s2.Summary = TemplateBasedSummary(s2, incident.ImpactService)
+		chain.AddStep(s2)
+
+		// Steps 3-5: simple template upstream placeholders
+		s3 := NewRCAStep(3, fmt.Sprintf("%s-dep", anchor.Service), "dependency")
+		s3.TimeRange = tr
+		s3.Ring = RingShort
+		s3.Direction = DirectionUpstream
+		s3.Score = anchor.Score * 0.7
+		s3.AddEvidence("inferred", s3.Service, "inferred from service graph and anchor")
+		s3.Summary = TemplateBasedSummary(s3, incident.ImpactService)
+		chain.AddStep(s3)
+
+		s4 := NewRCAStep(4, "infrastructure", "database")
+		s4.TimeRange = tr
+		s4.Ring = RingShort
+		s4.Direction = DirectionUpstream
+		s4.Score = anchor.Score * 0.5
+		s4.AddEvidence("inferred", "infra_db", "inferred infra contention")
+		s4.Summary = TemplateBasedSummary(s4, incident.ImpactService)
+		chain.AddStep(s4)
+
+		s5 := NewRCAStep(5, "process", "deployment")
+		s5.TimeRange = tr
+		s5.Ring = RingShort
+		s5.Direction = DirectionUpstream
+		s5.Score = anchor.Score * 0.3
+		s5.AddEvidence("inferred", "process_gap", "missing guardrail or rollout check")
+		s5.Summary = TemplateBasedSummary(s5, incident.ImpactService)
+		chain.AddStep(s5)
+
+		chain.Score = (s1.Score + s2.Score + s3.Score + s4.Score + s5.Score) / 5.0
+		result.AddChain(chain)
+	}
+
+	// Finalize: sort chains and set root cause
+	sort.Slice(result.Chains, func(i, j int) bool {
+		return result.Chains[i].Score > result.Chains[j].Score
+	})
+	for i := range result.Chains {
+		result.Chains[i].Rank = i + 1
+	}
+	result.SetRootCauseFromBestChain()
+
+	// Attach correlation recommendations and notes
+	for _, r := range corr.Recommendations {
+		result.Notes = append(result.Notes, r)
+	}
+
+	return result, nil
 }
 
 // ComputeRCA implements RCAEngine.ComputeRCA.

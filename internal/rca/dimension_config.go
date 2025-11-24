@@ -106,8 +106,8 @@ func (dc *RCADimensionConfig) String() string {
 
 // RCADiagnostics captures diagnostics and warnings during RCA computation.
 type RCADiagnostics struct {
-	// MissingLabels lists standard labels that were not found in the metrics
-	// (e.g., "service_name", "span_kind", "status_code").
+	// MissingLabels lists semantic label roles that were not found in the metrics
+	// (e.g., "service", "span_kind", "status_code").
 	MissingLabels []string
 
 	// DimensionDetectionStatus maps dimension keys to whether they were detected in the data.
