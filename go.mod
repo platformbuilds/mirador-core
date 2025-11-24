@@ -19,7 +19,6 @@ require (
 	github.com/valkey-io/valkey-go/valkeycompat v1.0.68
 	github.com/weaviate/weaviate v1.34.0
 	github.com/weaviate/weaviate-go-client/v5 v5.5.0
-	github.com/weaviate/weaviate-go-client/v4 v4.14.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.14.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.38.0
