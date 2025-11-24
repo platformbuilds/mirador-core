@@ -19,7 +19,6 @@ require (
 	github.com/valkey-io/valkey-go/valkeycompat v1.0.68
 	github.com/weaviate/weaviate v1.34.0
 	github.com/weaviate/weaviate-go-client/v5 v5.5.0
-	github.com/weaviate/weaviate-go-client/v4 v4.14.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.14.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.38.0
@@ -30,7 +29,7 @@ require (
 	go.opentelemetry.io/otel/sdk/log v0.14.0
 	go.opentelemetry.io/otel/sdk/metric v1.38.0
 	go.opentelemetry.io/otel/trace v1.38.0
-	go.uber.org/zap v1.27.0
+	go.uber.org/zap v1.27.1
 	google.golang.org/grpc v1.76.0
 	gopkg.in/yaml.v3 v3.0.1
 )
