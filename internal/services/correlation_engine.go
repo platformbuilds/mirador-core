@@ -11,18 +11,32 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
+	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/tracing"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
+
+// containsString helper for slice membership checks
+func containsString(hay []string, needle string) bool {
+	for _, v := range hay {
+		if v == needle {
+			return true
+		}
+	}
+	return false
+}
 
 // CorrelationEngine handles correlation queries across multiple engines
 type CorrelationEngine interface {
 	// ExecuteCorrelation executes a correlation query
 	ExecuteCorrelation(ctx context.Context, query *models.CorrelationQuery) (*models.UnifiedCorrelationResult, error)
 
+	// Correlate runs correlation using a canonical TimeRange (Stage-01 API)
+	Correlate(ctx context.Context, tr models.TimeRange) (*models.CorrelationResult, error)
 	// ValidateCorrelationQuery validates a correlation query
 	ValidateCorrelationQuery(query *models.CorrelationQuery) error
 
@@ -57,11 +71,13 @@ type CorrelationEngineImpl struct {
 	metricsService MetricsService
 	logsService    LogsService
 	tracesService  TracesService
+	kpiRepo        repo.KPIRepo
 	cache          cache.ValkeyCluster
 	logger         logger.Logger
 	parser         *models.CorrelationQueryParser
 	resultMerger   *CorrelationResultMerger
 	tracer         *tracing.QueryTracer
+	engineCfg      config.EngineConfig
 }
 
 // NewCorrelationEngine creates a new correlation engine
@@ -69,18 +85,26 @@ func NewCorrelationEngine(
 	metricsSvc MetricsService,
 	logsSvc LogsService,
 	tracesSvc TracesService,
+	kpiRepo repo.KPIRepo,
 	cache cache.ValkeyCluster,
 	logger logger.Logger,
+	cfg config.EngineConfig,
 ) CorrelationEngine {
+	// Ensure engine configuration is merged with package-level defaults so
+	// the engine implementation never hardcodes raw label/metric keys.
+	// Defaults are centralised in the `config` package (configs/defaults).
+	cfg = config.MergeEngineConfigWithDefaults(cfg)
 	return &CorrelationEngineImpl{
 		metricsService: metricsSvc,
 		logsService:    logsSvc,
 		tracesService:  tracesSvc,
+		kpiRepo:        kpiRepo,
 		cache:          cache,
 		logger:         logger,
 		parser:         models.NewCorrelationQueryParser(),
 		resultMerger:   NewCorrelationResultMerger(logger),
 		tracer:         tracing.GetGlobalTracer(),
+		engineCfg:      cfg,
 	}
 }
 
@@ -125,6 +149,14 @@ func (ce *CorrelationEngineImpl) ExecuteCorrelation(ctx context.Context, query *
 	// Create summary
 	summary := ce.createCorrelationSummary(correlations, time.Since(start))
 
+	// Ensure slices are non-nil so JSON marshals them as [] instead of null
+	if correlations == nil {
+		correlations = make([]models.Correlation, 0)
+	}
+	if summary.EnginesInvolved == nil {
+		summary.EnginesInvolved = make([]models.QueryType, 0)
+	}
+
 	result := &models.UnifiedCorrelationResult{
 		Correlations: correlations,
 		Summary:      summary,
@@ -148,6 +180,573 @@ func (ce *CorrelationEngineImpl) ExecuteCorrelation(ctx context.Context, query *
 	ce.tracer.RecordQueryMetrics(corrSpan, time.Since(start), int64(len(correlations)), true)
 
 	return result, nil
+}
+
+// Correlate implements the new TimeRange-based correlation entrypoint.
+// It builds temporal rings, discovers impacted and candidate KPIs using
+// existing metric/logs/traces clients, and computes simple suspicion scores.
+func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRange) (*models.CorrelationResult, error) {
+	// Basic validations
+	if tr.Duration() == 0 {
+		return nil, fmt.Errorf("invalid time range: duration is zero")
+	}
+
+	// Build rings from EngineConfig
+	rings := BuildRings(tr, ce.engineCfg)
+
+	// KPI-first discovery: list KPIs from Stage-00 KPI registry and probe backends
+	impactKPIs := []string{}
+	candidateKPIs := []string{}
+
+	// Map to hold discovered label index per KPI id
+	labelIndex := make(map[string]map[string]map[string]struct{}) // kpiID -> labelKey -> set(values)
+
+	if ce.kpiRepo != nil {
+		// List all KPIs relevant to correlation (no filters for now)
+		kpis, _, err := ce.kpiRepo.ListKPIs(ctx, models.KPIListRequest{})
+		if err != nil {
+			if ce.logger != nil {
+				ce.logger.Warn("failed to list KPIs from registry", "err", err)
+			}
+		} else {
+			// For each KPI, attempt a lightweight probe using the configured query/formula
+			for _, kp := range kpis {
+				if kp == nil {
+					continue
+				}
+				kpiID := kp.ID
+				labelIndex[kpiID] = make(map[string]map[string]struct{})
+
+				// Decide which backend to query based on KPI metadata
+				sig := strings.ToLower(kp.SignalType)
+				ds := strings.ToLower(kp.Datastore)
+
+				// Build time window for probes: use core ring if available else full tr
+				probeStart := tr.Start
+				probeEnd := tr.End
+				if len(rings) > 0 {
+					probeStart = rings[len(rings)/2].Start
+					probeEnd = rings[len(rings)/2].End
+				}
+
+				// Respect engine configured query limit
+				limit := ce.engineCfg.DefaultQueryLimit
+				if limit <= 0 {
+					limit = 1000
+				}
+
+				// metrics
+				if strings.Contains(sig, "metric") || strings.Contains(ds, "metric") || strings.Contains(strings.ToLower(kp.QueryType), "metric") {
+					qstr := kp.Formula
+					if qstr == "" {
+						// Try to derive simple query from Query map if formula absent
+						if qmap := kp.Query; qmap != nil {
+							if raw, ok := qmap["query"].(string); ok {
+								qstr = raw
+							}
+						}
+					}
+					if qstr != "" && ce.metricsService != nil {
+						req := &models.MetricsQLQueryRequest{Query: qstr}
+						// limit and time window may be applied by the adapter
+						res, err := ce.metricsService.ExecuteQuery(ctx, req)
+						if err != nil {
+							if ce.logger != nil {
+								ce.logger.Debug("metrics probe failed for KPI", "kpi", kp.ID, "err", err)
+							}
+						} else if res != nil && res.SeriesCount > 0 {
+							// extract labels from metrics result
+							ur := &models.UnifiedResult{Data: res.Data}
+							dls := ce.extractLabelsFromMetricsResult(ur)
+							for _, dl := range dls {
+								for k, v := range dl.Labels {
+									if labelIndex[kpiID][k] == nil {
+										labelIndex[kpiID][k] = make(map[string]struct{})
+									}
+									labelIndex[kpiID][k][v] = struct{}{}
+								}
+							}
+							candidateKPIs = append(candidateKPIs, kp.ID)
+							// If KPI classifies as impact via Layer hint, promote
+							if strings.ToLower(kp.Layer) == "impact" {
+								impactKPIs = append(impactKPIs, kp.ID)
+							}
+						}
+					}
+				}
+
+				// logs
+				if strings.Contains(sig, "log") || strings.Contains(ds, "log") || strings.Contains(strings.ToLower(kp.QueryType), "log") {
+					qstr := kp.Formula
+					if qstr == "" {
+						if qmap := kp.Query; qmap != nil {
+							if raw, ok := qmap["query"].(string); ok {
+								qstr = raw
+							}
+						}
+					}
+					if qstr != "" && ce.logsService != nil {
+						lq := &models.LogsQLQueryRequest{
+							Query: qstr,
+							Start: probeStart.UnixMilli(),
+							End:   probeEnd.UnixMilli(),
+							Limit: limit,
+						}
+						res, err := ce.logsService.ExecuteQuery(ctx, lq)
+						if err != nil {
+							if ce.logger != nil {
+								ce.logger.Debug("logs probe failed for KPI", "kpi", kp.ID, "err", err)
+							}
+						} else if res != nil && len(res.Logs) > 0 {
+							ur := &models.UnifiedResult{Data: res.Logs}
+							dls := ce.extractLabelsFromLogsResult(ur)
+							for _, dl := range dls {
+								for k, v := range dl.Labels {
+									if labelIndex[kpiID][k] == nil {
+										labelIndex[kpiID][k] = make(map[string]struct{})
+									}
+									labelIndex[kpiID][k][v] = struct{}{}
+								}
+							}
+							candidateKPIs = append(candidateKPIs, kp.ID)
+							if strings.ToLower(kp.Layer) == "impact" {
+								impactKPIs = append(impactKPIs, kp.ID)
+							}
+						}
+					}
+				}
+
+				// traces
+				if strings.Contains(sig, "trace") || strings.Contains(ds, "trace") || strings.Contains(strings.ToLower(kp.QueryType), "trace") {
+					// For traces, prefer SearchTraces when available
+					if ce.tracesService != nil {
+						// Build a lightweight search request if formula is available
+						req := &models.TraceSearchRequest{
+							Start: models.FlexibleTime{Time: probeStart},
+							End:   models.FlexibleTime{Time: probeEnd},
+							Limit: 500,
+						}
+						if kp.Formula != "" {
+							req.Tags = kp.Formula
+						}
+						res, err := ce.tracesService.SearchTraces(ctx, req)
+						if err != nil {
+							if ce.logger != nil {
+								ce.logger.Debug("traces probe failed for KPI", "kpi", kp.ID, "err", err)
+							}
+						} else if res != nil && len(res.Traces) > 0 {
+							ur := &models.UnifiedResult{Data: res.Traces}
+							dls := ce.extractLabelsFromTracesResult(ur)
+							for _, dl := range dls {
+								for k, v := range dl.Labels {
+									if labelIndex[kpiID][k] == nil {
+										labelIndex[kpiID][k] = make(map[string]struct{})
+									}
+									labelIndex[kpiID][k][v] = struct{}{}
+								}
+							}
+							candidateKPIs = append(candidateKPIs, kp.ID)
+							if strings.ToLower(kp.Layer) == "impact" {
+								impactKPIs = append(impactKPIs, kp.ID)
+							}
+						}
+					}
+				}
+			}
+		}
+	} else {
+		// Fallback: if no KPI registry available, keep previous probe behaviour using config probes
+		probes := ce.engineCfg.Probes
+		for _, q := range probes {
+			req := &models.MetricsQLQueryRequest{Query: q}
+			res, err := ce.metricsService.ExecuteQuery(ctx, req)
+			if err != nil {
+				if ce.logger != nil {
+					ce.logger.Warn("probe metrics query failed", "query", q, "err", err)
+				}
+				continue
+			}
+			if res != nil && res.SeriesCount > 0 {
+				candidateKPIs = append(candidateKPIs, q)
+			}
+		}
+		if len(impactKPIs) == 0 && len(candidateKPIs) > 0 {
+			impactKPIs = append(impactKPIs, candidateKPIs[0])
+			candidateKPIs = candidateKPIs[1:]
+		}
+	}
+
+	// Build red anchors from impact KPIs and compute simple confidence
+	var redAnchors []*models.RedAnchor
+	for _, k := range impactKPIs {
+		node := models.RedAnchor{
+			Service:   k,
+			Metric:    k,
+			Score:     0.9,
+			Threshold: ce.engineCfg.MinAnomalyScore,
+			Timestamp: tr.End,
+			DataType:  "kpi",
+		}
+		redAnchors = append(redAnchors, &node)
+	}
+
+	// Simple confidence: average of red anchor scores (fallback 0.0)
+	confidence := 0.0
+	if len(redAnchors) > 0 {
+		sum := 0.0
+		for _, r := range redAnchors {
+			sum += r.Score
+		}
+		confidence = sum / float64(len(redAnchors))
+	}
+
+	// Build CorrelationResult (scaffold)
+	corr := &models.CorrelationResult{
+		CorrelationID:    fmt.Sprintf("corr_%d", time.Now().Unix()),
+		IncidentID:       "",
+		RootCause:        "",
+		Confidence:       confidence,
+		AffectedServices: impactKPIs,
+		// Causes will be populated with candidate KPIs and preliminary suspicion scores.
+		// NOTE(AT-007): This is a minimal, deterministic scoring placeholder. Full
+		// statistical wiring (compute per-pair Pearson/Spearman/cross-corr, and
+		// combine into suspicion) will be implemented under AT-007. Do not rely
+		// on these values for production decisions until completed.
+		Causes:          []models.CauseCandidate{},
+		Timeline:        []models.TimelineEvent{},
+		RedAnchors:      redAnchors,
+		Recommendations: []string{},
+		CreatedAt:       time.Now(),
+	}
+
+	// Add timeline events summarizing rings
+	for i, r := range rings {
+		ev := models.TimelineEvent{
+			Time:         r.Start,
+			Event:        fmt.Sprintf("ring_%d", i),
+			Service:      "system",
+			Severity:     "info",
+			AnomalyScore: 0.0,
+			DataSource:   "rings",
+		}
+		corr.Timeline = append(corr.Timeline, ev)
+	}
+
+	// Populate Causes with a deterministic baseline suspicion score so downstream
+	// RCA machinery can consume candidate scoring during AT-007 work.
+	// Replace baseline scoring with real statistical wiring across rings.
+	for _, k := range candidateKPIs {
+		// Default candidate entry (will be updated when stats available)
+		cand := models.CauseCandidate{
+			KPI:            k,
+			Service:        "",
+			SuspicionScore: 0.0,
+			Reasons:        []string{},
+			Stats:          nil,
+		}
+
+		// Obtain KPI definitions when available (for query/formula)
+		var candKPI *models.KPIDefinition
+		if ce.kpiRepo != nil {
+			if kp, err := ce.kpiRepo.GetKPI(ctx, k); err == nil {
+				candKPI = kp
+			}
+		}
+
+		// Use first discovered impact KPI as the impact signal for pairwise stats
+		if len(impactKPIs) == 0 {
+			// No impact KPI discovered; keep zero suspicion but include as candidate
+			cand.Reasons = append(cand.Reasons, "no_impact_kpi")
+			corr.Causes = append(corr.Causes, cand)
+			continue
+		}
+		impactID := impactKPIs[0]
+		var impactKPI *models.KPIDefinition
+		if ce.kpiRepo != nil {
+			if kp, err := ce.kpiRepo.GetKPI(ctx, impactID); err == nil {
+				impactKPI = kp
+			}
+		}
+
+		// Build per-ring sample vectors by computing a ring-level aggregate (mean)
+		var impactVals []float64
+		var causeVals []float64
+		for _, r := range rings {
+			_ = r // ring time currently unused for simple per-ring mean extraction
+			// Query impact KPI for ring
+			if impactKPI != nil && impactKPI.Formula != "" && ce.metricsService != nil {
+				req := &models.MetricsQLQueryRequest{Query: impactKPI.Formula}
+				res, err := ce.metricsService.ExecuteQuery(ctx, req)
+				if err == nil {
+					if v := extractAverageFromMetricsResult(res); !math.IsNaN(v) {
+						impactVals = append(impactVals, v)
+					}
+				}
+			}
+
+			// Query candidate KPI for ring
+			if candKPI != nil && candKPI.Formula != "" && ce.metricsService != nil {
+				req := &models.MetricsQLQueryRequest{Query: candKPI.Formula}
+				res, err := ce.metricsService.ExecuteQuery(ctx, req)
+				if err == nil {
+					if v := extractAverageFromMetricsResult(res); !math.IsNaN(v) {
+						causeVals = append(causeVals, v)
+					}
+				}
+			}
+		}
+
+		// Need at least 2 samples to compute correlations
+		n := len(impactVals)
+		if n >= 2 && len(causeVals) >= 2 && n == len(causeVals) {
+			// Compute stats using helper (max lag = n-1). Attempt to locate a
+			// simple confounder series via KPI registry heuristics (Stage-01
+			// supports a single confounder heuristic). NOTE(AT-012): do not
+			// hardcode KPI names; rely on KPI metadata when available.
+			pearson, spearman, crossMax := 0.0, 0.0, 0.0
+			crossLag := 0
+			partial := 0.0
+
+			// Try to find a confounder KPI by kind/tags (e.g. infra/global/load)
+			var confounderVals []float64
+			if ce.kpiRepo != nil {
+				if kpis, _, err := ce.kpiRepo.ListKPIs(ctx, models.KPIListRequest{}); err == nil {
+					for _, kp := range kpis {
+						if kp == nil {
+							continue
+						}
+						kind := strings.ToLower(kp.Kind)
+						// Heuristic: treat infra/global/load kinds or explicit tag as confounder
+						if kind == "infra" || strings.Contains(kind, "load") || (kp.Tags != nil && (containsString(kp.Tags, "confounder") || containsString(kp.Tags, "role=confounder"))) {
+							// fetch per-ring aggregates for this candidate confounder
+							var vals []float64
+							for range rings {
+								if kp.Formula != "" && ce.metricsService != nil {
+									req := &models.MetricsQLQueryRequest{Query: kp.Formula}
+									res, err := ce.metricsService.ExecuteQuery(ctx, req)
+									if err == nil {
+										if v := extractAverageFromMetricsResult(res); !math.IsNaN(v) {
+											vals = append(vals, v)
+										}
+									}
+								}
+							}
+							if len(vals) == n {
+								confounderVals = vals
+								break
+							}
+						}
+					}
+				} else {
+					// NOTE(AT-012): KPI registry lookup failed; continue without confounder
+				}
+			}
+
+			if len(confounderVals) == n {
+				pearson, spearman, crossMax, crossLag, partial, _ = ComputeCorrelationStats(impactVals, causeVals, n-1, confounderVals)
+			} else {
+				pearson, spearman, crossMax, crossLag, partial, _ = ComputeCorrelationStats(impactVals, causeVals, n-1)
+			}
+
+			stats := &models.CorrelationStats{
+				Pearson:      pearson,
+				Spearman:     spearman,
+				CrossCorrMax: crossMax,
+				CrossCorrLag: crossLag,
+				Partial:      partial,
+				SampleSize:   n,
+				PValue:       0.0,
+				Confidence:   0.0,
+			}
+
+			// Derive a lightweight confidence score from absolute correlations
+			stats.Confidence = (math.Abs(stats.Pearson) + math.Abs(stats.Spearman)) / 2.0
+
+			// Compute a lightweight anomaly density for the candidate using the
+			// per-ring aggregated values we already have. This is Stage-01
+			// heuristic: fraction of rings with values beyond mean +/- 2*std.
+			anomalyDensity := 0.0
+			if len(causeVals) > 0 {
+				mean := 0.0
+				for _, v := range causeVals {
+					mean += v
+				}
+				mean /= float64(len(causeVals))
+				sd := 0.0
+				for _, v := range causeVals {
+					d := v - mean
+					sd += d * d
+				}
+				if len(causeVals) > 1 {
+					sd = math.Sqrt(sd / float64(len(causeVals)))
+				} else {
+					sd = 0.0
+				}
+				if sd > 0 {
+					threshHigh := mean + 2*sd
+					threshLow := mean - 2*sd
+					count := 0
+					for _, v := range causeVals {
+						if v > threshHigh || v < threshLow {
+							count++
+						}
+					}
+					anomalyDensity = float64(count) / float64(len(causeVals))
+				}
+			}
+
+			// Compute suspicion score driven by engine config; include partial and anomaly density
+			susp := ComputeSuspicionScore(stats.Pearson, stats.Spearman, stats.CrossCorrMax, stats.CrossCorrLag, stats.SampleSize, ce.engineCfg.MinCorrelation, stats.Partial, anomalyDensity)
+
+			// Populate candidate entry
+			cand.Stats = stats
+			cand.SuspicionScore = susp
+			// Reasons (structured tags)
+			if math.Abs(stats.Pearson) >= ce.engineCfg.MinCorrelation {
+				cand.Reasons = append(cand.Reasons, "strong_pearson")
+			}
+			if math.Abs(stats.Spearman) >= ce.engineCfg.MinCorrelation {
+				cand.Reasons = append(cand.Reasons, "strong_spearman")
+			}
+			if stats.CrossCorrMax > 0.5 && stats.CrossCorrLag > 0 {
+				cand.Reasons = append(cand.Reasons, "lagged_cause_precedes_impact")
+			}
+			// Partial-correlation based reasons
+			if stats.Partial == 0.0 {
+				cand.Reasons = append(cand.Reasons, "partial_correlation_not_available_no_confounder")
+			} else {
+				// Compare magnitude of partial vs pearson to decide whether partial
+				// supports direct link or suggests confounding.
+				if math.Abs(stats.Pearson) > 0 {
+					ratio := math.Abs(stats.Partial) / math.Abs(stats.Pearson)
+					if ratio >= 0.8 {
+						cand.Reasons = append(cand.Reasons, "partial_supports_direct_link")
+					} else if ratio < 0.5 {
+						cand.Reasons = append(cand.Reasons, "partial_suggests_confounding")
+						cand.Reasons = append(cand.Reasons, "partial_penalized_due_to_confounding")
+					}
+				}
+			}
+
+			// Anomaly density reasons
+			if anomalyDensity > 0.5 {
+				cand.Reasons = append(cand.Reasons, "high_anomaly_density")
+			} else if anomalyDensity == 0 {
+				cand.Reasons = append(cand.Reasons, "no_anomalies_detected")
+			}
+			if stats.SampleSize < 3 {
+				cand.Reasons = append(cand.Reasons, "small_sample_size")
+			}
+
+			// Attach KPI/service hints
+			if candKPI != nil && candKPI.ServiceFamily != "" {
+				cand.Service = candKPI.ServiceFamily
+			}
+
+			corr.Causes = append(corr.Causes, cand)
+		} else {
+			// Not enough data; mark candidate with a diagnostic reason
+			cand.Reasons = append(cand.Reasons, "insufficient_data")
+			corr.Causes = append(corr.Causes, cand)
+		}
+	}
+
+	return corr, nil
+}
+
+// BuildRings constructs pre/core/post rings for a given TimeRange using EngineConfig
+func BuildRings(tr models.TimeRange, cfg config.EngineConfig) []models.TimeRange {
+	var rings []models.TimeRange
+
+	// Determine core window size (fallback to full range when invalid)
+	coreSize := cfg.Buckets.CoreWindowSize
+	if coreSize <= 0 || coreSize > tr.Duration() {
+		coreSize = tr.Duration()
+	}
+
+	// Determine ring step (fallback to half core, then minute)
+	step := cfg.Buckets.RingStep
+	if step <= 0 {
+		step = coreSize / 2
+		if step <= 0 {
+			step = time.Minute
+		}
+	}
+
+	pre := cfg.Buckets.PreRings
+	post := cfg.Buckets.PostRings
+
+	// Core ring anchored at end of provided time range, clip to tr
+	coreEnd := tr.End
+	coreStart := coreEnd.Add(-coreSize)
+	if coreStart.Before(tr.Start) {
+		coreStart = tr.Start
+	}
+	if coreEnd.After(tr.End) {
+		coreEnd = tr.End
+	}
+
+	// If core is invalid (zero or negative length), fallback to full tr
+	if !coreStart.Before(coreEnd) {
+		coreStart = tr.Start
+		coreEnd = tr.End
+		coreSize = tr.Duration()
+	}
+
+	// Build pre rings (older than core). We'll build from newest->oldest then reverse
+	var preTemp []models.TimeRange
+	end := coreStart
+	for i := 0; i < pre; i++ {
+		start := end.Add(-step)
+		// Clip to tr boundaries
+		if end.After(tr.End) {
+			end = tr.End
+		}
+		if start.Before(tr.Start) {
+			start = tr.Start
+		}
+		// If this candidate is entirely before tr or invalid, stop
+		if !start.Before(end) || !end.After(tr.Start) {
+			break
+		}
+		preTemp = append(preTemp, models.TimeRange{Start: start, End: end})
+		// move window backward
+		end = start
+		// If we've reached the very start, no further pre rings possible
+		if end.Equal(tr.Start) {
+			break
+		}
+	}
+	// reverse preTemp to append oldest->newest
+	for i := len(preTemp) - 1; i >= 0; i-- {
+		rings = append(rings, preTemp[i])
+	}
+
+	// Add core ring
+	rings = append(rings, models.TimeRange{Start: coreStart, End: coreEnd})
+
+	// Add post rings (newer than core)
+	start := coreEnd
+	for i := 0; i < post; i++ {
+		// move forward
+		end := start.Add(step)
+		if !start.Before(tr.End) {
+			break
+		}
+		if end.After(tr.End) {
+			end = tr.End
+		}
+		if !start.Before(end) {
+			break
+		}
+		rings = append(rings, models.TimeRange{Start: start, End: end})
+		start = end
+		if start.Equal(tr.End) {
+			break
+		}
+	}
+
+	return rings
 }
 
 // executeExpressionsParallel executes all expressions in the correlation query in parallel
@@ -192,6 +791,18 @@ func (ce *CorrelationEngineImpl) executeExpressionsParallel(ctx context.Context,
 
 			mu.Lock()
 			results[engine] = result
+			// Log brief summary of the engine result for debugging correlation effectiveness
+			if ce.logger != nil {
+				recCount := 0
+				if result != nil && result.Metadata != nil {
+					recCount = result.Metadata.TotalRecords
+				}
+				ce.logger.Info("Engine query completed for correlation",
+					"engine", engine,
+					"query_id", query.ID,
+					"record_count", recCount,
+					"duration_ms", engineDuration.Milliseconds())
+			}
 			mu.Unlock()
 		}(engine, expressions)
 	}
@@ -238,7 +849,8 @@ func (ce *CorrelationEngineImpl) executeMetricsCorrelationQuery(
 		return nil, fmt.Errorf("metrics service not configured")
 	}
 
-	// For now, execute the first expression (TODO: handle multiple expressions per engine)
+	// NOTE: For Stage-01 we execute the first expression. Handling multiple
+	// expressions per engine is planned in the correlation-RCA action tracker (AT-007).
 	expr := expressions[0]
 
 	// Create unified query for metrics
@@ -264,6 +876,14 @@ func (ce *CorrelationEngineImpl) executeMetricsCorrelationQuery(
 	result, err := ce.metricsService.ExecuteQuery(ctx, metricsQuery)
 	if err != nil {
 		return nil, err
+	}
+
+	// Log metrics query and result summary for debugging
+	if ce.logger != nil {
+		ce.logger.Info("Metrics correlation query executed",
+			"query", metricsQuery.Query,
+			"series_count", result.SeriesCount,
+			"query_id", query.ID)
 	}
 
 	// Convert to UnifiedResult
@@ -297,7 +917,8 @@ func (ce *CorrelationEngineImpl) executeLogsCorrelationQuery(
 		return nil, fmt.Errorf("logs service not configured")
 	}
 
-	// For now, execute the first expression (TODO: handle multiple expressions per engine)
+	// NOTE: For Stage-01 we execute the first expression. Handling multiple
+	// expressions per engine is planned in the correlation-RCA action tracker (AT-007).
 	expr := expressions[0]
 
 	// Create unified query for logs
@@ -328,12 +949,25 @@ func (ce *CorrelationEngineImpl) executeLogsCorrelationQuery(
 		Query: query.Query,
 		Start: startTime,
 		End:   endTime,
-		Limit: 1000, // TODO: make configurable
+		Limit: func() int {
+			if ce.engineCfg.DefaultQueryLimit > 0 {
+				return ce.engineCfg.DefaultQueryLimit
+			}
+			return 1000
+		}(),
 	}
 
 	result, err := ce.logsService.ExecuteQuery(ctx, logsQuery)
 	if err != nil {
 		return nil, err
+	}
+
+	// Log logs query and result summary for debugging
+	if ce.logger != nil {
+		ce.logger.Info("Logs correlation query executed",
+			"query", logsQuery.Query,
+			"log_count", len(result.Logs),
+			"query_id", query.ID)
 	}
 
 	return &models.UnifiedResult{
@@ -366,7 +1000,8 @@ func (ce *CorrelationEngineImpl) executeTracesCorrelationQuery(
 		return nil, fmt.Errorf("traces service not configured")
 	}
 
-	// For now, execute the first expression (TODO: handle multiple expressions per engine)
+	// NOTE: For Stage-01 we execute the first expression. Handling multiple
+	// expressions per engine is planned in the correlation-RCA action tracker (AT-007).
 	expr := expressions[0]
 
 	// Create unified query for traces
@@ -388,6 +1023,14 @@ func (ce *CorrelationEngineImpl) executeTracesCorrelationQuery(
 	operations, err := ce.tracesService.GetOperations(ctx, expr.Query)
 	if err != nil {
 		return nil, err
+	}
+
+	// Log traces query and result summary for debugging
+	if ce.logger != nil {
+		ce.logger.Info("Traces correlation query executed",
+			"query", expr.Query,
+			"ops_count", len(operations),
+			"query_id", query.ID)
 	}
 
 	return &models.UnifiedResult{
@@ -526,7 +1169,7 @@ func (ce *CorrelationEngineImpl) correlateByLabels(
 			if len(labelMatches) > 0 {
 				correlation := models.Correlation{
 					ID:         fmt.Sprintf("%s_label_match_%d_%d", query.ID, i, j),
-					Timestamp:  time.Now(), // TODO: Use actual timestamps from data
+					Timestamp:  time.Now(), // NOTE: representative timestamp; per AT-007 we'll improve timestamp selection
 					Engines:    make(map[models.QueryType]interface{}),
 					Confidence: ce.calculateLabelMatchConfidence(labelMatches),
 					Metadata: map[string]interface{}{
@@ -721,7 +1364,8 @@ func (ce *CorrelationEngineImpl) extractMetricsDataPoints(result *models.Unified
 	// Metrics data structure depends on VictoriaMetrics response format
 	// This is a simplified implementation - in practice, we'd parse the actual metrics data
 	if result.Data != nil {
-		// For now, assume current time for metrics (TODO: parse actual timestamps from metrics data)
+		// For now, assume current time for metrics. Parsing of actual timestamps from
+		// metrics data will be improved under action items in the tracker.
 		dataPoints = append(dataPoints, timeWindowDataPoint{
 			Timestamp: time.Now(),
 			Data:      result.Data,
@@ -918,49 +1562,35 @@ func (ce *CorrelationEngineImpl) extractLabelsFromResult(result *models.UnifiedR
 func (ce *CorrelationEngineImpl) extractLabelsFromLogsResult(result *models.UnifiedResult) []dataLabels {
 	var labels []dataLabels
 
+	// Build canonical->raw key lookup from EngineConfig.Labels. If not set,
+	// fall back to reasonable defaults handled at config level.
+	lcfg := ce.engineCfg.Labels
+
 	if logs, ok := result.Data.([]map[string]interface{}); ok {
 		for _, log := range logs {
-			dataLabels := dataLabels{
-				Data:   log,
-				Labels: make(map[string]string),
-			}
+			dl := dataLabels{Data: log, Labels: make(map[string]string)}
 
-			// Extract common label fields from logs
-			labelFields := []string{"service", "pod", "namespace", "deployment", "container", "host", "level"}
-			for _, field := range labelFields {
-				if value, exists := log[field]; exists {
-					if strValue, ok := value.(string); ok {
-						dataLabels.Labels[field] = strValue
+			// For each canonical label, consult configured raw keys in order and pick the first match
+			tryKeys := func(canonical string, candidates []string) {
+				for _, raw := range candidates {
+					if v, ok := ce.lookupNestedKey(log, raw); ok && v != "" {
+						dl.Labels[canonical] = v
+						return
 					}
 				}
 			}
 
-			// Also handle alternative common keys produced by OTLP receivers
-			if v, exists := log["service.name"]; exists {
-				if s, ok := v.(string); ok {
-					dataLabels.Labels["service"] = s
-				}
-			}
-			if v, exists := log["serviceName"]; exists {
-				if s, ok := v.(string); ok {
-					dataLabels.Labels["service"] = s
-				}
-			}
+			tryKeys("service", lcfg.Service)
+			tryKeys("pod", lcfg.Pod)
+			tryKeys("namespace", lcfg.Namespace)
+			tryKeys("deployment", lcfg.Deployment)
+			tryKeys("container", lcfg.Container)
+			tryKeys("host", lcfg.Host)
+			tryKeys("level", lcfg.Level)
 
-			// Extract kubernetes labels if present
-			if k8s, exists := log["kubernetes"].(map[string]interface{}); exists {
-				if podName, ok := k8s["pod_name"].(string); ok {
-					dataLabels.Labels["pod"] = podName
-				}
-				if namespace, ok := k8s["namespace_name"].(string); ok {
-					dataLabels.Labels["namespace"] = namespace
-				}
-				if container, ok := k8s["container_name"].(string); ok {
-					dataLabels.Labels["container"] = container
-				}
-			}
+			// If kubernetes nested map exists, prefer dotted paths listed in config; lookupNestedKey handles dots.
 
-			labels = append(labels, dataLabels)
+			labels = append(labels, dl)
 		}
 	}
 
@@ -979,8 +1609,8 @@ func (ce *CorrelationEngineImpl) extractLabelsFromTracesResult(result *models.Un
 			}
 
 			// Extract service and operation
-			if service, exists := trace["serviceName"].(string); exists {
-				dataLabels.Labels["service"] = service
+			if svc, ok := ce.getServiceLabelFromMap(trace); ok {
+				dataLabels.Labels["service"] = svc
 			}
 			if operation, exists := trace["operationName"].(string); exists {
 				dataLabels.Labels["operation"] = operation
@@ -990,7 +1620,7 @@ func (ce *CorrelationEngineImpl) extractLabelsFromTracesResult(result *models.Un
 			if procs, ok := trace["processes"].(map[string]interface{}); ok {
 				for _, p := range procs {
 					if pm, ok := p.(map[string]interface{}); ok {
-						if svc, exists := pm["serviceName"].(string); exists {
+						if svc, ok2 := ce.getServiceLabelFromMap(pm); ok2 {
 							dataLabels.Labels["service"] = svc
 							break
 						}
@@ -1027,23 +1657,105 @@ func (ce *CorrelationEngineImpl) extractLabelsFromTracesResult(result *models.Un
 func (ce *CorrelationEngineImpl) extractLabelsFromMetricsResult(result *models.UnifiedResult) []dataLabels {
 	var labels []dataLabels
 
-	// Metrics data structure is complex - this is a simplified implementation
-	// In practice, we'd need to parse the Prometheus/VictoriaMetrics response format
-	if result.Data != nil {
-		dataLabels := dataLabels{
-			Data:   result.Data,
-			Labels: make(map[string]string),
+	// Expect metrics adapter to supply Prometheus-compatible response structures
+	// as produced by our test helpers: a map with "resultType" and "result" entries
+	if result.Data == nil {
+		return labels
+	}
+
+	if dataMap, ok := result.Data.(map[string]interface{}); ok {
+		// result is typically []interface{} of series
+		if resArr, exists := dataMap["result"]; exists {
+			if seriesSlice, ok := resArr.([]interface{}); ok {
+				for _, s := range seriesSlice {
+					// Each series is expected to be a map with "metric" and values/points
+					if seriesMap, ok := s.(map[string]interface{}); ok {
+						dl := dataLabels{Data: seriesMap, Labels: make(map[string]string)}
+
+						// metric may be map[string]string or map[string]interface{}
+						if m, exists := seriesMap["metric"]; exists {
+							switch mm := m.(type) {
+							case map[string]string:
+								for k, v := range mm {
+									dl.Labels[k] = v
+								}
+							case map[string]interface{}:
+								for k, v := range mm {
+									if str, ok := v.(string); ok {
+										dl.Labels[k] = str
+									} else if bs, ok := v.([]byte); ok {
+										dl.Labels[k] = string(bs)
+									}
+								}
+							}
+						}
+
+						// Always include series id if present
+						if name, exists := dl.Labels["__name__"]; exists && name != "" {
+							dl.Labels["metric_name"] = name
+						}
+
+						labels = append(labels, dl)
+					}
+				}
+			}
 		}
-
-		// For now, we'll assume metrics have labels in a specific format
-		// TODO: Implement proper metrics label extraction
-		// This would typically involve parsing the metrics response and extracting
-		// label names and values from the time series data
-
-		labels = append(labels, dataLabels)
 	}
 
 	return labels
+}
+
+// lookupNestedKey resolves dotted paths into nested maps (e.g. "foo.bar").
+// It returns string value and true when found.
+func (ce *CorrelationEngineImpl) lookupNestedKey(obj map[string]interface{}, path string) (string, bool) {
+	if obj == nil || path == "" {
+		return "", false
+	}
+	// simple key
+	if v, ok := obj[path]; ok {
+		if s, ok := v.(string); ok {
+			return s, true
+		}
+	}
+
+	// dotted path
+	parts := strings.Split(path, ".")
+	cur := interface{}(obj)
+	for _, p := range parts {
+		if m, ok := cur.(map[string]interface{}); ok {
+			if next, exists := m[p]; exists {
+				cur = next
+				continue
+			}
+			return "", false
+		}
+		return "", false
+	}
+	if s, ok := cur.(string); ok {
+		return s, true
+	}
+	return "", false
+}
+
+// getServiceLabelFromMap resolves the configured candidate raw keys for service
+// into a canonical service string. It consults EngineConfig.Labels.Service in
+// priority order and falls back to the canonical "service" key in the payload.
+func (ce *CorrelationEngineImpl) getServiceLabelFromMap(obj map[string]interface{}) (string, bool) {
+	if obj == nil {
+		return "", false
+	}
+	lcfg := ce.engineCfg.Labels
+	// Try configured candidate keys (may be dotted paths)
+	for _, raw := range lcfg.Service {
+		if v, ok := ce.lookupNestedKey(obj, raw); ok && v != "" {
+			return v, true
+		}
+	}
+	// Final attempt: canonical "service" key
+	if v, ok := ce.lookupNestedKey(obj, "service"); ok && v != "" {
+		return v, true
+	}
+	return "", false
 }
 
 // findLabelMatches finds matching labels between two sets of data labels
@@ -1169,6 +1881,62 @@ func (crm *CorrelationResultMerger) MergeResults(correlations []models.Correlati
 		"merged_count", len(merged))
 
 	return merged
+}
+
+// extractAverageFromMetricsResult tries to compute a lightweight average value
+// from a MetricsQLQueryResult. It supports common Prometheus/VictoriaMetrics
+// shapes (matrix with "values" or vector with "value"). Returns NaN when
+// no numeric points are found.
+func extractAverageFromMetricsResult(res *models.MetricsQLQueryResult) float64 {
+	if res == nil || res.Data == nil {
+		return math.NaN()
+	}
+	dm, ok := res.Data.(map[string]interface{})
+	if !ok {
+		return math.NaN()
+	}
+	var sum float64
+	var count int
+
+	if resultArr, exists := dm["result"]; exists {
+		if seriesSlice, ok := resultArr.([]interface{}); ok {
+			for _, s := range seriesSlice {
+				if seriesMap, ok := s.(map[string]interface{}); ok {
+					// try "values" (range vector)
+					if values, ex := seriesMap["values"]; ex {
+						if vslice, ok := values.([]interface{}); ok {
+							for _, pair := range vslice {
+								if p, ok := pair.([]interface{}); ok && len(p) >= 2 {
+									valStr := fmt.Sprintf("%v", p[1])
+									if f, err := strconv.ParseFloat(valStr, 64); err == nil {
+										sum += f
+										count++
+									}
+								}
+							}
+						}
+						continue
+					}
+
+					// try single "value" (instant vector)
+					if v, ex := seriesMap["value"]; ex {
+						if pair, ok := v.([]interface{}); ok && len(pair) >= 2 {
+							valStr := fmt.Sprintf("%v", pair[1])
+							if f, err := strconv.ParseFloat(valStr, 64); err == nil {
+								sum += f
+								count++
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if count == 0 {
+		return math.NaN()
+	}
+	return sum / float64(count)
 }
 
 // groupSimilarCorrelations groups correlations that represent the same logical correlation
@@ -1327,11 +2095,15 @@ func (ce *CorrelationEngineImpl) queryErrorLogs(ctx context.Context, timeRange m
 	}
 
 	// Query for logs with ERROR severity and failure-related attributes
+	limit := ce.engineCfg.DefaultQueryLimit
+	if limit <= 0 {
+		limit = 10000
+	}
 	logsQuery := &models.LogsQLQueryRequest{
 		Query: `severity:ERROR OR level:ERROR`,
 		Start: timeRange.Start.UnixMilli(),
 		End:   timeRange.End.UnixMilli(),
-		Limit: 10000, // High limit for failure detection
+		Limit: limit, // configurable via engine.default_query_limit
 	}
 
 	result, err := ce.logsService.ExecuteQuery(ctx, logsQuery)
@@ -1397,8 +2169,9 @@ func (ce *CorrelationEngineImpl) queryErrorTraces(ctx context.Context, timeRange
 		},
 	}
 
-	// Also try searching for specific services that might have errors
-	services := []string{"api-gateway", "tps", "keydb-client", "kafka-producer", "kafka-consumer", "cassandra-client"}
+	// Also try searching for specific services that might have errors. Use configured candidates to avoid
+	// hardcoding service names in engine logic.
+	services := ce.engineCfg.ServiceCandidates
 	for _, service := range services {
 		searchRequests = append(searchRequests, &models.TraceSearchRequest{
 			Service: service,
@@ -1535,8 +2308,8 @@ func (ce *CorrelationEngineImpl) extractErrorSpansFromTrace(traceData map[string
 			if traceID, exists := traceData["traceId"]; exists {
 				enrichedSpan["traceId"] = traceID
 			}
-			if serviceName, exists := traceData["serviceName"]; exists {
-				enrichedSpan["serviceName"] = serviceName
+			if svc, ok := ce.getServiceLabelFromMap(traceData); ok {
+				enrichedSpan["service"] = svc
 			}
 			if operationName, exists := traceData["operationName"]; exists {
 				enrichedSpan["operationName"] = operationName
@@ -1587,10 +2360,17 @@ func (ce *CorrelationEngineImpl) queryErrorMetrics(ctx context.Context, timeRang
 		return nil, nil
 	}
 
-	// Query for error-related metrics using instant query
-	metricsQuery := &models.MetricsQLQueryRequest{
-		Query: `up == 0 or transactions_failed_total > 0`,
+	// Build an instant metrics query from configured probes when available
+	probes := ce.engineCfg.Probes
+	queryExpr := "up == 0"
+	if len(probes) > 0 {
+		var parts []string
+		for _, p := range probes {
+			parts = append(parts, fmt.Sprintf("%s > 0", p))
+		}
+		queryExpr = queryExpr + " or " + strings.Join(parts, " or ")
 	}
+	metricsQuery := &models.MetricsQLQueryRequest{Query: queryExpr}
 
 	result, err := ce.metricsService.ExecuteQuery(ctx, metricsQuery)
 	if err != nil {
@@ -1713,21 +2493,23 @@ func (ce *CorrelationEngineImpl) extractTransactionID(signal models.FailureSigna
 
 // extractFailureComponent extracts the failing component from a signal
 func (ce *CorrelationEngineImpl) extractFailureComponent(signal models.FailureSignal) string {
-	// Check service.name first
-	if service, exists := signal.Data["service.name"]; exists {
-		if s, ok := service.(string); ok {
-			return ce.mapServiceToComponent(s)
+	// Use configured label schema to extract service information. Do not hardcode
+	// raw field names in the engine; consult EngineConfig.Labels instead.
+	lcfg := ce.engineCfg.Labels
+
+	// Try configured candidate keys for service (these may be dotted paths)
+	for _, raw := range lcfg.Service {
+		if v, ok := ce.lookupNestedKey(signal.Data, raw); ok && v != "" {
+			return ce.mapServiceToComponent(v)
 		}
 	}
 
-	// Check service
-	if service, exists := signal.Data["service"]; exists {
-		if s, ok := service.(string); ok {
-			return ce.mapServiceToComponent(s)
-		}
+	// As a final attempt, fall back to canonical "service" key in the payload
+	if v, ok := ce.lookupNestedKey(signal.Data, "service"); ok && v != "" {
+		return ce.mapServiceToComponent(v)
 	}
 
-	// Check failure_mode
+	// Check failure_mode if present
 	if failureMode, exists := signal.Data["failure_mode"]; exists {
 		if s, ok := failureMode.(string); ok {
 			return s

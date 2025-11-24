@@ -11,10 +11,11 @@ import (
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/search/query"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve/mapping"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // BleveSearchService provides full-text search capabilities using Bleve
@@ -22,7 +23,7 @@ type BleveSearchService struct {
 	logsIndex   bleve.Index
 	tracesIndex bleve.Index
 	mapper      mapping.DocumentMapper
-	logger      logger.Logger
+	logger      logging.Logger
 	dataPath    string
 	cache       cache.ValkeyCluster
 	mu          sync.RWMutex
@@ -35,18 +36,18 @@ type BleveSearchConfig struct {
 }
 
 // NewBleveSearchService creates a new Bleve search service
-func NewBleveSearchService(config BleveSearchConfig, logger logger.Logger) (*BleveSearchService, error) {
-	// Create document mapper
+func NewBleveSearchService(config BleveSearchConfig, logger corelogger.Logger) (*BleveSearchService, error) {
+	// Create document mapper using the core logger (mapper expects pkg/logger.Logger)
 	mapper := mapping.NewBleveDocumentMapper(logger)
 
 	service := &BleveSearchService{
 		mapper:   mapper,
-		logger:   logger,
+		logger:   logging.FromCoreLogger(logger),
 		dataPath: config.DataPath,
 		cache:    config.Cache,
 	}
 
-	logger.Info("BleveSearchService initialized", "data_path", config.DataPath)
+	service.logger.Info("BleveSearchService initialized", "data_path", config.DataPath)
 
 	return service, nil
 }

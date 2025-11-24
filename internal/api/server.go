@@ -15,7 +15,9 @@ import (
 	_ "github.com/platformbuilds/mirador-core/api" // Import generated Swagger docs
 	"github.com/platformbuilds/mirador-core/internal/api/handlers"
 	"github.com/platformbuilds/mirador-core/internal/api/middleware"
+	"github.com/platformbuilds/mirador-core/internal/bootstrap"
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/internal/rca"
@@ -60,72 +62,25 @@ func NewServer(
 
 	router := gin.New()
 
-	// Initialize distributed tracing if enabled
-	var tracerProvider *tracing.TracerProvider
-	if cfg.Monitoring.TracingEnabled {
-		var err error
-		tracerProvider, err = tracing.NewTracerProvider(
-			"mirador-core",
-			"v7.0.0", // TODO: Pass version from build info
-			cfg.Monitoring.JaegerEndpoint,
-		)
-		if err != nil {
-			log.Error("Failed to initialize tracer provider", "error", err)
-		} else {
-			log.Info("Distributed tracing initialized", "endpoint", cfg.Monitoring.JaegerEndpoint)
-			// Initialize global tracer
-			tracing.InitGlobalTracer("mirador-core")
-		}
-	}
-
-	// Instantiate a Weaviate v5 client and build a WeaviateKPIStore if enabled.
-	var kpiStore *weavstore.WeaviateKPIStore
-	if cfg.Weaviate.Enabled {
-		hostPort := cfg.Weaviate.Host
-		if cfg.Weaviate.Port != 0 {
-			hostPort = fmt.Sprintf("%s:%d", cfg.Weaviate.Host, cfg.Weaviate.Port)
-		}
-		conf := wv.Config{Scheme: cfg.Weaviate.Scheme, Host: hostPort}
-		if client, err := wv.NewClient(conf); err == nil {
-			var zapLogger *zap.Logger
-			if zl, ok := log.(interface{ ZapLogger() *zap.Logger }); ok {
-				zapLogger = zl.ZapLogger()
-			} else {
-				zapLogger = zap.NewNop()
-			}
-			kpiStore = weavstore.NewWeaviateKPIStore(client, zapLogger)
-		} else {
-			log.Error("Failed to create Weaviate v5 client", "error", err)
-		}
-	}
-
-	// KPI repo wiring: prefer schemaRepo if it implements KPIRepo, otherwise
-	// construct DefaultKPIRepo with the new weaviate store (may be nil).
-	var kpiRepo repo.KPIRepo
-	if schemaRepo != nil {
-		if kp, ok := schemaRepo.(repo.KPIRepo); ok {
-			kpiRepo = kp
-		}
-	}
-	if kpiRepo == nil {
-		var zapLogger *zap.Logger
-		if zl, ok := log.(interface{ ZapLogger() *zap.Logger }); ok {
-			zapLogger = zl.ZapLogger()
-		} else {
-			zapLogger = zap.NewNop()
-		}
-		kpiRepo = repo.NewDefaultKPIRepo(kpiStore, zapLogger)
-	}
-
 	server := &Server{
-		config:         cfg,
-		logger:         log,
-		cache:          valkeyCache,
-		vmServices:     vmServices,
-		schemaRepo:     schemaRepo,
-		kpiRepo:        kpiRepo,
-		router:         router,
-		tracerProvider: tracerProvider,
+		config:     cfg,
+		logger:     log,
+		cache:      valkeyCache,
+		vmServices: vmServices,
+		schemaRepo: schemaRepo,
+		router:     router,
+	}
+
+	// Initialize subsystems using helper methods to keep NewServer simple and
+	// reduce cyclomatic complexity.
+	server.tracerProvider = server.initTracing(cfg, log)
+
+	kpiStore, zapLogger := server.initWeaviateStore(cfg, log)
+	server.initKPIRepo(schemaRepo, kpiStore, zapLogger)
+
+	// Bootstrap telemetry via the repo layer (keeps models out of bootstrap)
+	if err := bootstrap.BootstrapTelemetryStandards(context.Background(), &cfg.Engine, server.kpiRepo, server.logger); err != nil {
+		log.Warn("failed to bootstrap telemetry standards", "error", err)
 	}
 
 	// Create search router
@@ -158,6 +113,63 @@ func NewServer(
 	server.setupRoutes()
 
 	return server
+}
+
+// initTracing sets up distributed tracing if enabled in config.
+func (s *Server) initTracing(cfg *config.Config, log logger.Logger) *tracing.TracerProvider {
+	if !cfg.Monitoring.TracingEnabled {
+		return nil
+	}
+	tp, err := tracing.NewTracerProvider(
+		"mirador-core",
+		"v7.0.0",
+		cfg.Monitoring.JaegerEndpoint,
+	)
+	if err != nil {
+		log.Error("Failed to initialize tracer provider", "error", err)
+		return nil
+	}
+	log.Info("Distributed tracing initialized", "endpoint", cfg.Monitoring.JaegerEndpoint)
+	tracing.InitGlobalTracer("mirador-core")
+	return tp
+}
+
+// initWeaviateStore initializes a Weaviate client/store if enabled and returns
+// the store and the zap logger used for it.
+func (s *Server) initWeaviateStore(cfg *config.Config, log logger.Logger) (*weavstore.WeaviateKPIStore, *zap.Logger) {
+	if !cfg.Weaviate.Enabled {
+		return nil, zap.NewNop()
+	}
+	hostPort := cfg.Weaviate.Host
+	if cfg.Weaviate.Port != 0 {
+		hostPort = fmt.Sprintf("%s:%d", cfg.Weaviate.Host, cfg.Weaviate.Port)
+	}
+	conf := wv.Config{Scheme: cfg.Weaviate.Scheme, Host: hostPort}
+	if client, err := wv.NewClient(conf); err == nil {
+		zapLogger := logging.ExtractZapLogger(log)
+		store := weavstore.NewWeaviateKPIStore(client, zapLogger)
+		return store, zapLogger
+	}
+	log.Error("Failed to create Weaviate v5 client", "error", fmt.Errorf("weaviate client init failed"))
+	return nil, zap.NewNop()
+}
+
+// initKPIRepo wires the KPIRepo: prefer schemaRepo if it implements KPIRepo,
+// otherwise construct DefaultKPIRepo using the provided weaviate store and zap logger.
+func (s *Server) initKPIRepo(schemaRepo repo.SchemaStore, kpiStore *weavstore.WeaviateKPIStore, zapLogger *zap.Logger) {
+	var kpiRepo repo.KPIRepo
+	if schemaRepo != nil {
+		if kp, ok := schemaRepo.(repo.KPIRepo); ok {
+			kpiRepo = kp
+		}
+	}
+	if kpiRepo == nil {
+		if zapLogger == nil {
+			zapLogger = zap.NewNop()
+		}
+		kpiRepo = repo.NewDefaultKPIRepo(kpiStore, zapLogger)
+	}
+	s.kpiRepo = kpiRepo
 }
 
 func (s *Server) setupMiddleware() {
@@ -323,14 +335,21 @@ func (s *Server) setupRoutes() {
 	// Create an empty service graph (will be enhanced from metrics in production)
 	rcaServiceGraphForEngine := rca.NewServiceGraph()
 
+	// Ensure KPI repo is wired so the correlation engine can operate KPI-first.
+	if s.kpiRepo == nil {
+		s.logger.Warn("KPI repo is not configured; correlation engine will fall back to config probes")
+	}
+
 	// Create a correlation engine-backed anomaly provider so RCA endpoints
 	// can fetch real failure signals from the unified engines.
 	correlationEngineForProvider := services.NewCorrelationEngine(
 		s.vmServices.Metrics,
 		s.vmServices.Logs,
 		s.vmServices.Traces,
+		s.kpiRepo,
 		s.cache,
 		s.logger,
+		s.config.Engine,
 	)
 
 	anomalyProviderForEngine := &correlationAnomalyProvider{ce: correlationEngineForProvider, logger: s.logger}
@@ -343,12 +362,12 @@ func (s *Server) setupRoutes() {
 	)
 	candidateCauseServiceForEngine := rca.NewCandidateCauseService(incidentAnomalyCollectorForEngine, s.logger)
 
-	// Create RCA engine for endpoints
-	rcaEngineForEndpoints := rca.NewRCAEngine(candidateCauseServiceForEngine, rcaServiceGraphForEngine, s.logger)
+	// Create RCA engine for endpoints (wire correlation engine for TimeRange API)
+	rcaEngineForEndpoints := rca.NewRCAEngine(candidateCauseServiceForEngine, rcaServiceGraphForEngine, s.logger, s.config.Engine, correlationEngineForProvider)
 
 	// AI RCA-ENGINE endpoints (correlation with red anchors pattern)
 	rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
-	rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints)
+	rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints, s.config.Engine)
 	rcaGroup := v1.Group("/rca")
 	{
 		rcaGroup.GET("/correlations", rcaHandler.GetActiveCorrelations)
@@ -410,8 +429,10 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 		s.vmServices.Metrics,
 		s.vmServices.Logs,
 		s.vmServices.Traces,
+		s.kpiRepo,
 		s.cache,
 		s.logger,
+		s.config.Engine,
 	)
 
 	// Create unified query engine
@@ -427,7 +448,7 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 	)
 
 	// Create unified query handler
-	unifiedHandler := handlers.NewUnifiedQueryHandler(unifiedEngine, s.logger)
+	unifiedHandler := handlers.NewUnifiedQueryHandler(unifiedEngine, s.logger, s.kpiRepo, s.config.Engine)
 
 	// Register unified query routes
 	unifiedGroup := router.Group("/unified")
@@ -444,7 +465,7 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 		unifiedGroup.POST("/rca", func(c *gin.Context) {
 			// Create a temporary RCA handler just for this endpoint
 			rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
-			rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints)
+			rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints, s.config.Engine)
 			rcaHandler.HandleComputeRCA(c)
 		})
 	}
@@ -543,6 +564,20 @@ func (s *Server) initializeMetricsMetadataComponents() error {
 		s.logger,
 		s.config.Search.Bleve.IndexPath,
 	)
+
+	// Initialize shards immediately so the indexer can write to them.
+	// If shard initialization fails (commonly due to disk permissions),
+	// fall back to stub implementations so the server remains available
+	// and doesn't return nil (which would cause a panic on Start()).
+	if err := shardManager.InitializeShards(); err != nil {
+		s.logger.Error("Failed to initialize Bleve shards; falling back to stub indexer/synchronizer", "error", err, "indexPath", s.config.Search.Bleve.IndexPath)
+		// Use stub implementations to keep API surface available
+		s.metricsMetadataIndexer = services.NewStubMetricsMetadataIndexer(s.logger)
+		s.metricsMetadataSynchronizer = services.NewStubMetricsMetadataSynchronizer(s.logger)
+		// Record a monitoring hint so operators can surface this condition.
+		// TODO: emit a metric here if monitoring is configured.
+		return nil
+	}
 
 	// Create metrics metadata indexer
 	s.metricsMetadataIndexer = services.NewMetricsMetadataIndexer(

@@ -11,8 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type metricsQuerier interface {
@@ -28,14 +29,14 @@ type ServiceGraphFetcher interface {
 // the servicegraph connector and stored in VictoriaMetrics.
 type ServiceGraphService struct {
 	metrics metricsQuerier
-	logger  logger.Logger
+	logger  logging.Logger
 }
 
-func NewServiceGraphService(metrics *VictoriaMetricsService, logger logger.Logger) *ServiceGraphService {
+func NewServiceGraphService(metrics *VictoriaMetricsService, logger corelogger.Logger) *ServiceGraphService {
 	if metrics == nil {
 		return nil
 	}
-	return &ServiceGraphService{metrics: metrics, logger: logger}
+	return &ServiceGraphService{metrics: metrics, logger: logging.FromCoreLogger(logger)}
 }
 
 // FetchServiceGraph returns the directed service dependency edges observed

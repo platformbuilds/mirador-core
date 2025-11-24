@@ -175,3 +175,151 @@ uploads:
   # Bulk CSV upload limit (bytes); default 5 MiB.
   bulk_max_bytes: 5242880
   jaeger_endpoint: "http://jaeger:14268/api/traces"
+
+# Engine configuration (Correlation & RCA) - sample values
+engine:
+  min_window: 10s
+  max_window: 1h
+  default_graph_hops: 2
+  default_max_whys: 5
+  ring_strategy: auto
+  buckets:
+    core_window_size: 30s
+    pre_rings: 2
+    post_rings: 1
+    ring_step: 15s
+  min_correlation: 0.6
+  min_anomaly_score: 0.7
+  strict_time_window: false
+  # Default list of metric probes used to seed impact/candidate KPI discovery.
+  probes:
+    - "transactions_failed_total"
+    - "http_errors_total"
+    - "cpu_usage"
+    - "memory_usage"
+  # Services used as candidates for traces fallback/search heuristics.
+  service_candidates:
+    - "api-gateway"
+    - "tps"
+    - "keydb-client"
+    - "kafka-producer"
+    - "kafka-consumer"
+    - "cassandra-client"
+  # Default limits for queries
+  default_query_limit: 1000
+  labels:
+    service:
+      - "service"
+      - "service.name"
+      - "serviceName"
+    pod:
+      - "pod"
+      - "kubernetes.pod_name"
+    namespace:
+      - "namespace"
+      - "kubernetes.namespace_name"
+    deployment:
+      - "deployment"
+    container:
+      - "container"
+      - "kubernetes.container_name"
+    host:
+      - "host"
+      - "hostname"
+    level:
+      - "level"
+      - "severity"
+
+  # Platform-standard OTel spanmetrics/servicegraph/isolationforest definitions.
+  # These are canonical telemetry connector and processor definitions used
+  # by the Correlation and RCA engines. Do not hardcode raw metric or label
+  # names in code; they must be read from this config or seeded into the
+  # KPI registry (Stage-00 / Weaviate) via the bootstrap step.
+  telemetry:
+    connectors:
+      spanmetrics:
+        kind: connector
+        metrics:
+          - name: traces_span_metrics_calls
+            type: counter
+            description: "Count of spans (requests)"
+            labels:
+              - service_name
+              - span_name
+              - span_kind
+              - status_code
+
+          - name: traces_span_metrics_duration
+            type: histogram
+            description: "Span duration histogram"
+            labels:
+              - service_name
+              - span_name
+              - span_kind
+              - status_code
+              - le
+
+      servicegraph:
+        kind: connector
+        metrics:
+          - name: traces_service_graph_request_total
+            type: counter
+            description: "Total count of requests between client and server nodes"
+            labels:
+              - client
+              - server
+              - connection_type
+
+          - name: traces_service_graph_request_failed_total
+            type: counter
+            description: "Total count of failed requests between client and server nodes"
+            labels:
+              - client
+              - server
+              - connection_type
+
+          - name: traces_service_graph_request_server
+            type: histogram
+            description: "Request duration seconds measured from the server side"
+            labels:
+              - client
+              - server
+              - connection_type
+              - le
+
+          - name: traces_service_graph_request_client
+            type: histogram
+            description: "Request duration seconds measured from the client side"
+            labels:
+              - client
+              - server
+              - connection_type
+              - le
+
+          - name: traces_service_graph_unpaired_spans_total
+            type: counter
+            description: "Total count of unpaired spans"
+            labels:
+              - client
+              - server
+              - connection_type
+
+          - name: traces_service_graph_dropped_spans_total
+            type: counter
+            description: "Total count of dropped spans"
+            labels:
+              - client
+              - server
+              - connection_type
+
+    processors:
+      isolationforest:
+        kind: processor
+        labels:
+          - iforest_is_anomaly
+          - iforest_anomaly_score
+          - service_name
+          - span_name
+          - span_kind
+          - status_code
+          - le

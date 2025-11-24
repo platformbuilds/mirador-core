@@ -155,50 +155,93 @@ func (m *MetricsMetadataIndexerImpl) SyncMetadata(ctx context.Context, request *
 // extractMetricsMetadata extracts metrics metadata from VictoriaMetrics
 func (m *MetricsMetadataIndexerImpl) extractMetricsMetadata(ctx context.Context, request *models.MetricMetadataSyncRequest) ([]*models.MetricMetadataDocument, error) {
 	var allMetadata []*models.MetricMetadataDocument
+	// Instead of fetching all series (which can exceed VM limits), fetch
+	// metric names via the label values API for __name__, then for each
+	// metric fetch label names and a small sample of label values. This
+	// reduces the number of series scanned and avoids VM 30k+ unique
+	// timeseries limits.
 
-	// Get all series to extract metric names and labels
-	seriesRequest := &models.SeriesRequest{
+	// Determine per-request limits
+	batchLimit := request.BatchSize
+	if batchLimit <= 0 {
+		batchLimit = 10000 // reasonable default cap
+	}
+
+	// Fetch metric names using label values for __name__
+	nameReq := &models.LabelValuesRequest{
+		Label: "__name__",
 		Start: request.TimeRange.Start.Format(time.RFC3339),
 		End:   request.TimeRange.End.Format(time.RFC3339),
-		// Use a match that selects all metrics for metadata extraction
-		Match: []string{"{__name__=~\".+\"}"},
+		Limit: batchLimit,
 	}
 
-	series, err := m.victoriaMetricsSvc.GetSeries(ctx, seriesRequest)
+	metricNames, err := m.victoriaMetricsSvc.GetLabelValues(ctx, nameReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get series from VictoriaMetrics: %w", err)
+		return nil, fmt.Errorf("failed to get metric names from VictoriaMetrics: %w", err)
 	}
 
-	// Group series by metric name
+	m.logger.Info("Fetched metric names for metadata sync", "count", len(metricNames))
+
 	metricsMap := make(map[string]*models.MetricMetadataDocument)
 
-	for _, serie := range series {
-		metricName, ok := serie["__name__"]
-		if !ok {
-			continue
+	// Process metric names in batches to avoid overwhelming VM or local resources
+	for i := 0; i < len(metricNames); i += batchLimit {
+		end := i + batchLimit
+		if end > len(metricNames) {
+			end = len(metricNames)
 		}
+		batch := metricNames[i:end]
 
-		nameStr := metricName // Already a string
-
-		// Get or create metadata document for this metric
-		doc, exists := metricsMap[nameStr]
-		if !exists {
-			doc = models.NewMetricMetadataDocument(nameStr)
-			metricsMap[nameStr] = doc
-		}
-
-		// Extract labels from this series
-		labels := make(map[string][]string)
-		for key, value := range serie {
-			if key == "__name__" {
+		for _, nameStr := range batch {
+			if nameStr == "" {
 				continue
 			}
-			labels[key] = append(labels[key], value) // Already a string
-		}
+			// Create or get doc
+			doc, exists := metricsMap[nameStr]
+			if !exists {
+				doc = models.NewMetricMetadataDocument(nameStr)
+				metricsMap[nameStr] = doc
+			}
 
-		// Update document with labels
-		doc.UpdateLabels(labels)
-		doc.MarkSeen()
+			// Get label names for this metric by querying series filtered to the metric
+			match := fmt.Sprintf("{__name__=\"%s\"}", nameStr)
+			labelsReq := &models.LabelsRequest{
+				Start: request.TimeRange.Start.Format(time.RFC3339),
+				End:   request.TimeRange.End.Format(time.RFC3339),
+				Match: []string{match},
+			}
+			labelNames, err := m.victoriaMetricsSvc.GetLabels(ctx, labelsReq)
+			if err != nil {
+				// Log and continue; don't fail the whole sync for a single metric
+				m.logger.Warn("Failed to get labels for metric", "metric", nameStr, "error", err)
+				doc.MarkSeen()
+				continue
+			}
+
+			// For each label, fetch a small set of values to populate metadata (limit values)
+			labelsMap := make(map[string][]string)
+			for _, label := range labelNames {
+				if label == "__name__" {
+					continue
+				}
+				lvReq := &models.LabelValuesRequest{
+					Label: label,
+					Start: request.TimeRange.Start.Format(time.RFC3339),
+					End:   request.TimeRange.End.Format(time.RFC3339),
+					Match: []string{match},
+					Limit: 50, // sample up to 50 values per label
+				}
+				vals, err := m.victoriaMetricsSvc.GetLabelValues(ctx, lvReq)
+				if err != nil {
+					m.logger.Warn("Failed to get label values", "metric", nameStr, "label", label, "error", err)
+					continue
+				}
+				labelsMap[label] = vals
+			}
+
+			doc.UpdateLabels(labelsMap)
+			doc.MarkSeen()
+		}
 	}
 
 	// Convert map to slice
@@ -207,7 +250,7 @@ func (m *MetricsMetadataIndexerImpl) extractMetricsMetadata(ctx context.Context,
 	}
 
 	m.logger.Info("Extracted metrics metadata",
-		"totalSeries", len(series),
+		"metricNames", len(metricNames),
 		"uniqueMetrics", len(allMetadata))
 
 	return allMetadata, nil

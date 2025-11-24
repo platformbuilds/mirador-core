@@ -320,7 +320,7 @@ func GenerateTracesResult(traceID string) []models.Trace {
 			},
 			Processes: map[string]interface{}{
 				"p1": map[string]interface{}{
-					"serviceName": "api-service",
+					"service": "api-service",
 				},
 			},
 		},

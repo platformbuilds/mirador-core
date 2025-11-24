@@ -94,9 +94,12 @@ services:
       - mock-predict-engine
       - mock-rca-engine
       - mock-alert-engine
+    volumes:
+      - bleve_data:/var/lib/mirador/bleve
 
 volumes:
   valkey_data:
   vm_data:
   vl_data:
   vt_data:
+  bleve_data:

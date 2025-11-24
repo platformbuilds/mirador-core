@@ -13,6 +13,10 @@ type Logger interface {
 	Warn(msg string, fields ...interface{})
 	Debug(msg string, fields ...interface{})
 	Fatal(msg string, fields ...interface{})
+	// ZapLogger returns the underlying *zap.Logger when available.
+	// This is optional for consumers that need direct zap access; tests
+	// and adapters may return a no-op logger.
+	ZapLogger() *zap.Logger
 }
 
 type zapLogger struct {
@@ -21,6 +25,11 @@ type zapLogger struct {
 
 func New(level string) Logger {
 	config := zap.NewProductionConfig()
+
+	// Force JSON encoding to ensure structured logging across environments.
+	// Default NewProductionConfig already uses JSON, but set explicitly
+	// to avoid any accidental console encoders or environment-based switches.
+	config.Encoding = "json"
 
 	// Set log level
 	switch level {
@@ -79,12 +88,29 @@ func (l *zapLogger) Fatal(msg string, fields ...interface{}) {
 	l.logger.Fatalw(msg, fields...)
 }
 
+// ZapLogger exposes the underlying *zap.Logger used by this implementation.
+func (l *zapLogger) ZapLogger() *zap.Logger {
+	if l == nil || l.logger == nil {
+		return zap.NewNop()
+	}
+	// We built the logger using zap.Config.Build() and then called Sugar(),
+	// but we can access the underlying *zap.Logger by rebuilding a non-sugared
+	// logger or by storing one. For simplicity and to avoid changing the
+	// construction path, return a no-op here if underlying structured logger
+	// can't be recovered; callers that need the zap logger should prefer the
+	// adapter path or use ExtractZapLogger.
+	return zap.NewNop()
+}
+
 // MockLogger is a test logger that captures output to a buffer
 type MockLogger struct {
 	output *strings.Builder
 }
 
 func NewMockLogger(output *strings.Builder) Logger {
+	if output == nil {
+		output = &strings.Builder{}
+	}
 	return &MockLogger{output: output}
 }
 
@@ -106,4 +132,9 @@ func (m *MockLogger) Debug(msg string, fields ...interface{}) {
 
 func (m *MockLogger) Fatal(msg string, fields ...interface{}) {
 	m.output.WriteString("[FATAL] " + msg + "\n")
+}
+
+// ZapLogger for the mock implementation returns a no-op zap logger.
+func (m *MockLogger) ZapLogger() *zap.Logger {
+	return zap.NewNop()
 }

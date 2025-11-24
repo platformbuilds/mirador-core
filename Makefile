@@ -162,7 +162,7 @@ localdev-test-all-api:
 	@echo "🧪 Running comprehensive E2E pipeline (code quality + API tests)..."
 	@echo "Base URL: $(BASE_URL)"
 	@echo "============================================"
-	@./localtesting/e2e-tests.sh --base-url "$(BASE_URL)" --output "localtesting/e2e-test-results.json" --verbose || true
+	@./dev/legacy/localtesting/e2e-tests.sh --base-url "$(BASE_URL)" --output "./dev/legacy/localtesting/e2e-test-results.json" --verbose || true
 	@echo "============================================"
 	@echo "✅ E2E pipeline completed!"
 	@echo "📊 Results: localtesting/e2e-test-results.json"
@@ -181,15 +181,15 @@ localdev-test-code-only:
 localdev-seed-otel:
 	@echo "Seeding synthetic OpenTelemetry data via financial transaction simulator..."
 	@go build -o bin/otel-fintrans-simulator ./cmd/otel-fintrans-simulator
-	#OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 OTEL_EXPORTER_OTLP_INSECURE=true ./bin/otel-fintrans-simulator --transactions 50000 --concurrency 250 --failure-mode mixed --failure-rate 0.35
+	OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 OTEL_EXPORTER_OTLP_INSECURE=true ./bin/otel-fintrans-simulator --transactions 50000 --concurrency 250 --failure-mode mixed --failure-rate 0.35
 	@echo "Seeding KPI and signal definitions via bulk API (idempotent; deterministic IDs)"
 	@# Uses scripts/localdev_seed_kpis.py to POST KPI JSON registries and signal definitions to the server's bulk-json endpoints
 	@python3 scripts/localdev_seed_kpis.py --base-url "$(BASE_URL)" --seed-signals || true
 
 localdev-seed-data:
-	@echo "Seeding sample KPIs in Weaviate..."
-	@go build -o bin/schemactl cmd/schemactl/main.go
-	WEAVIATE_HOST=127.0.0.1 WEAVIATE_PORT=8010 ./bin/schemactl -mode=seed
+	@echo "Seeding KPI and signal definitions via bulk API (idempotent; deterministic IDs)"
+	@# Uses scripts/localdev_seed_kpis.py to POST KPI JSON registries and signal definitions to the server's bulk-json endpoints
+	@python3 scripts/localdev_seed_kpis.py --base-url "$(BASE_URL)" --seed-signals || true
 
 localdev-down:
 	@docker-compose -f deployments/localdev/docker-compose.yaml down -v

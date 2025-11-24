@@ -1,12 +1,17 @@
 package handlers
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/rca"
 	"github.com/platformbuilds/mirador-core/internal/services"
@@ -14,486 +19,412 @@ import (
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
+// RCAHandler handles RCA HTTP endpoints.
 type RCAHandler struct {
-	logsService        *services.VictoriaLogsService
-	serviceGraph       services.ServiceGraphFetcher
-	cache              cache.ValkeyCluster
-	logger             logger.Logger
-	featureFlagService *services.RuntimeFeatureFlagService
-	rcaEngine          services.RCAEngine
-	// Optional KPI resolver used to resolve KPI definitions into impact signals
-	kpiResolver *services.KPIResolver
+	logsService             services.LogsService
+	serviceGraph            services.ServiceGraphFetcher
+	cache                   cache.ValkeyCluster
+	logger                  logger.Logger
+	rcaEngine               rca.RCAEngine
+	engineCfg               config.EngineConfig
+	featureFlagService      *services.RuntimeFeatureFlagService
+	strictTimeWindowPayload bool
 }
 
-func NewRCAHandler(
-	logsService *services.VictoriaLogsService,
-	serviceGraph services.ServiceGraphFetcher,
-	cache cache.ValkeyCluster,
-	logger logger.Logger,
-	rcaEngine services.RCAEngine,
-) *RCAHandler {
+func NewRCAHandler(logs services.LogsService, sg services.ServiceGraphFetcher, cch cache.ValkeyCluster, logger logger.Logger, engine rca.RCAEngine, engCfg config.EngineConfig) *RCAHandler {
 	return &RCAHandler{
-		logsService:        logsService,
-		serviceGraph:       serviceGraph,
-		cache:              cache,
-		logger:             logger,
-		rcaEngine:          rcaEngine,
-		featureFlagService: services.NewRuntimeFeatureFlagService(cache, logger),
+		logsService:             logs,
+		serviceGraph:            sg,
+		cache:                   cch,
+		logger:                  logger,
+		rcaEngine:               engine,
+		engineCfg:               engCfg,
+		strictTimeWindowPayload: engCfg.StrictTimeWindowPayload,
+		featureFlagService:      services.NewRuntimeFeatureFlagService(cch, logger),
 	}
 }
 
-// SetKPIResolver sets an optional KPIResolver on the handler. It is safe to call with nil.
-func (h *RCAHandler) SetKPIResolver(resolver *services.KPIResolver) {
-	h.kpiResolver = resolver
-}
-
-// SetEngine sets the RCA engine for the handler. Used in tests to inject a fake engine.
-func (h *RCAHandler) SetEngine(engine services.RCAEngine) {
+func (h *RCAHandler) SetEngine(engine rca.RCAEngine) {
 	h.rcaEngine = engine
 }
 
-// checkFeatureEnabled checks if the RCA feature is enabled for the current
-func (h *RCAHandler) checkFeatureEnabled(c *gin.Context) bool {
-	flags, err := h.featureFlagService.GetFeatureFlags(c.Request.Context())
+// HandleComputeRCA handles POST /api/v1/unified/rca.
+func (h *RCAHandler) HandleComputeRCA(c *gin.Context) {
+	bodyData, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		h.logger.Error("Failed to check feature flags", "error", err)
-		return false
+		h.logger.Error("Failed to read request body", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "failed_to_read_body"})
+		return
 	}
-	return flags.RCAEnabled
-}
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyData))
 
-// POST /api/v1/rca/investigate - Start RCA investigation with red anchors pattern
-func (h *RCAHandler) StartInvestigation(c *gin.Context) {
-	// Check if RCA feature is enabled
-	if !h.checkFeatureEnabled(c) {
-		c.JSON(http.StatusForbidden, gin.H{
-			"status": "error",
-			"error":  "RCA feature is disabled",
-		})
+	var tw models.TimeWindowRequest
+	var tr models.TimeRange
+	twUsed := false
+
+	// Strict payload: only accept canonical time-window shape
+	if h.strictTimeWindowPayload {
+		dec := json.NewDecoder(bytes.NewReader(bodyData))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&tw); err != nil {
+			h.logger.Error("Failed to decode strict TimeWindowRequest", "error", err)
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "invalid_timewindow_payload"})
+			return
+		}
+		if tw.StartTime == "" || tw.EndTime == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "both startTime and endTime are required"})
+			return
+		}
+		parsedTR, terr := tw.ToTimeRange()
+		if terr != nil {
+			h.logger.Error("Invalid time window", "error", terr)
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": terr.Error()})
+			return
+		}
+		tr = parsedTR
+
+		if ok, msg := h.validateWindow(tr); !ok {
+			h.logger.Warn("Time window validation failed (strict)", "details", msg)
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": msg})
+			return
+		}
+
+		if trRunner, ok := h.rcaEngine.(interface {
+			ComputeRCAByTimeRange(ctx context.Context, tr rca.TimeRange) (*rca.RCAIncident, error)
+		}); ok {
+			rtr := rca.TimeRange{Start: tr.Start, End: tr.End}
+			rcaIncident, err := trRunner.ComputeRCAByTimeRange(c.Request.Context(), rtr)
+			if err != nil {
+				h.logger.Error("RCA computation failed (time-range)", "error", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": fmt.Sprintf("RCA computation failed: %v", err)})
+				return
+			}
+			dto := h.convertRCAIncidentToDTO(rcaIncident)
+			c.JSON(http.StatusOK, models.RCAResponse{Status: "success", Data: dto, Timestamp: time.Now().UTC()})
+			return
+		}
+
+		c.JSON(http.StatusNotImplemented, gin.H{"status": "error", "error": "time-range RCA not implemented by configured engine"})
 		return
 	}
 
-	// RCA investigation via external AI engines has been removed
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"status":  "error",
-		"error":   "RCA investigation via external AI engines is no longer supported",
-		"message": "Use the local RCA engine via /api/v1/unified/rca endpoint instead",
-	})
-}
+	// Non-strict: prefer time-window if present
+	if err := json.Unmarshal(bodyData, &tw); err == nil && tw.StartTime != "" && tw.EndTime != "" {
+		if parsedTR, terr := tw.ToTimeRange(); terr == nil {
+			tr = parsedTR
+			twUsed = true
+			if ok, msg := h.validateWindow(tr); !ok {
+				if h.engineCfg.StrictTimeWindow {
+					h.logger.Warn("Rejecting request due to time window validation", "details", msg)
+					c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": msg})
+					return
+				}
+				h.logger.Warn("Time window outside configured bounds (lenient)", "details", msg)
+			}
+		} else {
+			h.logger.Error("Invalid time window in request", "error", terr)
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": terr.Error()})
+			return
+		}
+	}
 
-// POST /api/v1/rca/store - Store correlation back to VictoriaLogs as JSON
-func (h *RCAHandler) StoreCorrelation(c *gin.Context) {
-	// Check if RCA feature is enabled
-	if !h.checkFeatureEnabled(c) {
-		c.JSON(http.StatusForbidden, gin.H{
-			"status": "error",
-			"error":  "RCA feature is disabled",
-		})
+	if twUsed {
+		if trRunner, ok := h.rcaEngine.(interface {
+			ComputeRCAByTimeRange(ctx context.Context, tr rca.TimeRange) (*rca.RCAIncident, error)
+		}); ok {
+			rtr := rca.TimeRange{Start: tr.Start, End: tr.End}
+			rcaIncident, err := trRunner.ComputeRCAByTimeRange(c.Request.Context(), rtr)
+			if err != nil {
+				h.logger.Error("RCA computation failed (time-range)", "error", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": fmt.Sprintf("RCA computation failed: %v", err)})
+				return
+			}
+			dto := h.convertRCAIncidentToDTO(rcaIncident)
+			c.JSON(http.StatusOK, models.RCAResponse{Status: "success", Data: dto, Timestamp: time.Now().UTC()})
+			return
+		}
+
+	}
+
+	// Legacy RCARequest path
+	var legacyReq models.RCARequest
+	if err := json.Unmarshal(bodyData, &legacyReq); err != nil {
+		h.logger.Error("Failed to parse legacy RCARequest", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": fmt.Sprintf("invalid_request_format: %v", err)})
+		return
+	}
+	if legacyReq.ImpactService == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "impactService is required"})
 		return
 	}
 
-	var storeRequest models.StoreCorrelationRequest
-	if err := c.ShouldBindJSON(&storeRequest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  "Invalid store request",
-		})
+	tStart, err := time.Parse(time.RFC3339, legacyReq.TimeStart)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": fmt.Sprintf("invalid timeStart: %v", err)})
+		return
+	}
+	tEnd, err := time.Parse(time.RFC3339, legacyReq.TimeEnd)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": fmt.Sprintf("invalid timeEnd: %v", err)})
+		return
+	}
+	if !tStart.Before(tEnd) {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "timeStart must be before timeEnd"})
 		return
 	}
 
-	// Create correlation event for VictoriaLogs storage
-	correlationEvent := models.CorrelationEvent{
-		ID:         storeRequest.CorrelationID,
-		Type:       "rca_correlation",
-		IncidentID: storeRequest.IncidentID,
-		RootCause:  storeRequest.RootCause,
-		Confidence: storeRequest.Confidence,
-		RedAnchors: storeRequest.RedAnchors,
-		Timeline:   storeRequest.Timeline,
-		CreatedAt:  time.Now(),
+	if tr == (models.TimeRange{}) {
+		tr = models.TimeRange{Start: tStart, End: tEnd}
+	}
+	if ok, msg := h.validateWindow(tr); !ok {
+		if h.engineCfg.StrictTimeWindow {
+			h.logger.Warn("Rejecting request due to time window validation", "details", msg)
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": msg})
+			return
+		}
+		h.logger.Warn("Time window out of bounds (lenient mode)", "details", msg)
 	}
 
-	// Store as JSON event in VictoriaLogs via MIRADOR-CORE (as per diagram)
-	logEntry := map[string]interface{}{
-		"_time":       correlationEvent.CreatedAt.Format(time.RFC3339),
-		"_msg":        fmt.Sprintf("RCA correlation completed for incident %s", correlationEvent.IncidentID),
-		"level":       "info",
-		"type":        "rca_correlation",
-		"incident_id": correlationEvent.IncidentID,
-		"correlation": correlationEvent,
+	tPeak := tStart.Add(tEnd.Sub(tStart) / 2)
+	impactMetric := legacyReq.ImpactMetric
+	if impactMetric == "" {
+		impactMetric = "error_rate"
+	}
+	metricDirection := legacyReq.MetricDirection
+	if metricDirection == "" {
+		metricDirection = "higher_is_worse"
+	}
+	severity := legacyReq.Severity
+	if severity == 0 {
+		severity = 0.7
+	}
+	impactSummary := legacyReq.ImpactSummary
+	if impactSummary == "" {
+		impactSummary = fmt.Sprintf("Incident on %s (metric: %s)", legacyReq.ImpactService, impactMetric)
 	}
 
-	if err := h.logsService.StoreJSONEvent(c.Request.Context(), logEntry); err != nil {
-		h.logger.Error("Failed to store correlation", "correlationId", correlationEvent.ID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "error",
-			"error":  "Failed to store correlation event",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data": gin.H{
-			"stored":        true,
-			"correlationId": correlationEvent.ID,
-			"storedAt":      correlationEvent.CreatedAt,
-			"format":        "JSON",
-			"destination":   "VictoriaLogs",
+	incidentContext := &rca.IncidentContext{
+		ID:            fmt.Sprintf("incident_%d", time.Now().UnixNano()),
+		ImpactService: legacyReq.ImpactService,
+		ImpactSignal: rca.ImpactSignal{
+			ServiceName: legacyReq.ImpactService,
+			MetricName:  impactMetric,
+			Direction:   metricDirection,
+			Labels:      map[string]string{},
+			Threshold:   0.0,
 		},
-	})
-}
-
-// GET /api/v1/rca/correlations - List active correlations (disabled)
-func (h *RCAHandler) GetActiveCorrelations(c *gin.Context) {
-	// Check if RCA feature is enabled
-	if !h.checkFeatureEnabled(c) {
-		c.JSON(http.StatusForbidden, gin.H{
-			"status": "error",
-			"error":  "RCA feature is disabled",
-		})
-		return
+		TimeBounds:    rca.IncidentTimeWindow{TStart: tStart, TPeak: tPeak, TEnd: tEnd},
+		ImpactSummary: impactSummary,
+		Severity:      severity,
+		CreatedAt:     time.Now().UTC(),
 	}
 
-	// External AI engine correlation listing has been removed
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"status":  "error",
-		"error":   "Correlation listing via external AI engines is no longer supported",
-		"message": "Use the local RCA engine for analysis",
-	})
-}
-
-// GET /api/v1/rca/patterns - List known failure patterns (disabled)
-func (h *RCAHandler) GetFailurePatterns(c *gin.Context) {
-	// Check if RCA feature is enabled
-	if !h.checkFeatureEnabled(c) {
-		c.JSON(http.StatusForbidden, gin.H{
-			"status": "error",
-			"error":  "RCA feature is disabled",
-		})
-		return
+	opts := rca.DefaultRCAOptions()
+	if legacyReq.MaxChains > 0 {
+		opts.MaxChains = legacyReq.MaxChains
+	}
+	if legacyReq.MaxStepsPerChain > 0 {
+		opts.MaxStepsPerChain = legacyReq.MaxStepsPerChain
+	}
+	if legacyReq.MinScoreThreshold > 0 {
+		opts.MinScoreThreshold = legacyReq.MinScoreThreshold
+	}
+	if legacyReq.DimensionConfig != nil {
+		opts.DimensionConfig = rca.RCADimensionConfig{
+			ExtraDimensions:  legacyReq.DimensionConfig.ExtraDimensions,
+			DimensionWeights: legacyReq.DimensionConfig.DimensionWeights,
+			AlignmentPenalty: legacyReq.DimensionConfig.AlignmentPenalty,
+			AlignmentBonus:   legacyReq.DimensionConfig.AlignmentBonus,
+		}
 	}
 
-	// External AI engine pattern retrieval has been removed
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"status":  "error",
-		"error":   "Failure pattern retrieval via external AI engines is no longer supported",
-		"message": "Use the local RCA engine for analysis",
-	})
-}
-
-// POST /api/v1/rca/service-graph - Aggregate service dependency metrics.
-func (h *RCAHandler) GetServiceGraph(c *gin.Context) {
-	// Check if RCA feature is enabled
-	if !h.checkFeatureEnabled(c) {
-		c.JSON(http.StatusForbidden, gin.H{
-			"status": "error",
-			"error":  "RCA feature is disabled",
-		})
-		return
-	}
-
-	if h.serviceGraph == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"status": "error",
-			"error":  "service graph metrics not configured",
-		})
-		return
-	}
-
-	var request models.ServiceGraphRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  "invalid service graph request",
-		})
-		return
-	}
-
-	if request.Start.IsZero() || request.End.IsZero() {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  "start and end must be provided",
-		})
-		return
-	}
-	data, err := h.serviceGraph.FetchServiceGraph(c.Request.Context(), &request)
+	rcaIncident, err := h.rcaEngine.ComputeRCA(c.Request.Context(), incidentContext, opts)
 	if err != nil {
-		h.logger.Error("service graph fetch failed", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "error",
-			"error":  "failed to fetch service graph",
-		})
+		h.logger.Error("RCA computation failed (legacy)", "incident_id", incidentContext.ID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": fmt.Sprintf("RCA computation failed: %v", err)})
+		return
+	}
+
+	dto := h.convertRCAIncidentToDTO(rcaIncident)
+	c.JSON(http.StatusOK, models.RCAResponse{Status: "success", Data: dto, Timestamp: time.Now().UTC()})
+}
+
+func (h *RCAHandler) validateWindow(tr models.TimeRange) (bool, string) {
+	if tr.Start.IsZero() || tr.End.IsZero() {
+		return false, "startTime and endTime must be provided"
+	}
+	if !tr.Start.Before(tr.End) {
+		return false, "endTime must be after startTime"
+	}
+	windowDur := tr.End.Sub(tr.Start)
+	if h.engineCfg.MinWindow > 0 && windowDur < h.engineCfg.MinWindow {
+		return false, fmt.Sprintf("time window too small: %s < minWindow %s", windowDur.String(), h.engineCfg.MinWindow.String())
+	}
+	if h.engineCfg.MaxWindow > 0 && windowDur > h.engineCfg.MaxWindow {
+		return false, fmt.Sprintf("time window too large: %s > maxWindow %s", windowDur.String(), h.engineCfg.MaxWindow.String())
+	}
+	return true, ""
+}
+
+// StartInvestigation handles POST /rca/investigate - external AI-driven investigations.
+func (h *RCAHandler) StartInvestigation(c *gin.Context) {
+	// If no external RCA engine is configured, return Not Implemented
+	if h.rcaEngine == nil {
+		c.JSON(http.StatusNotImplemented, gin.H{"status": "error", "error": "not_implemented"})
+		return
+	}
+
+	// For now, external investigations are not supported by the local engine.
+	c.JSON(http.StatusNotImplemented, gin.H{"status": "error", "error": "not_implemented"})
+}
+
+// GetServiceGraph handles POST /rca/service-graph
+func (h *RCAHandler) GetServiceGraph(c *gin.Context) {
+	var req models.ServiceGraphRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "invalid_request_format"})
+		return
+	}
+	if h.serviceGraph == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "error": "service_graph_unavailable"})
+		return
+	}
+	// Validate times
+	if req.Start.IsZero() || req.End.IsZero() {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "invalid_time_range"})
+		return
+	}
+	data, err := h.serviceGraph.FetchServiceGraph(c.Request.Context(), &req)
+	if err != nil {
+		h.logger.Error("Service graph fetch failed", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": "failed_to_fetch_service_graph"})
 		return
 	}
 
 	if data == nil {
-		data = &models.ServiceGraphData{Edges: []models.ServiceGraphEdge{}}
+		h.logger.Warn("Service graph returned no data")
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": "failed_to_fetch_service_graph"})
+		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":       "success",
-		"generated_at": time.Now().UTC(),
-		"window":       data.Window,
-		"edges":        data.Edges,
-	})
+	c.JSON(http.StatusOK, gin.H{"status": "success", "edges": data.Edges, "window": data.Window})
 }
 
-// POST /api/v1/unified/rca - Phase 4: Full RCA Engine endpoint
-// Accepts an RCARequest and returns an RCAIncident JSON structure
-func (h *RCAHandler) HandleComputeRCA(c *gin.Context) {
-	var request models.RCARequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		h.logger.Error("Failed to parse RCA request", "error", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  fmt.Sprintf("Invalid request format: %v", err),
-		})
-		return
-	}
-
-	// Validate required fields
-	if request.ImpactService == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  "impactService is required",
-		})
-		return
-	}
-
-	// Parse time window
-	tStart, err := time.Parse(time.RFC3339, request.TimeStart)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  fmt.Sprintf("Invalid timeStart format: %v", err),
-		})
-		return
-	}
-
-	tEnd, err := time.Parse(time.RFC3339, request.TimeEnd)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  fmt.Sprintf("Invalid timeEnd format: %v", err),
-		})
-		return
-	}
-
-	if !tStart.Before(tEnd) {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": "error",
-			"error":  "timeStart must be before timeEnd",
-		})
-		return
-	}
-
-	// Set defaults
-	if request.ImpactMetric == "" {
-		request.ImpactMetric = "error_rate"
-	}
-	if request.MetricDirection == "" {
-		request.MetricDirection = "higher_is_worse"
-	}
-	if request.Severity == 0 {
-		request.Severity = 0.7 // default medium-high severity
-	}
-	if request.ImpactSummary == "" {
-		request.ImpactSummary = fmt.Sprintf("Incident on %s (metric: %s)", request.ImpactService, request.ImpactMetric)
-	}
-
-	// Build IncidentContext
-	tPeak := tStart.Add(tEnd.Sub(tStart) / 2) // Use midpoint as peak
-	incidentContext := &rca.IncidentContext{
-		ID:            fmt.Sprintf("incident_%d", time.Now().UnixNano()),
-		ImpactService: request.ImpactService,
-		ImpactSignal: rca.ImpactSignal{
-			ServiceName: request.ImpactService,
-			MetricName:  request.ImpactMetric,
-			Direction:   request.MetricDirection,
-			Labels:      make(map[string]string),
-			Threshold:   0.0,
-		},
-		TimeBounds: rca.IncidentTimeWindow{
-			TStart: tStart,
-			TPeak:  tPeak,
-			TEnd:   tEnd,
-		},
-		ImpactSummary: request.ImpactSummary,
-		Severity:      request.Severity,
-		CreatedAt:     time.Now().UTC(),
-	}
-
-	// If a KPI ID was provided and a KPI resolver is available, resolve it to an ImpactSignal
-	if request.ImpactKPIID != "" && h.kpiResolver != nil {
-		// Use temporary diagnostics for KPI resolution
-		kpiDiags := rca.NewRCADiagnostics()
-		signal, kmeta, warnings, err := h.kpiResolver.ResolveKPIToSignal(c.Request.Context(), request.ImpactKPIID, kpiDiags)
-		if err != nil {
-			h.logger.Warn("KPI resolution returned error", "kpi_id", request.ImpactKPIID, "error", err)
-		}
-		// Attach KPI impact ID and metadata to incident context
-		incidentContext.KPIImpactID = request.ImpactKPIID
-		if kmeta != nil {
-			incidentContext.KPIMetadata = &rca.KPIIncidentMetadata{
-				KPIDefinitionID: kmeta.ID,
-				KPIName:         kmeta.Name,
-				KPIKind:         kmeta.Kind,
-				KPISentiment:    kmeta.Sentiment,
-				ImpactIsKPI:     true,
-			}
-		}
-
-		// If resolver returned a signal, use it to override the ImpactSignal
-		if signal != nil {
-			// Ensure service name is set; fall back to request.ImpactService
-			if signal.ServiceName == "" {
-				signal.ServiceName = request.ImpactService
-			}
-			incidentContext.ImpactSignal = *signal
-		}
-
-		// Convert any warnings into incident diagnostics
-		for _, w := range warnings {
-			// Add to top-level diagnostics via a note in logs (engine will pick up diagnostics during processing)
-			h.logger.Debug("KPI resolver warning", "kpi_id", request.ImpactKPIID, "warning", w)
-		}
-		// Merge any KPI resolver diagnostics into handler logs for observability
-		if kpiDiags != nil && len(kpiDiags.ReducedAccuracyReasons) > 0 {
-			for _, r := range kpiDiags.ReducedAccuracyReasons {
-				h.logger.Debug("KPI diagnostic", "note", r)
-			}
-		}
-	}
-
-	// Build RCAOptions
-	opts := rca.DefaultRCAOptions()
-	if request.MaxChains > 0 {
-		opts.MaxChains = request.MaxChains
-	}
-	if request.MaxStepsPerChain > 0 {
-		opts.MaxStepsPerChain = request.MaxStepsPerChain
-	}
-	if request.MinScoreThreshold > 0 {
-		opts.MinScoreThreshold = request.MinScoreThreshold
-	}
-
-	// If the request provided a DimensionConfig DTO, merge it into options
-	if request.DimensionConfig != nil {
-		opts.DimensionConfig = rca.RCADimensionConfig{
-			ExtraDimensions:  request.DimensionConfig.ExtraDimensions,
-			DimensionWeights: request.DimensionConfig.DimensionWeights,
-			AlignmentPenalty: request.DimensionConfig.AlignmentPenalty,
-			AlignmentBonus:   request.DimensionConfig.AlignmentBonus,
-		}
-	}
-
-	// Call RCA engine
-	rcaIncident, err := h.rcaEngine.ComputeRCA(c.Request.Context(), incidentContext, opts)
-	if err != nil {
-		h.logger.Error("RCA computation failed", "incident_id", incidentContext.ID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "error",
-			"error":  fmt.Sprintf("RCA computation failed: %v", err),
-		})
-		return
-	}
-
-	// Convert to DTO
-	dto := h.convertRCAIncidentToDTO(rcaIncident)
-
-	// Return response
-	response := models.RCAResponse{
-		Status:    "success",
-		Data:      dto,
-		Timestamp: time.Now().UTC(),
-	}
-
-	c.JSON(http.StatusOK, response)
-}
-
-// convertRCAIncidentToDTO converts internal RCAIncident to DTO for JSON serialization
-func (h *RCAHandler) convertRCAIncidentToDTO(ri *rca.RCAIncident) *models.RCAIncidentDTO {
-	if ri == nil {
+func (h *RCAHandler) convertRCAIncidentToDTO(inc *rca.RCAIncident) *models.RCAIncidentDTO {
+	if inc == nil {
 		return nil
 	}
-
 	dto := &models.RCAIncidentDTO{
-		GeneratedAt: ri.GeneratedAt,
-		Score:       ri.Score,
-		Notes:       ri.Notes,
-		Chains:      make([]*models.RCAChainDTO, 0),
+		Impact:      h.convertIncidentContext(inc.Impact),
+		RootCause:   nil,
+		Chains:      make([]*models.RCAChainDTO, 0, len(inc.Chains)),
+		GeneratedAt: inc.GeneratedAt,
+		Score:       inc.Score,
+		Notes:       append([]string{}, inc.Notes...),
+		Diagnostics: h.convertDiagnostics(inc.Diagnostics),
 	}
-
-	// Convert impact
-	if ri.Impact != nil {
-		dto.Impact = &models.IncidentContextDTO{
-			ID:            ri.Impact.ID,
-			ImpactService: ri.Impact.ImpactService,
-			MetricName:    ri.Impact.ImpactSignal.MetricName,
-			TimeStartStr:  ri.Impact.TimeBounds.TStart.Format(time.RFC3339),
-			TimeEndStr:    ri.Impact.TimeBounds.TEnd.Format(time.RFC3339),
-			ImpactSummary: ri.Impact.ImpactSummary,
-			Severity:      float64(ri.Impact.Severity),
-		}
+	if inc.RootCause != nil {
+		dto.RootCause = h.convertRCAStep(inc.RootCause)
 	}
-
-	// Convert root cause
-	if ri.RootCause != nil {
-		dto.RootCause = h.convertRCAStepToDTO(ri.RootCause)
+	for _, ch := range inc.Chains {
+		dto.Chains = append(dto.Chains, h.convertRCAChain(ch))
 	}
-
-	// Convert chains
-	for _, chain := range ri.Chains {
-		chainDTO := &models.RCAChainDTO{
-			Score:        chain.Score,
-			Rank:         chain.Rank,
-			ImpactPath:   chain.ImpactPath,
-			DurationHops: chain.DurationHops,
-			Steps:        make([]*models.RCAStepDTO, 0),
-		}
-
-		for _, step := range chain.Steps {
-			stepDTO := h.convertRCAStepToDTO(step)
-			if stepDTO != nil {
-				chainDTO.Steps = append(chainDTO.Steps, stepDTO)
-			}
-		}
-
-		dto.Chains = append(dto.Chains, chainDTO)
-	}
-
 	return dto
 }
 
-// convertRCAStepToDTO converts an RCAStep to DTO
-func (h *RCAHandler) convertRCAStepToDTO(step *rca.RCAStep) *models.RCAStepDTO {
-	if step == nil {
+func (h *RCAHandler) convertIncidentContext(ic *rca.IncidentContext) *models.IncidentContextDTO {
+	if ic == nil {
 		return nil
 	}
-
-	dto := &models.RCAStepDTO{
-		WhyIndex:  step.WhyIndex,
-		Service:   step.Service,
-		Component: step.Component,
-		TimeStart: step.TimeRange.Start,
-		TimeEnd:   step.TimeRange.End,
-		Ring:      step.Ring.String(),
-		Direction: string(step.Direction),
-		Distance:  step.Distance,
-		Summary:   step.Summary,
-		Score:     step.Score,
-		Evidence:  make([]*models.EvidenceRefDTO, 0),
+	return &models.IncidentContextDTO{
+		ID:            ic.ID,
+		ImpactService: ic.ImpactService,
+		MetricName:    ic.ImpactSignal.MetricName,
+		TimeStartStr:  ic.TimeBounds.TStart.Format(time.RFC3339),
+		TimeEndStr:    ic.TimeBounds.TEnd.Format(time.RFC3339),
+		ImpactSummary: ic.ImpactSummary,
+		Severity:      ic.Severity,
 	}
+}
 
-	for _, ev := range step.Evidence {
-		evDTO := &models.EvidenceRefDTO{
-			Type:    ev.Type,
-			ID:      ev.ID,
-			Details: ev.Details,
-		}
-		dto.Evidence = append(dto.Evidence, evDTO)
+func (h *RCAHandler) convertRCAChain(ch *rca.RCAChain) *models.RCAChainDTO {
+	if ch == nil {
+		return nil
 	}
-
+	dto := &models.RCAChainDTO{
+		Steps:        make([]*models.RCAStepDTO, 0, len(ch.Steps)),
+		Score:        ch.Score,
+		Rank:         ch.Rank,
+		ImpactPath:   append([]string{}, ch.ImpactPath...),
+		DurationHops: ch.DurationHops,
+	}
+	for _, s := range ch.Steps {
+		dto.Steps = append(dto.Steps, h.convertRCAStep(s))
+	}
 	return dto
+}
+
+func (h *RCAHandler) convertRCAStep(s *rca.RCAStep) *models.RCAStepDTO {
+	if s == nil {
+		return nil
+	}
+	ev := make([]*models.EvidenceRefDTO, 0, len(s.Evidence))
+	for _, e := range s.Evidence {
+		ev = append(ev, &models.EvidenceRefDTO{Type: e.Type, ID: e.ID, Details: e.Details})
+	}
+	return &models.RCAStepDTO{
+		WhyIndex:  s.WhyIndex,
+		Service:   s.Service,
+		Component: s.Component,
+		TimeStart: s.TimeRange.Start,
+		TimeEnd:   s.TimeRange.End,
+		Ring:      fmt.Sprint(s.Ring),
+		Direction: fmt.Sprint(s.Direction),
+		Distance:  s.Distance,
+		Evidence:  ev,
+		Summary:   s.Summary,
+		Score:     s.Score,
+	}
+}
+
+func (h *RCAHandler) convertDiagnostics(d *rca.RCADiagnostics) *models.RCADiagnosticsDTO {
+	if d == nil {
+		return nil
+	}
+	return &models.RCADiagnosticsDTO{
+		MissingLabels:            append([]string{}, d.MissingLabels...),
+		DimensionDetectionStatus: copyStringBoolMap(d.DimensionDetectionStatus),
+		IsolationForestIssues:    append([]string{}, d.IsolationForestIssues...),
+		ReducedAccuracyReasons:   append([]string{}, d.ReducedAccuracyReasons...),
+		MetricsQueryErrors:       append([]string{}, d.MetricsQueryErrors...),
+	}
+}
+
+func copyStringBoolMap(in map[string]bool) map[string]bool {
+	if in == nil {
+		return nil
+	}
+	out := make(map[string]bool, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
+// GetActiveCorrelations handles GET /rca/correlations
+func (h *RCAHandler) GetActiveCorrelations(c *gin.Context) {
+	// TODO(AT-012): Implement active correlation retrieval
+	c.JSON(http.StatusNotImplemented, gin.H{"status": "error", "error": "not_implemented"})
+}
+
+// GetFailurePatterns handles GET /rca/patterns
+func (h *RCAHandler) GetFailurePatterns(c *gin.Context) {
+	// TODO(AT-012): Implement failure pattern retrieval
+	c.JSON(http.StatusNotImplemented, gin.H{"status": "error", "error": "not_implemented"})
+}
+
+// StoreCorrelation handles POST /rca/store
+func (h *RCAHandler) StoreCorrelation(c *gin.Context) {
+	// TODO(AT-012): Implement correlation storage
+	c.JSON(http.StatusNotImplemented, gin.H{"status": "error", "error": "not_implemented"})
 }

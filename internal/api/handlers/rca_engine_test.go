@@ -56,6 +56,43 @@ func (m *mockRCAEngine) ComputeRCA(
 	return result, nil
 }
 
+// ComputeRCAByTimeRange implements the new time-range based RCA API for tests.
+func (m *mockRCAEngine) ComputeRCAByTimeRange(ctx context.Context, tr rca.TimeRange) (*rca.RCAIncident, error) {
+	// Build a synthetic incident and result
+	incident := &rca.IncidentContext{
+		ID:            "incident_test_by_time",
+		ImpactService: "api-gateway",
+		ImpactSignal: rca.ImpactSignal{
+			ServiceName: "api-gateway",
+			MetricName:  "error_rate",
+			Direction:   "higher_is_worse",
+			Threshold:   0.05,
+		},
+		TimeBounds:    rca.IncidentTimeWindow{TStart: tr.Start, TPeak: tr.End, TEnd: tr.End},
+		ImpactSummary: "Synthetic incident from time-range",
+		Severity:      m.score,
+		CreatedAt:     time.Now().UTC(),
+	}
+
+	result := rca.NewRCAIncident(incident)
+
+	chain := rca.NewRCAChain()
+	step := rca.NewRCAStep(1, incident.ImpactService, "test_component")
+	step.Ring = rca.RingImmediate
+	step.Direction = rca.DirectionSame
+	step.TimeRange = rca.TimeRange{Start: tr.Start, End: tr.End}
+	step.Score = m.score
+	chain.AddStep(step)
+	chain.Score = m.score
+	chain.Rank = 1
+
+	result.AddChain(chain)
+	result.SetRootCauseFromBestChain()
+	result.Score = m.score
+
+	return result, nil
+}
+
 type errFailure struct{}
 
 func (e *errFailure) Error() string   { return "mock RCA engine failure" }

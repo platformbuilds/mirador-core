@@ -1820,19 +1820,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                service:
-                  type: string
-                start:
-                  type: string
-                  format: date-time
-                end:
-                  type: string
-                  format: date-time
-                correlationType:
-                  type: string
-                  enum: ["causal", "temporal", "anomaly"]
+              $ref: '#/components/schemas/TimeWindowRequest'
       responses:
         "200":
           description: Correlation analysis completed
@@ -1852,6 +1840,49 @@ paths:
                     type: string
         "500":
           description: Correlation analysis failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /api/v1/unified/rca:
+    post:
+      summary: Compute RCA over a time window
+      description: |
+        Run the RCA engine for the provided time window. The public contract is
+        intentionally small: the request body MUST contain only `startTime` and
+        `endTime` (RFC3339). Legacy RCARequest shapes are supported via a
+        deprecated compatibility shim but will be removed in a later release.
+      tags:
+        - unified-query
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeWindowRequest'
+      responses:
+        "200":
+          description: RCA computation completed
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "500":
+          description: RCA computation failed
           content:
             application/json:
               schema:
@@ -2474,6 +2505,21 @@ components:
         email:
           type: string
           format: email
+
+    TimeWindowRequest:
+      type: object
+      required:
+        - startTime
+        - endTime
+      properties:
+        startTime:
+          type: string
+          format: date-time
+          description: RFC3339 timestamp (UTC)
+        endTime:
+          type: string
+          format: date-time
+          description: RFC3339 timestamp (UTC)
 
 
 

@@ -11,14 +11,15 @@ import (
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type IntegrationsService struct {
 	config config.IntegrationsConfig
 	client *http.Client
-	logger logger.Logger
+	logger logging.Logger
 }
 
 type IntegrationsConfig struct {
@@ -43,11 +44,11 @@ type IntegrationsConfig struct {
 	} `json:"email"`
 }
 
-func NewIntegrationsService(cfg config.IntegrationsConfig, logger logger.Logger) *IntegrationsService {
+func NewIntegrationsService(cfg config.IntegrationsConfig, logger corelogger.Logger) *IntegrationsService {
 	return &IntegrationsService{
 		config: cfg,
 		client: &http.Client{Timeout: 10 * time.Second},
-		logger: logger,
+		logger: logging.FromCoreLogger(logger),
 	}
 }
 

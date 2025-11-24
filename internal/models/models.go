@@ -14,15 +14,42 @@ type RedAnchor struct {
 
 // CorrelationResult from RCA-ENGINE analysis
 type CorrelationResult struct {
-	CorrelationID    string          `json:"correlation_id"`
-	IncidentID       string          `json:"incident_id"`
-	RootCause        string          `json:"root_cause"`
-	Confidence       float64         `json:"confidence"`
-	AffectedServices []string        `json:"affected_services"`
-	Timeline         []TimelineEvent `json:"timeline"`
-	RedAnchors       []*RedAnchor    `json:"red_anchors"`
-	Recommendations  []string        `json:"recommendations"`
-	CreatedAt        time.Time       `json:"created_at"`
+	CorrelationID    string   `json:"correlation_id"`
+	IncidentID       string   `json:"incident_id"`
+	RootCause        string   `json:"root_cause"`
+	Confidence       float64  `json:"confidence"`
+	AffectedServices []string `json:"affected_services"`
+	// Causes is an additive field containing candidate causes with computed
+	// suspicion scores and correlation statistics. This field is optional and
+	// preserves backwards compatibility of existing responses.
+	Causes          []CauseCandidate `json:"causes,omitempty"`
+	Timeline        []TimelineEvent  `json:"timeline"`
+	RedAnchors      []*RedAnchor     `json:"red_anchors"`
+	Recommendations []string         `json:"recommendations"`
+	CreatedAt       time.Time        `json:"created_at"`
+}
+
+// CorrelationStats holds statistical correlation outputs for an Impact<->Cause pair.
+type CorrelationStats struct {
+	Pearson      float64 `json:"pearson"`
+	Spearman     float64 `json:"spearman"`
+	CrossCorrMax float64 `json:"cross_correlation_max"`
+	CrossCorrLag int     `json:"cross_correlation_lag"`
+	// NOTE(AT-007): Partial correlation currently a placeholder; see action tracker AT-007
+	Partial    float64 `json:"partial"`
+	SampleSize int     `json:"sample_size"`
+	PValue     float64 `json:"p_value"`
+	Confidence float64 `json:"confidence"`
+}
+
+// CauseCandidate represents a candidate cause KPI or service with computed
+// suspicion score and correlation stats.
+type CauseCandidate struct {
+	KPI            string            `json:"kpi"`
+	Service        string            `json:"service,omitempty"`
+	SuspicionScore float64           `json:"suspicion_score"`
+	Reasons        []string          `json:"reasons,omitempty"`
+	Stats          *CorrelationStats `json:"stats,omitempty"`
 }
 
 // CorrelationEvent for VictoriaLogs storage

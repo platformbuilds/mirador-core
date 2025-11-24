@@ -129,5 +129,35 @@ func GetDefaultConfig() *Config {
 			DefaultLimit:      1000,
 			EnableCorrelation: false,
 		},
+
+		// Engine defaults (Correlation & RCA)
+		Engine: EngineConfig{
+			MinWindow:        10 * time.Second,
+			MaxWindow:        1 * time.Hour,
+			DefaultGraphHops: 2,
+			DefaultMaxWhys:   5,
+			RingStrategy:     "auto",
+			Buckets: BucketConfig{
+				CoreWindowSize: 30 * time.Second,
+				PreRings:       2,
+				PostRings:      1,
+				RingStep:       15 * time.Second,
+			},
+			MinCorrelation:    0.6,
+			MinAnomalyScore:   0.7,
+			StrictTimeWindow:  false,
+			Probes:            []string{"transactions_failed_total", "http_errors_total", "cpu_usage", "memory_usage"},
+			ServiceCandidates: []string{"api-gateway", "tps", "keydb-client", "kafka-producer", "kafka-consumer", "cassandra-client"},
+			DefaultQueryLimit: 1000,
+			Labels: LabelSchemaConfig{
+				Service:    []string{"service", "service.name", "serviceName"},
+				Pod:        []string{"pod", "kubernetes.pod_name"},
+				Namespace:  []string{"namespace", "kubernetes.namespace_name"},
+				Deployment: []string{"deployment"},
+				Container:  []string{"container", "kubernetes.container_name"},
+				Host:       []string{"host", "hostname"},
+				Level:      []string{"level", "severity"},
+			},
+		},
 	}
 }

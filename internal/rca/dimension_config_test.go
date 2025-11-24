@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -98,7 +99,7 @@ func TestDimensionConfigValidation(t *testing.T) {
 // TestMetricsLabelDetection tests label detection and fallback logic.
 func TestMetricsLabelDetection(t *testing.T) {
 	mockLogger := logger.NewMockLogger(&strings.Builder{})
-	detector := NewMetricsLabelDetector(mockLogger)
+	detector := NewMetricsLabelDetector(mockLogger, config.LabelSchemaConfig{Service: []string{"service_name", "service.name", "svc_name", "service", "app"}})
 
 	tests := []struct {
 		name               string
@@ -199,7 +200,7 @@ func TestMetricsLabelDetection(t *testing.T) {
 // TestExtraDimensionDetection tests detection of user-configured extra dimensions.
 func TestExtraDimensionDetection(t *testing.T) {
 	mockLogger := logger.NewMockLogger(&strings.Builder{})
-	detector := NewMetricsLabelDetector(mockLogger)
+	detector := NewMetricsLabelDetector(mockLogger, config.LabelSchemaConfig{Service: []string{"service_name", "service.name", "svc_name", "service", "app"}})
 
 	providedLabels := map[string]bool{
 		"env":    true,
@@ -348,7 +349,7 @@ func TestRCADiagnosticsToNotes(t *testing.T) {
 // TestServiceIdentifierFallback tests fallback logic for service identifier extraction.
 func TestServiceIdentifierFallback(t *testing.T) {
 	mockLogger := logger.NewMockLogger(&strings.Builder{})
-	detector := NewMetricsLabelDetector(mockLogger)
+	detector := NewMetricsLabelDetector(mockLogger, config.LabelSchemaConfig{Service: []string{"service_name", "service.name", "svc_name", "service", "app"}})
 
 	tests := []struct {
 		name                  string
