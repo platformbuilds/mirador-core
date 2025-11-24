@@ -15,8 +15,9 @@ import (
 	"sync"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type VictoriaMetricsService struct {
@@ -24,7 +25,7 @@ type VictoriaMetricsService struct {
 	endpoints []string
 	timeout   time.Duration
 	client    *http.Client
-	logger    logger.Logger
+	logger    logging.Logger
 	current   int // round-robin cursor
 
 	// guards updates/selection when discovery refreshes endpoints
@@ -43,7 +44,7 @@ type VictoriaMetricsService struct {
 	children []*VictoriaMetricsService
 }
 
-func NewVictoriaMetricsService(cfg config.VictoriaMetricsConfig, logger logger.Logger) *VictoriaMetricsService {
+func NewVictoriaMetricsService(cfg config.VictoriaMetricsConfig, logger corelogger.Logger) *VictoriaMetricsService {
 	return &VictoriaMetricsService{
 		name:      cfg.Name,
 		endpoints: cfg.Endpoints,
@@ -51,7 +52,7 @@ func NewVictoriaMetricsService(cfg config.VictoriaMetricsConfig, logger logger.L
 		client: &http.Client{
 			Timeout: time.Duration(cfg.Timeout) * time.Millisecond,
 		},
-		logger:    logger,
+		logger:    logging.FromCoreLogger(logger),
 		retries:   3,    // total attempts
 		backoffMS: 1000, // 1s, 2s, 4s
 		username:  cfg.Username,

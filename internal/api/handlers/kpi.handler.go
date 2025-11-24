@@ -12,10 +12,11 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/services"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	models "github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // KPIRepo extends SchemaStore with KPI-specific operations
@@ -26,7 +27,7 @@ import (
 type KPIHandler struct {
 	repo   repo.KPIRepo
 	cache  cache.ValkeyCluster
-	logger logger.Logger
+	logger logging.Logger
 	cfg    *config.Config
 }
 
@@ -42,15 +43,16 @@ type validationErrorResponse struct {
 }
 
 // NewKPIHandler creates a new KPI handler
-func NewKPIHandler(cfg *config.Config, kpiRepo repo.KPIRepo, cache cache.ValkeyCluster, l logger.Logger) *KPIHandler {
+func NewKPIHandler(cfg *config.Config, kpiRepo repo.KPIRepo, cache cache.ValkeyCluster, l corelogger.Logger) *KPIHandler {
 	if kpiRepo == nil {
-		l.Error("KPIRepo is nil - KPI functionality will not be available")
+		// log via the core logger transformed to internal logging for consistency
+		logging.FromCoreLogger(l).Error("KPIRepo is nil - KPI functionality will not be available")
 		return nil
 	}
 	return &KPIHandler{
 		repo:   kpiRepo,
 		cache:  cache,
-		logger: l,
+		logger: logging.FromCoreLogger(l),
 		cfg:    cfg,
 	}
 } // ------------------- KPI Definitions API -------------------

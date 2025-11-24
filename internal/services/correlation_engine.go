@@ -12,12 +12,13 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/tracing"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // containsString helper for slice membership checks
@@ -73,7 +74,7 @@ type CorrelationEngineImpl struct {
 	tracesService  TracesService
 	kpiRepo        repo.KPIRepo
 	cache          cache.ValkeyCluster
-	logger         logger.Logger
+	logger         logging.Logger
 	parser         *models.CorrelationQueryParser
 	resultMerger   *CorrelationResultMerger
 	tracer         *tracing.QueryTracer
@@ -87,7 +88,7 @@ func NewCorrelationEngine(
 	tracesSvc TracesService,
 	kpiRepo repo.KPIRepo,
 	cache cache.ValkeyCluster,
-	logger logger.Logger,
+	logger corelogger.Logger,
 	cfg config.EngineConfig,
 ) CorrelationEngine {
 	// Ensure engine configuration is merged with package-level defaults so
@@ -100,9 +101,9 @@ func NewCorrelationEngine(
 		tracesService:  tracesSvc,
 		kpiRepo:        kpiRepo,
 		cache:          cache,
-		logger:         logger,
+		logger:         logging.FromCoreLogger(logger),
 		parser:         models.NewCorrelationQueryParser(),
-		resultMerger:   NewCorrelationResultMerger(logger),
+		resultMerger:   NewCorrelationResultMerger(logging.FromCoreLogger(logger)),
 		tracer:         tracing.GetGlobalTracer(),
 		engineCfg:      cfg,
 	}
@@ -1845,11 +1846,11 @@ func (ce *CorrelationEngineImpl) calculateLabelMatchConfidence(matches []labelMa
 
 // CorrelationResultMerger handles merging and deduplicating correlation results
 type CorrelationResultMerger struct {
-	logger logger.Logger
+	logger logging.Logger
 }
 
 // NewCorrelationResultMerger creates a new result merger
-func NewCorrelationResultMerger(logger logger.Logger) *CorrelationResultMerger {
+func NewCorrelationResultMerger(logger logging.Logger) *CorrelationResultMerger {
 	return &CorrelationResultMerger{
 		logger: logger,
 	}

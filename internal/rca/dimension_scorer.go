@@ -3,18 +3,19 @@ package rca
 import (
 	"fmt"
 
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/platformbuilds/mirador-core/internal/logging"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // DimensionAlignmentScorer computes alignment scores for candidates based on extra dimensions.
 type DimensionAlignmentScorer struct {
-	logger logger.Logger
+	logger logging.Logger
 }
 
 // NewDimensionAlignmentScorer creates a new scorer.
-func NewDimensionAlignmentScorer(logger logger.Logger) *DimensionAlignmentScorer {
+func NewDimensionAlignmentScorer(logger corelogger.Logger) *DimensionAlignmentScorer {
 	return &DimensionAlignmentScorer{
-		logger: logger,
+		logger: logging.FromCoreLogger(logger),
 	}
 }
 

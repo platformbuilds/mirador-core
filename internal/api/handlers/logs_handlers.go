@@ -12,17 +12,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/internal/utils"
 	lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // LogsHandler provides D3-friendly APIs (histogram, facets, search, tail)
 type LogsHandler struct {
 	logs *services.VictoriaLogsService
-	log  logger.Logger
+	log  logging.Logger
 
 	// server limits / defaults
 	maxRangeMS int64 // e.g., 24h in ms
@@ -30,10 +31,10 @@ type LogsHandler struct {
 	defTopN    int
 }
 
-func NewLogsHandler(svc *services.VictoriaLogsService, log logger.Logger) *LogsHandler {
+func NewLogsHandler(svc *services.VictoriaLogsService, log corelogger.Logger) *LogsHandler {
 	return &LogsHandler{
 		logs:       svc,
-		log:        log,
+		log:        logging.FromCoreLogger(log),
 		maxRangeMS: 24 * 60 * 60 * 1000, // 24h
 		defStepMS:  60_000,              // 1m buckets
 		defTopN:    20,

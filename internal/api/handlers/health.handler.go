@@ -8,34 +8,35 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type HealthHandler struct {
 	vmServices *services.VictoriaMetricsServices
 	cache      cache.ValkeyCluster // may be nil for legacy behavior
-	logger     logger.Logger
+	logger     logging.Logger
 }
 
 // NewHealthHandlerWithCache constructs a HealthHandler with explicit cache dependency.
-func NewHealthHandlerWithCache(vmServices *services.VictoriaMetricsServices, c cache.ValkeyCluster, logger logger.Logger) *HealthHandler {
+func NewHealthHandlerWithCache(vmServices *services.VictoriaMetricsServices, c cache.ValkeyCluster, logger corelogger.Logger) *HealthHandler {
 	return &HealthHandler{
 		vmServices: vmServices,
 		cache:      c,
-		logger:     logger,
+		logger:     logging.FromCoreLogger(logger),
 	}
 }
 
 // NewHealthHandler preserves the legacy constructor signature used by tests.
 // It creates a handler without a cache dependency; readiness will fall back
 // to legacy checks (VM/VL/VT) when cache is nil.
-func NewHealthHandler(vmServices *services.VictoriaMetricsServices, logger logger.Logger) *HealthHandler {
+func NewHealthHandler(vmServices *services.VictoriaMetricsServices, logger corelogger.Logger) *HealthHandler {
 	return &HealthHandler{
 		vmServices: vmServices,
 		cache:      nil,
-		logger:     logger,
+		logger:     logging.FromCoreLogger(logger),
 	}
 }
 

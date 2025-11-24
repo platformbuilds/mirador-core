@@ -7,11 +7,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	models "github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // TraceServiceHandler provides API endpoints for trace service definitions.
@@ -20,16 +21,16 @@ type TraceServiceHandler struct {
 	repo    repo.SchemaStore
 	kpiRepo repo.KPIRepo
 	cache   cache.ValkeyCluster
-	logger  logger.Logger
+	logger  logging.Logger
 }
 
 // NewTraceServiceHandler creates a new trace service handler
-func NewTraceServiceHandler(r repo.SchemaStore, kpirepo repo.KPIRepo, cache cache.ValkeyCluster, l logger.Logger) *TraceServiceHandler {
+func NewTraceServiceHandler(r repo.SchemaStore, kpirepo repo.KPIRepo, cache cache.ValkeyCluster, l corelogger.Logger) *TraceServiceHandler {
 	return &TraceServiceHandler{
 		repo:    r,
 		kpiRepo: kpirepo,
 		cache:   cache,
-		logger:  l,
+		logger:  logging.FromCoreLogger(l),
 	}
 }
 

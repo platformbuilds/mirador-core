@@ -6,25 +6,26 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // MetricsQLQueryHandler handles MetricsQL function query endpoints
 type MetricsQLQueryHandler struct {
 	queryService *services.VictoriaMetricsQueryService
 	cache        cache.ValkeyCluster
-	logger       logger.Logger
+	logger       logging.Logger
 }
 
 // NewMetricsQLQueryHandler creates a new MetricsQL query handler
-func NewMetricsQLQueryHandler(queryService *services.VictoriaMetricsQueryService, cache cache.ValkeyCluster, logger logger.Logger) *MetricsQLQueryHandler {
+func NewMetricsQLQueryHandler(queryService *services.VictoriaMetricsQueryService, cache cache.ValkeyCluster, logger corelogger.Logger) *MetricsQLQueryHandler {
 	return &MetricsQLQueryHandler{
 		queryService: queryService,
 		cache:        cache,
-		logger:       logger,
+		logger:       logging.FromCoreLogger(logger),
 	}
 }
 

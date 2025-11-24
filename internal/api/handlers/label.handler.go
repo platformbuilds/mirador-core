@@ -8,11 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gofrs/uuid/v5"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	models "github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // LabelHandler provides API endpoints for label definitions.
@@ -21,16 +22,16 @@ type LabelHandler struct {
 	repo    repo.SchemaStore
 	kpiRepo repo.KPIRepo
 	cache   cache.ValkeyCluster
-	logger  logger.Logger
+	logger  logging.Logger
 }
 
 // NewLabelHandler creates a new label handler
-func NewLabelHandler(r repo.SchemaStore, kpirepo repo.KPIRepo, cache cache.ValkeyCluster, l logger.Logger) *LabelHandler {
+func NewLabelHandler(r repo.SchemaStore, kpirepo repo.KPIRepo, cache cache.ValkeyCluster, l corelogger.Logger) *LabelHandler {
 	return &LabelHandler{
 		repo:    r,
 		kpiRepo: kpirepo,
 		cache:   cache,
-		logger:  l,
+		logger:  logging.FromCoreLogger(l),
 	}
 }
 

@@ -11,12 +11,13 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/internal/tracing"
 	"github.com/platformbuilds/mirador-core/internal/utils"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // UnifiedQueryEngine provides a unified interface for querying across multiple observability engines
@@ -69,13 +70,13 @@ type EngineHealthStatus struct {
 
 // QueryRouter analyzes query patterns and routes to optimal engines
 type QueryRouter struct {
-	logger logger.Logger
+	logger logging.Logger
 }
 
 // NewQueryRouter creates a new query router
-func NewQueryRouter(logger logger.Logger) *QueryRouter {
+func NewQueryRouter(logger corelogger.Logger) *QueryRouter {
 	return &QueryRouter{
-		logger: logger,
+		logger: logging.FromCoreLogger(logger),
 	}
 }
 
@@ -220,7 +221,7 @@ type UnifiedQueryEngineImpl struct {
 	correlationEngine CorrelationEngine
 	bleveService      *BleveSearchService // Added Bleve search service
 	cache             cache.ValkeyCluster
-	logger            logger.Logger
+	logger            logging.Logger
 	queryRouter       *QueryRouter
 	queryPool         *utils.QueryPoolManager
 	uqlParser         *models.UQLParser
@@ -237,7 +238,7 @@ func NewUnifiedQueryEngine(
 	correlationEngine CorrelationEngine,
 	bleveSearchSvc *BleveSearchService, // Added parameter
 	cache cache.ValkeyCluster,
-	logger logger.Logger,
+	logger corelogger.Logger,
 ) UnifiedQueryEngine {
 	return &UnifiedQueryEngineImpl{
 		metricsService:    metricsSvc,
@@ -246,7 +247,7 @@ func NewUnifiedQueryEngine(
 		correlationEngine: correlationEngine,
 		bleveService:      bleveSearchSvc,
 		cache:             cache,
-		logger:            logger,
+		logger:            logging.FromCoreLogger(logger),
 		queryRouter:       NewQueryRouter(logger),
 		queryPool:         utils.NewQueryPoolManager(),
 		uqlParser:         models.NewUQLParser(),

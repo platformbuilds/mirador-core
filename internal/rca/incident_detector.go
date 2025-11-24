@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/platformbuilds/mirador-core/internal/logging"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // IncidentDetectorConfig holds configuration for incident detection logic.
@@ -70,14 +71,14 @@ func (mts *MetricTimeSeries) IsValid() error {
 // IncidentDetector analyzes metric time series to identify incidents.
 type IncidentDetector struct {
 	config IncidentDetectorConfig
-	logger logger.Logger
+	logger logging.Logger
 }
 
 // NewIncidentDetector creates a new incident detector.
-func NewIncidentDetector(config IncidentDetectorConfig, logger logger.Logger) *IncidentDetector {
+func NewIncidentDetector(config IncidentDetectorConfig, logger corelogger.Logger) *IncidentDetector {
 	return &IncidentDetector{
 		config: config,
-		logger: logger,
+		logger: logging.FromCoreLogger(logger),
 	}
 }
 

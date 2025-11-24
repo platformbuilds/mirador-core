@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/rca"
 	"github.com/platformbuilds/mirador-core/internal/services"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // correlationAnomalyProvider adapts services.CorrelationEngine to the
@@ -15,7 +15,7 @@ import (
 // over the requested time range and mapping returned signals to AnomalyEvent.
 type correlationAnomalyProvider struct {
 	ce     services.CorrelationEngine
-	logger logger.Logger
+	logger logging.Logger
 }
 
 //nolint:gocyclo // Signal filtering and conversion logic is inherently complex

@@ -10,32 +10,34 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type WebSocketHandler struct {
 	upgrader websocket.Upgrader
-	logger   logger.Logger
+	logger   logging.Logger
 	clients  map[string]*WebSocketClient
 }
 
 type WebSocketClient struct {
 	conn   *websocket.Conn
 	send   chan []byte
-	logger logger.Logger
+	logger logging.Logger
 	userID string
 	// streams: metrics, alerts
 	streams []string
 }
 
-func NewWebSocketHandler(logger logger.Logger) *WebSocketHandler {
+func NewWebSocketHandler(logger corelogger.Logger) *WebSocketHandler {
+	core := logging.FromCoreLogger(logger)
 	return &WebSocketHandler{
 		upgrader: websocket.Upgrader{
 			// TODO: tighten in prod (check Origin/Host, auth)
 			CheckOrigin: func(r *http.Request) bool { return true },
 		},
-		logger:  logger,
+		logger:  core,
 		clients: make(map[string]*WebSocketClient),
 	}
 }

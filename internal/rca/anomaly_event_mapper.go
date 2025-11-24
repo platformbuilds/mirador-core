@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/platformbuilds/mirador-core/internal/logging"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // AnomalyEventConfig holds configuration for anomaly event mapping.
@@ -43,14 +44,14 @@ func DefaultAnomalyEventConfig() AnomalyEventConfig {
 // (traces, logs, metrics) into normalized AnomalyEvents.
 type AnomalyEventMapper struct {
 	config AnomalyEventConfig
-	logger logger.Logger
+	logger logging.Logger
 }
 
 // NewAnomalyEventMapper creates a new mapper with the given config.
-func NewAnomalyEventMapper(config AnomalyEventConfig, logger logger.Logger) *AnomalyEventMapper {
+func NewAnomalyEventMapper(config AnomalyEventConfig, logger corelogger.Logger) *AnomalyEventMapper {
 	return &AnomalyEventMapper{
 		config: config,
-		logger: logger,
+		logger: logging.FromCoreLogger(logger),
 	}
 }
 

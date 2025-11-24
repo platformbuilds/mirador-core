@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/platformbuilds/mirador-core/internal/logging"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // CandidateCauseOptions configures the candidate cause computation.
@@ -46,17 +47,17 @@ type CandidateCauseService interface {
 // CandidateCauseServiceImpl implements the CandidateCauseService interface.
 type CandidateCauseServiceImpl struct {
 	anomalyCollector *IncidentAnomalyCollector
-	logger           logger.Logger
+	logger           logging.Logger
 }
 
 // NewCandidateCauseService creates a new CandidateCauseService.
 func NewCandidateCauseService(
 	collector *IncidentAnomalyCollector,
-	logger logger.Logger,
+	logger corelogger.Logger,
 ) CandidateCauseService {
 	return &CandidateCauseServiceImpl{
 		anomalyCollector: collector,
-		logger:           logger,
+		logger:           logging.FromCoreLogger(logger),
 	}
 }
 

@@ -5,26 +5,27 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type AlertHandler struct {
 	integrationsService *services.IntegrationsService
 	cache               cache.ValkeyCluster
-	logger              logger.Logger
+	logger              logging.Logger
 }
 
 func NewAlertHandler(
 	integrationsService *services.IntegrationsService,
 	cache cache.ValkeyCluster,
-	logger logger.Logger,
+	logger corelogger.Logger,
 ) *AlertHandler {
 	return &AlertHandler{
 		integrationsService: integrationsService,
 		cache:               cache,
-		logger:              logger,
+		logger:              logging.FromCoreLogger(logger),
 	}
 }
 

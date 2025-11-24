@@ -4,20 +4,21 @@ import (
 	"fmt"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/platformbuilds/mirador-core/internal/logging"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 // MetricsLabelDetector detects which label keys are available in metrics data at runtime.
 // It handles variation in label naming conventions and provides fallback logic.
 type MetricsLabelDetector struct {
-	logger    logger.Logger
+	logger    logging.Logger
 	labelsCfg config.LabelSchemaConfig
 }
 
 // NewMetricsLabelDetector creates a new detector.
-func NewMetricsLabelDetector(logger logger.Logger, labelsCfg config.LabelSchemaConfig) *MetricsLabelDetector {
+func NewMetricsLabelDetector(logger corelogger.Logger, labelsCfg config.LabelSchemaConfig) *MetricsLabelDetector {
 	return &MetricsLabelDetector{
-		logger:    logger,
+		logger:    logging.FromCoreLogger(logger),
 		labelsCfg: labelsCfg,
 	}
 }

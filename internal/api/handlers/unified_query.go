@@ -12,23 +12,24 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type UnifiedQueryHandler struct {
 	unifiedEngine services.UnifiedQueryEngine
-	logger        logger.Logger
+	logger        logging.Logger
 	kpiRepo       repo.KPIRepo
 	engineCfg     config.EngineConfig
 }
 
-func NewUnifiedQueryHandler(unifiedEngine services.UnifiedQueryEngine, logger logger.Logger, kpiRepo repo.KPIRepo, cfg config.EngineConfig) *UnifiedQueryHandler {
+func NewUnifiedQueryHandler(unifiedEngine services.UnifiedQueryEngine, logger corelogger.Logger, kpiRepo repo.KPIRepo, cfg config.EngineConfig) *UnifiedQueryHandler {
 	return &UnifiedQueryHandler{
 		unifiedEngine: unifiedEngine,
-		logger:        logger,
+		logger:        logging.FromCoreLogger(logger),
 		kpiRepo:       kpiRepo,
 		engineCfg:     cfg,
 	}
