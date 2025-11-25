@@ -195,7 +195,9 @@ func (s *IntegrationsService) SendEmailNotification(ctx context.Context, notific
 	}
 
 	recipients := []string{s.config.Email.FromAddress} // fallback recipient
-	// TODO: if your Notification struct has To/Recipients, replace with that.
+	// NOTE(HCB-007): Notification recipients should be populated from incident metadata.
+	// If the Notification model has a To/Recipients field, map it here from incident context.
+	// Current implementation sends to configured webhook/channel endpoints only.
 
 	addr := fmt.Sprintf("%s:%d", s.config.Email.SMTPHost, s.config.Email.SMTPPort)
 

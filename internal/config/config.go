@@ -127,12 +127,13 @@ type DatabaseConfig struct {
 
 type VictoriaMetricsConfig struct {
 	// Optional friendly name for this metrics source
-	Name      string             `mapstructure:"name" yaml:"name"`
-	Endpoints []string           `mapstructure:"endpoints" yaml:"endpoints"`
-	Timeout   int                `mapstructure:"timeout" yaml:"timeout"` // milliseconds
-	Username  string             `mapstructure:"username" yaml:"username"`
-	Password  string             `mapstructure:"password" yaml:"password"`
-	Discovery K8sDiscoveryConfig `mapstructure:"discovery" yaml:"discovery"`
+	Name        string             `mapstructure:"name" yaml:"name"`
+	Endpoints   []string           `mapstructure:"endpoints" yaml:"endpoints"`
+	Timeout     int                `mapstructure:"timeout" yaml:"timeout"` // milliseconds
+	Username    string             `mapstructure:"username" yaml:"username"`
+	Password    string             `mapstructure:"password" yaml:"password"`
+	Discovery   K8sDiscoveryConfig `mapstructure:"discovery" yaml:"discovery"`
+	ClusterMode bool               `mapstructure:"cluster_mode" yaml:"cluster_mode"` // Use /select/0/prometheus paths for cluster mode
 }
 
 type VictoriaLogsConfig struct {

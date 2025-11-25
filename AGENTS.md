@@ -311,6 +311,99 @@ For the Correlation & RCA engines, the following rules are **mandatory**:
 PR reviewers and Raptor must treat violations of these rules as **blocking** for
 Stage-01 correlation/RCA work.
 
+### 3.7 Enforcement Tooling
+
+To ensure compliance with the engine hygiene rules in §3.6, the following automated
+enforcement mechanisms are in place:
+
+#### Automated Checks
+
+**Scripts:**
+
+1. **`scripts/check-hardcoded-violations.sh`**
+   - Scans engine code for hardcoded metric names, service names, and label keys
+   - Enforces proper use of empty slices with NOTE comments in `defaults.go`
+   - Exempts test files, simulators, and test fixtures
+   - Exit code 0 = compliant, 1 = violations detected
+
+2. **`scripts/check-todo-violations.sh`**
+   - Detects anonymous TODO/FIXME comments without tracker references
+   - Requires all TODOs to reference tracker items (AT-XXX, HCB-XXX) or use NOTE()
+   - Exempts test files where TODO comments for incomplete tests are acceptable
+   - Exit code 0 = compliant, 1 = violations detected
+
+**Makefile Targets:**
+
+```bash
+make check-hardcoded        # Run hardcoded violations check
+make check-todos            # Run TODO violations check
+make check-engine-hygiene   # Run both checks (recommended before commits)
+```
+
+**Git Pre-Commit Hook:**
+
+Install pre-commit hooks that automatically run enforcement checks:
+
+```bash
+make install-git-hooks
+```
+
+Once installed, every `git commit` will:
+1. Run `check-hardcoded-violations.sh`
+2. Run `check-todo-violations.sh`
+3. Run hardcode detection regression tests
+4. Block the commit if any check fails
+
+To bypass in emergencies (requires PR justification):
+
+```bash
+git commit --no-verify
+```
+
+#### CI Integration
+
+The enforcement checks should be integrated into CI pipelines:
+
+```yaml
+# Example GitHub Actions workflow
+- name: Check Engine Hygiene
+  run: make check-engine-hygiene
+
+- name: Run Hardcode Detection Tests
+  run: go test ./internal/services -run "TestNoHardcodedStringsInEngines|TestNoAnonymousTODOsInEngines|TestConfigDefaultsNoHardcodedValues" -v
+```
+
+#### Exemptions
+
+The following paths are **exempt** from hardcoded string enforcement:
+
+1. **Test files** (`*_test.go`): May use hardcoded strings for test assertions
+2. **Test fixtures** (`internal/services/testdata/`, `test_fixtures.go`): Centralized test constants
+3. **Simulators** (`cmd/otel-fintrans-simulator/`): Intentional hardcoding for simulation fidelity (see HCB-008 exemption documentation)
+4. **Documentation files** (`internal/rca/models.go`, `internal/rca/label_detector.go`): Example service names in comments
+
+#### Violation Response
+
+When violations are detected:
+
+1. **Pre-commit hook blocks commit**: Fix violations before committing
+2. **CI build fails**: PR cannot merge until violations are resolved
+3. **Fix strategies**:
+   - Hardcoded metrics/services: Move to registry or EngineConfig
+   - Anonymous TODOs: Replace with `NOTE(TRACKER-ID): explanation` or implement immediately
+   - Config defaults: Use empty slices with NOTE comments referencing tracker items
+
+#### Regression Tests
+
+Automated regression tests enforce these rules:
+
+- `TestNoHardcodedStringsInEngines`: Scans engine source for forbidden patterns
+- `TestNoAnonymousTODOsInEngines`: Scans for anonymous TODO/FIXME comments
+- `TestConfigDefaultsNoHardcodedValues`: Validates defaults.go uses empty slices with NOTEs
+
+These tests are located in `internal/services/hardcode_detection_test.go` and must
+always pass before merging engine changes.
+
 ---
 
 ## 4. Weaviate Usage Guidelines

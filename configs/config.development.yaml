@@ -6,15 +6,16 @@ log_level: debug
 database:
   victoriametrics:
     endpoints:
-      - "http://127.0.0.1:8428"
+      - "http://victoriametrics:8428"
     timeout: 10000
+    cluster_mode: false  # Single-node deployment in localdev
   victorialogs:
     endpoints:
-      - "http://127.0.0.1:9428"
+      - "http://victorialogs:9428"
     timeout: 10000
   victoriatraces:
     endpoints:
-      - "http://127.0.0.1:10428"
+      - "http://victoriatraces:10428"
     timeout: 10000
 
 grpc:
@@ -106,6 +107,10 @@ unified_query:
   max_cache_ttl: 10m
   default_limit: 100
   enable_correlation: true  # Enable correlation in development
+
+# Stage-01 Correlation & RCA Engine Configuration (AGENTS.md §3.1)
+engine:
+  strict_timewindow_payload: true  # Enforce time-window-only API contract
 
 uploads:
   # Configurable bulk CSV upload limit (bytes). Default is 5 MiB if omitted.

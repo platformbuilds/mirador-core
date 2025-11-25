@@ -14,6 +14,7 @@ database:
     timeout: 30000
     username: ""
     password: "" # Set via environment variable
+    cluster_mode: true  # Use /select/0/prometheus paths for cluster deployments
     # Optional: enable DNS-based discovery of vmselect pods behind a headless Service
     # discovery:
     #   enabled: true

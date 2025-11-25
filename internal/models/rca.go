@@ -162,11 +162,17 @@ type RCAStepDTO struct {
 	// Why index in the chain (1 = most user-facing)
 	WhyIndex int `json:"whyIndex"`
 
-	// Service name
+	// Service name (may be KPI UUID or service identifier)
 	Service string `json:"service"`
 
-	// Component name
+	// Component name (may be KPI UUID or component identifier)
 	Component string `json:"component"`
+
+	// KPIName is the human-readable name of the KPI if Service/Component is a KPI UUID
+	KPIName string `json:"kpiName,omitempty"`
+
+	// KPIFormula is the query formula of the KPI if Service/Component is a KPI UUID
+	KPIFormula string `json:"kpiFormula,omitempty"`
 
 	// TimeStart when this anomaly was detected
 	TimeStart time.Time `json:"timeStart"`

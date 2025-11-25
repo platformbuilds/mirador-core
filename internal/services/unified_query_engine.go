@@ -265,7 +265,61 @@ func (u *UnifiedQueryEngineImpl) ExecuteCorrelationQuery(ctx context.Context, qu
 		return nil, fmt.Errorf("correlation engine not configured")
 	}
 
-	// Parse the correlation query from the unified query
+	// DEBUG: Log the query to see what we're receiving
+	u.logger.Info("ExecuteCorrelationQuery called",
+		"query.Query", query.Query,
+		"query.Query_len", len(query.Query),
+		"has_StartTime", query.StartTime != nil,
+		"has_EndTime", query.EndTime != nil)
+
+	// Stage-01: Check if this is a time-window-only correlation request (no query string)
+	// If query.Query is empty but StartTime/EndTime are set, use the canonical Correlate() method
+	if query.Query == "" && query.StartTime != nil && query.EndTime != nil {
+		u.logger.Info("Using Stage-01 time-window-only correlation path")
+		tr := models.TimeRange{
+			Start: *query.StartTime,
+			End:   *query.EndTime,
+		}
+
+		// Call the Stage-01 canonical Correlate method
+		corrResult, err := u.correlationEngine.Correlate(ctx, tr)
+		if err != nil {
+			return nil, fmt.Errorf("correlation execution failed: %w", err)
+		}
+
+		// corrResult is a single CorrelationResult with Causes field
+		// Convert to unified result - wrap in array for consistency with legacy path
+		numCauses := 0
+		if corrResult != nil {
+			numCauses = len(corrResult.Causes)
+		}
+
+		// Convert to unified result
+		return &models.UnifiedResult{
+			QueryID:       query.ID,
+			Type:          models.QueryTypeCorrelation,
+			Status:        "success",
+			Data:          corrResult,
+			Correlations:  nil, // Stage-01 doesn't use legacy UnifiedCorrelationResult
+			ExecutionTime: time.Since(start).Milliseconds(),
+			Metadata: &models.ResultMetadata{
+				EngineResults: map[models.QueryType]*models.EngineResult{
+					models.QueryTypeCorrelation: {
+						Engine:        models.QueryTypeCorrelation,
+						Status:        "success",
+						RecordCount:   numCauses,
+						ExecutionTime: int64(time.Since(start).Milliseconds()),
+						DataSource:    "correlation-engine",
+					},
+				},
+				TotalRecords: numCauses,
+				DataSources:  []string{"correlation-engine"},
+			},
+		}, nil
+	}
+
+	// Legacy path: Parse the correlation query from the unified query (query string)
+	u.logger.Info("Using legacy correlation query parsing path", "query.Query", query.Query)
 	corrQuery, err := u.parseCorrelationQuery(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse correlation query: %w", err)

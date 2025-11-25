@@ -143,11 +143,15 @@ func GetDefaultConfig() *Config {
 				PostRings:      1,
 				RingStep:       15 * time.Second,
 			},
-			MinCorrelation:    0.6,
-			MinAnomalyScore:   0.7,
-			StrictTimeWindow:  false,
-			Probes:            []string{"transactions_failed_total", "http_errors_total", "cpu_usage", "memory_usage"},
-			ServiceCandidates: []string{"api-gateway", "tps", "keydb-client", "kafka-producer", "kafka-consumer", "cassandra-client"},
+			MinCorrelation:   0.6,
+			MinAnomalyScore:  0.7,
+			StrictTimeWindow: false,
+			// NOTE(HCB-001): Probes removed per AGENTS.md §3.6 - must be populated via KPI registry or external config.
+			// Engines will discover KPIs via Stage-00 registry; empty list forces registry-driven discovery.
+			Probes: []string{},
+			// NOTE(HCB-002): ServiceCandidates removed per AGENTS.md §3.6 - must come from service discovery or registry.
+			// Empty list forces engines to use KPI registry metadata for service discovery.
+			ServiceCandidates: []string{},
 			DefaultQueryLimit: 1000,
 			Labels: LabelSchemaConfig{
 				Service:    []string{"service", "service.name", "serviceName"},

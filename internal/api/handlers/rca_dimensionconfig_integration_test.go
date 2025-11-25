@@ -57,7 +57,7 @@ func TestRCAHandler_PassesDimensionConfigToEngine(t *testing.T) {
 	logs := services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log)
 
 	// Create handler with a stub engine (will be replaced)
-	rh := NewRCAHandler(logs, nil, cch, log, &fakeRCAEngine{t: t}, config.EngineConfig{})
+	rh := NewRCAHandler(logs, nil, cch, log, &fakeRCAEngine{t: t}, config.EngineConfig{}, nil)
 
 	// Create fake engine to capture options
 	fakeEngine := &fakeRCAEngine{t: t}
