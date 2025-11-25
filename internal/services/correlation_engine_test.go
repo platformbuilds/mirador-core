@@ -357,6 +357,8 @@ func TestCorrelationEngineImpl_Correlate(t *testing.T) {
 	mockCache := &MockValkeyCluster{}
 	mockLogger := logger.New("info")
 
+	// NOTE(HCB-001): Since we removed hardcoded probes, tests must explicitly provide
+	// probe config or use a mock KPI repo. Here we provide test probes in EngineConfig.
 	engine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, nil, mockCache, mockLogger, config.EngineConfig{
 		MinAnomalyScore: 0.5,
 		Buckets: config.BucketConfig{
@@ -365,6 +367,8 @@ func TestCorrelationEngineImpl_Correlate(t *testing.T) {
 			PostRings:      1,
 			RingStep:       2 * time.Minute,
 		},
+		// Provide test probes for this test (registry-driven discovery would replace this in production)
+		Probes: []string{"test_probe_metric"},
 	})
 
 	ctx := context.Background()

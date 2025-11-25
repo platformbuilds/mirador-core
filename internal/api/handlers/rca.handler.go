@@ -15,6 +15,7 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/logging"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/rca"
+	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
@@ -30,9 +31,10 @@ type RCAHandler struct {
 	engineCfg               config.EngineConfig
 	featureFlagService      *services.RuntimeFeatureFlagService
 	strictTimeWindowPayload bool
+	kpiRepo                 repo.KPIRepo
 }
 
-func NewRCAHandler(logs services.LogsService, sg services.ServiceGraphFetcher, cch cache.ValkeyCluster, logger corelogger.Logger, engine rca.RCAEngine, engCfg config.EngineConfig) *RCAHandler {
+func NewRCAHandler(logs services.LogsService, sg services.ServiceGraphFetcher, cch cache.ValkeyCluster, logger corelogger.Logger, engine rca.RCAEngine, engCfg config.EngineConfig, kpiRepo repo.KPIRepo) *RCAHandler {
 	return &RCAHandler{
 		logsService:             logs,
 		serviceGraph:            sg,
@@ -42,6 +44,7 @@ func NewRCAHandler(logs services.LogsService, sg services.ServiceGraphFetcher, c
 		engineCfg:               engCfg,
 		strictTimeWindowPayload: engCfg.StrictTimeWindowPayload,
 		featureFlagService:      services.NewRuntimeFeatureFlagService(cch, logger),
+		kpiRepo:                 kpiRepo,
 	}
 }
 
@@ -373,7 +376,8 @@ func (h *RCAHandler) convertRCAStep(s *rca.RCAStep) *models.RCAStepDTO {
 	for _, e := range s.Evidence {
 		ev = append(ev, &models.EvidenceRefDTO{Type: e.Type, ID: e.ID, Details: e.Details})
 	}
-	return &models.RCAStepDTO{
+
+	dto := &models.RCAStepDTO{
 		WhyIndex:  s.WhyIndex,
 		Service:   s.Service,
 		Component: s.Component,
@@ -386,6 +390,61 @@ func (h *RCAHandler) convertRCAStep(s *rca.RCAStep) *models.RCAStepDTO {
 		Summary:   s.Summary,
 		Score:     s.Score,
 	}
+
+	// Enrich with KPI metadata if available
+	h.enrichKPIMetadata(dto)
+
+	return dto
+}
+
+// enrichKPIMetadata looks up KPI information for Service and Component fields
+// and populates KPIName and KPIFormula fields if they are KPI UUIDs.
+func (h *RCAHandler) enrichKPIMetadata(dto *models.RCAStepDTO) {
+	if dto == nil {
+		h.logger.Debug("enrichKPIMetadata: dto is nil")
+		return
+	}
+	if h.kpiRepo == nil {
+		h.logger.Debug("enrichKPIMetadata: kpiRepo is nil")
+		return
+	}
+
+	h.logger.Debug("enrichKPIMetadata called", "service", dto.Service, "component", dto.Component)
+
+	ctx := context.Background()
+
+	// Try to look up Service as a KPI UUID
+	if dto.Service != "" {
+		h.logger.Debug("Looking up Service as KPI", "uuid", dto.Service)
+		kpi, err := h.kpiRepo.GetKPI(ctx, dto.Service)
+		if err != nil {
+			h.logger.Debug("GetKPI for Service failed", "uuid", dto.Service, "error", err)
+		} else if kpi != nil {
+			h.logger.Info("KPI enrichment SUCCESS", "uuid", dto.Service, "name", kpi.Name, "formula", kpi.Formula)
+			dto.KPIName = kpi.Name
+			dto.KPIFormula = kpi.Formula
+			return
+		} else {
+			h.logger.Debug("GetKPI returned nil KPI", "uuid", dto.Service)
+		}
+	}
+
+	// If Service lookup didn't find a KPI, try Component
+	if dto.KPIName == "" && dto.Component != "" {
+		h.logger.Debug("Looking up Component as KPI", "uuid", dto.Component)
+		kpi, err := h.kpiRepo.GetKPI(ctx, dto.Component)
+		if err != nil {
+			h.logger.Debug("GetKPI for Component failed", "uuid", dto.Component, "error", err)
+		} else if kpi != nil {
+			h.logger.Info("KPI enrichment SUCCESS (from Component)", "uuid", dto.Component, "name", kpi.Name, "formula", kpi.Formula)
+			dto.KPIName = kpi.Name
+			dto.KPIFormula = kpi.Formula
+		} else {
+			h.logger.Debug("GetKPI returned nil KPI for Component", "uuid", dto.Component)
+		}
+	}
+
+	h.logger.Debug("enrichKPIMetadata completed", "kpiName", dto.KPIName, "kpiFormula", dto.KPIFormula)
 }
 
 func (h *RCAHandler) convertDiagnostics(d *rca.RCADiagnostics) *models.RCADiagnosticsDTO {

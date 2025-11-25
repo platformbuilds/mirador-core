@@ -1,0 +1,202 @@
+{
+  "fintrans_simulator_kpis": [
+    {
+      "kpi_name": "Transaction Total Rate",
+      "kpi_formula": "rate(transactions_total[1m])",
+      "kpi_definition": "Transaction rate per second across all services",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "impact",
+      "classifier": "performance",
+      "sentiment": "neutral"
+    },
+    {
+      "kpi_name": "Transaction Failure Rate",
+      "kpi_formula": "rate(transactions_failed_total[1m])",
+      "kpi_definition": "Failed transaction rate per second - primary impact KPI",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "impact",
+      "classifier": "error",
+      "sentiment": "negative"
+    },
+    {
+      "kpi_name": "Transaction Failure Percentage",
+      "kpi_formula": "rate(transactions_failed_total[1m]) / rate(transactions_total[1m]) * 100",
+      "kpi_definition": "Percentage of failed transactions - key impact metric",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "impact",
+      "classifier": "error",
+      "sentiment": "negative"
+    },
+    {
+      "kpi_name": "Transaction Latency P95",
+      "kpi_formula": "histogram_quantile(0.95, rate(transaction_latency_seconds_bucket[1m]))",
+      "kpi_definition": "95th percentile transaction latency in seconds",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "impact",
+      "classifier": "performance",
+      "sentiment": "neutral"
+    },
+    {
+      "kpi_name": "Transaction Latency P99",
+      "kpi_formula": "histogram_quantile(0.99, rate(transaction_latency_seconds_bucket[1m]))",
+      "kpi_definition": "99th percentile transaction latency in seconds",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "impact",
+      "classifier": "performance",
+      "sentiment": "neutral"
+    },
+    {
+      "kpi_name": "Transaction Latency Average",
+      "kpi_formula": "rate(transaction_latency_seconds_sum[1m]) / rate(transaction_latency_seconds_count[1m])",
+      "kpi_definition": "Average transaction latency in seconds",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "impact",
+      "classifier": "performance",
+      "sentiment": "neutral"
+    },
+    {
+      "kpi_name": "Database Operations Rate",
+      "kpi_formula": "rate(db_ops_total[1m])",
+      "kpi_definition": "Database operations per second",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "cause",
+      "classifier": "performance",
+      "sentiment": "neutral"
+    },
+    {
+      "kpi_name": "Database Latency P95",
+      "kpi_formula": "histogram_quantile(0.95, rate(db_latency_seconds_bucket[1m]))",
+      "kpi_definition": "95th percentile database operation latency",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "cause",
+      "classifier": "performance",
+      "sentiment": "neutral"
+    },
+    {
+      "kpi_name": "Database Latency P99",
+      "kpi_formula": "histogram_quantile(0.99, rate(db_latency_seconds_bucket[1m]))",
+      "kpi_definition": "99th percentile database operation latency",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "cause",
+      "classifier": "performance",
+      "sentiment": "neutral"
+    },
+    {
+      "kpi_name": "Database Latency Average",
+      "kpi_formula": "rate(db_latency_seconds_sum[1m]) / rate(db_latency_seconds_count[1m])",
+      "kpi_definition": "Average database operation latency",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "cause",
+      "classifier": "performance",
+      "sentiment": "neutral"
+    },
+    {
+      "kpi_name": "Kafka Produce Rate",
+      "kpi_formula": "rate(kafka_produce_total[1m])",
+      "kpi_definition": "Kafka messages produced per second",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "cause",
+      "classifier": "performance",
+      "sentiment": "neutral"
+    },
+    {
+      "kpi_name": "Kafka Consume Rate",
+      "kpi_formula": "rate(kafka_consume_total[1m])",
+      "kpi_definition": "Kafka messages consumed per second",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "cause",
+      "classifier": "performance",
+      "sentiment": "neutral"
+    },
+    {
+      "kpi_name": "Service Graph Request Rate",
+      "kpi_formula": "rate(traces_service_graph_request_total[1m])",
+      "kpi_definition": "Request rate from service graph traces per second",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "cause",
+      "classifier": "performance",
+      "sentiment": "neutral"
+    },
+    {
+      "kpi_name": "Service Graph Failed Requests Rate",
+      "kpi_formula": "rate(traces_service_graph_request_failed_total[1m])",
+      "kpi_definition": "Failed request rate from service graph traces per second",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "cause",
+      "classifier": "error",
+      "sentiment": "negative"
+    },
+    {
+      "kpi_name": "Service Graph Request Failure Percentage",
+      "kpi_formula": "rate(traces_service_graph_request_failed_total[1m]) / rate(traces_service_graph_request_total[1m]) * 100",
+      "kpi_definition": "Percentage of failed requests in service graph",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "cause",
+      "classifier": "error",
+      "sentiment": "negative"
+    },
+    {
+      "kpi_name": "Span Metrics Call Rate",
+      "kpi_formula": "rate(traces_span_metrics_calls_total[1m])",
+      "kpi_definition": "Span call rate from trace metrics per second",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "cause",
+      "classifier": "performance",
+      "sentiment": "neutral"
+    },
+    {
+      "kpi_name": "Span Duration P95",
+      "kpi_formula": "histogram_quantile(0.95, rate(traces_span_metrics_duration_milliseconds_bucket[1m]))",
+      "kpi_definition": "95th percentile span duration in milliseconds",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "cause",
+      "classifier": "performance",
+      "sentiment": "neutral"
+    },
+    {
+      "kpi_name": "Span Duration P99",
+      "kpi_formula": "histogram_quantile(0.99, rate(traces_span_metrics_duration_milliseconds_bucket[5m]))",
+      "kpi_definition": "99th percentile span duration in milliseconds",
+      "signal_type": "metrics",
+      "query_type": "MetricsQL",
+      "datastore": "victoriametrics",
+      "layer": "cause",
+      "classifier": "performance",
+      "sentiment": "neutral"
+    }
+  ]
+}

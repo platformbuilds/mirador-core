@@ -1,0 +1,62 @@
+#!/bin/bash
+# Git pre-commit hook for Mirador Core
+# Enforces AGENTS.md §3.6 rules before allowing commits
+#
+# Installation:
+#   git config core.hooksPath .githooks
+#
+# Bypass (emergency only):
+#   git commit --no-verify
+
+set -e
+
+echo "Running pre-commit checks..."
+
+# Track overall status
+CHECKS_FAILED=0
+
+# Check 1: Hardcoded violations
+echo ""
+echo "1. Checking for hardcoded metric/service names..."
+if ! ./scripts/check-hardcoded-violations.sh; then
+    CHECKS_FAILED=$((CHECKS_FAILED + 1))
+fi
+
+# Check 2: Anonymous TODO/FIXME comments
+echo ""
+echo "2. Checking for anonymous TODO/FIXME comments..."
+if ! ./scripts/check-todo-violations.sh; then
+    CHECKS_FAILED=$((CHECKS_FAILED + 1))
+fi
+
+# Check 3: Run hardcode detection regression tests (fast check)
+echo ""
+echo "3. Running hardcode detection regression tests..."
+if ! go test ./internal/services -run "TestNoHardcodedStringsInEngines|TestNoAnonymousTODOsInEngines|TestConfigDefaultsNoHardcodedValues" -v; then
+    echo "ERROR: Hardcode detection tests failed!"
+    CHECKS_FAILED=$((CHECKS_FAILED + 1))
+fi
+
+# Report results
+echo ""
+echo "=============================================="
+if [[ $CHECKS_FAILED -eq 0 ]]; then
+    echo "✓ All pre-commit checks passed!"
+    echo "Proceeding with commit..."
+    exit 0
+else
+    echo "✗ $CHECKS_FAILED pre-commit check(s) failed!"
+    echo ""
+    echo "Your commit has been blocked to prevent AGENTS.md §3.6 violations."
+    echo ""
+    echo "To fix:"
+    echo "  1. Review the error messages above"
+    echo "  2. Fix the violations in your code"
+    echo "  3. Stage the fixes: git add <files>"
+    echo "  4. Retry commit: git commit"
+    echo ""
+    echo "To bypass (EMERGENCY ONLY - requires justification in PR):"
+    echo "  git commit --no-verify"
+    echo ""
+    exit 1
+fi

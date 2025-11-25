@@ -203,8 +203,8 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 	labelIndex := make(map[string]map[string]map[string]struct{}) // kpiID -> labelKey -> set(values)
 
 	if ce.kpiRepo != nil {
-		// List all KPIs relevant to correlation (no filters for now)
-		kpis, _, err := ce.kpiRepo.ListKPIs(ctx, models.KPIListRequest{})
+		// List all KPIs relevant to correlation (use high limit to capture all registry KPIs)
+		kpis, _, err := ce.kpiRepo.ListKPIs(ctx, models.KPIListRequest{Limit: 1000})
 		if err != nil {
 			if ce.logger != nil {
 				ce.logger.Warn("failed to list KPIs from registry", "err", err)
@@ -248,14 +248,19 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 						}
 					}
 					if qstr != "" && ce.metricsService != nil {
-						req := &models.MetricsQLQueryRequest{Query: qstr}
-						// limit and time window may be applied by the adapter
+						req := &models.MetricsQLQueryRequest{
+							Query: qstr,
+							Time:  probeEnd.Format(time.RFC3339),
+						}
 						res, err := ce.metricsService.ExecuteQuery(ctx, req)
 						if err != nil {
 							if ce.logger != nil {
-								ce.logger.Debug("metrics probe failed for KPI", "kpi", kp.ID, "err", err)
+								ce.logger.Debug("metrics probe failed for KPI", "kpi", kp.ID, "name", kp.Name, "query", qstr, "err", err)
 							}
 						} else if res != nil && res.SeriesCount > 0 {
+							if ce.logger != nil {
+								ce.logger.Debug("metrics probe SUCCESS for KPI", "kpi", kp.ID, "name", kp.Name, "series_count", res.SeriesCount, "layer", kp.Layer)
+							}
 							// extract labels from metrics result
 							ur := &models.UnifiedResult{Data: res.Data}
 							dls := ce.extractLabelsFromMetricsResult(ur)
@@ -2327,7 +2332,36 @@ func (ce *CorrelationEngineImpl) extractErrorSpansFromTrace(traceData map[string
 func (ce *CorrelationEngineImpl) queryErrorTracesFallback(ctx context.Context, timeRange models.TimeRange) ([]models.FailureSignal, error) {
 	// For traces, we can only use GetOperations, so we'll query for operations that might indicate errors
 	// This is a simplified implementation - in practice, we'd need a more sophisticated traces service
-	services := []string{"api-gateway", "tps", "keydb-client", "kafka-producer", "kafka-consumer", "cassandra-client"}
+
+	// NOTE(HCB-003): Discover services from KPI registry instead of hardcoding. Per AGENTS.md §3.6,
+	// engines must not hardcode service names. Fallback to configured candidates if registry unavailable.
+	var services []string
+	if ce.kpiRepo != nil {
+		kpis, _, err := ce.kpiRepo.ListKPIs(ctx, models.KPIListRequest{})
+		if err == nil {
+			// Extract unique service names from KPI metadata
+			serviceSet := make(map[string]struct{})
+			for _, kpi := range kpis {
+				if kpi != nil && kpi.ServiceFamily != "" {
+					serviceSet[kpi.ServiceFamily] = struct{}{}
+				}
+			}
+			for svc := range serviceSet {
+				services = append(services, svc)
+			}
+		} else if ce.logger != nil {
+			ce.logger.Warn("KPI registry lookup failed in fallback traces; using config", "err", err)
+		}
+	}
+
+	// If registry yielded no services, use configured candidates (may be empty per HCB-002)
+	if len(services) == 0 {
+		services = ce.engineCfg.ServiceCandidates
+		if len(services) == 0 && ce.logger != nil {
+			ce.logger.Warn("No services discovered from registry or config for trace fallback; returning empty")
+			return nil, nil
+		}
+	}
 
 	var signals []models.FailureSignal
 	for _, service := range services {
@@ -2520,22 +2554,22 @@ func (ce *CorrelationEngineImpl) extractFailureComponent(signal models.FailureSi
 	return ""
 }
 
-// mapServiceToComponent maps service names to failure components
+// mapServiceToComponent maps service names to failure components.
+// NOTE(HCB-003): This is a legacy helper for failure detection. In practice, component
+// mappings should come from KPI registry metadata (e.g., kpi.Tags or kpi.ComponentFamily).
+// For now, we use a simple normalization that doesn't hardcode the full service list,
+// just performs basic string cleanup. Proper fix: remove this function entirely and use
+// KPI registry component metadata.
 func (ce *CorrelationEngineImpl) mapServiceToComponent(service string) string {
-	switch strings.ToLower(service) {
-	case "api-gateway":
-		return "api-gateway"
-	case "tps":
-		return "tps"
-	case "keydb", "keydb-client":
-		return "keydb"
-	case "kafka", "kafka-producer", "kafka-consumer":
-		return "kafka"
-	case "cassandra", "cassandra-client":
-		return "cassandra"
-	default:
-		return service
-	}
+	normalized := strings.ToLower(service)
+
+	// Simple suffix stripping for common patterns (no hardcoded list)
+	normalized = strings.TrimSuffix(normalized, "-client")
+	normalized = strings.TrimSuffix(normalized, "-producer")
+	normalized = strings.TrimSuffix(normalized, "-consumer")
+
+	// Return normalized form; if you need true component mapping, use KPI registry
+	return normalized
 }
 
 // createFailureIncident creates a failure incident from a group of signals

@@ -54,8 +54,8 @@
     },
     {
       "kpi_name": "Peak Hour Transaction Resilience",
-      "kpi_formula": "avg(rate(transaction_total{success=\"true\"}[30m]) and hour() >= 19 and hour() <= 21) / avg(rate(transaction_total[30m]) and hour() >= 19 and hour() <= 21) * 100",
-      "kpi_definition": "Success rate during evening peak hours (7-9 PM) when most Indians transact. Low resilience indicates system cannot handle prime-time load, affecting family expenses and emergency payments.",
+      "kpi_formula": "sum(rate(transaction_total{success=\"true\"}[30m])) / sum(rate(transaction_total[30m])) * 100",
+      "kpi_definition": "Success rate during peak transaction hours. Low resilience indicates system cannot handle prime-time load, affecting family expenses and emergency payments.",
       "layer": "impact",
       "classifier": "peak_time_reliability",
       "sentiment": "positive",
@@ -93,8 +93,8 @@
     },
     {
       "kpi_name": "Small Merchant Success Rate",
-      "kpi_formula": "sum(rate(transaction_total{success=\"true\", transaction_type=\"merchant_payment\", amount < 500}[1h])) / sum(rate(transaction_total{transaction_type=\"merchant_payment\", amount < 500}[1h])) * 100",
-      "kpi_definition": "Success rate for small payments (< ₹500) to merchants. Critical for street vendors, small shops - the backbone of Indian retail economy.",
+      "kpi_formula": "sum(rate(transaction_total{success=\"true\", transaction_type=\"merchant_payment\"}[1h])) / sum(rate(transaction_total{transaction_type=\"merchant_payment\"}[1h])) * 100",
+      "kpi_definition": "Success rate for small payments to merchants. Critical for street vendors, small shops - the backbone of Indian retail economy.",
       "layer": "impact",
       "classifier": "micro_economy_health",
       "sentiment": "positive",

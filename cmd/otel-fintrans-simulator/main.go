@@ -56,6 +56,11 @@ type Simulator struct {
 	maxAmountPaise int64
 	concurrency    int
 
+	// Time series configuration
+	timeWindowDuration time.Duration // Total duration to spread data over
+	dataInterval       time.Duration // Time between data points
+	startTimeOffset    time.Duration // How far back to start (e.g., -15m means 15 minutes ago)
+
 	// Metric instruments
 	transactionsTotal       metric.Int64Counter
 	transactionsFailedTotal metric.Int64Counter
@@ -79,14 +84,17 @@ type TransactionResult struct {
 
 func main() {
 	var (
-		transactions   = flag.Int("transactions", 100, "Number of transactions to simulate")
-		failureModeStr = flag.String("failure-mode", "mixed", "Failure mode: none, kafka, cassandra, keydb, api-gateway, tps, mixed")
-		failureRate    = flag.Float64("failure-rate", 0.1, "Failure rate (0.0-1.0)")
-		minAmountPaise = flag.Int64("min-amount-paisa", 10000, "Minimum transaction amount in paise (₹100.00)")
-		maxAmountPaise = flag.Int64("max-amount-paisa", 1000000, "Maximum transaction amount in paise (₹10,000.00)")
-		otlpEndpoint   = flag.String("otlp-endpoint", "localhost:4317", "OTLP endpoint")
-		otlpInsecure   = flag.Bool("otlp-insecure", true, "Use insecure OTLP connection")
-		concurrency    = flag.Int("concurrency", 10, "Number of concurrent transactions")
+		transactions       = flag.Int("transactions", 100, "Number of transactions to simulate")
+		failureModeStr     = flag.String("failure-mode", "mixed", "Failure mode: none, kafka, cassandra, keydb, api-gateway, tps, mixed")
+		failureRate        = flag.Float64("failure-rate", 0.1, "Failure rate (0.0-1.0)")
+		minAmountPaise     = flag.Int64("min-amount-paisa", 10000, "Minimum transaction amount in paise (₹100.00)")
+		maxAmountPaise     = flag.Int64("max-amount-paisa", 1000000, "Maximum transaction amount in paise (₹10,000.00)")
+		otlpEndpoint       = flag.String("otlp-endpoint", "localhost:4317", "OTLP endpoint")
+		otlpInsecure       = flag.Bool("otlp-insecure", true, "Use insecure OTLP connection")
+		concurrency        = flag.Int("concurrency", 10, "Number of concurrent transactions")
+		timeWindowStr      = flag.String("time-window", "0s", "Time window to spread data over (e.g., 15m, 1h, 0s=instant)")
+		dataIntervalStr    = flag.String("data-interval", "30s", "Time interval between data points (e.g., 10s, 1m)")
+		startTimeOffsetStr = flag.String("start-time-offset", "0s", "Start time offset from now (e.g., -15m for 15 minutes ago, 0s=now)")
 	)
 	flag.Parse()
 
@@ -100,6 +108,22 @@ func main() {
 
 	if *failureRate < 0 || *failureRate > 1 {
 		log.Fatalf("Failure rate must be between 0.0 and 1.0")
+	}
+
+	// Parse time durations
+	timeWindowDuration, err := time.ParseDuration(*timeWindowStr)
+	if err != nil {
+		log.Fatalf("Invalid time-window: %v", err)
+	}
+
+	dataInterval, err := time.ParseDuration(*dataIntervalStr)
+	if err != nil {
+		log.Fatalf("Invalid data-interval: %v", err)
+	}
+
+	startTimeOffset, err := time.ParseDuration(*startTimeOffsetStr)
+	if err != nil {
+		log.Fatalf("Invalid start-time-offset: %v", err)
 	}
 
 	// Initialize OpenTelemetry
@@ -116,15 +140,18 @@ func main() {
 
 	// Create simulator
 	sim := &Simulator{
-		tracer:         otel.Tracer("fintrans-simulator"),
-		meter:          otel.Meter("fintrans-simulator"),
-		logger:         zap.NewNop(), // Will be set after OTel init
-		transactions:   *transactions,
-		failureMode:    failureMode,
-		failureRate:    *failureRate,
-		minAmountPaise: *minAmountPaise,
-		maxAmountPaise: *maxAmountPaise,
-		concurrency:    *concurrency,
+		tracer:             otel.Tracer("fintrans-simulator"),
+		meter:              otel.Meter("fintrans-simulator"),
+		logger:             zap.NewNop(), // Will be set after OTel init
+		transactions:       *transactions,
+		failureMode:        failureMode,
+		failureRate:        *failureRate,
+		minAmountPaise:     *minAmountPaise,
+		maxAmountPaise:     *maxAmountPaise,
+		concurrency:        *concurrency,
+		timeWindowDuration: timeWindowDuration,
+		dataInterval:       dataInterval,
+		startTimeOffset:    startTimeOffset,
 	}
 
 	// Initialize metrics
@@ -137,6 +164,13 @@ func main() {
 
 	log.Printf("Starting financial transaction simulator with %d transactions, concurrency: %d, failure mode: %s, rate: %.2f",
 		*transactions, *concurrency, failureMode, *failureRate)
+
+	if timeWindowDuration > 0 {
+		log.Printf("Time series mode: window=%v, interval=%v, start_offset=%v",
+			timeWindowDuration, dataInterval, startTimeOffset)
+	} else {
+		log.Printf("Instant mode: all transactions at current time")
+	}
 
 	// Run simulation
 	sim.runSimulation(ctx)
@@ -161,10 +195,14 @@ func initOTel(ctx context.Context, endpoint string, insecureConn bool) (func(con
 	}
 
 	// Trace exporter
-	traceExporter, err := otlptracegrpc.New(ctx,
+	traceOpts := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint(endpoint),
 		otlptracegrpc.WithDialOption(opts...),
-	)
+	}
+	if insecureConn {
+		traceOpts = append(traceOpts, otlptracegrpc.WithInsecure())
+	}
+	traceExporter, err := otlptracegrpc.New(ctx, traceOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create trace exporter: %w", err)
 	}
@@ -176,10 +214,14 @@ func initOTel(ctx context.Context, endpoint string, insecureConn bool) (func(con
 	otel.SetTracerProvider(tracerProvider)
 
 	// Metric exporter
-	metricExporter, err := otlpmetricgrpc.New(ctx,
+	metricOpts := []otlpmetricgrpc.Option{
 		otlpmetricgrpc.WithEndpoint(endpoint),
 		otlpmetricgrpc.WithDialOption(opts...),
-	)
+	}
+	if insecureConn {
+		metricOpts = append(metricOpts, otlpmetricgrpc.WithInsecure())
+	}
+	metricExporter, err := otlpmetricgrpc.New(ctx, metricOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create metric exporter: %w", err)
 	}
@@ -191,10 +233,14 @@ func initOTel(ctx context.Context, endpoint string, insecureConn bool) (func(con
 	otel.SetMeterProvider(meterProvider)
 
 	// Log exporter
-	logExporter, err := otlploggrpc.New(ctx,
+	logOpts := []otlploggrpc.Option{
 		otlploggrpc.WithEndpoint(endpoint),
 		otlploggrpc.WithDialOption(opts...),
-	)
+	}
+	if insecureConn {
+		logOpts = append(logOpts, otlploggrpc.WithInsecure())
+	}
+	logExporter, err := otlploggrpc.New(ctx, logOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create log exporter: %w", err)
 	}
@@ -292,21 +338,99 @@ func (s *Simulator) initLogger() {
 }
 
 func (s *Simulator) runSimulation(ctx context.Context) {
-	var wg sync.WaitGroup
-	sem := make(chan struct{}, s.concurrency) // Limit concurrency
+	// Calculate time distribution
+	var timestamps []time.Time
 
-	for i := 0; i < s.transactions; i++ {
-		wg.Add(1)
-		go func(txID int) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
+	if s.timeWindowDuration > 0 {
+		// Time series mode: distribute transactions over the time window
+		startTime := time.Now().Add(s.startTimeOffset)
 
-			s.simulateTransaction(ctx, fmt.Sprintf("tx-%06d", txID))
-		}(i)
+		// Calculate number of intervals
+		numIntervals := int(s.timeWindowDuration / s.dataInterval)
+		if numIntervals == 0 {
+			numIntervals = 1
+		}
+
+		// Distribute transactions evenly across intervals
+		txPerInterval := s.transactions / numIntervals
+		remainder := s.transactions % numIntervals
+
+		txIndex := 0
+		for i := 0; i < numIntervals; i++ {
+			intervalTime := startTime.Add(time.Duration(i) * s.dataInterval)
+			txCount := txPerInterval
+			if i < remainder {
+				txCount++ // Distribute remainder across first intervals
+			}
+
+			// All transactions in this interval get the same timestamp
+			for j := 0; j < txCount; j++ {
+				timestamps = append(timestamps, intervalTime)
+				txIndex++
+			}
+		}
+
+		// Sort by timestamp to ensure chronological execution
+		// Already sorted by construction, but explicit for clarity
+
+		log.Printf("Generated %d transactions across %d intervals (%v each)",
+			len(timestamps), numIntervals, s.dataInterval)
+
+		// Execute transactions in chronological order, sleeping to match timestamps
+		for i := 0; i < s.transactions; i++ {
+			targetTime := timestamps[i]
+			sleepDuration := time.Until(targetTime)
+
+			if sleepDuration > 0 {
+				log.Printf("Waiting %v until next interval...", sleepDuration)
+				time.Sleep(sleepDuration)
+			}
+
+			// Execute all transactions for this timestamp
+			intervalStart := i
+			intervalEnd := i + 1
+			for intervalEnd < len(timestamps) && timestamps[intervalEnd].Equal(targetTime) {
+				intervalEnd++
+			}
+
+			// Execute this batch concurrently
+			var wg sync.WaitGroup
+			sem := make(chan struct{}, s.concurrency)
+
+			for j := intervalStart; j < intervalEnd; j++ {
+				wg.Add(1)
+				go func(txID int) {
+					defer wg.Done()
+					sem <- struct{}{}
+					defer func() { <-sem }()
+
+					s.simulateTransaction(ctx, fmt.Sprintf("tx-%06d", txID))
+				}(j)
+			}
+
+			wg.Wait()
+
+			// Skip to next interval
+			i = intervalEnd - 1
+		}
+	} else {
+		// Instant mode: all transactions at current time
+		var wg sync.WaitGroup
+		sem := make(chan struct{}, s.concurrency)
+
+		for i := 0; i < s.transactions; i++ {
+			wg.Add(1)
+			go func(txID int) {
+				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
+
+				s.simulateTransaction(ctx, fmt.Sprintf("tx-%06d", txID))
+			}(i)
+		}
+
+		wg.Wait()
 	}
-
-	wg.Wait()
 }
 
 func (s *Simulator) simulateTransaction(ctx context.Context, transactionID string) {

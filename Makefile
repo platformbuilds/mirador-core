@@ -5,7 +5,8 @@ SHELL := /bin/bash
 	build build-native build-linux-multi build-linux-amd64 build-linux-arm64 build-darwin-arm64 build-windows-amd64 build-all \
 	docker docker-build docker-build-native dockerx-build dockerx-push docker-publish-release docker-publish-canary docker-publish-pr \
 	release test clean vendor lint run dev setup tools check-tools dev-stack dev-stack-down fmt version clean-build \
-	tag-release helm-bump version-human version-ci vuln dockerx-build-local-multi buildx-ensure helm-sync-deps helm-dep-update
+	tag-release helm-bump version-human version-ci vuln dockerx-build-local-multi buildx-ensure helm-sync-deps helm-dep-update \
+	check-hardcoded check-todos check-engine-hygiene install-git-hooks
 
 BASE_URL ?= http://localhost:8010
 
@@ -51,11 +52,11 @@ help:
 	"  localdev-wait             Wait for readiness at $(BASE_URL)/ready." \
 	"  localdev-seed-otel        Seed synthetic OTEL metrics/logs/traces via financial transaction simulator." \
 	"  localdev-seed-data        Seed sample KPIs in Weaviate." \
-	"  localdev-test             Run E2E tests against a running localdev server."
-	"  localdev-test-all-api     Run comprehensive E2E pipeline (code quality + API tests)."
-	"  localdev-test-api-only    Run API endpoint tests only (skip code quality checks)."
-	"  localdev-test-code-only   Run code quality tests only (go test, fmt, vet, govulncheck)."
-	"  localdev-down             Tear down localdev stack and remove volumes."
+	"  localdev-test             Run E2E tests against a running localdev server." \
+	"  localdev-test-all-api     Run comprehensive E2E pipeline (code quality + API tests)." \
+	"  localdev-test-api-only    Run API endpoint tests only (skip code quality checks)." \
+	"  localdev-test-code-only   Run code quality tests only (go test, fmt, vet, govulncheck)." \
+	"  localdev-down             Tear down localdev stack and remove volumes." \
 	"" \
 	"Development & Build:" \
 	"  setup                     Install tools, download deps." \
@@ -82,6 +83,10 @@ help:
 	"  tools                     Install dev tools (lint, swag, govulncheck)." \
 	"  check-tools               Verify required tools are installed." \
 	"  vuln                      Run govulncheck vulnerability scan." \
+	"  check-hardcoded           Check for hardcoded metric/service names (AGENTS.md §3.6)." \
+	"  check-todos               Check for anonymous TODO/FIXME comments (AGENTS.md §3.6)." \
+	"  check-engine-hygiene      Run all AGENTS.md §3.6 enforcement checks." \
+	"  install-git-hooks         Install pre-commit hooks for automatic enforcement." \
 	"" \
 	"Docker Images:" \
 	"  docker                    Alias for docker-build (host arch)." \
@@ -181,7 +186,14 @@ localdev-test-code-only:
 localdev-seed-otel:
 	@echo "Seeding synthetic OpenTelemetry data via financial transaction simulator..."
 	@go build -o bin/otel-fintrans-simulator ./cmd/otel-fintrans-simulator
-	OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 OTEL_EXPORTER_OTLP_INSECURE=true ./bin/otel-fintrans-simulator --transactions 50000 --concurrency 250 --failure-mode mixed --failure-rate 0.35
+	OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 OTEL_EXPORTER_OTLP_INSECURE=true ./bin/otel-fintrans-simulator \
+		--transactions 50000 \
+		--concurrency 250 \
+		--failure-mode mixed \
+		--failure-rate 0.35 \
+		--time-window 15m \
+		--data-interval 30s \
+		--start-time-offset -15m
 	@echo "Seeding KPI and signal definitions via bulk API (idempotent; deterministic IDs)"
 	@# Uses scripts/localdev_seed_kpis.py to POST KPI JSON registries and signal definitions to the server's bulk-json endpoints
 	@python3 scripts/localdev_seed_kpis.py --base-url "$(BASE_URL)" --seed-signals || true
@@ -313,6 +325,33 @@ fmt:
 	@echo "🎨 Formatting code..."
 	go fmt ./...
 	goimports -w . 2>/dev/null || true
+
+# -----------------------------
+# Code quality enforcement (AGENTS.md §3.6)
+# -----------------------------
+
+.PHONY: check-hardcoded check-todos check-engine-hygiene install-git-hooks
+
+check-hardcoded: ## Check for hardcoded metric/service names in engine code
+	@echo "🔍 Checking for hardcoded violations..."
+	@./scripts/check-hardcoded-violations.sh
+
+check-todos: ## Check for anonymous TODO/FIXME comments without tracker references
+	@echo "🔍 Checking for anonymous TODO/FIXME comments..."
+	@./scripts/check-todo-violations.sh
+
+check-engine-hygiene: check-hardcoded check-todos ## Run all AGENTS.md §3.6 engine hygiene checks
+	@echo "✅ All engine hygiene checks passed!"
+
+install-git-hooks: ## Install git pre-commit hooks for automatic enforcement
+	@echo "🪝 Installing git pre-commit hooks..."
+	@git config core.hooksPath .githooks
+	@echo "✅ Git hooks installed! Pre-commit checks will run automatically."
+	@echo "   To bypass (emergency only): git commit --no-verify"
+
+# -----------------------------
+# Docker image builds
+# -----------------------------
 
 # Build Docker image
 docker: docker-build ## Alias

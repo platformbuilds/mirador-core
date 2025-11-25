@@ -70,7 +70,7 @@ func TestRCA_and_OpenRoutes(t *testing.T) {
 	logs := services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log)
 
 	// RCA - now uses local engine, external AI engine calls return "not implemented"
-	rh := NewRCAHandler(logs, nil, cch, log, nil, config.EngineConfig{})
+	rh := NewRCAHandler(logs, nil, cch, log, nil, config.EngineConfig{}, nil)
 	r := gin.New()
 	r.Use(func(c *gin.Context) { c.Set("default", "t1"); c.Next() })
 	r.POST("/rca/investigate", rh.StartInvestigation)
@@ -100,7 +100,7 @@ func TestRCA_ServiceGraph_Success(t *testing.T) {
 		}},
 	}}
 
-	rh := NewRCAHandler(logs, sg, cch, log, nil, config.EngineConfig{})
+	rh := NewRCAHandler(logs, sg, cch, log, nil, config.EngineConfig{}, nil)
 	r := gin.New()
 	r.Use(func(c *gin.Context) { c.Set("default", "tenant-1"); c.Next() })
 	r.POST("/rca/service-graph", rh.GetServiceGraph)
@@ -143,7 +143,7 @@ func TestRCA_ServiceGraph_Errors(t *testing.T) {
 	cch := cache.NewNoopValkeyCache(log)
 	logs := services.NewVictoriaLogsService(config.VictoriaLogsConfig{}, log)
 
-	rh := NewRCAHandler(logs, nil, cch, log, nil, config.EngineConfig{})
+	rh := NewRCAHandler(logs, nil, cch, log, nil, config.EngineConfig{}, nil)
 	r := gin.New()
 	r.Use(func(c *gin.Context) { c.Set("default", "tenant-err"); c.Next() })
 	r.POST("/rca/service-graph", rh.GetServiceGraph)
@@ -157,7 +157,7 @@ func TestRCA_ServiceGraph_Errors(t *testing.T) {
 	}
 
 	sg := &stubServiceGraph{}
-	rh = NewRCAHandler(logs, sg, cch, log, nil, config.EngineConfig{})
+	rh = NewRCAHandler(logs, sg, cch, log, nil, config.EngineConfig{}, nil)
 	r = gin.New()
 	r.Use(func(c *gin.Context) { c.Set("default", "tenant-err"); c.Next() })
 	r.POST("/rca/service-graph", rh.GetServiceGraph)

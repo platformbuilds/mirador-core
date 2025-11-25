@@ -369,7 +369,7 @@ func (s *Server) setupRoutes() {
 
 	// AI RCA-ENGINE endpoints (correlation with red anchors pattern)
 	rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
-	rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints, s.config.Engine)
+	rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints, s.config.Engine, s.kpiRepo)
 	rcaGroup := v1.Group("/rca")
 	{
 		rcaGroup.GET("/correlations", rcaHandler.GetActiveCorrelations)
@@ -467,7 +467,7 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 		unifiedGroup.POST("/rca", func(c *gin.Context) {
 			// Create a temporary RCA handler just for this endpoint
 			rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
-			rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints, s.config.Engine)
+			rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints, s.config.Engine, s.kpiRepo)
 			rcaHandler.HandleComputeRCA(c)
 		})
 	}

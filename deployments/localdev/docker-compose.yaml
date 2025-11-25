@@ -166,6 +166,9 @@ services:
       # Valkey (Redis-compatible)
       - VALKEY_CACHE_NODES=valkey:6379
       - CACHE_TTL=300
+
+      # Stage-01 RCA/Correlation API enforcement (AGENTS.md §3.1)
+      - MIRADOR_ENGINE_STRICT_TIMEWINDOW_PAYLOAD=true
     healthcheck:
       test: ["CMD", "/mirador-core", "healthcheck"]
       interval: 10s

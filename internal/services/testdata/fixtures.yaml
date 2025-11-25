@@ -1,0 +1,171 @@
+# Test Fixtures for Mirador Core Services
+# NOTE(HCB-005): This file centralizes all test constants to avoid hardcoding
+# metric names, service names, and other test data across test files.
+# Per AGENTS.md §3.6, test fixtures should be config-driven, not scattered literals.
+
+# Test Metrics
+# Use these instead of hardcoding "cpu_usage", "memory_usage", etc. in tests
+test_metrics:
+  - name: "test_cpu_metric"
+    description: "Test metric for CPU usage scenarios"
+    type: "gauge"
+    value: 85.5
+    threshold: 80.0
+    
+  - name: "test_memory_metric"
+    description: "Test metric for memory usage scenarios"
+    type: "gauge"
+    value: 512.0
+    threshold: 400.0
+    
+  - name: "test_latency_metric"
+    description: "Test metric for latency/performance scenarios"
+    type: "histogram"
+    value: 250.0
+    threshold: 200.0
+    unit: "ms"
+    
+  - name: "test_error_counter"
+    description: "Test metric for error count scenarios"
+    type: "counter"
+    value: 42.0
+    threshold: 10.0
+
+  - name: "test_request_rate"
+    description: "Test metric for request rate scenarios"
+    type: "counter"
+    value: 1000.0
+    threshold: 500.0
+    unit: "req/s"
+
+# Test Services
+# Use these instead of hardcoding "api-gateway", "kafka-producer", etc.
+test_services:
+  - name: "test-service-a"
+    type: "api"
+    description: "Primary test service (gateway pattern)"
+    
+  - name: "test-service-b"
+    type: "backend"
+    description: "Secondary test service (TPS/processor pattern)"
+    
+  - name: "test-cache-service"
+    type: "cache"
+    description: "Cache service test fixture"
+    
+  - name: "test-queue-service"
+    type: "queue"
+    description: "Message queue test fixture"
+    
+  - name: "test-db-service"
+    type: "database"
+    description: "Database service test fixture"
+
+# Service Name Mappings (for normalization tests)
+service_mappings:
+  "test-service-a-client": "test-service-a"
+  "test-queue-producer": "test-queue"
+  "test-queue-consumer": "test-queue"
+  "test-db-client": "test-db"
+
+# Test Query Patterns
+# Use these for UQL/correlation query tests
+test_queries:
+  - name: "basic_log_and_metric"
+    pattern: "logs:error AND metrics:test_cpu_metric > 80"
+    description: "Basic correlation between logs and metrics"
+    
+  - name: "time_window_correlation"
+    pattern: "logs:error WITHIN 5m OF metrics:test_cpu_metric > 80"
+    description: "Time-windowed correlation pattern"
+    
+  - name: "service_label_based"
+    pattern: "logs:service:test-service-a AND traces:service:test-service-a"
+    description: "Label-based correlation across engines"
+
+# Test Labels/Tags
+# Common label keys and values for testing
+test_labels:
+  service_labels:
+    - "service.name"
+    - "serviceName"
+    - "service"
+    
+  pod_labels:
+    - "pod"
+    - "kubernetes.pod_name"
+    - "k8s.pod.name"
+    
+  namespace_labels:
+    - "namespace"
+    - "kubernetes.namespace_name"
+    - "k8s.namespace"
+
+# Test label values
+test_label_values:
+  services:
+    - "test-service-a"
+    - "test-service-b"
+    
+  namespaces:
+    - "test-namespace-prod"
+    - "test-namespace-staging"
+    
+  levels:
+    - "error"
+    - "warn"
+    - "info"
+
+# Test Time Ranges
+# Standard time windows for testing
+test_time_ranges:
+  short_window:
+    duration: "5m"
+    description: "Short correlation window"
+    
+  medium_window:
+    duration: "15m"
+    description: "Medium correlation window"
+    
+  long_window:
+    duration: "1h"
+    description: "Long analysis window"
+
+# Test Thresholds
+test_thresholds:
+  correlation:
+    min: 0.6
+    high: 0.85
+    
+  anomaly:
+    min: 0.7
+    high: 0.9
+    
+  confidence:
+    min: 0.5
+    high: 0.95
+
+# Test Transaction IDs (for failure correlation tests)
+test_transactions:
+  - id: "test-tx-001"
+    status: "failed"
+    component: "test-service-a"
+    
+  - id: "test-tx-002"
+    status: "failed"
+    component: "test-db-service"
+    
+  - id: "test-tx-003"
+    status: "success"
+    component: "test-service-b"
+
+# Test Failure Modes (for component failure tests)
+test_failure_modes:
+  - component: "test-service-a"
+    failure_type: "high_latency"
+    
+  - component: "test-queue-service"
+    failure_type: "message_backlog"
+    
+  - component: "test-db-service"
+    failure_type: "connection_pool_exhausted"
