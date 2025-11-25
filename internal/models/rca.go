@@ -130,13 +130,17 @@ type RCADiagnosticsDTO struct {
 
 // IncidentContextDTO is the DTO for IncidentContext.
 type IncidentContextDTO struct {
-	ID            string  `json:"id"`
-	ImpactService string  `json:"impactService"`
-	MetricName    string  `json:"metricName"`
-	TimeStartStr  string  `json:"timeStart"`
-	TimeEndStr    string  `json:"timeEnd"`
-	ImpactSummary string  `json:"impactSummary"`
-	Severity      float64 `json:"severity"`
+	ID            string `json:"id"`
+	ImpactService string `json:"impactService"`
+	MetricName    string `json:"metricName"`
+	// ImpactServiceUUID is the original UUID if ImpactService was resolved from a KPI
+	ImpactServiceUUID string `json:"impactServiceUuid,omitempty"`
+	// MetricNameUUID is the original UUID if MetricName was resolved from a KPI
+	MetricNameUUID string  `json:"metricNameUuid,omitempty"`
+	TimeStartStr   string  `json:"timeStart"`
+	TimeEndStr     string  `json:"timeEnd"`
+	ImpactSummary  string  `json:"impactSummary"`
+	Severity       float64 `json:"severity"`
 }
 
 // RCAChainDTO is the DTO for RCAChain.
@@ -162,11 +166,17 @@ type RCAStepDTO struct {
 	// Why index in the chain (1 = most user-facing)
 	WhyIndex int `json:"whyIndex"`
 
-	// Service name (may be KPI UUID or service identifier)
+	// Service name (resolved from KPI if applicable, otherwise service identifier)
 	Service string `json:"service"`
 
-	// Component name (may be KPI UUID or component identifier)
+	// Component name (resolved from KPI if applicable, otherwise component identifier)
 	Component string `json:"component"`
+
+	// ServiceUUID is the original UUID if Service was resolved from a KPI
+	ServiceUUID string `json:"serviceUuid,omitempty"`
+
+	// ComponentUUID is the original UUID if Component was resolved from a KPI
+	ComponentUUID string `json:"componentUuid,omitempty"`
 
 	// KPIName is the human-readable name of the KPI if Service/Component is a KPI UUID
 	KPIName string `json:"kpiName,omitempty"`

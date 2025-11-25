@@ -340,7 +340,7 @@ func (h *RCAHandler) convertIncidentContext(ic *rca.IncidentContext) *models.Inc
 	if ic == nil {
 		return nil
 	}
-	return &models.IncidentContextDTO{
+	dto := &models.IncidentContextDTO{
 		ID:            ic.ID,
 		ImpactService: ic.ImpactService,
 		MetricName:    ic.ImpactSignal.MetricName,
@@ -349,6 +349,14 @@ func (h *RCAHandler) convertIncidentContext(ic *rca.IncidentContext) *models.Inc
 		ImpactSummary: ic.ImpactSummary,
 		Severity:      ic.Severity,
 	}
+
+	// Resolve ImpactService UUID to name if it's a KPI
+	h.resolveUUIDToName(&dto.ImpactService, &dto.ImpactServiceUUID)
+
+	// Resolve MetricName UUID to name if it's a KPI
+	h.resolveUUIDToName(&dto.MetricName, &dto.MetricNameUUID)
+
+	return dto
 }
 
 func (h *RCAHandler) convertRCAChain(ch *rca.RCAChain) *models.RCAChainDTO {
@@ -359,9 +367,18 @@ func (h *RCAHandler) convertRCAChain(ch *rca.RCAChain) *models.RCAChainDTO {
 		Steps:        make([]*models.RCAStepDTO, 0, len(ch.Steps)),
 		Score:        ch.Score,
 		Rank:         ch.Rank,
-		ImpactPath:   append([]string{}, ch.ImpactPath...),
+		ImpactPath:   make([]string, len(ch.ImpactPath)),
 		DurationHops: ch.DurationHops,
 	}
+
+	// Resolve UUIDs in ImpactPath to names
+	for i, path := range ch.ImpactPath {
+		resolvedPath := path
+		var unusedUUID string
+		h.resolveUUIDToName(&resolvedPath, &unusedUUID)
+		dto.ImpactPath[i] = resolvedPath
+	}
+
 	for _, s := range ch.Steps {
 		dto.Steps = append(dto.Steps, h.convertRCAStep(s))
 	}
@@ -397,54 +414,82 @@ func (h *RCAHandler) convertRCAStep(s *rca.RCAStep) *models.RCAStepDTO {
 	return dto
 }
 
-// enrichKPIMetadata looks up KPI information for Service and Component fields
-// and populates KPIName and KPIFormula fields if they are KPI UUIDs.
-func (h *RCAHandler) enrichKPIMetadata(dto *models.RCAStepDTO) {
-	if dto == nil {
-		h.logger.Debug("enrichKPIMetadata: dto is nil")
+// resolveUUIDToName attempts to resolve a UUID to a KPI name.
+// If the value is a valid KPI UUID, it replaces *value with the KPI name
+// and stores the original UUID in *uuidField.
+// If not a KPI UUID, the value remains unchanged.
+func (h *RCAHandler) resolveUUIDToName(value *string, uuidField *string) {
+	if value == nil || *value == "" {
 		return
 	}
 	if h.kpiRepo == nil {
-		h.logger.Debug("enrichKPIMetadata: kpiRepo is nil")
 		return
 	}
 
-	h.logger.Debug("enrichKPIMetadata called", "service", dto.Service, "component", dto.Component)
+	ctx := context.Background()
+	kpi, err := h.kpiRepo.GetKPI(ctx, *value)
+	if err != nil {
+		// Not a KPI UUID or lookup failed - keep original value
+		return
+	}
+	if kpi == nil {
+		// Not found - keep original value
+		return
+	}
+
+	// Found a KPI - replace value with name and store UUID
+	if uuidField != nil {
+		*uuidField = *value
+	}
+	*value = kpi.Name
+	h.logger.Debug("Resolved UUID to KPI name", "uuid", *uuidField, "name", kpi.Name)
+}
+
+// enrichKPIMetadata looks up KPI information for Service and Component fields,
+// replaces UUIDs with human-readable names, and populates metadata fields.
+func (h *RCAHandler) enrichKPIMetadata(dto *models.RCAStepDTO) {
+	if dto == nil {
+		return
+	}
+	if h.kpiRepo == nil {
+		return
+	}
 
 	ctx := context.Background()
 
-	// Try to look up Service as a KPI UUID
+	// Try to resolve Service as a KPI UUID
 	if dto.Service != "" {
-		h.logger.Debug("Looking up Service as KPI", "uuid", dto.Service)
 		kpi, err := h.kpiRepo.GetKPI(ctx, dto.Service)
-		if err != nil {
-			h.logger.Debug("GetKPI for Service failed", "uuid", dto.Service, "error", err)
-		} else if kpi != nil {
-			h.logger.Info("KPI enrichment SUCCESS", "uuid", dto.Service, "name", kpi.Name, "formula", kpi.Formula)
+		if err == nil && kpi != nil {
+			h.logger.Debug("Resolved Service UUID to KPI", "uuid", dto.Service, "name", kpi.Name)
+			dto.ServiceUUID = dto.Service
+			dto.Service = kpi.Name
 			dto.KPIName = kpi.Name
 			dto.KPIFormula = kpi.Formula
+			// Service was resolved, also try Component
+			if dto.Component != "" && dto.Component != dto.ServiceUUID {
+				kpi2, err2 := h.kpiRepo.GetKPI(ctx, dto.Component)
+				if err2 == nil && kpi2 != nil {
+					h.logger.Debug("Resolved Component UUID to KPI", "uuid", dto.Component, "name", kpi2.Name)
+					dto.ComponentUUID = dto.Component
+					dto.Component = kpi2.Name
+				}
+			}
 			return
-		} else {
-			h.logger.Debug("GetKPI returned nil KPI", "uuid", dto.Service)
 		}
 	}
 
-	// If Service lookup didn't find a KPI, try Component
-	if dto.KPIName == "" && dto.Component != "" {
-		h.logger.Debug("Looking up Component as KPI", "uuid", dto.Component)
+	// If Service wasn't a KPI, try Component
+	if dto.Component != "" {
 		kpi, err := h.kpiRepo.GetKPI(ctx, dto.Component)
-		if err != nil {
-			h.logger.Debug("GetKPI for Component failed", "uuid", dto.Component, "error", err)
-		} else if kpi != nil {
-			h.logger.Info("KPI enrichment SUCCESS (from Component)", "uuid", dto.Component, "name", kpi.Name, "formula", kpi.Formula)
+		if err == nil && kpi != nil {
+			h.logger.Debug("Resolved Component UUID to KPI", "uuid", dto.Component, "name", kpi.Name)
+			dto.ComponentUUID = dto.Component
+			dto.Component = kpi.Name
 			dto.KPIName = kpi.Name
 			dto.KPIFormula = kpi.Formula
-		} else {
-			h.logger.Debug("GetKPI returned nil KPI for Component", "uuid", dto.Component)
 		}
 	}
-
-	h.logger.Debug("enrichKPIMetadata completed", "kpiName", dto.KPIName, "kpiFormula", dto.KPIFormula)
 }
 
 func (h *RCAHandler) convertDiagnostics(d *rca.RCADiagnostics) *models.RCADiagnosticsDTO {
