@@ -1,0 +1,275 @@
+{
+  "status": "success",
+  "data": {
+    "impact": {
+      "id": "corr_1764134415",
+      "impactService": "Service Request Failure Count (Impact)",
+      "metricName": "Service Request Failure Count (Impact)",
+      "impactServiceUuid": "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3",
+      "metricNameUuid": "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3",
+      "timeStart": "2025-11-26T05:05:16Z",
+      "timeEnd": "2025-11-26T05:20:16Z",
+      "impactSummary": "Impact detected on Service Request Failure Count (Impact) (correlation confidence 0.90). Top-candidate Service Request Failure Count (Impact): pearson=0.00 spearman=1.00 partial=0.00 cross_max=0.00 lag=0 anomalies=LOW",
+      "severity": 0.9
+    },
+    "rootCause": {
+      "whyIndex": 5,
+      "service": "process",
+      "component": "deployment",
+      "timeStart": "2025-11-26T05:05:16Z",
+      "timeEnd": "2025-11-26T05:20:16Z",
+      "ring": "R2_SHORT",
+      "direction": "upstream",
+      "distance": -1,
+      "evidence": [
+        {
+          "type": "inferred",
+          "id": "process_gap",
+          "details": "missing guardrail or rollout check"
+        }
+      ],
+      "summary": "Why 5: process (deployment) at 05:05:16 showed anomalies in R2_SHORT (upstream, unknown distance). This likely caused failures in Service Request Failure Count (Impact). Evidence: 1 corroborating anomalies.",
+      "score": 0.27
+    },
+    "chains": [
+      {
+        "steps": [
+          {
+            "whyIndex": 1,
+            "service": "Service Request Failure Count (Impact)",
+            "component": "Service Request Failure Count (Impact)",
+            "serviceUuid": "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3",
+            "componentUuid": "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3",
+            "kpiName": "Service Request Failure Count (Impact)",
+            "kpiFormula": "traces_service_graph_request_failed_total",
+            "timeStart": "2025-11-26T05:05:16Z",
+            "timeEnd": "2025-11-26T05:20:16Z",
+            "ring": "R1_IMMEDIATE",
+            "direction": "same",
+            "distance": -1,
+            "evidence": [
+              {
+                "type": "red_anchor",
+                "id": "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3",
+                "details": "anchor_score=0.900"
+              }
+            ],
+            "summary": "Why 1: Service Request Failure Count (Impact) experienced Service Request Failure Count (Impact) anomalies in the R1_IMMEDIATE (detected 05:05:16, severity contributed from 1 evidence points)",
+            "score": 0.9
+          },
+          {
+            "whyIndex": 2,
+            "service": "Service Request Failure Count (Impact)",
+            "component": "Service Request Failure Count (Impact)",
+            "serviceUuid": "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3",
+            "componentUuid": "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3",
+            "kpiName": "Service Request Failure Count (Impact)",
+            "kpiFormula": "traces_service_graph_request_failed_total",
+            "timeStart": "2025-11-26T05:05:16Z",
+            "timeEnd": "2025-11-26T05:20:16Z",
+            "ring": "R1_IMMEDIATE",
+            "direction": "upstream",
+            "distance": -1,
+            "evidence": [
+              {
+                "type": "red_anchor",
+                "id": "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3",
+                "details": "metric=47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3 score=0.900"
+              }
+            ],
+            "summary": "Why 2: Service Request Failure Count (Impact) experienced Service Request Failure Count (Impact) anomalies in the R1_IMMEDIATE (detected 05:05:16, severity contributed from 1 evidence points)",
+            "score": 0.9
+          },
+          {
+            "whyIndex": 3,
+            "service": "Service Request Failure Count (Impact)-dep",
+            "component": "dependency",
+            "serviceUuid": "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3",
+            "kpiName": "Service Request Failure Count (Impact)",
+            "kpiFormula": "traces_service_graph_request_failed_total",
+            "timeStart": "2025-11-26T05:05:16Z",
+            "timeEnd": "2025-11-26T05:20:16Z",
+            "ring": "R2_SHORT",
+            "direction": "upstream",
+            "distance": -1,
+            "evidence": [
+              {
+                "type": "inferred",
+                "id": "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3-dep",
+                "details": "inferred from service graph and anchor"
+              }
+            ],
+            "summary": "Why 3: Service Request Failure Count (Impact)-dep (dependency) at 05:05:16 showed anomalies in R2_SHORT (upstream, unknown distance). This likely caused failures in Service Request Failure Count (Impact). Evidence: 1 corroborating anomalies.",
+            "score": 0.63
+          },
+          {
+            "whyIndex": 4,
+            "service": "infrastructure",
+            "component": "database",
+            "timeStart": "2025-11-26T05:05:16Z",
+            "timeEnd": "2025-11-26T05:20:16Z",
+            "ring": "R2_SHORT",
+            "direction": "upstream",
+            "distance": -1,
+            "evidence": [
+              {
+                "type": "inferred",
+                "id": "infra_db",
+                "details": "inferred infra contention"
+              }
+            ],
+            "summary": "Why 4: infrastructure (database) at 05:05:16 showed anomalies in R2_SHORT (upstream, unknown distance). This likely caused failures in Service Request Failure Count (Impact). Evidence: 1 corroborating anomalies.",
+            "score": 0.45
+          },
+          {
+            "whyIndex": 5,
+            "service": "process",
+            "component": "deployment",
+            "timeStart": "2025-11-26T05:05:16Z",
+            "timeEnd": "2025-11-26T05:20:16Z",
+            "ring": "R2_SHORT",
+            "direction": "upstream",
+            "distance": -1,
+            "evidence": [
+              {
+                "type": "inferred",
+                "id": "process_gap",
+                "details": "missing guardrail or rollout check"
+              }
+            ],
+            "summary": "Why 5: process (deployment) at 05:05:16 showed anomalies in R2_SHORT (upstream, unknown distance). This likely caused failures in Service Request Failure Count (Impact). Evidence: 1 corroborating anomalies.",
+            "score": 0.27
+          }
+        ],
+        "score": 0.6300000000000001,
+        "rank": 1,
+        "impactPath": [
+          "Service Request Failure Count (Impact)",
+          "Service Request Failure Count (Impact)",
+          "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3-dep",
+          "infrastructure",
+          "process"
+        ],
+        "durationHops": 5
+      },
+      {
+        "steps": [
+          {
+            "whyIndex": 1,
+            "service": "Service Request Failure Count (Impact)",
+            "component": "Service Request Failure Count (Impact)",
+            "serviceUuid": "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3",
+            "componentUuid": "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3",
+            "kpiName": "Service Request Failure Count (Impact)",
+            "kpiFormula": "traces_service_graph_request_failed_total",
+            "timeStart": "2025-11-26T05:05:16Z",
+            "timeEnd": "2025-11-26T05:20:16Z",
+            "ring": "R1_IMMEDIATE",
+            "direction": "same",
+            "distance": -1,
+            "evidence": [
+              {
+                "type": "red_anchor",
+                "id": "864c82d3-e941-5020-9dbc-99b4dcb0318d",
+                "details": "anchor_score=0.900"
+              }
+            ],
+            "summary": "Why 1: Service Request Failure Count (Impact) experienced Service Request Failure Count (Impact) anomalies in the R1_IMMEDIATE (detected 05:05:16, severity contributed from 1 evidence points)",
+            "score": 0.9
+          },
+          {
+            "whyIndex": 2,
+            "service": "864c82d3-e941-5020-9dbc-99b4dcb0318d",
+            "component": "864c82d3-e941-5020-9dbc-99b4dcb0318d",
+            "timeStart": "2025-11-26T05:05:16Z",
+            "timeEnd": "2025-11-26T05:20:16Z",
+            "ring": "R1_IMMEDIATE",
+            "direction": "upstream",
+            "distance": -1,
+            "evidence": [
+              {
+                "type": "red_anchor",
+                "id": "864c82d3-e941-5020-9dbc-99b4dcb0318d",
+                "details": "metric=864c82d3-e941-5020-9dbc-99b4dcb0318d score=0.900"
+              }
+            ],
+            "summary": "Why 2: 864c82d3-e941-5020-9dbc-99b4dcb0318d (864c82d3-e941-5020-9dbc-99b4dcb0318d) at 05:05:16 showed anomalies in R1_IMMEDIATE (upstream, unknown distance). This likely caused failures in Service Request Failure Count (Impact). Evidence: 1 corroborating anomalies.",
+            "score": 0.9
+          },
+          {
+            "whyIndex": 3,
+            "service": "864c82d3-e941-5020-9dbc-99b4dcb0318d-dep",
+            "component": "dependency",
+            "timeStart": "2025-11-26T05:05:16Z",
+            "timeEnd": "2025-11-26T05:20:16Z",
+            "ring": "R2_SHORT",
+            "direction": "upstream",
+            "distance": -1,
+            "evidence": [
+              {
+                "type": "inferred",
+                "id": "864c82d3-e941-5020-9dbc-99b4dcb0318d-dep",
+                "details": "inferred from service graph and anchor"
+              }
+            ],
+            "summary": "Why 3: 864c82d3-e941-5020-9dbc-99b4dcb0318d-dep (dependency) at 05:05:16 showed anomalies in R2_SHORT (upstream, unknown distance). This likely caused failures in Service Request Failure Count (Impact). Evidence: 1 corroborating anomalies.",
+            "score": 0.63
+          },
+          {
+            "whyIndex": 4,
+            "service": "infrastructure",
+            "component": "database",
+            "timeStart": "2025-11-26T05:05:16Z",
+            "timeEnd": "2025-11-26T05:20:16Z",
+            "ring": "R2_SHORT",
+            "direction": "upstream",
+            "distance": -1,
+            "evidence": [
+              {
+                "type": "inferred",
+                "id": "infra_db",
+                "details": "inferred infra contention"
+              }
+            ],
+            "summary": "Why 4: infrastructure (database) at 05:05:16 showed anomalies in R2_SHORT (upstream, unknown distance). This likely caused failures in Service Request Failure Count (Impact). Evidence: 1 corroborating anomalies.",
+            "score": 0.45
+          },
+          {
+            "whyIndex": 5,
+            "service": "process",
+            "component": "deployment",
+            "timeStart": "2025-11-26T05:05:16Z",
+            "timeEnd": "2025-11-26T05:20:16Z",
+            "ring": "R2_SHORT",
+            "direction": "upstream",
+            "distance": -1,
+            "evidence": [
+              {
+                "type": "inferred",
+                "id": "process_gap",
+                "details": "missing guardrail or rollout check"
+              }
+            ],
+            "summary": "Why 5: process (deployment) at 05:05:16 showed anomalies in R2_SHORT (upstream, unknown distance). This likely caused failures in Service Request Failure Count (Impact). Evidence: 1 corroborating anomalies.",
+            "score": 0.27
+          }
+        ],
+        "score": 0.6300000000000001,
+        "rank": 2,
+        "impactPath": [
+          "Service Request Failure Count (Impact)",
+          "864c82d3-e941-5020-9dbc-99b4dcb0318d",
+          "864c82d3-e941-5020-9dbc-99b4dcb0318d-dep",
+          "infrastructure",
+          "process"
+        ],
+        "durationHops": 5
+      }
+    ],
+    "generatedAt": "2025-11-26T05:20:15.758740507Z",
+    "score": 0.6300000000000001,
+    "notes": [],
+    "diagnostics": {}
+  },
+  "timestamp": "2025-11-26T05:20:15.870875591Z"
+}
