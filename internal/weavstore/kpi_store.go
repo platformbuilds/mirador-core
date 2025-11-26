@@ -250,7 +250,9 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinitio
 			continue
 		}
 		// o.ID is strfmt.UUID; compare using its string form
-		if o.ID.String() == objID {
+		// Support both the deterministic v5 object id (makeObjectID) and the case
+		// where the original KPI id was used as the Weaviate object id directly.
+		if o.ID.String() == objID || o.ID.String() == id {
 			if o.Properties != nil {
 				if m, ok := o.Properties.(map[string]any); ok {
 					props = m
