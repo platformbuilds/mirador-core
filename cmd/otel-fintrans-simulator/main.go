@@ -71,6 +71,9 @@ type Simulator struct {
 	dbLatency               metric.Float64Histogram
 	transactionAmountSum    metric.Int64Counter
 	transactionAmountCount  metric.Int64UpDownCounter
+	// runtime configuration
+	telemCfg     TelemetryConfig
+	failureSched *failureScheduler
 }
 
 type TransactionResult struct {
@@ -95,6 +98,7 @@ func main() {
 		timeWindowStr      = flag.String("time-window", "0s", "Time window to spread data over (e.g., 15m, 1h, 0s=instant)")
 		dataIntervalStr    = flag.String("data-interval", "30s", "Time interval between data points (e.g., 10s, 1m)")
 		startTimeOffsetStr = flag.String("start-time-offset", "0s", "Start time offset from now (e.g., -15m for 15 minutes ago, 0s=now)")
+		configPath         = flag.String("config", "", "Path to optional simulator YAML configuration file")
 	)
 	flag.Parse()
 
@@ -152,6 +156,30 @@ func main() {
 		timeWindowDuration: timeWindowDuration,
 		dataInterval:       dataInterval,
 		startTimeOffset:    startTimeOffset,
+	}
+
+	// Load optional config file
+	cfg, err := LoadConfig(*configPath)
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
+
+	if cfg != nil {
+		sim.telemCfg = cfg.Telemetry
+
+		// If the config contains a failure section, and has a rate/bursts/mode, build scheduler
+		if cfg.Failure.Rate > 0 || len(cfg.Failure.Bursts) > 0 || cfg.Failure.Mode != "" {
+			fs, err := newFailureScheduler(cfg.Failure, time.Now().Add(sim.startTimeOffset))
+			if err != nil {
+				log.Fatalf("failed to create failure scheduler: %v", err)
+			}
+			sim.failureSched = fs
+
+			// If a seed is provided, ensure package-level randomness is seeded for deterministic behavior of other RNG use
+			if cfg.Failure.Seed != nil {
+				rand.Seed(*cfg.Failure.Seed)
+			}
+		}
 	}
 
 	// Initialize metrics
@@ -274,55 +302,91 @@ func initOTel(ctx context.Context, endpoint string, insecureConn bool) (func(con
 func (s *Simulator) initMetrics(ctx context.Context) error {
 	var err error
 
-	s.transactionsTotal, err = s.meter.Int64Counter("transactions_total",
+	txTotalName := "transactions_total"
+	if s.telemCfg.MetricNames.TransactionsTotal != "" {
+		txTotalName = s.telemCfg.MetricNames.TransactionsTotal
+	}
+	s.transactionsTotal, err = s.meter.Int64Counter(txTotalName,
 		metric.WithDescription("Total number of transactions"))
 	if err != nil {
 		return err
 	}
 
-	s.transactionsFailedTotal, err = s.meter.Int64Counter("transactions_failed_total",
+	txFailedName := "transactions_failed_total"
+	if s.telemCfg.MetricNames.TransactionsFailed != "" {
+		txFailedName = s.telemCfg.MetricNames.TransactionsFailed
+	}
+	s.transactionsFailedTotal, err = s.meter.Int64Counter(txFailedName,
 		metric.WithDescription("Total number of failed transactions"))
 	if err != nil {
 		return err
 	}
 
-	s.dbOpsTotal, err = s.meter.Int64Counter("db_ops_total",
+	dbOpsName := "db_ops_total"
+	if s.telemCfg.MetricNames.DBOpsTotal != "" {
+		dbOpsName = s.telemCfg.MetricNames.DBOpsTotal
+	}
+	s.dbOpsTotal, err = s.meter.Int64Counter(dbOpsName,
 		metric.WithDescription("Total database operations"))
 	if err != nil {
 		return err
 	}
 
-	s.kafkaProduceTotal, err = s.meter.Int64Counter("kafka_produce_total",
+	kafkaProduceName := "kafka_produce_total"
+	if s.telemCfg.MetricNames.KafkaProduceTotal != "" {
+		kafkaProduceName = s.telemCfg.MetricNames.KafkaProduceTotal
+	}
+	s.kafkaProduceTotal, err = s.meter.Int64Counter(kafkaProduceName,
 		metric.WithDescription("Total Kafka produce operations"))
 	if err != nil {
 		return err
 	}
 
-	s.kafkaConsumeTotal, err = s.meter.Int64Counter("kafka_consume_total",
+	kafkaConsumeName := "kafka_consume_total"
+	if s.telemCfg.MetricNames.KafkaConsumeTotal != "" {
+		kafkaConsumeName = s.telemCfg.MetricNames.KafkaConsumeTotal
+	}
+	s.kafkaConsumeTotal, err = s.meter.Int64Counter(kafkaConsumeName,
 		metric.WithDescription("Total Kafka consume operations"))
 	if err != nil {
 		return err
 	}
 
-	s.transactionLatency, err = s.meter.Float64Histogram("transaction_latency_seconds",
+	txLatencyName := "transaction_latency_seconds"
+	if s.telemCfg.MetricNames.TransactionLatency != "" {
+		txLatencyName = s.telemCfg.MetricNames.TransactionLatency
+	}
+	s.transactionLatency, err = s.meter.Float64Histogram(txLatencyName,
 		metric.WithDescription("Transaction processing latency"))
 	if err != nil {
 		return err
 	}
 
-	s.dbLatency, err = s.meter.Float64Histogram("db_latency_seconds",
+	dbLatencyName := "db_latency_seconds"
+	if s.telemCfg.MetricNames.DBLatency != "" {
+		dbLatencyName = s.telemCfg.MetricNames.DBLatency
+	}
+	s.dbLatency, err = s.meter.Float64Histogram(dbLatencyName,
 		metric.WithDescription("Database operation latency"))
 	if err != nil {
 		return err
 	}
 
-	s.transactionAmountSum, err = s.meter.Int64Counter("transaction_amount_paisa_sum",
+	txAmountSumName := "transaction_amount_paisa_sum"
+	if s.telemCfg.MetricNames.TransactionAmountSum != "" {
+		txAmountSumName = s.telemCfg.MetricNames.TransactionAmountSum
+	}
+	s.transactionAmountSum, err = s.meter.Int64Counter(txAmountSumName,
 		metric.WithDescription("Sum of transaction amounts in paise"))
 	if err != nil {
 		return err
 	}
 
-	s.transactionAmountCount, err = s.meter.Int64UpDownCounter("transaction_amount_paisa_count",
+	txAmountCountName := "transaction_amount_paisa_count"
+	if s.telemCfg.MetricNames.TransactionAmountCount != "" {
+		txAmountCountName = s.telemCfg.MetricNames.TransactionAmountCount
+	}
+	s.transactionAmountCount, err = s.meter.Int64UpDownCounter(txAmountCountName,
 		metric.WithDescription("Count of transactions for amount metrics"))
 	if err != nil {
 		return err
@@ -442,7 +506,12 @@ func (s *Simulator) simulateTransaction(ctx context.Context, transactionID strin
 	channel := []string{"mobile", "web", "api"}[rand.Intn(3)]
 
 	// Determine if this transaction should fail
-	shouldFail := rand.Float64() < s.failureRate
+	var shouldFail bool
+	if s.failureSched != nil {
+		shouldFail = s.failureSched.ShouldFail(time.Now())
+	} else {
+		shouldFail = rand.Float64() < s.failureRate
+	}
 	var failureComponent string
 	if shouldFail {
 		switch s.failureMode {
@@ -463,7 +532,12 @@ func (s *Simulator) simulateTransaction(ctx context.Context, transactionID strin
 	}
 
 	// Start root span for API Gateway
-	ctx, rootSpan := s.tracer.Start(ctx, "api-gateway.receive_transaction",
+	apiGatewayName := "api-gateway"
+	if s.telemCfg.ServiceNames.APIGateway != "" {
+		apiGatewayName = s.telemCfg.ServiceNames.APIGateway
+	}
+
+	ctx, rootSpan := s.tracer.Start(ctx, apiGatewayName+".receive_transaction",
 		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(
 			attribute.String("transaction_id", transactionID),
@@ -477,7 +551,7 @@ func (s *Simulator) simulateTransaction(ctx context.Context, transactionID strin
 	// Log API Gateway request received
 	s.logger.Info("Transaction request received",
 		zap.String("transaction_id", transactionID),
-		zap.String("service_name", "api-gateway"),
+		zap.String("service_name", apiGatewayName),
 		zap.Int64("amount_paisa", amountPaise),
 		zap.String("currency", currencyINR),
 		zap.String("severity", "INFO"),
@@ -490,10 +564,10 @@ func (s *Simulator) simulateTransaction(ctx context.Context, transactionID strin
 			attribute.String("final_status", "error"),
 			attribute.String("error_type", "auth_failure"),
 		)
-		s.transactionsFailedTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("service_name", "api-gateway")))
+		s.transactionsFailedTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("service_name", apiGatewayName)))
 		s.logger.Error("Auth validation failed",
 			zap.String("transaction_id", transactionID),
-			zap.String("service_name", "api-gateway"),
+			zap.String("service_name", apiGatewayName),
 			zap.Int64("amount_paisa", amountPaise),
 			zap.String("currency", currencyINR),
 			zap.String("severity", "ERROR"),
@@ -503,12 +577,17 @@ func (s *Simulator) simulateTransaction(ctx context.Context, transactionID strin
 	}
 
 	// Call TPS
-	ctx, tpsClientSpan := s.tracer.Start(ctx, "api-gateway.call_tps",
+	tpsName := "tps"
+	if s.telemCfg.ServiceNames.TPS != "" {
+		tpsName = s.telemCfg.ServiceNames.TPS
+	}
+
+	ctx, tpsClientSpan := s.tracer.Start(ctx, apiGatewayName+".call_tps",
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
 			attribute.String("transaction_id", transactionID),
-			attribute.String("service_name", "api-gateway"),
-			attribute.String("peer.service", "tps"),
+			attribute.String("service_name", apiGatewayName),
+			attribute.String("peer.service", tpsName),
 		))
 	result := s.simulateTPS(ctx, transactionID, amountPaise, customerID, failureComponent, shouldFail)
 	tpsClientSpan.End()
@@ -527,24 +606,29 @@ func (s *Simulator) simulateTransaction(ctx context.Context, transactionID strin
 	}
 
 	// Record final metrics
-	s.transactionsTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("service_name", "api-gateway")))
+	s.transactionsTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("service_name", apiGatewayName)))
 	s.transactionAmountSum.Add(ctx, result.AmountPaise, metric.WithAttributes(attribute.String("currency", currencyINR)))
 	s.transactionAmountCount.Add(ctx, 1, metric.WithAttributes(attribute.String("currency", currencyINR)))
 
 	if result.FinalStatus == "error" {
-		s.transactionsFailedTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("service_name", "api-gateway")))
+		s.transactionsFailedTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("service_name", apiGatewayName)))
 	}
 
 	duration := time.Since(start).Seconds()
-	s.transactionLatency.Record(ctx, duration, metric.WithAttributes(attribute.String("service_name", "api-gateway")))
+	s.transactionLatency.Record(ctx, duration, metric.WithAttributes(attribute.String("service_name", apiGatewayName)))
 }
 
 func (s *Simulator) simulateTPS(ctx context.Context, transactionID string, amountPaise int64, customerID string, failureComponent string, shouldFail bool) TransactionResult {
-	ctx, span := s.tracer.Start(ctx, "tps.process_transaction",
+	tpsName := "tps"
+	if s.telemCfg.ServiceNames.TPS != "" {
+		tpsName = s.telemCfg.ServiceNames.TPS
+	}
+
+	ctx, span := s.tracer.Start(ctx, tpsName+".process_transaction",
 		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(
 			attribute.String("transaction_id", transactionID),
-			attribute.String("service_name", "tps"),
+			attribute.String("service_name", tpsName),
 		))
 	defer span.End()
 
@@ -557,11 +641,11 @@ func (s *Simulator) simulateTPS(ctx context.Context, transactionID string, amoun
 
 	// Simulate 22 TPS steps
 	for step := 1; step <= 22; step++ {
-		stepCtx, stepSpan := s.tracer.Start(ctx, fmt.Sprintf("tps.step_%02d", step),
+		stepCtx, stepSpan := s.tracer.Start(ctx, fmt.Sprintf(tpsName+".step_%02d", step),
 			trace.WithSpanKind(trace.SpanKindInternal),
 			trace.WithAttributes(
 				attribute.String("transaction_id", transactionID),
-				attribute.String("service_name", "tps"),
+				attribute.String("service_name", tpsName),
 				attribute.Int("step_number", step),
 			))
 
@@ -575,7 +659,7 @@ func (s *Simulator) simulateTPS(ctx context.Context, transactionID string, amoun
 				stepSpan.SetStatus(codes.Error, err.Error())
 				s.logger.Error("TPS step failed",
 					zap.String("transaction_id", transactionID),
-					zap.String("service_name", "tps"),
+					zap.String("service_name", tpsName),
 					zap.Int("step_number", step),
 					zap.Int64("amount_paisa", amountPaise),
 					zap.String("currency", currencyINR),
@@ -593,7 +677,7 @@ func (s *Simulator) simulateTPS(ctx context.Context, transactionID string, amoun
 				stepSpan.SetStatus(codes.Error, err.Error())
 				s.logger.Error("TPS step failed",
 					zap.String("transaction_id", transactionID),
-					zap.String("service_name", "tps"),
+					zap.String("service_name", tpsName),
 					zap.Int("step_number", step),
 					zap.Int64("amount_paisa", amountPaise),
 					zap.String("currency", currencyINR),
@@ -623,7 +707,7 @@ func (s *Simulator) simulateTPS(ctx context.Context, transactionID string, amoun
 				stepSpan.SetStatus(codes.Error, err.Error())
 				s.logger.Error("TPS step failed",
 					zap.String("transaction_id", transactionID),
-					zap.String("service_name", "tps"),
+					zap.String("service_name", tpsName),
 					zap.Int("step_number", step),
 					zap.Int64("amount_paisa", amountPaise),
 					zap.String("currency", currencyINR),
@@ -645,11 +729,16 @@ func (s *Simulator) simulateTPS(ctx context.Context, transactionID string, amoun
 }
 
 func (s *Simulator) simulateCassandraOp(ctx context.Context, transactionID, operation string, shouldFail bool) error {
+	cassName := "cassandra-client"
+	if s.telemCfg.ServiceNames.CassandraClient != "" {
+		cassName = s.telemCfg.ServiceNames.CassandraClient
+	}
+
 	ctx, span := s.tracer.Start(ctx, "cassandra."+operation,
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
 			attribute.String("transaction_id", transactionID),
-			attribute.String("service_name", "cassandra-client"),
+			attribute.String("service_name", cassName),
 			attribute.String("db.system", "cassandra"),
 			attribute.String("db.operation", operation),
 		))
@@ -661,7 +750,7 @@ func (s *Simulator) simulateCassandraOp(ctx context.Context, transactionID, oper
 		span.SetStatus(codes.Error, "Cassandra operation failed")
 		s.logger.Error("Cassandra operation failed",
 			zap.String("transaction_id", transactionID),
-			zap.String("service_name", "cassandra-client"),
+			zap.String("service_name", cassName),
 			zap.String("severity", "ERROR"),
 			zap.String("failure_reason", "cassandra_timeout"),
 		)
@@ -679,11 +768,16 @@ func (s *Simulator) simulateCassandraOp(ctx context.Context, transactionID, oper
 }
 
 func (s *Simulator) simulateKeyDBOp(ctx context.Context, transactionID, operation string, shouldFail bool) error {
+	keyName := "keydb-client"
+	if s.telemCfg.ServiceNames.KeyDBClient != "" {
+		keyName = s.telemCfg.ServiceNames.KeyDBClient
+	}
+
 	ctx, span := s.tracer.Start(ctx, "keydb."+operation,
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
 			attribute.String("transaction_id", transactionID),
-			attribute.String("service_name", "keydb-client"),
+			attribute.String("service_name", keyName),
 			attribute.String("db.system", "valkey"),
 			attribute.String("db.operation", operation),
 		))
@@ -695,7 +789,7 @@ func (s *Simulator) simulateKeyDBOp(ctx context.Context, transactionID, operatio
 		span.SetStatus(codes.Error, "KeyDB operation failed")
 		s.logger.Error("KeyDB operation failed",
 			zap.String("transaction_id", transactionID),
-			zap.String("service_name", "keydb-client"),
+			zap.String("service_name", keyName),
 			zap.String("severity", "ERROR"),
 			zap.String("failure_reason", "keydb_connection_error"),
 		)
@@ -713,11 +807,16 @@ func (s *Simulator) simulateKeyDBOp(ctx context.Context, transactionID, operatio
 }
 
 func (s *Simulator) simulateKafkaProduce(ctx context.Context, transactionID string, amountPaise int64, shouldFail bool) error {
+	kpName := "kafka-producer"
+	if s.telemCfg.ServiceNames.KafkaProducer != "" {
+		kpName = s.telemCfg.ServiceNames.KafkaProducer
+	}
+
 	ctx, span := s.tracer.Start(ctx, "kafka.produce",
 		trace.WithSpanKind(trace.SpanKindProducer),
 		trace.WithAttributes(
 			attribute.String("transaction_id", transactionID),
-			attribute.String("service_name", "kafka-producer"),
+			attribute.String("service_name", kpName),
 			attribute.String("messaging.system", "kafka"),
 			attribute.String("messaging.operation", "produce"),
 			attribute.String("messaging.destination", "transaction-log"),
@@ -742,11 +841,16 @@ func (s *Simulator) simulateKafkaProduce(ctx context.Context, transactionID stri
 }
 
 func (s *Simulator) simulateKafkaConsumer(ctx context.Context, transactionID string, amountPaise int64, shouldFail bool) {
+	kcName := "kafka-consumer"
+	if s.telemCfg.ServiceNames.KafkaConsumer != "" {
+		kcName = s.telemCfg.ServiceNames.KafkaConsumer
+	}
+
 	ctx, span := s.tracer.Start(ctx, "kafka.consume",
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithAttributes(
 			attribute.String("transaction_id", transactionID),
-			attribute.String("service_name", "kafka-consumer"),
+			attribute.String("service_name", kcName),
 			attribute.String("messaging.system", "kafka"),
 			attribute.String("messaging.operation", "consume"),
 			attribute.String("messaging.destination", "transaction-log"),
@@ -776,11 +880,16 @@ func (s *Simulator) simulateKafkaConsumer(ctx context.Context, transactionID str
 
 func (s *Simulator) simulateAPIGatewayKafkaConsumer(ctx context.Context, transactionID string, amountPaise int64, shouldFail bool) {
 	// API Gateway consumes from Kafka
-	ctx, consumerSpan := s.tracer.Start(ctx, "api-gateway.kafka_consume",
+	agName := "api-gateway"
+	if s.telemCfg.ServiceNames.APIGateway != "" {
+		agName = s.telemCfg.ServiceNames.APIGateway
+	}
+
+	ctx, consumerSpan := s.tracer.Start(ctx, agName+".kafka_consume",
 		trace.WithSpanKind(trace.SpanKindConsumer),
 		trace.WithAttributes(
 			attribute.String("transaction_id", transactionID),
-			attribute.String("service_name", "api-gateway"),
+			attribute.String("service_name", agName),
 			attribute.String("messaging.system", "kafka"),
 			attribute.String("messaging.operation", "consume"),
 			attribute.String("messaging.destination", "transaction-log"),
@@ -809,11 +918,16 @@ func (s *Simulator) simulateAPIGatewayKafkaConsumer(ctx context.Context, transac
 }
 
 func (s *Simulator) simulateAPIGatewayCassandraWrite(ctx context.Context, transactionID, operation string, shouldFail bool) error {
-	ctx, span := s.tracer.Start(ctx, "api-gateway.cassandra_write",
+	agName := "api-gateway"
+	if s.telemCfg.ServiceNames.APIGateway != "" {
+		agName = s.telemCfg.ServiceNames.APIGateway
+	}
+
+	ctx, span := s.tracer.Start(ctx, agName+".cassandra_write",
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
 			attribute.String("transaction_id", transactionID),
-			attribute.String("service_name", "api-gateway"),
+			attribute.String("service_name", agName),
 			attribute.String("db.system", "cassandra"),
 			attribute.String("db.operation", operation),
 		))
