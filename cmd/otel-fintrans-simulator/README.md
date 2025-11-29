@@ -106,6 +106,32 @@ Environment variables:
 - `ERROR_RATE`: Percentage of failed transactions (default: `5`)
 - `SIMULATION_DURATION`: How long to run (default: unlimited)
 
+Configuration file (YAML)
+-------------------------
+The simulator now supports an optional YAML configuration file that controls telemetry names and failure scheduling.
+
+By default the example config shipped with the tool is `simulator-config.yaml` (in this folder). Use `--config` to point to a custom config file:
+
+```bash
+# Use a custom YAML config
+./bin/otel-fintrans-simulator --config ./cmd/otel-fintrans-simulator/simulator-config.yaml
+```
+
+The `failure` section supports a `bursty` mode and a list of `bursts` where the failure rate is multiplied for a time window. This enables more realistic, correlated failures.
+
+Configuration example
+---------------------
+The bundled `simulator-config.yaml` (in this folder) contains a compact example which demonstrates:
+
+- Overriding `service_names` used in spans/attributes
+- Custom `metric_names` for all instrumented metrics
+- A `failure` section that sets a base `rate`, chooses a mode (`bursty` recommended) and one or more `bursts` with `start`, `duration`, and `multiplier` values
+
+Behavior notes
+--------------
+- If `--config` is not provided or the `failure` section is absent, the simulator falls back to the CLI flags `--failure-rate` and `--failure-mode` (original behaviour).
+- If the YAML `failure.seed` is set, the simulator seeds randomness for deterministic runs, which is useful for reproducible demos/tests.
+
 ### Failure Scenarios
 
 The simulator can inject realistic failure patterns:
@@ -174,3 +200,40 @@ When modifying the simulator:
 ## License
 
 Apache 2.0 (see top-level LICENSE file)
+
+## TODO / Next work items
+
+Below is a proposed, ordered list of follow-up improvements and small issues we plan to take up one-by-one. These are intentionally scoped so we can address them in small, reviewable PRs that improve developer experience and simulation fidelity.
+
+1. Make logging configurable and developer-friendly
+  - Add a `--log` or `--log-output` flag that allows `stdout`/`nop` (default) and `otlp` so developers can see console logs locally by default.
+  - Add an environment variable override (e.g., `SIM_LOG_OUTPUT`).
+
+2. Graceful shutdown and context cancellation
+  - Add a signal handler (SIGINT/SIGTERM) and a cancellable context to allow the simulator to stop quickly and shut down OTel providers cleanly.
+
+3. Improve time-series scheduling and backfill behavior
+  - Tweak scheduling so that future/edge offsets don't block for long periods (consider a bounded scheduler and non-blocking generation for unreachable timestamps).
+
+4. Make telemetry configuration pluggable
+  - Extract hardcoded metric names and service names into a `simulator-config.yaml` with a default for fidelity, and allow overriding at startup.
+
+5. Fix metric instrument types & semantics
+  - Replace `transaction_amount_paisa_count` (currently an UpDownCounter) with a monotonic `Counter` if only increments are intended.
+
+6. Add reproducibility and seeding
+  - Add a `--rand-seed` flag so tests and demo runs can generate reproducible streams.
+
+7. Improve failure-mode realism
+  - Add bursty/correlated failure patterns (e.g., sudden spike of Kafka failures) + a `failure-schedule` option to control when failures occur.
+
+8. Add tests & CI automation for simulator build and basic runtime
+  - Small unit tests for metrics initialization and a quick smoke `go test` that validates `initOTel` can be invoked in a test shim (using a fake collector or a no-op option).
+
+9. Add a convenient local-dev Make target
+  - `make localdev-sim` or `make run-simulator` that builds and runs the simulator against a local collector or logs to stdout for quick demos.
+
+10. Document example `otel-collector` pipeline and how to point the simulator at it
+   - Add clear examples showing collector config for receivers/exporters so new developers can get telemetry into Observability tooling quickly.
+
+We'll take these up one at a time — tell me which item you'd like to tackle first and I’ll start a focused PR for it.
