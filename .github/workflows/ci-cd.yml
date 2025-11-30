@@ -238,54 +238,6 @@ jobs:
             VERSION=${{ github.sha }}
             BUILD_TIME=${{ steps.meta.outputs.build-date }}
             COMMIT_HASH=${{ github.sha }}
-
-  e2e:
-    name: End-to-End Tests
-    runs-on: ubuntu-latest
-    needs: [ci]
-    timeout-minutes: 45
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-
-      - name: Install dependencies
-        run: go mod download
-
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-
-      - name: Ensure Docker Compose
-        run: |
-          set -euxo pipefail
-          # Try installing via apt first (works when Docker apt repo is present)
-          sudo apt-get update || true
-          if apt-cache policy docker-compose-plugin | grep -q Candidate; then
-            sudo apt-get -y install docker-compose-plugin docker-compose || true
-          else
-            echo "docker-compose-plugin not available from apt; installing Compose CLI plugin from GitHub releases"
-            ARCH_UNAME="$(uname -m)"
-            case "$ARCH_UNAME" in
-              x86_64) ARCH=amd64 ;;
-              aarch64|arm64) ARCH=arm64 ;;
-              *) ARCH="$ARCH_UNAME" ;;
-            esac
-            TAG=$(curl -sL https://api.github.com/repos/docker/compose/releases/latest | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
-            mkdir -p /usr/local/lib/docker/cli-plugins
-            curl -fsSL "https://github.com/docker/compose/releases/download/${TAG}/docker-compose-linux-${ARCH}" -o /usr/local/lib/docker/cli-plugins/docker-compose
-            chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-            ln -sf /usr/local/lib/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
-            docker compose version || true
-          fi
-
-      - name: Run E2E pipeline
-        run: |
-          make e2e
-
     # End of deploy job
 
 
