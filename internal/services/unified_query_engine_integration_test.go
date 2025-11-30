@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
@@ -167,6 +169,64 @@ func TestUnifiedQueryEngineIntegration_CrossEngineQueries(t *testing.T) {
 		// Overall health should be partial (some services available, some not)
 		assert.Contains(t, []string{"partial", "unhealthy"}, health.OverallHealth)
 	})
+}
+
+// Test that ExecuteCorrelationQuery uses the CorrelationEngine.Correlate path
+// and returns a CorrelationResult that contains human-readable KPI names when
+// the correlation engine resolves KPI definitions.
+func TestUnifiedQueryEngine_ExecuteCorrelationQuery_TimeWindowResolvesKPINames(t *testing.T) {
+	// Use short mode to run quickly
+	if testing.Short() {
+		t.Skip("Skipping integration-like unit test in short mode")
+	}
+
+	// Setup minimal mocks to allow Correlate to discover KPIs and resolve names
+	mockMetrics := &MockVictoriaMetricsService{}
+	mockLogs := &MockVictoriaLogsService{}
+	mockTraces := &MockVictoriaTracesService{}
+	mockCache := cache.NewNoopValkeyCache(logger.New("info"))
+
+	// Use the same mock KPI repo we use in correlation tests
+	kpiRepo := &MockKPIRepoWithDefs{}
+
+	corrEngine := NewCorrelationEngine(mockMetrics, mockLogs, mockTraces, kpiRepo, mockCache, logger.New("info"), config.EngineConfig{DefaultQueryLimit: 100})
+
+	// Create unified engine wired with the correlation engine. Unified engine
+	// doesn't require concrete metrics/logs/traces when correlation engine is
+	// provided; pass nil for those arguments and let corrEngine perform probes.
+	engine := NewUnifiedQueryEngine(nil, nil, nil, corrEngine, nil, mockCache, logger.New("info"))
+
+	// Setup probes to return data and allow candidate discovery
+	metricsRes := &models.MetricsQLQueryResult{Status: "success", SeriesCount: 1, Data: map[string]interface{}{"result": []interface{}{map[string]interface{}{"metric": map[string]string{"service": "checkout"}}}}}
+	mockMetrics.On("ExecuteQuery", mock.Anything, mock.Anything).Return(metricsRes, nil)
+
+	logsRes := &models.LogsQLQueryResult{Logs: []map[string]interface{}{{"timestamp": time.Now().Format(time.RFC3339), "message": "oops", "service": "checkout"}}}
+	mockLogs.On("ExecuteQuery", mock.Anything, mock.Anything).Return(logsRes, nil)
+
+	// Build a time-window-only unified query
+	now := time.Now()
+	st := now.Add(-15 * time.Minute)
+	et := now
+	uquery := &models.UnifiedQuery{ID: "test_timewindow", Type: models.QueryTypeCorrelation, StartTime: &st, EndTime: &et}
+
+	res, err := engine.ExecuteCorrelationQuery(context.Background(), uquery)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+
+	// Result.Data should be a *models.CorrelationResult
+	if corr, ok := res.Data.(*models.CorrelationResult); ok {
+		// AffectedServices should contain the human-friendly impact name
+		found := false
+		for _, s := range corr.AffectedServices {
+			if s == "probe_metric" {
+				found = true
+				break
+			}
+		}
+		require.True(t, found, "Expected probe_metric in AffectedServices")
+	} else {
+		t.Fatalf("expected UnifiedResult.Data to be *models.CorrelationResult; got %T", res.Data)
+	}
 }
 
 // TestUnifiedQueryEngineIntegration_Performance tests performance characteristics

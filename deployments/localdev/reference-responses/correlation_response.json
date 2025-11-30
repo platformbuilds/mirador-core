@@ -1,0 +1,15 @@
+{
+  "result": {
+    "query_id": "timewindow_123456",
+    "type": "correlation",
+    "status": "success",
+    "data": {
+      "correlation_id": "corr_123456",
+      "confidence": 0.9,
+      "affected_services": ["Service Request Failure Count (Impact)"],
+      "causes": [
+        { "kpi": "Service Request Failure Count (Impact)", "kpiUuid": "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3", "suspicionScore": 0.8 }
+      ]
+    }
+  }
+}

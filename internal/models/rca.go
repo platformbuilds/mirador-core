@@ -108,6 +108,37 @@ type RCAIncidentDTO struct {
 
 	// Diagnostics contains warnings about missing labels, dimension detection, IsolationForest tuning, etc.
 	Diagnostics *RCADiagnosticsDTO `json:"diagnostics,omitempty"`
+	// TimeRings describes the time ring definitions and per-chain computed ranges
+	// relative to the incident peak time. This is optional and may be empty.
+	TimeRings *TimeRingsDTO `json:"timeRings,omitempty"`
+}
+
+// TimeRingsDTO provides metadata about time rings and per-chain ranges.
+type TimeRingsDTO struct {
+	Definitions map[string]TimeRingDefinitionDTO `json:"definitions"`
+	PerChain    []TimeRingsPerChainDTO           `json:"perChain"`
+}
+
+// TimeRingDefinitionDTO describes a ring label and default duration.
+type TimeRingDefinitionDTO struct {
+	Label       string `json:"label"`
+	Description string `json:"description"`
+	Duration    string `json:"duration"`
+}
+
+// TimeRingsPerChainDTO describes the ring start/end timestamps for a chain.
+type TimeRingsPerChainDTO struct {
+	ChainRank   int                     `json:"chainRank"`
+	PeakTime    string                  `json:"peakTime"`
+	WindowStart string                  `json:"windowStart"`
+	WindowEnd   string                  `json:"windowEnd"`
+	Rings       map[string]TimeRangeDTO `json:"rings"`
+}
+
+// TimeRangeDTO is a simple start/end range in RFC3339 format.
+type TimeRangeDTO struct {
+	StartTime string `json:"startTime"`
+	EndTime   string `json:"endTime"`
 }
 
 // RCADiagnosticsDTO represents diagnostics in the HTTP response.

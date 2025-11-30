@@ -266,6 +266,61 @@
         "durationHops": 5
       }
     ],
+    "timeRings": {
+      "definitions": {
+        "R1_IMMEDIATE": {
+          "label": "R1_IMMEDIATE",
+          "description": "Anomalies very close to the peak (default: last 5 seconds before peak)",
+          "duration": "5s"
+        },
+        "R2_SHORT": {
+          "label": "R2_SHORT",
+          "description": "Anomalies shortly before peak (default: 5-30 seconds before peak)",
+          "duration": "30s"
+        },
+        "R3_MEDIUM": {
+          "label": "R3_MEDIUM",
+          "description": "Anomalies moderately before peak (default: 30s - 2m before peak)",
+          "duration": "2m"
+        },
+        "R4_LONG": {
+          "label": "R4_LONG",
+          "description": "Anomalies further back (default: up to 10m before peak)",
+          "duration": "10m"
+        },
+        "R_OUT_OF_SCOPE": {
+          "label": "R_OUT_OF_SCOPE",
+          "description": "Events outside the configured analysis window or too far after the peak",
+          "duration": "variable"
+        }
+      },
+      "perChain": [
+        {
+          "chainRank": 1,
+          "peakTime": "2025-11-26T05:20:16Z",
+          "windowStart": "2025-11-26T05:05:16Z",
+          "windowEnd": "2025-11-26T05:20:16Z",
+          "rings": {
+            "R1_IMMEDIATE": { "startTime": "2025-11-26T05:20:11Z", "endTime": "2025-11-26T05:20:16Z" },
+            "R2_SHORT": { "startTime": "2025-11-26T05:19:46Z", "endTime": "2025-11-26T05:20:11Z" },
+            "R3_MEDIUM": { "startTime": "2025-11-26T05:18:16Z", "endTime": "2025-11-26T05:19:46Z" },
+            "R4_LONG": { "startTime": "2025-11-26T05:10:16Z", "endTime": "2025-11-26T05:18:16Z" }
+          }
+        },
+        {
+          "chainRank": 2,
+          "peakTime": "2025-11-26T05:20:16Z",
+          "windowStart": "2025-11-26T05:05:16Z",
+          "windowEnd": "2025-11-26T05:20:16Z",
+          "rings": {
+            "R1_IMMEDIATE": { "startTime": "2025-11-26T05:20:11Z", "endTime": "2025-11-26T05:20:16Z" },
+            "R2_SHORT": { "startTime": "2025-11-26T05:19:46Z", "endTime": "2025-11-26T05:20:11Z" },
+            "R3_MEDIUM": { "startTime": "2025-11-26T05:18:16Z", "endTime": "2025-11-26T05:19:46Z" },
+            "R4_LONG": { "startTime": "2025-11-26T05:10:16Z", "endTime": "2025-11-26T05:18:16Z" }
+          }
+        }
+      ]
+    },
     "generatedAt": "2025-11-26T05:20:15.758740507Z",
     "score": 0.6300000000000001,
     "notes": [],

@@ -1,0 +1,70 @@
+{
+  "result": {
+    "query_id": "timewindow_123456",
+    "type": "correlation",
+    "status": "success",
+    "data": {
+      "correlation_id": "corr_123456",
+      "incident_id": "incident_123",
+      "root_cause": "",
+      "confidence": 0.9,
+      "affected_services": [
+        "Service Request Failure Count (Impact)"
+      ],
+      "causes": [
+        {
+          "kpi": "Service Request Failure Count (Impact)",
+          "kpiUuid": "47c0c489-efc2-5d0d-a9d0-2b1a96eeb7a3",
+          "kpiFormula": "traces_service_graph_request_failed_total",
+          "service": "",
+          "suspicionScore": 0.8,
+          "reasons": [
+            "high_anomaly_density"
+          ],
+          "stats": {
+            "pearson": 0.0,
+            "spearman": 1.0,
+            "cross_correlation_max": 0.0,
+            "cross_correlation_lag": 0,
+            "partial": 0.0,
+            "sample_size": 5,
+            "p_value": 0.05,
+            "confidence": 0.5
+          }
+        }
+      ],
+      "timeline": [],
+      "red_anchors": [
+        {
+          "service": "Service Request Failure Count (Impact)",
+          "metric": "traces_service_graph_request_failed_total",
+          "anomaly_score": 0.9,
+          "threshold": 0.5,
+          "timestamp": "2025-11-25T15:48:16Z",
+          "data_type": "kpi"
+        }
+      ],
+      "recommendations": [
+        "Check service request failure counts",
+        "Investigate upstream dependencies"
+      ],
+      "created_at": "2025-11-25T15:48:16Z"
+    },
+    "metadata": {
+      "engine_results": {
+        "correlation": {
+          "engine": "correlation",
+          "status": "success",
+          "record_count": 1,
+          "execution_time_ms": 120,
+          "data_source": "correlation-engine"
+        }
+      },
+      "total_records": 1,
+      "data_sources": [
+        "correlation-engine"
+      ]
+    },
+    "execution_time_ms": 120
+  }
+}

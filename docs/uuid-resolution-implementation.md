@@ -174,6 +174,45 @@ Created `TestHandleComputeRCA_UUIDResolution` that verifies:
     ]
   }]
 }
+
+## Correlation API (/api/v1/unified/correlation)
+
+The Correlation API previously returned KPI UUIDs in several fields (for
+example `CauseCandidate.KPI`, `RedAnchor.Service`, and entries in
+`AffectedServices`). This made correlation responses harder to read at a
+glance.
+
+### Approach: Option A - Present names, keep UUIDs
+
+To match the RCA presentation change and improve readability, we implemented
+a name-first approach for the correlation response payload while preserving
+the original UUIDs for traceability in additional optional fields.
+
+### Changes Made
+
+- `internal/models/models.go` — `CauseCandidate` now includes `kpiUuid` and
+  `kpiFormula` (optional), and `KPI` is populated with the human-readable
+  name when the KPI repo provides a definition.
+- `internal/services/correlation_engine.go` — the Correlation engine will try
+  to resolve KPI IDs using the KPI repo during response construction; when a
+  KPI definition is found the engine writes the human name into `KPI` and
+  preserves the original UUID in `kpiUuid`.
+- Handler/DTO conversion and OpenAPI schemas were updated so that consumer
+  documentation and examples show `kpi`, `kpiUuid`, and `kpiFormula` together.
+
+### Tests & Examples
+
+- Added/updated unit tests for correlation flows that assert name resolution
+  and UUID preservation under `internal/services` and
+  `internal/api/handlers`.
+- Added example responses and OpenAPI schema entries to reflect the new
+  correlation response format.
+
+### Fallback behaviour
+
+- When the KPI repo isn't available or lookup fails the Correlation API will
+  continue to return the original UUIDs (unchanged) and omit the
+  `kpiUuid`/`kpiFormula` fields, preserving backwards compatibility.
 ```
 
 ## Benefits

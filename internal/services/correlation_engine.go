@@ -384,16 +384,32 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 
 	// Build red anchors from impact KPIs and compute simple confidence
 	var redAnchors []*models.RedAnchor
+	// Resolve impact KPI IDs to human names when possible (preserve original id in KPIUUID fields)
+	resolvedAffected := make([]string, 0, len(impactKPIs))
 	for _, k := range impactKPIs {
+		svc := k
+		metric := k
+		// attempt to resolve KPI definition
+		if ce.kpiRepo != nil {
+			if kp, err := ce.kpiRepo.GetKPI(ctx, k); err == nil && kp != nil {
+				// Use human-readable name when available
+				if kp.Name != "" {
+					svc = kp.Name
+					metric = kp.Formula
+				}
+			}
+		}
+
 		node := models.RedAnchor{
-			Service:   k,
-			Metric:    k,
+			Service:   svc,
+			Metric:    metric,
 			Score:     0.9,
 			Threshold: ce.engineCfg.MinAnomalyScore,
 			Timestamp: tr.End,
 			DataType:  "kpi",
 		}
 		redAnchors = append(redAnchors, &node)
+		resolvedAffected = append(resolvedAffected, svc)
 	}
 
 	// Simple confidence: average of red anchor scores (fallback 0.0)
@@ -408,11 +424,12 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 
 	// Build CorrelationResult (scaffold)
 	corr := &models.CorrelationResult{
-		CorrelationID:    fmt.Sprintf("corr_%d", time.Now().Unix()),
-		IncidentID:       "",
-		RootCause:        "",
-		Confidence:       confidence,
-		AffectedServices: impactKPIs,
+		CorrelationID: fmt.Sprintf("corr_%d", time.Now().Unix()),
+		IncidentID:    "",
+		RootCause:     "",
+		Confidence:    confidence,
+		// Store human-friendly affected service names where available
+		AffectedServices: resolvedAffected,
 		// Causes will be populated with candidate KPIs and preliminary suspicion scores.
 		// NOTE(AT-007): This is a minimal, deterministic scoring placeholder. Full
 		// statistical wiring (compute per-pair Pearson/Spearman/cross-corr, and
@@ -457,6 +474,16 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 			if kp, err := ce.kpiRepo.GetKPI(ctx, k); err == nil {
 				candKPI = kp
 			}
+		}
+
+		// If we resolved a KPI definition, prefer the human-readable name in the
+		// KPI field and preserve original id and formula in the new fields.
+		if candKPI != nil {
+			if candKPI.Name != "" {
+				cand.KPI = candKPI.Name
+			}
+			cand.KPIUUID = candKPI.ID
+			cand.KPIFormula = candKPI.Formula
 		}
 
 		// Use first discovered impact KPI as the impact signal for pairwise stats
