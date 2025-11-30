@@ -16,7 +16,6 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
-	storage_weaviate "github.com/platformbuilds/mirador-core/internal/storage/weaviate"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -143,26 +142,6 @@ func main() {
 
 	// Initialize schema store (Weaviate)
 	var schemaStore repo.SchemaStore
-	var wrepo *repo.WeaviateRepo
-	if cfg.Weaviate.Enabled {
-		// Construct transport (HTTP by default; official client when built with tags)
-		t, terr := storage_weaviate.NewTransportFromConfig(cfg.Weaviate, logger)
-		if terr != nil {
-			logger.Fatal("Failed to init Weaviate transport", "error", terr)
-		}
-		ctxPing, cancelPing := context.WithTimeout(context.Background(), 5*time.Second)
-		if err := storage_weaviate.Ready(ctxPing, t); err != nil {
-			cancelPing()
-			logger.Fatal("Weaviate not ready", "error", err)
-		}
-		cancelPing()
-		logger.Info("Weaviate ready")
-		wrepo = repo.NewWeaviateRepoFromTransport(t)
-		if err := wrepo.EnsureSchema(context.Background()); err != nil {
-			logger.Warn("Weaviate schema ensure failed", "error", err)
-		}
-		schemaStore = wrepo
-	}
 
 	// No legacy DB fallback; expect Weaviate
 

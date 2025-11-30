@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/logging"
 	models "github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
+	"github.com/platformbuilds/mirador-core/internal/utils/bleve"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -28,6 +30,7 @@ type KPIHandler struct {
 	repo   repo.KPIRepo
 	cache  cache.ValkeyCluster
 	logger logging.Logger
+	core   corelogger.Logger
 	cfg    *config.Config
 }
 
@@ -53,6 +56,7 @@ func NewKPIHandler(cfg *config.Config, kpiRepo repo.KPIRepo, cache cache.ValkeyC
 		repo:   kpiRepo,
 		cache:  cache,
 		logger: logging.FromCoreLogger(l),
+		core:   l,
 		cfg:    cfg,
 	}
 } // ------------------- KPI Definitions API -------------------
@@ -471,14 +475,88 @@ func (h *KPIHandler) DeleteKPIDefinition(c *gin.Context) {
 		return
 	}
 
-	err := h.deleteKPI(c.Request.Context(), id)
-	if err != nil {
-		h.logger.Error("KPI delete failed", "error", err, "id", id)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete KPI"})
-		return
+	// Prepare result structure describing per-store actions
+	type storeResult struct {
+		Found   bool   `json:"found"`
+		Deleted bool   `json:"deleted"`
+		Error   string `json:"error,omitempty"`
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "deleted"})
+	res := map[string]storeResult{
+		"weaviate": {Found: false, Deleted: false},
+		"valkey":   {Found: false, Deleted: false},
+		"bleve":    {Found: false, Deleted: false},
+	}
+
+	ctx := c.Request.Context()
+
+	// Perform authoritative delete via repo. The repo now returns a structured
+	// DeleteResult describing per-store outcomes and an error if the
+	// authoritative delete failed.
+	dr, derr := h.repo.DeleteKPI(ctx, id)
+	if derr != nil {
+		h.logger.Warn("repo-level KPI delete returned error", "error", derr, "id", id)
+	}
+
+	// Map repo DeleteResult into response structure
+	res["weaviate"] = storeResult{Found: dr.Weaviate.Found, Deleted: dr.Weaviate.Deleted, Error: dr.Weaviate.Error}
+	res["valkey"] = storeResult{Found: dr.Valkey.Found, Deleted: dr.Valkey.Deleted, Error: dr.Valkey.Error}
+	res["bleve"] = storeResult{Found: dr.Bleve.Found, Deleted: dr.Bleve.Deleted, Error: dr.Bleve.Error}
+
+	// 2) Valkey: best-effort delete of likely cache keys for this KPI
+	// Use ValkeyMetadataStore for bleve metadata and direct cache keys for other caches.
+	if h.cache != nil {
+		// Check for generic KPI keys (common patterns). Try a Get to detect presence.
+		valkeyCandidates := []string{fmt.Sprintf("kpi:def:%s", id), fmt.Sprintf("kpi:%s", id)}
+		for _, k := range valkeyCandidates {
+			if _, err := h.cache.Get(ctx, k); err == nil {
+				// Key exists; delete it
+				tmp := res["valkey"]
+				tmp.Found = true
+				if derr := h.cache.Delete(ctx, k); derr != nil {
+					h.logger.Warn("failed to delete valkey cache key", "key", k, "error", derr)
+					tmp.Error = derr.Error()
+				} else {
+					tmp.Deleted = true
+				}
+				res["valkey"] = tmp
+			}
+		}
+
+		// Try pattern-indexed keys (e.g., if Bleve used a pattern index)
+		// Attempt to delete an index metadata entry named after the KPI id
+		metadataStore := bleve.NewValkeyMetadataStore(h.cache, h.core)
+		if _, err := metadataStore.GetIndexMetadata(ctx, id); err == nil {
+			tmp := res["bleve"]
+			tmp.Found = true
+			if derr := metadataStore.DeleteIndexMetadata(ctx, id); derr != nil {
+				h.logger.Warn("failed to delete bleve index metadata", "index", id, "error", derr)
+				tmp.Error = derr.Error()
+			} else {
+				tmp.Deleted = true
+			}
+			res["bleve"] = tmp
+		} else {
+			// Also attempt to delete a bleve index key with the explicit prefix
+			key := fmt.Sprintf("bleve:index:%s", id)
+			if _, err := h.cache.Get(ctx, key); err == nil {
+				tmp := res["bleve"]
+				tmp.Found = true
+				if derr := h.cache.Delete(ctx, key); derr != nil {
+					h.logger.Warn("failed to delete bleve index key", "key", key, "error", derr)
+					tmp.Error = derr.Error()
+				} else {
+					tmp.Deleted = true
+				}
+				res["bleve"] = tmp
+			}
+		}
+	} else {
+		h.logger.Info("valkey cache not configured; skipping valkey/bleve cache cleanup")
+	}
+
+	// Build response: convert res to a simple map for JSON
+	c.JSON(http.StatusOK, gin.H{"result": res})
 }
 
 // ------------------- Implementation methods (extracted from unified handler) -------------------
@@ -488,6 +566,6 @@ func (h *KPIHandler) listKPIs(ctx context.Context, req models.KPIListRequest) ([
 	return kpis, int(total), err
 }
 
-func (h *KPIHandler) deleteKPI(ctx context.Context, id string) error {
+func (h *KPIHandler) deleteKPI(ctx context.Context, id string) (repo.DeleteResult, error) {
 	return h.repo.DeleteKPI(ctx, id)
 }

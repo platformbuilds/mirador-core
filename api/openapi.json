@@ -9,7 +9,24 @@
     {
       "url": "{scheme}://{host}:{port}",
       "description": "Configurable server",
-      "variables": {}
+      "variables": {
+        "scheme": {
+          "description": "URL scheme",
+          "default": "http",
+          "enum": [
+            "http",
+            "https"
+          ]
+        },
+        "host": {
+          "description": "Hostname or IP address",
+          "default": "127.0.0.1"
+        },
+        "port": {
+          "description": "Server port",
+          "default": "8010"
+        }
+      }
     }
   ],
   "paths": {
@@ -133,49 +150,9 @@
         }
       }
     },
-    "/api/v1/rca/correlations": {
-      "get": {
-        "summary": "Get active RCA correlations",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/v1/rca/investigate": {
-      "post": {
-        "summary": "Start an RCA investigation",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/v1/rca/patterns": {
-      "get": {
-        "summary": "Get failure patterns",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/v1/rca/service-graph": {
+    "/api/v1/unified/service-graph": {
       "post": {
         "summary": "Build / retrieve service-graph for RCA",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/v1/rca/store": {
-      "post": {
-        "summary": "Store correlation result",
         "responses": {
           "200": {
             "description": "OK"
@@ -194,9 +171,68 @@
       },
       "post": {
         "summary": "Create or update KPI definition",
+        "requestBody": {
+          "description": "KPI definition to create or update. Wrap the KPI object in { \"kpiDefinition\": { ... } }.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kpiDefinition": {
+                    "type": "object"
+                  }
+                }
+              },
+              "example": {
+                "kpiDefinition": {
+                  "name": "api_errors_total",
+                  "kind": "tech",
+                  "namespace": "apigw_springboot_top_10_kpi",
+                  "unit": "count",
+                  "format": "integer",
+                  "layer": "impact",
+                  "signalType": "metrics",
+                  "classifier": "errors",
+                  "definition": "Total number of API errors observed at the gateway per minute.",
+                  "sentiment": "negative",
+                  "businessImpact": "If errors increase, end users may experience failed requests and revenue impact.",
+                  "tags": [
+                    "apigw",
+                    "errors",
+                    "pagerduty"
+                  ],
+                  "examples": [
+                    {
+                      "service.name": "api-gateway",
+                      "region": "us-east-1",
+                      "value": 42
+                    }
+                  ],
+                  "aggregationWindowHint": "1m",
+                  "dimensionsHint": [
+                    "service.name",
+                    "region"
+                  ]
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "201": {
+            "description": "Created (new KPI)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "created",
+                  "id": "api_errors_total--apigw_springboot_top_10_kpi"
+                }
+              }
+            }
           }
         }
       }
@@ -204,9 +240,61 @@
     "/api/v1/kpi/defs/bulk-json": {
       "post": {
         "summary": "Bulk ingest KPI definitions (JSON)",
+        "requestBody": {
+          "description": "Bulk JSON payload containing an array of KPI definition objects.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                }
+              },
+              "example": {
+                "items": [
+                  {
+                    "name": "api_errors_total",
+                    "layer": "impact",
+                    "signalType": "metrics",
+                    "sentiment": "negative",
+                    "definition": "Total number of API errors observed at the gateway per minute.",
+                    "tags": [
+                      "apigw",
+                      "errors"
+                    ]
+                  },
+                  {
+                    "name": "api_request_latency_p95",
+                    "layer": "cause",
+                    "signalType": "metrics",
+                    "sentiment": "negative",
+                    "classifier": "latency",
+                    "componentType": "springboot"
+                  }
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "example": {
+                  "total": 2,
+                  "successCount": 2,
+                  "failureCount": 0,
+                  "failures": []
+                }
+              }
+            }
           }
         }
       }
@@ -214,9 +302,41 @@
     "/api/v1/kpi/defs/bulk-csv": {
       "post": {
         "summary": "Bulk ingest KPI definitions (CSV)",
+        "requestBody": {
+          "description": "Multipart form with `file` field containing CSV. First row must be headers such as id,name,namespace,kind,layer,signalType,sentiment,definition,tags,examples",
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "example": {
+                  "total": 3,
+                  "successCount": 2,
+                  "failureCount": 1,
+                  "failures": [
+                    {
+                      "row": 3,
+                      "message": "invalid examples JSON"
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -236,7 +356,55 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteResult"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "All stores reported deleted",
+                    "value": {
+                      "result": {
+                        "weaviate": {
+                          "found": true,
+                          "deleted": true
+                        },
+                        "valkey": {
+                          "found": true,
+                          "deleted": true
+                        },
+                        "bleve": {
+                          "found": true,
+                          "deleted": true
+                        }
+                      }
+                    }
+                  },
+                  "partialFailure": {
+                    "summary": "Weaviate deleted, Valkey delete failed, Bleve OK",
+                    "value": {
+                      "result": {
+                        "weaviate": {
+                          "found": true,
+                          "deleted": true
+                        },
+                        "valkey": {
+                          "found": true,
+                          "deleted": false,
+                          "error": "valkey: connection timeout"
+                        },
+                        "bleve": {
+                          "found": true,
+                          "deleted": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -244,6 +412,64 @@
     "/api/v1/unified/query": {
       "post": {
         "summary": "Unified query",
+        "requestBody": {
+          "description": "Unified query accepts either a wrapped object { \"query\": { ... } }\n(UnifiedQueryRequest) or a direct UnifiedQuery object. Use snake_case\nfor UnifiedQuery timestamps (`start_time` / `end_time`).\n",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "examples": {
+                "wrapped": {
+                  "summary": "Wrapped UnifiedQueryRequest (preferred)",
+                  "value": {
+                    "query": {
+                      "id": "q-123",
+                      "type": "metrics",
+                      "query": "metrics:http_requests > 1000",
+                      "start_time": "2025-11-29T12:00:00Z",
+                      "end_time": "2025-11-29T12:05:00Z",
+                      "timeout": "30s",
+                      "parameters": {
+                        "limit": 100,
+                        "groupBy": [
+                          "service.name"
+                        ]
+                      },
+                      "correlation_options": {
+                        "enabled": true,
+                        "correlation_keys": [
+                          "trace_id"
+                        ],
+                        "time_window": "5m",
+                        "engines": [
+                          "metrics",
+                          "logs"
+                        ]
+                      },
+                      "cache_options": {
+                        "enabled": true,
+                        "ttl": "5m",
+                        "bypass_cache": false
+                      }
+                    }
+                  }
+                },
+                "direct": {
+                  "summary": "Direct UnifiedQuery (legacy / shorthand)",
+                  "value": {
+                    "id": "q-123",
+                    "type": "metrics",
+                    "query": "metrics:http_requests > 1000",
+                    "start_time": "2025-11-29T12:00:00Z",
+                    "end_time": "2025-11-29T12:05:00Z"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -254,6 +480,36 @@
     "/api/v1/unified/correlation": {
       "post": {
         "summary": "Unified correlation",
+        "requestBody": {
+          "description": "Correlation endpoint supports two shapes:\n - Preferred canonical TimeWindowRequest: { \"startTime\", \"endTime\" } (camelCase)\n - Legacy UnifiedQuery appears here for backward compatibility (see examples).\n",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "examples": {
+                "timeWindow": {
+                  "summary": "Canonical time-window request (Stage-01 contract)",
+                  "value": {
+                    "startTime": "2025-11-29T12:00:00Z",
+                    "endTime": "2025-11-29T12:15:00Z"
+                  }
+                },
+                "legacyUnifiedQuery": {
+                  "summary": "Legacy UnifiedQuery example (accepted by handler for now)",
+                  "value": {
+                    "query": {
+                      "id": "corr-xyz",
+                      "type": "correlation",
+                      "query": "logs:error AND metrics:high_latency"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -264,6 +520,32 @@
     "/api/v1/unified/failures/detect": {
       "post": {
         "summary": "Detect failures in unified query engine",
+        "requestBody": {
+          "description": "Failure detection runs over a TimeRange and optional components list.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "examples": {
+                "basic": {
+                  "summary": "Detect failures for components in a time range",
+                  "value": {
+                    "time_range": {
+                      "start": "2025-11-29T11:45:00Z",
+                      "end": "2025-11-29T12:15:00Z"
+                    },
+                    "components": [
+                      "api-gateway",
+                      "kafka"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -274,6 +556,32 @@
     "/api/v1/unified/failures/correlate": {
       "post": {
         "summary": "Correlate failures in unified query engine",
+        "requestBody": {
+          "description": "Correlate transaction failures by list of transaction IDs and time range.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "examples": {
+                "transactions": {
+                  "summary": "Correlate specific transactions",
+                  "value": {
+                    "transaction_ids": [
+                      "txn-123",
+                      "txn-456"
+                    ],
+                    "time_range": {
+                      "start": "2025-11-29T11:50:00Z",
+                      "end": "2025-11-29T12:10:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -304,6 +612,31 @@
     "/api/v1/unified/search": {
       "post": {
         "summary": "Unified search",
+        "requestBody": {
+          "description": "Search accepts a UnifiedQuery or wrapped UnifiedQueryRequest (same shapes as /query).",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "examples": {
+                "searchExample": {
+                  "summary": "Search for specific error events in logs",
+                  "value": {
+                    "query": {
+                      "id": "search-001",
+                      "type": "logs",
+                      "query": "logs:exception AND service.name:\"checkout-service\"",
+                      "start_time": "2025-11-29T11:50:00Z",
+                      "end_time": "2025-11-29T12:05:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -324,6 +657,26 @@
     "/api/v1/unified/rca": {
       "post": {
         "summary": "Compute RCA using Unified engine (POST)",
+        "requestBody": {
+          "description": "RCA endpoint expects the canonical time-window payload: { \"startTime\", \"endTime\" }.\nFor compatibility, legacy RCA shapes are still accepted by handlers but the public contract is time-window-only.\n",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "examples": {
+                "timeWindowRCA": {
+                  "summary": "RCA time-window request",
+                  "value": {
+                    "startTime": "2025-11-29T11:00:00Z",
+                    "endTime": "2025-11-29T12:00:00Z"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -334,6 +687,63 @@
     "/api/v1/uql/query": {
       "post": {
         "summary": "UQL query",
+        "requestBody": {
+          "description": "Execute a Unified Query Language (UQL) query. The handler expects a wrapped\npayload { \"query\": { ... } } where the inner object follows the\nUnifiedQuery shape (id, type, query, start_time/end_time, parameters, etc.).\n",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "examples": {
+                "logsSelect": {
+                  "summary": "Logs SELECT query (wrapped)",
+                  "value": {
+                    "query": {
+                      "id": "uql-logs-001",
+                      "type": "logs",
+                      "query": "SELECT service, level FROM logs:_time:5m WHERE level='error' GROUP BY service",
+                      "start_time": "2025-11-29T11:50:00Z",
+                      "end_time": "2025-11-29T12:05:00Z",
+                      "timeout": "30s",
+                      "parameters": {
+                        "limit": 100
+                      },
+                      "correlation_options": {
+                        "enabled": true,
+                        "correlation_keys": [
+                          "trace_id"
+                        ],
+                        "time_window": "5m",
+                        "engines": [
+                          "logs",
+                          "metrics"
+                        ]
+                      },
+                      "cache_options": {
+                        "enabled": true,
+                        "ttl": "5m",
+                        "bypass_cache": false
+                      }
+                    }
+                  }
+                },
+                "metricsAgg": {
+                  "summary": "Metrics aggregation UQL",
+                  "value": {
+                    "query": {
+                      "id": "uql-metrics-agg-01",
+                      "type": "metrics",
+                      "query": "AVG(response_time) FROM metrics:http_requests WHERE status='200' GROUP BY service",
+                      "start_time": "2025-11-29T11:00:00Z",
+                      "end_time": "2025-11-29T12:00:00Z"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -344,6 +754,25 @@
     "/api/v1/uql/validate": {
       "post": {
         "summary": "UQL validation",
+        "requestBody": {
+          "description": "Validate the syntax of a UQL query string. Supply a small object with a\ntop-level `query` string field. The endpoint will return whether the\nquery is syntactically valid without executing it.\n",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "examples": {
+                "basic": {
+                  "summary": "Validate a simple UQL SELECT",
+                  "value": {
+                    "query": "SELECT service, count(*) FROM logs:_time:5m GROUP BY service"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -354,6 +783,29 @@
     "/api/v1/uql/explain": {
       "post": {
         "summary": "UQL explain",
+        "requestBody": {
+          "description": "Return a (simplified) execution plan for a UQL query. Supply a wrapped\nrequest { \"query\": { ... } } where the inner query contains the UQL string\nand optional metadata (id, type, time-range) used to produce the plan.\n",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "examples": {
+                "explainLogs": {
+                  "summary": "Explain a logs SELECT query",
+                  "value": {
+                    "query": {
+                      "id": "test-uql-1",
+                      "type": "logs",
+                      "query": "SELECT service, level FROM logs:_time:5m WHERE level='error'"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -362,5 +814,52 @@
       }
     }
   },
-  "components": {}
+  "components": {
+    "schemas": {
+      "DeleteStoreResult": {
+        "type": "object",
+        "properties": {
+          "found": {
+            "type": "boolean",
+            "description": "Whether the object/key was found in this store"
+          },
+          "deleted": {
+            "type": "boolean",
+            "description": "Whether the object/key was deleted (true if it was removed or already absent)"
+          },
+          "error": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional error message if an operation against this store failed"
+          }
+        },
+        "required": [
+          "found",
+          "deleted"
+        ]
+      },
+      "DeleteResult": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "object",
+            "properties": {
+              "weaviate": {
+                "$ref": "#/components/schemas/DeleteStoreResult"
+              },
+              "valkey": {
+                "$ref": "#/components/schemas/DeleteStoreResult"
+              },
+              "bleve": {
+                "$ref": "#/components/schemas/DeleteStoreResult"
+              }
+            }
+          }
+        },
+        "required": [
+          "result"
+        ]
+      }
+    }
+  }
 }

@@ -217,7 +217,7 @@ func (h *TraceOperationHandler) DeleteTraceOperation(c *gin.Context) {
 		return
 	}
 
-	err = h.kpiRepo.DeleteKPI(c.Request.Context(), detID)
+	_, err = h.kpiRepo.DeleteKPI(c.Request.Context(), detID)
 	if err != nil {
 		h.logger.Error("trace operation delete failed", "error", err, "service", serviceName, "operation", operationName)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete trace operation"})

@@ -219,75 +219,99 @@ func (r *DefaultKPIRepo) DeleteKPI(ctx context.Context, id string) (DeleteResult
 	var res DeleteResult
 
 	// 1) Weaviate (authoritative)
-	if r.store != nil {
-		// Check existence before delete
-		if wk, err := r.store.GetKPI(ctx, id); err == nil && wk != nil {
-			res.Weaviate.Found = true
-		}
-
-		if err := r.store.DeleteKPI(ctx, id); err != nil {
-			// Record error and return — source-of-truth delete failed.
-			res.Weaviate.Error = err.Error()
-			return res, err
-		}
-
-		// DeleteKPI returns nil only if the object was verified as deleted.
-		// Set Deleted=true to reflect successful deletion.
-		res.Weaviate.Deleted = true
-
-		// Log the deletion for audit purposes
-		if r.logger != nil {
-			r.logger.Info("KPI deleted from Weaviate", zap.String("id", id), zap.Bool("found", res.Weaviate.Found), zap.Bool("deleted", res.Weaviate.Deleted))
-		}
+	if err := r.deleteFromWeaviate(ctx, id, &res); err != nil {
+		return res, err
 	}
 
 	// 2) Valkey best-effort cleanup
-	if r.valkey != nil {
-		candidates := []string{"kpi:def:%s", "kpi:%s"}
-		for _, pat := range candidates {
-			key := fmt.Sprintf(pat, id)
-			if _, err := r.valkey.Get(ctx, key); err == nil {
-				res.Valkey.Found = true
-				if derr := r.valkey.Delete(ctx, key); derr != nil {
-					// record error but continue
-					if res.Valkey.Error == "" {
-						res.Valkey.Error = derr.Error()
-					}
-				} else {
-					res.Valkey.Deleted = true
-				}
-			}
-		}
-
-		// Also attempt to remove bleve index key stored in valkey (if present)
-		bkey := fmt.Sprintf("bleve:index:%s", id)
-		if _, err := r.valkey.Get(ctx, bkey); err == nil {
-			res.Bleve.Found = true
-			if derr := r.valkey.Delete(ctx, bkey); derr != nil {
-				if res.Bleve.Error == "" {
-					res.Bleve.Error = derr.Error()
-				}
-			} else {
-				res.Bleve.Deleted = true
-			}
-		}
-	}
+	r.deleteFromValkey(ctx, id, &res)
 
 	// 3) Bleve metadata store best-effort cleanup
-	if r.metadata != nil {
-		if md, err := r.metadata.GetIndexMetadata(ctx, id); err == nil && md != nil {
-			res.Bleve.Found = true
-			if derr := r.metadata.DeleteIndexMetadata(ctx, id); derr != nil {
-				if res.Bleve.Error == "" {
-					res.Bleve.Error = derr.Error()
+	r.deleteFromBleve(ctx, id, &res)
+
+	return res, nil
+}
+
+// deleteFromWeaviate handles deletion from Weaviate (source of truth)
+func (r *DefaultKPIRepo) deleteFromWeaviate(ctx context.Context, id string, res *DeleteResult) error {
+	if r.store == nil {
+		return nil
+	}
+
+	// Check existence before delete
+	if wk, err := r.store.GetKPI(ctx, id); err == nil && wk != nil {
+		res.Weaviate.Found = true
+	}
+
+	if err := r.store.DeleteKPI(ctx, id); err != nil {
+		// Record error and return — source-of-truth delete failed.
+		res.Weaviate.Error = err.Error()
+		return err
+	}
+
+	// DeleteKPI returns nil only if the object was verified as deleted.
+	// Set Deleted=true to reflect successful deletion.
+	res.Weaviate.Deleted = true
+
+	// Log the deletion for audit purposes
+	if r.logger != nil {
+		r.logger.Info("KPI deleted from Weaviate", zap.String("id", id), zap.Bool("found", res.Weaviate.Found), zap.Bool("deleted", res.Weaviate.Deleted))
+	}
+	return nil
+}
+
+// deleteFromValkey handles best-effort cleanup from Valkey cache
+func (r *DefaultKPIRepo) deleteFromValkey(ctx context.Context, id string, res *DeleteResult) {
+	if r.valkey == nil {
+		return
+	}
+
+	// Try standard KPI key patterns
+	candidates := []string{"kpi:def:%s", "kpi:%s"}
+	for _, pat := range candidates {
+		key := fmt.Sprintf(pat, id)
+		if _, err := r.valkey.Get(ctx, key); err == nil {
+			res.Valkey.Found = true
+			if derr := r.valkey.Delete(ctx, key); derr != nil {
+				if res.Valkey.Error == "" {
+					res.Valkey.Error = derr.Error()
 				}
 			} else {
-				res.Bleve.Deleted = true
+				res.Valkey.Deleted = true
 			}
 		}
 	}
 
-	return res, nil
+	// Also attempt to remove bleve index key stored in valkey
+	bkey := fmt.Sprintf("bleve:index:%s", id)
+	if _, err := r.valkey.Get(ctx, bkey); err == nil {
+		res.Bleve.Found = true
+		if derr := r.valkey.Delete(ctx, bkey); derr != nil {
+			if res.Bleve.Error == "" {
+				res.Bleve.Error = derr.Error()
+			}
+		} else {
+			res.Bleve.Deleted = true
+		}
+	}
+}
+
+// deleteFromBleve handles best-effort cleanup from Bleve metadata store
+func (r *DefaultKPIRepo) deleteFromBleve(ctx context.Context, id string, res *DeleteResult) {
+	if r.metadata == nil {
+		return
+	}
+
+	if md, err := r.metadata.GetIndexMetadata(ctx, id); err == nil && md != nil {
+		res.Bleve.Found = true
+		if derr := r.metadata.DeleteIndexMetadata(ctx, id); derr != nil {
+			if res.Bleve.Error == "" {
+				res.Bleve.Error = derr.Error()
+			}
+		} else {
+			res.Bleve.Deleted = true
+		}
+	}
 }
 
 func (r *DefaultKPIRepo) DeleteKPIBulk(ctx context.Context, ids []string) []error {

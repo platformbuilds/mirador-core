@@ -213,7 +213,7 @@ func (h *LogFieldHandler) DeleteLogField(c *gin.Context) {
 		return
 	}
 
-	err = h.kpiRepo.DeleteKPI(c.Request.Context(), detID)
+	_, err = h.kpiRepo.DeleteKPI(c.Request.Context(), detID)
 	if err != nil {
 		h.logger.Error("log field delete failed", "error", err, "field", fieldName)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete log field"})

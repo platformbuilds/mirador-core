@@ -272,19 +272,7 @@ func (h *RCAHandler) validateWindow(tr models.TimeRange) (bool, string) {
 	return true, ""
 }
 
-// StartInvestigation handles POST /rca/investigate - external AI-driven investigations.
-func (h *RCAHandler) StartInvestigation(c *gin.Context) {
-	// If no external RCA engine is configured, return Not Implemented
-	if h.rcaEngine == nil {
-		c.JSON(http.StatusNotImplemented, gin.H{"status": "error", "error": "not_implemented"})
-		return
-	}
-
-	// For now, external investigations are not supported by the local engine.
-	c.JSON(http.StatusNotImplemented, gin.H{"status": "error", "error": "not_implemented"})
-}
-
-// GetServiceGraph handles POST /rca/service-graph
+// GetServiceGraph handles POST /api/v1/unified/service-graph
 func (h *RCAHandler) GetServiceGraph(c *gin.Context) {
 	var req models.ServiceGraphRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -749,22 +737,4 @@ func copyStringBoolMap(in map[string]bool) map[string]bool {
 		out[k] = v
 	}
 	return out
-}
-
-// GetActiveCorrelations handles GET /rca/correlations
-func (h *RCAHandler) GetActiveCorrelations(c *gin.Context) {
-	// TODO(AT-012): Implement active correlation retrieval
-	c.JSON(http.StatusNotImplemented, gin.H{"status": "error", "error": "not_implemented"})
-}
-
-// GetFailurePatterns handles GET /rca/patterns
-func (h *RCAHandler) GetFailurePatterns(c *gin.Context) {
-	// TODO(AT-012): Implement failure pattern retrieval
-	c.JSON(http.StatusNotImplemented, gin.H{"status": "error", "error": "not_implemented"})
-}
-
-// StoreCorrelation handles POST /rca/store
-func (h *RCAHandler) StoreCorrelation(c *gin.Context) {
-	// TODO(AT-012): Implement correlation storage
-	c.JSON(http.StatusNotImplemented, gin.H{"status": "error", "error": "not_implemented"})
 }

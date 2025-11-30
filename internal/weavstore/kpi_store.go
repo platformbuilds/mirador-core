@@ -39,9 +39,12 @@ var (
 	}()
 
 	// Static errors for err113 compliance
-	ErrKPIIsNil   = errors.New("kpi is nil")
-	ErrKPIIDEmpty = errors.New("kpi id is empty")
-	ErrIDEmpty    = errors.New("id is empty")
+	ErrKPIIsNil                    = errors.New("kpi is nil")
+	ErrKPIIDEmpty                  = errors.New("kpi id is empty")
+	ErrIDEmpty                     = errors.New("id is empty")
+	ErrWeaviateDeleteAndScanFailed = errors.New("weaviate delete attempts failed and object scan failed")
+	ErrWeaviateDeleteFailed        = errors.New("weaviate delete attempts failed for id")
+	ErrWeaviateClientNil           = errors.New("weaviate client is nil")
 
 	// maxKPIListLimit is the maximum limit for listing KPIs in a single query
 	maxKPIListLimit = 10000
@@ -240,100 +243,147 @@ func (s *WeaviateKPIStore) DeleteKPI(ctx context.Context, id string) error {
 		return ErrIDEmpty
 	}
 	objID := makeObjectID("KPIDefinition", id)
-	// Helper to log via zap if available
-	logf := func(format string, args ...interface{}) {
-		if s.logger != nil {
-			s.logger.Sugar().Infof(format, args...)
-			return
-		}
-		fmt.Printf(format+"\n", args...)
-	}
-
-	logf("weavstore: attempting delete for KPI id=%s (objID=%s)", id, objID)
 
 	// Try delete by deterministic v5 object id first
-	if err := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(objID).Do(ctx); err == nil {
-		logf("weavstore: deleted by v5 objID=%s", objID)
-		// Verify the deletion by attempting to retrieve the object
-		if remaining, verifyErr := s.GetKPI(ctx, id); verifyErr == nil && remaining != nil {
-			logf("weavstore: WARNING - object still exists after delete attempt by v5 objID=%s", objID)
-		} else if verifyErr == nil {
-			logf("weavstore: verified deletion by v5 objID=%s - object no longer found", objID)
-			return nil
-		}
-	} else {
-		logf("weavstore: delete by v5 objID failed: %v", err)
+	if s.tryDeleteByObjectID(ctx, id, objID) {
+		return nil
 	}
 
 	// Next try delete using the raw id as object id (legacy objects)
-	// Normalize the raw id to canonical UUID string if possible
+	if s.tryDeleteByRawID(ctx, id) {
+		return nil
+	}
+
+	// As a last resort, scan KPIDefinition objects
+	if s.tryDeleteByScan(ctx, id, objID) {
+		return nil
+	}
+
+	return fmt.Errorf("%w: id=%s (tried objID=%s and raw id)", ErrWeaviateDeleteFailed, id, objID)
+}
+
+// tryDeleteByObjectID attempts to delete using the deterministic v5 object ID
+func (s *WeaviateKPIStore) tryDeleteByObjectID(ctx context.Context, id, objID string) bool {
+	s.logf("weavstore: attempting delete for KPI id=%s (objID=%s)", id, objID)
+
+	if err := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(objID).Do(ctx); err == nil {
+		s.logf("weavstore: deleted by v5 objID=%s", objID)
+		if s.verifyDeletion(ctx, id, objID) {
+			return true
+		}
+	} else {
+		s.logf("weavstore: delete by v5 objID failed: %v", err)
+	}
+	return false
+}
+
+// tryDeleteByRawID attempts to delete using the raw ID (legacy objects)
+func (s *WeaviateKPIStore) tryDeleteByRawID(ctx context.Context, id string) bool {
 	rawID := id
 	if uuidObj, err := uuid.FromString(id); err == nil {
 		rawID = uuidObj.String()
 	}
+
 	if err2 := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(rawID).Do(ctx); err2 == nil {
-		logf("weavstore: deleted by raw id=%s", rawID)
-		// Verify the deletion by attempting to retrieve the object
-		if remaining, verifyErr := s.GetKPI(ctx, id); verifyErr == nil && remaining != nil {
-			logf("weavstore: WARNING - object still exists after delete attempt by raw id=%s", rawID)
-		} else if verifyErr == nil {
-			logf("weavstore: verified deletion by raw id=%s - object no longer found", rawID)
-			return nil
+		s.logf("weavstore: deleted by raw id=%s", rawID)
+		if s.verifyDeletion(ctx, id, rawID) {
+			return true
 		}
 	} else {
-		logf("weavstore: delete by raw id failed: %v", err2)
+		s.logf("weavstore: delete by raw id failed: %v", err2)
 	}
+	return false
+}
 
-	// As a last resort, scan KPIDefinition objects to find any object whose
-	// object UUID or stored "id" property matches the requested KPI id,
-	// then delete by that object's true UUID. This handles irregular past
-	// writes where the object id was generated differently or stored in props.
+// tryDeleteByScan scans for matching objects and deletes them
+func (s *WeaviateKPIStore) tryDeleteByScan(ctx context.Context, id, objID string) bool {
 	objs, gerr := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").Do(ctx)
 	if gerr != nil {
-		return fmt.Errorf("weaviate delete attempts failed and object scan failed: %v", gerr)
+		s.logf("weavstore: object scan failed: %v", gerr)
+		return false
 	}
+
 	for _, o := range objs {
 		if o == nil {
 			continue
 		}
 		oid := o.ID.String()
-		// match by object id equality
+
+		// Try match by object ID equality
 		if oid == objID || oid == id {
-			if derr := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(oid).Do(ctx); derr == nil {
-				logf("weavstore: deleted by scanning object id=%s", oid)
-				// Verify the deletion
-				if remaining, verifyErr := s.GetKPI(ctx, id); verifyErr == nil && remaining != nil {
-					logf("weavstore: WARNING - object still exists after scan-delete by oid=%s", oid)
-				} else if verifyErr == nil {
-					logf("weavstore: verified deletion by scan-delete oid=%s - object no longer found", oid)
-					return nil
-				}
-			} else {
-				logf("weavstore: scan-delete attempt for oid=%s failed: %v", oid, derr)
+			if s.tryDeleteAndVerify(ctx, id, oid) {
+				return true
 			}
 		}
-		// also inspect properties for an explicit "id" field
-		if o.Properties != nil {
-			if props, ok := o.Properties.(map[string]any); ok {
-				if vid, ok := props["id"].(string); ok && vid == id {
-					if derr := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(oid).Do(ctx); derr == nil {
-						logf("weavstore: deleted by scanning props match id=%s -> oid=%s", id, oid)
-						// Verify the deletion
-						if remaining, verifyErr := s.GetKPI(ctx, id); verifyErr == nil && remaining != nil {
-							logf("weavstore: WARNING - object still exists after scan-delete by props oid=%s", oid)
-						} else if verifyErr == nil {
-							logf("weavstore: verified deletion by scan-delete props oid=%s - object no longer found", oid)
-							return nil
-						}
-					} else {
-						logf("weaviate: scan-delete by props for oid=%s failed: %v", oid, derr)
-					}
-				}
-			}
+
+		// Try match by properties
+		if s.tryDeleteByProperties(ctx, id, o) {
+			return true
 		}
 	}
+	return false
+}
 
-	return fmt.Errorf("weaviate delete attempts failed for id=%s (tried objID=%s and raw id)", id, objID)
+// tryDeleteAndVerify attempts a delete and verifies it succeeded
+func (s *WeaviateKPIStore) tryDeleteAndVerify(ctx context.Context, id, oid string) bool {
+	if derr := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(oid).Do(ctx); derr == nil {
+		s.logf("weavstore: deleted by scanning object id=%s", oid)
+		if s.verifyDeletion(ctx, id, oid) {
+			return true
+		}
+	} else {
+		s.logf("weavstore: scan-delete attempt for oid=%s failed: %v", oid, derr)
+	}
+	return false
+}
+
+// tryDeleteByProperties attempts to match and delete by properties
+func (s *WeaviateKPIStore) tryDeleteByProperties(ctx context.Context, id string, o *wm.Object) bool {
+	if o.Properties == nil {
+		return false
+	}
+
+	props, ok := o.Properties.(map[string]any)
+	if !ok {
+		return false
+	}
+
+	vid, ok := props["id"].(string)
+	if !ok || vid != id {
+		return false
+	}
+
+	oid := o.ID.String()
+	if derr := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(oid).Do(ctx); derr == nil {
+		s.logf("weavstore: deleted by scanning props match id=%s -> oid=%s", id, oid)
+		if s.verifyDeletion(ctx, id, oid) {
+			return true
+		}
+	} else {
+		s.logf("weaviate: scan-delete by props for oid=%s failed: %v", oid, derr)
+	}
+	return false
+}
+
+// verifyDeletion checks if an object was successfully deleted
+func (s *WeaviateKPIStore) verifyDeletion(ctx context.Context, id, oid string) bool {
+	if remaining, verifyErr := s.GetKPI(ctx, id); verifyErr == nil && remaining != nil {
+		s.logf("weavstore: WARNING - object still exists after delete attempt by oid=%s", oid)
+		return false
+	} else if verifyErr == nil {
+		s.logf("weavstore: verified deletion by oid=%s - object no longer found", oid)
+		return true
+	}
+	return false
+}
+
+// logf is a helper to log via zap if available
+func (s *WeaviateKPIStore) logf(format string, args ...interface{}) {
+	if s.logger != nil {
+		s.logger.Sugar().Infof(format, args...)
+		return
+	}
+	fmt.Printf(format+"\n", args...)
 }
 
 //nolint:gocyclo // Property parsing from Weaviate requires many field mappings
@@ -489,7 +539,7 @@ func (s *WeaviateKPIStore) ensureKPIDefinitionClass(ctx context.Context) error {
 	// Try to fetch the class via the SDK. If the SDK returns a non-nil class,
 	// assume schema exists.
 	if s.client == nil {
-		return fmt.Errorf("weaviate client is nil")
+		return ErrWeaviateClientNil
 	}
 
 	// Try creating the class directly. If it already exists, treat as success.

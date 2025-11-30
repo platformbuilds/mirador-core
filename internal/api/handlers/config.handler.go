@@ -114,7 +114,7 @@ func (h *ConfigHandler) GetIntegrations(c *gin.Context) {
 			"name":      "RCA Engine",
 			"type":      "ai",
 			"status":    "connected",
-			"endpoints": []string{"/api/v1/rca/investigate", "/api/v1/rca/patterns"},
+			"endpoints": []string{"/api/v1/unified/rca", "/api/v1/unified/service-graph"},
 		},
 		{
 			"id":        "alertmanager",
