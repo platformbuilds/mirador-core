@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofrs/uuid/v5"
 	wv "github.com/weaviate/weaviate-go-client/v5/weaviate"
+	wm "github.com/weaviate/weaviate/entities/models"
 	"go.uber.org/zap"
 )
 
@@ -19,6 +21,9 @@ import (
 type WeaviateKPIStore struct {
 	client *wv.Client
 	logger *zap.Logger
+	// schemaInit ensures we attempt to create the required class only once
+	schemaInit sync.Once
+	schemaErr  error
 }
 
 // NewWeaviateKPIStore constructs a new KPI store.
@@ -54,6 +59,18 @@ func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *KPIDefiniti
 	}
 	if k.ID == "" {
 		return nil, "", ErrKPIIDEmpty
+	}
+
+	// Ensure the runtime Weaviate schema contains the KPIDefinition class.
+	s.schemaInit.Do(func() {
+		s.schemaErr = s.ensureKPIDefinitionClass(ctx)
+		if s.schemaErr != nil && s.logger != nil {
+			s.logger.Sugar().Warnf("weavstore: failed ensuring KPIDefinition class: %v", s.schemaErr)
+		}
+	})
+	if s.schemaErr != nil {
+		// Return schema initialization error to avoid ambiguous 404/422 from Weaviate later.
+		return nil, "", s.schemaErr
 	}
 
 	objID := makeObjectID("KPIDefinition", k.ID)
@@ -223,10 +240,100 @@ func (s *WeaviateKPIStore) DeleteKPI(ctx context.Context, id string) error {
 		return ErrIDEmpty
 	}
 	objID := makeObjectID("KPIDefinition", id)
-	if err := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(objID).Do(ctx); err != nil {
-		return err
+	// Helper to log via zap if available
+	logf := func(format string, args ...interface{}) {
+		if s.logger != nil {
+			s.logger.Sugar().Infof(format, args...)
+			return
+		}
+		fmt.Printf(format+"\n", args...)
 	}
-	return nil
+
+	logf("weavstore: attempting delete for KPI id=%s (objID=%s)", id, objID)
+
+	// Try delete by deterministic v5 object id first
+	if err := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(objID).Do(ctx); err == nil {
+		logf("weavstore: deleted by v5 objID=%s", objID)
+		// Verify the deletion by attempting to retrieve the object
+		if remaining, verifyErr := s.GetKPI(ctx, id); verifyErr == nil && remaining != nil {
+			logf("weavstore: WARNING - object still exists after delete attempt by v5 objID=%s", objID)
+		} else if verifyErr == nil {
+			logf("weavstore: verified deletion by v5 objID=%s - object no longer found", objID)
+			return nil
+		}
+	} else {
+		logf("weavstore: delete by v5 objID failed: %v", err)
+	}
+
+	// Next try delete using the raw id as object id (legacy objects)
+	// Normalize the raw id to canonical UUID string if possible
+	rawID := id
+	if uuidObj, err := uuid.FromString(id); err == nil {
+		rawID = uuidObj.String()
+	}
+	if err2 := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(rawID).Do(ctx); err2 == nil {
+		logf("weavstore: deleted by raw id=%s", rawID)
+		// Verify the deletion by attempting to retrieve the object
+		if remaining, verifyErr := s.GetKPI(ctx, id); verifyErr == nil && remaining != nil {
+			logf("weavstore: WARNING - object still exists after delete attempt by raw id=%s", rawID)
+		} else if verifyErr == nil {
+			logf("weavstore: verified deletion by raw id=%s - object no longer found", rawID)
+			return nil
+		}
+	} else {
+		logf("weavstore: delete by raw id failed: %v", err2)
+	}
+
+	// As a last resort, scan KPIDefinition objects to find any object whose
+	// object UUID or stored "id" property matches the requested KPI id,
+	// then delete by that object's true UUID. This handles irregular past
+	// writes where the object id was generated differently or stored in props.
+	objs, gerr := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").Do(ctx)
+	if gerr != nil {
+		return fmt.Errorf("weaviate delete attempts failed and object scan failed: %v", gerr)
+	}
+	for _, o := range objs {
+		if o == nil {
+			continue
+		}
+		oid := o.ID.String()
+		// match by object id equality
+		if oid == objID || oid == id {
+			if derr := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(oid).Do(ctx); derr == nil {
+				logf("weavstore: deleted by scanning object id=%s", oid)
+				// Verify the deletion
+				if remaining, verifyErr := s.GetKPI(ctx, id); verifyErr == nil && remaining != nil {
+					logf("weavstore: WARNING - object still exists after scan-delete by oid=%s", oid)
+				} else if verifyErr == nil {
+					logf("weavstore: verified deletion by scan-delete oid=%s - object no longer found", oid)
+					return nil
+				}
+			} else {
+				logf("weavstore: scan-delete attempt for oid=%s failed: %v", oid, derr)
+			}
+		}
+		// also inspect properties for an explicit "id" field
+		if o.Properties != nil {
+			if props, ok := o.Properties.(map[string]any); ok {
+				if vid, ok := props["id"].(string); ok && vid == id {
+					if derr := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(oid).Do(ctx); derr == nil {
+						logf("weavstore: deleted by scanning props match id=%s -> oid=%s", id, oid)
+						// Verify the deletion
+						if remaining, verifyErr := s.GetKPI(ctx, id); verifyErr == nil && remaining != nil {
+							logf("weavstore: WARNING - object still exists after scan-delete by props oid=%s", oid)
+						} else if verifyErr == nil {
+							logf("weavstore: verified deletion by scan-delete props oid=%s - object no longer found", oid)
+							return nil
+						}
+					} else {
+						logf("weaviate: scan-delete by props for oid=%s failed: %v", oid, derr)
+					}
+				}
+			}
+		}
+	}
+
+	return fmt.Errorf("weaviate delete attempts failed for id=%s (tried objID=%s and raw id)", id, objID)
 }
 
 //nolint:gocyclo // Property parsing from Weaviate requires many field mappings
@@ -373,6 +480,72 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinitio
 	}
 
 	return k, nil
+}
+
+// ensureKPIDefinitionClass checks whether the KPIDefinition class exists in
+// Weaviate and attempts to create it if missing. This function is safe to call
+// repeatedly; callers should use sync.Once to avoid repeated attempts.
+func (s *WeaviateKPIStore) ensureKPIDefinitionClass(ctx context.Context) error {
+	// Try to fetch the class via the SDK. If the SDK returns a non-nil class,
+	// assume schema exists.
+	if s.client == nil {
+		return fmt.Errorf("weaviate client is nil")
+	}
+
+	// Try creating the class directly. If it already exists, treat as success.
+	// This avoids relying on Getter API variations across client versions.
+	// Build a minimal class definition matching runtime expectations.
+	classDef := &wm.Class{
+		Class:      "KPIDefinition",
+		Vectorizer: "none",
+		Properties: []*wm.Property{
+			{Name: "name", DataType: []string{"string"}},
+			{Name: "kind", DataType: []string{"string"}},
+			{Name: "namespace", DataType: []string{"string"}},
+			{Name: "source", DataType: []string{"string"}},
+			{Name: "sourceId", DataType: []string{"string"}},
+			{Name: "unit", DataType: []string{"string"}},
+			{Name: "format", DataType: []string{"string"}},
+			{Name: "query", DataType: []string{"text"}},
+			{Name: "layer", DataType: []string{"string"}},
+			{Name: "signalType", DataType: []string{"string"}},
+			{Name: "classifier", DataType: []string{"string"}},
+			{Name: "datastore", DataType: []string{"string"}},
+			{Name: "queryType", DataType: []string{"string"}},
+			{Name: "formula", DataType: []string{"string"}},
+			{Name: "thresholds", DataType: []string{"text"}},
+			{Name: "tags", DataType: []string{"string"}},
+			{Name: "definition", DataType: []string{"text"}},
+			{Name: "sentiment", DataType: []string{"string"}},
+			{Name: "category", DataType: []string{"string"}},
+			{Name: "retryAllowed", DataType: []string{"boolean"}},
+			{Name: "domain", DataType: []string{"string"}},
+			{Name: "serviceFamily", DataType: []string{"string"}},
+			{Name: "componentType", DataType: []string{"string"}},
+			{Name: "businessImpact", DataType: []string{"text"}},
+			{Name: "emotionalImpact", DataType: []string{"text"}},
+			{Name: "examples", DataType: []string{"text"}},
+			{Name: "sparkline", DataType: []string{"text"}},
+			{Name: "visibility", DataType: []string{"string"}},
+			{Name: "createdAt", DataType: []string{"date"}},
+			{Name: "updatedAt", DataType: []string{"date"}},
+		},
+	}
+
+	// Attempt to create the class. Some client Do() implementations return only
+	// an error; handle both cases conservatively.
+	if err := s.client.Schema().ClassCreator().WithClass(classDef).Do(ctx); err != nil {
+		if strings.Contains(err.Error(), "already exists") || strings.Contains(err.Error(), "class already exists") {
+			// Another process created it concurrently; treat as success.
+			return nil
+		}
+		return fmt.Errorf("failed to create KPIDefinition class in Weaviate: %w", err)
+	}
+
+	if s.logger != nil {
+		s.logger.Sugar().Info("weavstore: created KPIDefinition class in Weaviate runtime schema")
+	}
+	return nil
 }
 
 // ListKPIs returns objects for a simple pagination/filters request.
