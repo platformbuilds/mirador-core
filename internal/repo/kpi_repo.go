@@ -2,11 +2,14 @@ package repo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/utils/bleve"
 	"github.com/platformbuilds/mirador-core/internal/weavstore"
+	"github.com/platformbuilds/mirador-core/pkg/cache"
 
 	"go.uber.org/zap"
 )
@@ -18,7 +21,7 @@ type KPIRepo interface {
 	CreateKPIBulk(ctx context.Context, items []*models.KPIDefinition) ([]*models.KPIDefinition, []error)
 	ModifyKPI(ctx context.Context, k *models.KPIDefinition) (*models.KPIDefinition, string, error)
 	ModifyKPIBulk(ctx context.Context, items []*models.KPIDefinition) ([]*models.KPIDefinition, []error)
-	DeleteKPI(ctx context.Context, id string) error
+	DeleteKPI(ctx context.Context, id string) (DeleteResult, error)
 	DeleteKPIBulk(ctx context.Context, ids []string) []error
 	GetKPI(ctx context.Context, id string) (*models.KPIDefinition, error)
 	ListKPIs(ctx context.Context, req models.KPIListRequest) ([]*models.KPIDefinition, int64, error)
@@ -29,13 +32,21 @@ type KPIRepo interface {
 
 type DefaultKPIRepo struct {
 	// Note: SQL source-of-truth will be added later; for now keep Weaviate available.
-	store  *weavstore.WeaviateKPIStore
-	logger *zap.Logger
+	store    *weavstore.WeaviateKPIStore
+	logger   *zap.Logger
+	valkey   cache.ValkeyCluster
+	metadata bleve.MetadataStore
 }
 
 // NewDefaultKPIRepo constructs the DefaultKPIRepo. Keep signature stable for server wiring.
-func NewDefaultKPIRepo(store *weavstore.WeaviateKPIStore, logger *zap.Logger) *DefaultKPIRepo {
-	return &DefaultKPIRepo{store: store, logger: logger}
+func NewDefaultKPIRepo(store *weavstore.WeaviateKPIStore, logger *zap.Logger, valkey cache.ValkeyCluster, metadata bleve.MetadataStore) *DefaultKPIRepo {
+	return &DefaultKPIRepo{store: store, logger: logger, valkey: valkey, metadata: metadata}
+}
+
+// SetMetadataStore allows late wiring of the bleve metadata store (created later
+// during server init). It is safe to call with nil to indicate no metadata store.
+func (r *DefaultKPIRepo) SetMetadataStore(ms bleve.MetadataStore) {
+	r.metadata = ms
 }
 
 // Conversion functions between models and weavstore types
@@ -204,17 +215,86 @@ func (r *DefaultKPIRepo) ModifyKPIBulk(ctx context.Context, items []*models.KPID
 	return modified, errs
 }
 
-func (r *DefaultKPIRepo) DeleteKPI(ctx context.Context, id string) error {
+func (r *DefaultKPIRepo) DeleteKPI(ctx context.Context, id string) (DeleteResult, error) {
+	var res DeleteResult
+
+	// 1) Weaviate (authoritative)
 	if r.store != nil {
-		return r.store.DeleteKPI(ctx, id)
+		// Check existence before delete
+		if wk, err := r.store.GetKPI(ctx, id); err == nil && wk != nil {
+			res.Weaviate.Found = true
+		}
+
+		if err := r.store.DeleteKPI(ctx, id); err != nil {
+			// Record error and return — source-of-truth delete failed.
+			res.Weaviate.Error = err.Error()
+			return res, err
+		}
+
+		// DeleteKPI returns nil only if the object was verified as deleted.
+		// Set Deleted=true to reflect successful deletion.
+		res.Weaviate.Deleted = true
+
+		// Log the deletion for audit purposes
+		if r.logger != nil {
+			r.logger.Info("KPI deleted from Weaviate", zap.String("id", id), zap.Bool("found", res.Weaviate.Found), zap.Bool("deleted", res.Weaviate.Deleted))
+		}
 	}
-	return nil
+
+	// 2) Valkey best-effort cleanup
+	if r.valkey != nil {
+		candidates := []string{"kpi:def:%s", "kpi:%s"}
+		for _, pat := range candidates {
+			key := fmt.Sprintf(pat, id)
+			if _, err := r.valkey.Get(ctx, key); err == nil {
+				res.Valkey.Found = true
+				if derr := r.valkey.Delete(ctx, key); derr != nil {
+					// record error but continue
+					if res.Valkey.Error == "" {
+						res.Valkey.Error = derr.Error()
+					}
+				} else {
+					res.Valkey.Deleted = true
+				}
+			}
+		}
+
+		// Also attempt to remove bleve index key stored in valkey (if present)
+		bkey := fmt.Sprintf("bleve:index:%s", id)
+		if _, err := r.valkey.Get(ctx, bkey); err == nil {
+			res.Bleve.Found = true
+			if derr := r.valkey.Delete(ctx, bkey); derr != nil {
+				if res.Bleve.Error == "" {
+					res.Bleve.Error = derr.Error()
+				}
+			} else {
+				res.Bleve.Deleted = true
+			}
+		}
+	}
+
+	// 3) Bleve metadata store best-effort cleanup
+	if r.metadata != nil {
+		if md, err := r.metadata.GetIndexMetadata(ctx, id); err == nil && md != nil {
+			res.Bleve.Found = true
+			if derr := r.metadata.DeleteIndexMetadata(ctx, id); derr != nil {
+				if res.Bleve.Error == "" {
+					res.Bleve.Error = derr.Error()
+				}
+			} else {
+				res.Bleve.Deleted = true
+			}
+		}
+	}
+
+	return res, nil
 }
 
 func (r *DefaultKPIRepo) DeleteKPIBulk(ctx context.Context, ids []string) []error {
 	errs := make([]error, len(ids))
 	for i, id := range ids {
-		errs[i] = r.DeleteKPI(ctx, id)
+		_, err := r.DeleteKPI(ctx, id)
+		errs[i] = err
 	}
 	return errs
 }
