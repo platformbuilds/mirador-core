@@ -45,7 +45,16 @@ type CorrelationStats struct {
 // CauseCandidate represents a candidate cause KPI or service with computed
 // suspicion score and correlation stats.
 type CauseCandidate struct {
-	KPI            string            `json:"kpi"`
+	// KPI is the human-readable identifier for the candidate KPI/service.
+	// For backward-compatibility this field will contain the human-friendly
+	// name when available (previously it contained the raw UUID or id).
+	KPI string `json:"kpi"`
+	// KPIUUID retains the original KPI identifier (UUID or registry id) when
+	// the engine resolves a KPI definition. This preserves machine-usable
+	// identifiers for clients that relied on the raw id.
+	KPIUUID string `json:"kpiUuid,omitempty"`
+	// KPIFormula contains the KPI formula or query string when available.
+	KPIFormula     string            `json:"kpiFormula,omitempty"`
 	Service        string            `json:"service,omitempty"`
 	SuspicionScore float64           `json:"suspicion_score"`
 	Reasons        []string          `json:"reasons,omitempty"`

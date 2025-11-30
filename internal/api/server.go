@@ -234,104 +234,24 @@ func (s *Server) setupRoutes() {
 	monitoring.SetupPrometheusMetrics(v1)
 
 	// MetricsQL endpoints (VictoriaMetrics integration)
-	var metricsHandler *handlers.MetricsQLHandler
-	if s.schemaRepo != nil {
-		metricsHandler = handlers.NewMetricsQLHandlerWithSchema(s.vmServices.Metrics, s.cache, s.logger, s.schemaRepo)
-	} else {
-		metricsHandler = handlers.NewMetricsQLHandler(s.vmServices.Metrics, s.cache, s.logger)
-	}
+	// var metricsHandler *handlers.MetricsQLHandler
+	// if s.schemaRepo != nil {
+	//	metricsHandler = handlers.NewMetricsQLHandlerWithSchema(s.vmServices.Metrics, s.cache, s.logger, s.schemaRepo)
+	// } else {
+	//	metricsHandler = handlers.NewMetricsQLHandler(s.vmServices.Metrics, s.cache, s.logger)
+	// }
 
-	// Register metrics endpoints conditionally - retired when unified query is enabled
-	if !s.config.UnifiedQuery.Enabled {
-		// New metrics endpoints under /metrics/*
-		metricsGroup := v1.Group("/metrics")
-		{
-			metricsGroup.POST("/query", metricsHandler.ExecuteQuery)
-			metricsGroup.POST("/query_range", metricsHandler.ExecuteRangeQuery)
-			metricsGroup.GET("/names", metricsHandler.GetMetricNames)
-			metricsGroup.GET("/series", metricsHandler.GetSeries)
-			metricsGroup.POST("/labels", metricsHandler.GetLabels)
-			metricsGroup.GET("/label/:name/values", metricsHandler.GetLabelValues)
-		}
-		// Back-compat (deprecated): keep old routes registered
-		v1.POST("/query", metricsHandler.ExecuteQuery)
-		v1.POST("/query_range", metricsHandler.ExecuteRangeQuery)
-		s.router.POST("/query", metricsHandler.ExecuteQuery)
-		s.router.POST("/query_range", metricsHandler.ExecuteRangeQuery)
-		s.router.GET("/metrics/names", metricsHandler.GetMetricNames)
-		s.router.GET("/metrics/series", metricsHandler.GetSeries)
-		s.router.POST("/metrics/labels", metricsHandler.GetLabels)
-	}
+	// Legacy standalone Metrics endpoints are deregistered.
+	// Metrics queries should be performed via the Unified Query API (UQL) or
+	// via the metrics metadata/search endpoints when enabled.
 
-	// MetricsQL function query endpoints (hierarchical by category)
-	queryHandler := handlers.NewMetricsQLQueryHandler(s.vmServices.Query, s.cache, s.logger)
-	validationMiddleware := middleware.NewMetricsQLQueryValidationMiddleware(s.logger)
+	// Metrics function endpoints (rollup/transform/label/aggregate) are deregistered.
 
-	// Rollup functions
-	rollupGroup := v1.Group("/metrics/query/rollup")
-	{
-		rollupGroup.POST("/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteRollupFunction)
-		rollupGroup.POST("/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteRollupRangeFunction)
-	}
-	// Transform functions
-	transformGroup := v1.Group("/metrics/query/transform")
-	{
-		transformGroup.POST("/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteTransformFunction)
-		transformGroup.POST("/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteTransformRangeFunction)
-	}
-	// Label functions
-	labelGroup := v1.Group("/metrics/query/label")
-	{
-		labelGroup.POST("/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteLabelFunction)
-		labelGroup.POST("/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteLabelRangeFunction)
-	}
-	// Aggregate functions
-	aggregateGroup := v1.Group("/metrics/query/aggregate")
-	{
-		aggregateGroup.POST("/:function", validationMiddleware.ValidateFunctionQuery(), queryHandler.ExecuteAggregateFunction)
-		aggregateGroup.POST("/:function/range", validationMiddleware.ValidateRangeFunctionQuery(), queryHandler.ExecuteAggregateRangeFunction)
-	}
+	// Logs/LogsQL endpoints are deregistered. Log queries should use Unified UQL instead.
 
-	// LogsQL endpoints (VictoriaLogs integration)
-	logsHandler := handlers.NewLogsQLHandler(s.vmServices.Logs, s.cache, s.logger, s.searchRouter, s.config)
+	// D3-specific log endpoints and WebSocket tail are deregistered.
 
-	// Register logs endpoints conditionally - retired when unified query is enabled
-	if !s.config.UnifiedQuery.Enabled {
-		logsGroup := v1.Group("/logs")
-		{
-			logsGroup.POST("/query", s.searchThrottling.ThrottleLogsQuery(), logsHandler.ExecuteQuery)
-			logsGroup.GET("/streams", logsHandler.GetStreams)
-			logsGroup.GET("/fields", logsHandler.GetFields)
-			logsGroup.POST("/export", logsHandler.ExportLogs)
-			logsGroup.POST("/store", logsHandler.StoreEvent) // For AI engines to store JSON events
-		}
-	}
-
-	// D3-friendly log endpoints for the upcoming UI (histogram, facets, search, tail)
-	d3Logs := handlers.NewLogsHandler(s.vmServices.Logs, s.logger)
-	d3LogsGroup := v1.Group("/logs")
-	{
-		d3LogsGroup.GET("/histogram", d3Logs.Histogram)
-		d3LogsGroup.GET("/facets", d3Logs.Facets)
-		d3LogsGroup.POST("/search", d3Logs.Search)
-		d3LogsGroup.GET("/tail", d3Logs.TailWS) // WebSocket upgrade for tailing logs
-	}
-
-	// VictoriaTraces endpoints (Jaeger-compatible HTTP API)
-	tracesHandler := handlers.NewTracesHandler(s.vmServices.Traces, s.cache, s.logger, s.searchRouter, s.config)
-
-	// Register traces endpoints conditionally - retired when unified query is enabled
-	if !s.config.UnifiedQuery.Enabled {
-		tracesGroup := v1.Group("/traces")
-		{
-			tracesGroup.GET("/services", tracesHandler.GetServices)
-			tracesGroup.GET("/services/:service/operations", tracesHandler.GetOperations)
-			tracesGroup.GET("/:traceId", tracesHandler.GetTrace)
-			tracesGroup.GET("/:traceId/flamegraph", tracesHandler.GetFlameGraph)
-			tracesGroup.POST("/search", s.searchThrottling.ThrottleTracesQuery(), tracesHandler.SearchTraces)
-			tracesGroup.POST("/flamegraph/search", tracesHandler.SearchFlameGraph)
-		}
-	}
+	// Traces (Jaeger-compatible) endpoints are deregistered.
 
 	// Phase 4: Create RCA Engine for /rca endpoints
 	// Create an empty service graph (will be enhanced from metrics in production)
@@ -400,28 +320,7 @@ func (s *Server) setupRoutes() {
 		s.setupUnifiedQueryEngine(v1, rcaEngineForEndpoints)
 	}
 
-	// Metrics Metadata Discovery API (Phase 2: Metrics Metadata Integration)
-	if s.metricsMetadataIndexer != nil {
-		metricsSearchHandler := handlers.NewMetricsSearchHandler(s.metricsMetadataIndexer, s.logger)
-		metricsSearchGroup := v1.Group("/metrics")
-		{
-			metricsSearchGroup.POST("/search", metricsSearchHandler.HandleMetricsSearch)
-			metricsSearchGroup.POST("/sync", metricsSearchHandler.HandleMetricsSync)
-			metricsSearchGroup.GET("/health", metricsSearchHandler.HandleMetricsHealth)
-		}
-	}
-
-	// Metrics Metadata Synchronization API (Phase 2: Metrics Metadata Integration)
-	if s.metricsMetadataSynchronizer != nil {
-		syncHandler := handlers.NewMetricsSyncHandler(s.metricsMetadataSynchronizer, s.logger)
-		metricsSyncGroup := v1.Group("/metrics/sync/control")
-		{
-			metricsSyncGroup.POST("", syncHandler.HandleSyncNow)
-			metricsSyncGroup.GET("/state", syncHandler.HandleGetSyncState)
-			metricsSyncGroup.GET("/status", syncHandler.HandleGetSyncStatus)
-		}
-		v1.PUT("/metrics/sync/control/config", syncHandler.HandleUpdateConfig)
-	}
+	// Metrics metadata indexing/search/sync endpoints are deregistered.
 }
 
 // setupUnifiedQueryEngine sets up the unified query engine and registers its routes

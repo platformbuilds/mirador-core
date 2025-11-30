@@ -1,88 +1,25 @@
-# MIRADOR-CORE Documentation
+# Mirador Core — Documentation
+
+Welcome to the Mirador Core documentation. This site has been simplified to focus on the four core topics that drive the project: Unified Query, KPI, Correlation, and RCA. These pages are short, practical, and intended to give readers a concise, usable reference.
 
 ```{toctree}
 :maxdepth: 2
 :caption: Contents:
 
-getting-started
-user-journeys
-unified-query-architecture
-uql-language-guide
-unified-query-operations
-correlation-engine
-correlation-queries-guide
-monitoring-observability
-deployment
-configuration
-testing_e2e
+unified-query
+kpi
+correlation
+rca
 ```
 
-## Overview
+## Who this is for
 
-MIRADOR-CORE is an advanced observability platform that provides unified access to metrics, logs, traces, and correlation analysis across the entire VictoriaMetrics ecosystem.
+- Platform engineers maintaining Mirador Core
+- Developers integrating with Mirador's Unified Query API
+- Observability engineers who configure KPI discovery and RCA pipelines
 
-### Key Features
-
-- **Unified Query API**: Single endpoint for querying metrics, logs, traces, and correlations
-- **VictoriaMetrics Integration**: Native support for VictoriaMetrics, VictoriaLogs, and VictoriaTraces
-- **AI-Powered Analysis**: Root cause analysis and predictive fracture detection
-- **Multi-Engine Search**: Support for both Lucene and Bleve search engines
-- **KPI Management**: Comprehensive metadata management for observability data
-- **Enterprise Security**: LDAP/AD integration, RBAC, and comprehensive audit logging
-
-### Architecture
-
-MIRADOR-CORE acts as a unified query layer on top of the VictoriaMetrics ecosystem:
-
-```
-┌─────────────────--┐    ┌─────────────────┐
-│  MIRADOR-CORE     │───>│  VictoriaLogs   │
-│                   │    │  (Logs)         │
-│  Query Router     │    │                 │
-│  API Gateway      │    └─────────────────┘
-│  Schema Store     │
-│                   │    ┌─────────────────┐
-│  AI Engines       │───>│  VictoriaTraces │
-│  (RCA/Correlate)  │    │  (Traces)       │
-└─────────────────--┘    └─────────────────┘
-         │
-         │
-         v
-    ┌─────────────────┐
-    │ VictoriaMetrics │
-    │  (Metrics)      │
-    └─────────────────┘
-```
-
-## Quick Start
-
-1. **Deploy MIRADOR-CORE** using Helm or Docker
-2. **Configure data sources** (VictoriaMetrics ecosystem endpoints)
-3. **Set up authentication** (LDAP/AD or OAuth)
-4. **Start querying** using the Unified Query API
-
-## Support
-
-- **Documentation**: https://miradorstack.readthedocs.io/
-- **GitHub Issues**: Bug reports and feature requests
-- **Community Forum**: General questions and community help
+If you need deeper operational runbooks or long-form guides that were present previously, those legacy pages are still available in the repository but are intentionally not included in the main documentation navigation.
 
 ---
 
-```{rubric} Indices and tables
-```
-
-* {ref}`genindex`
-* {ref}`modindex`
-* {ref}`search`
-
-```{toctree}
-:hidden:
-:caption: Runbooks
-
-cache-performance-runbook
-correlation-reliability-runbook
-query-performance-runbook
-service-recovery-procedures
-tracing-troubleshooting
-```
+If you'd like a different structure (for example a short getting-started, architecture, or migration pages in the main TOC), tell me and I will update the index and the four pages accordingly.

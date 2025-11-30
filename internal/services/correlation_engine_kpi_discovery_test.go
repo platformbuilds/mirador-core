@@ -31,7 +31,15 @@ func (m *MockKPIRepoForTest) ModifyKPIBulk(ctx context.Context, items []*models.
 func (m *MockKPIRepoForTest) DeleteKPI(ctx context.Context, id string) error          { return nil }
 func (m *MockKPIRepoForTest) DeleteKPIBulk(ctx context.Context, ids []string) []error { return nil }
 func (m *MockKPIRepoForTest) GetKPI(ctx context.Context, id string) (*models.KPIDefinition, error) {
-	return nil, nil
+	now := time.Now()
+	switch id {
+	case "kpi_metrics_1":
+		return &models.KPIDefinition{ID: "kpi_metrics_1", Name: "probe_metric", SignalType: "metrics", Datastore: "victoria-metrics", Formula: "probe_metric", Layer: "impact", DimensionsHint: []string{"service", "instance"}, CreatedAt: now, UpdatedAt: now}, nil
+	case "kpi_logs_1":
+		return &models.KPIDefinition{ID: "kpi_logs_1", Name: "probe_logs", SignalType: "logs", Datastore: "victoria-logs", Formula: "service:checkout", Layer: "cause", DimensionsHint: []string{"service"}, CreatedAt: now, UpdatedAt: now}, nil
+	default:
+		return nil, nil
+	}
 }
 func (m *MockKPIRepoForTest) ListKPIs(ctx context.Context, req models.KPIListRequest) ([]*models.KPIDefinition, int64, error) {
 	// return two KPIs: one metrics, one logs
@@ -100,15 +108,15 @@ func TestCorrelationEngine_KPIDiscoveryAndLabelExtraction(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, res)
 
-	// impact KPI (layer=impact) should be present in affected services
+	// impact KPI (layer=impact) should be present in affected services as human-readable name
 	found := false
 	for _, s := range res.AffectedServices {
-		if s == "kpi_metrics_1" {
+		if s == "probe_metric" {
 			found = true
 			break
 		}
 	}
-	require.True(t, found, "impact KPI id should be in AffectedServices")
+	require.True(t, found, "impact KPI name should be in AffectedServices")
 
 	mockMetrics.AssertExpectations(t)
 	mockLogs.AssertExpectations(t)

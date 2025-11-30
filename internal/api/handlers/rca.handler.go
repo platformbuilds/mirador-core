@@ -335,6 +335,78 @@ func (h *RCAHandler) convertRCAIncidentToDTO(inc *rca.RCAIncident) *models.RCAIn
 	for _, ch := range inc.Chains {
 		dto.Chains = append(dto.Chains, h.convertRCAChain(ch))
 	}
+
+	// Build and attach time ring metadata using default ring config.
+	// Use the incident peak time (if available) and incident window to compute ranges.
+	if inc.Impact != nil && !inc.Impact.TimeBounds.TPeak.IsZero() {
+		ringCfg := rca.DefaultTimeRingConfig()
+
+		defs := map[string]models.TimeRingDefinitionDTO{
+			string(rca.RingImmediate):  {Label: string(rca.RingImmediate), Description: "Anomalies very close to the peak", Duration: ringCfg.R1Duration.String()},
+			string(rca.RingShort):      {Label: string(rca.RingShort), Description: "Anomalies shortly before peak", Duration: ringCfg.R2Duration.String()},
+			string(rca.RingMedium):     {Label: string(rca.RingMedium), Description: "Anomalies moderately before peak", Duration: ringCfg.R3Duration.String()},
+			string(rca.RingLong):       {Label: string(rca.RingLong), Description: "Anomalies further back", Duration: ringCfg.R4Duration.String()},
+			string(rca.RingOutOfScope): {Label: string(rca.RingOutOfScope), Description: "Events outside the configured analysis window or too far after the peak", Duration: "variable"},
+		}
+
+		perChain := make([]models.TimeRingsPerChainDTO, 0, len(inc.Chains))
+
+		// Use incident window as the canonical window for per-chain calculations
+		windowStart := inc.Impact.TimeBounds.TStart
+		windowEnd := inc.Impact.TimeBounds.TEnd
+		peak := inc.Impact.TimeBounds.TPeak
+
+		for _, ch := range inc.Chains {
+			// Compute raw ranges relative to peak.
+			r1Start := peak.Add(-ringCfg.R1Duration)
+			r1End := peak
+
+			r2Start := peak.Add(-ringCfg.R2Duration)
+			r2End := peak.Add(-ringCfg.R1Duration)
+
+			r3Start := peak.Add(-ringCfg.R3Duration)
+			r3End := peak.Add(-ringCfg.R2Duration)
+
+			r4Start := peak.Add(-ringCfg.R4Duration)
+			r4End := peak.Add(-ringCfg.R3Duration)
+
+			// Clip to incident window bounds
+			clip := func(t time.Time, startBound, endBound time.Time) time.Time {
+				if t.Before(startBound) {
+					return startBound
+				}
+				if t.After(endBound) {
+					return endBound
+				}
+				return t
+			}
+
+			ringsMap := map[string]models.TimeRangeDTO{
+				string(rca.RingImmediate): {StartTime: clip(r1Start, windowStart, windowEnd).Format(time.RFC3339), EndTime: clip(r1End, windowStart, windowEnd).Format(time.RFC3339)},
+				string(rca.RingShort):     {StartTime: clip(r2Start, windowStart, windowEnd).Format(time.RFC3339), EndTime: clip(r2End, windowStart, windowEnd).Format(time.RFC3339)},
+				string(rca.RingMedium):    {StartTime: clip(r3Start, windowStart, windowEnd).Format(time.RFC3339), EndTime: clip(r3End, windowStart, windowEnd).Format(time.RFC3339)},
+				string(rca.RingLong):      {StartTime: clip(r4Start, windowStart, windowEnd).Format(time.RFC3339), EndTime: clip(r4End, windowStart, windowEnd).Format(time.RFC3339)},
+			}
+
+			rank := ch.Rank
+			if rank <= 0 {
+				rank = 1
+			}
+
+			perChain = append(perChain, models.TimeRingsPerChainDTO{
+				ChainRank:   rank,
+				PeakTime:    peak.Format(time.RFC3339),
+				WindowStart: windowStart.Format(time.RFC3339),
+				WindowEnd:   windowEnd.Format(time.RFC3339),
+				Rings:       ringsMap,
+			})
+		}
+
+		dto.TimeRings = &models.TimeRingsDTO{
+			Definitions: defs,
+			PerChain:    perChain,
+		}
+	}
 	return dto
 }
 

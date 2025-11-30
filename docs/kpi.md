@@ -1,0 +1,54 @@
+# KPI (Key Performance Indicators)
+
+This page explains Mirador Core's KPI model, how KPIs are discovered and stored, and best practices for writing and maintaining KPI definitions used by correlation and RCA engines.
+
+## What is a KPI in Mirador Core
+
+- A KPI is a platform-level observable definition — a canonical name, a query or formula that derives a value, and metadata that describes the observable (service, namespace, unit, aggregation, importance / impact type).
+- KPIs are used across Mirador for discovery, correlation and narrative generation. Engines and handlers avoid hardcoded metric names and rely on KPI metadata + discovery to find platform-relevant signals.
+
+## KPI metadata (typical fields)
+
+- id: unique identifier for the KPI
+- name: user-friendly display name
+- description: short summary of what the KPI measures
+- engine / data_source: metrics / logs / traces — defines where to execute the query
+- query or formula: the expression used to fetch or compute the KPI
+- labels: suggested semantic labels (service, pod, namespace) to match runtime telemetry
+- impact: optional severity/importance indicator used by the Correlation and RCA engines
+
+## KPI discovery & seeding
+
+Mirador Core uses a central KPI repository (KPIRepo) to list and manage known KPIs. When handlers or engines run analytic workflows (e.g., correlation across the platform), they may call KPIRepo.ListKPIs to build queries covering the whole platform.
+
+The platform includes helper tooling to seed standard KPIs used by Mirador. These seeded KPIs provide consistent, platform-wide observability perspectives and help ensure correlation/RCA engines can reference canonical signals rather than ad-hoc metric names.
+
+## How KPIs are used
+
+- Autonomous queries: When a correlation request has an empty body, Mirador can synthesize a correlation query across the entire KPI catalog.
+- KPI-driven RCA: KPIs guide RCA engine candidate selection, label detection, and narrative construction.
+- Instrumentation & templates: Keeping KPIs small, composable and well-labeled helps the engines reduce false positives and produce more actionable narratives.
+
+## Best practices for KPI authors
+
+- Use meaningful, canonical names and a concise description.
+- Prefer returning scalar time-series or single-value aggregates for KPI formulas — these work best for correlation and anomaly detection.
+- Attach canonical semantic labels (service, namespace) instead of custom-only labels so engines can synthesize queries across environments.
+- Avoid hardcoded instance names; use label-driven patterns (e.g., service.name=~"api-.*") where appropriate.
+
+## Example KPI (metrics)
+
+id: kpi.http.requests.success_rate
+name: HTTP success rate
+engine: metrics
+query: sum(rate(http_requests_total{status=~"2.."}[5m])) / sum(rate(http_requests_total[5m]))
+description: 5m success rate for HTTP requests across services.
+
+## Operator notes
+
+- KPI definitions are stored in the repository-backed KPI store and must be kept lean and tested.
+- Tests and simulator fixtures are allowed to hardcode example KPI names, but engine code must rely on config and registry for KPI names and not embed environment-specific strings.
+
+---
+
+If you want, I can expand this page with examples for logs/traces KPIs or a short guide showing how to seed/update KPIs via CLI or API. Which formats would you like included (YAML examples, seed scripts, or API snippets)?
