@@ -79,7 +79,9 @@ func (m *mockRepo) GetKPI(ctx context.Context, id string) (*models.KPIDefinition
 func (m *mockRepo) ListKPIs(ctx context.Context, req models.KPIListRequest) ([]*models.KPIDefinition, int64, error) {
 	return nil, 0, nil
 }
-func (m *mockRepo) DeleteKPI(ctx context.Context, id string) error { return nil }
+func (m *mockRepo) DeleteKPI(ctx context.Context, id string) (repo.DeleteResult, error) {
+	return repo.DeleteResult{}, nil
+}
 
 // EnsureTelemetryStandards satisfies the KPIRepo interface for tests.
 func (m *mockRepo) EnsureTelemetryStandards(ctx context.Context, cfg *config.EngineConfig) error {
@@ -474,7 +476,9 @@ func (m *mockRepoFail) GetKPI(ctx context.Context, id string) (*models.KPIDefini
 func (m *mockRepoFail) ListKPIs(ctx context.Context, req models.KPIListRequest) ([]*models.KPIDefinition, int64, error) {
 	return nil, 0, nil
 }
-func (m *mockRepoFail) DeleteKPI(ctx context.Context, id string) error { return nil }
+func (m *mockRepoFail) DeleteKPI(ctx context.Context, id string) (repo.DeleteResult, error) {
+	return repo.DeleteResult{}, nil
+}
 func (m *mockRepoFail) UpsertMetric(ctx context.Context, def repo.MetricDef, author string) error {
 	return nil
 }

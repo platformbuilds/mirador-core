@@ -12,6 +12,7 @@ import (
 
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -90,7 +91,9 @@ func (f *fakeKPIRepo) ModifyKPI(ctx context.Context, k *models.KPIDefinition) (*
 func (f *fakeKPIRepo) ModifyKPIBulk(ctx context.Context, items []*models.KPIDefinition) ([]*models.KPIDefinition, []error) {
 	return nil, nil
 }
-func (f *fakeKPIRepo) DeleteKPI(ctx context.Context, id string) error          { return nil }
+func (f *fakeKPIRepo) DeleteKPI(ctx context.Context, id string) (repo.DeleteResult, error) {
+	return repo.DeleteResult{}, nil
+}
 func (f *fakeKPIRepo) DeleteKPIBulk(ctx context.Context, ids []string) []error { return nil }
 func (f *fakeKPIRepo) GetKPI(ctx context.Context, id string) (*models.KPIDefinition, error) {
 	if k, ok := f.kpis[id]; ok {

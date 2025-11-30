@@ -208,7 +208,7 @@ func (h *MetricHandler) DeleteMetric(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
 		return
 	}
-	err = h.kpiRepo.DeleteKPI(context.Background(), detID)
+	_, err = h.kpiRepo.DeleteKPI(context.Background(), detID)
 	if err != nil {
 		h.logger.Error("metric delete failed", "error", err, "metric", metricName)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete metric"})

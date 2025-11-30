@@ -262,7 +262,7 @@ func (h *UnifiedSchemaHandler) DeleteSchemaDefinition(c *gin.Context) {
 		}
 		tmp := &models.KPIDefinition{Name: id}
 		detID, _ := services.GenerateDeterministicKPIID(tmp)
-		err = h.kpiRepo.DeleteKPI(c.Request.Context(), detID)
+		_, err = h.kpiRepo.DeleteKPI(c.Request.Context(), detID)
 	case models.SchemaTypeTraceService:
 		err = h.repo.DeleteTraceService(c.Request.Context(), id)
 	case models.SchemaTypeTraceOperation:
@@ -279,14 +279,14 @@ func (h *UnifiedSchemaHandler) DeleteSchemaDefinition(c *gin.Context) {
 		}
 		tmp := &models.KPIDefinition{Name: parts[1], Namespace: parts[0]}
 		detID, _ := services.GenerateDeterministicKPIID(tmp)
-		err = h.kpiRepo.DeleteKPI(c.Request.Context(), detID)
+		_, err = h.kpiRepo.DeleteKPI(c.Request.Context(), detID)
 	case models.SchemaTypeKPI:
 		if h.kpiRepo == nil {
 			h.logger.Error("KPIRepo not configured for unified schema handler")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "KPI repository unavailable"})
 			return
 		}
-		err = h.kpiRepo.DeleteKPI(c.Request.Context(), id)
+		_, err = h.kpiRepo.DeleteKPI(c.Request.Context(), id)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported schema type"})
 		return

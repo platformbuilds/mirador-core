@@ -204,7 +204,7 @@ func (h *TraceServiceHandler) DeleteTraceService(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "kpi repo unavailable"})
 		return
 	}
-	err = h.kpiRepo.DeleteKPI(context.Background(), detID)
+	_, err = h.kpiRepo.DeleteKPI(context.Background(), detID)
 	if err != nil {
 		h.logger.Error("trace service delete failed", "error", err, "service", serviceName)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete trace service"})

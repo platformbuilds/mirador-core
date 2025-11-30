@@ -78,6 +78,7 @@ func NewServer(
 	server.tracerProvider = server.initTracing(cfg, log)
 
 	kpiStore, zapLogger := server.initWeaviateStore(cfg, log)
+	// Pass Valkey cache to repo wiring; metadata store may be wired later.
 	server.initKPIRepo(schemaRepo, kpiStore, zapLogger)
 
 	// Bootstrap telemetry via the repo layer (keeps models out of bootstrap)
@@ -169,7 +170,8 @@ func (s *Server) initKPIRepo(schemaRepo repo.SchemaStore, kpiStore *weavstore.We
 		if zapLogger == nil {
 			zapLogger = zap.NewNop()
 		}
-		kpiRepo = repo.NewDefaultKPIRepo(kpiStore, zapLogger)
+		// Pass Valkey cache to repo. Metadata store will be wired later
+		kpiRepo = repo.NewDefaultKPIRepo(kpiStore, zapLogger, s.cache, nil)
 	}
 	s.kpiRepo = kpiRepo
 }
@@ -287,34 +289,6 @@ func (s *Server) setupRoutes() {
 	// Create RCA engine for endpoints (wire correlation engine for TimeRange API)
 	rcaEngineForEndpoints := rca.NewRCAEngine(candidateCauseServiceForEngine, rcaServiceGraphForEngine, s.logger, s.config.Engine, correlationEngineForProvider)
 
-	// AI RCA-ENGINE endpoints (correlation with red anchors pattern)
-	rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
-	rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints, s.config.Engine, s.kpiRepo)
-	rcaGroup := v1.Group("/rca")
-	{
-		rcaGroup.GET("/correlations", rcaHandler.GetActiveCorrelations)
-		rcaGroup.POST("/investigate", rcaHandler.StartInvestigation)
-		rcaGroup.GET("/patterns", rcaHandler.GetFailurePatterns)
-		rcaGroup.POST("/service-graph", rcaHandler.GetServiceGraph)
-		rcaGroup.POST("/store", rcaHandler.StoreCorrelation) // Store correlation back to VictoriaLogs
-	}
-
-	// KPI APIs (primary interface for schema definitions)
-	if s.kpiRepo != nil {
-		kpiHandler := handlers.NewKPIHandler(s.config, s.kpiRepo, s.cache, s.logger)
-		if kpiHandler != nil {
-			// KPI Definitions API
-			kpiDefsGroup := v1.Group("/kpi/defs")
-			{
-				kpiDefsGroup.GET("", kpiHandler.GetKPIDefinitions)
-				kpiDefsGroup.POST("", kpiHandler.CreateOrUpdateKPIDefinition)
-				kpiDefsGroup.POST("/bulk-json", kpiHandler.BulkIngestJSON)
-				kpiDefsGroup.POST("/bulk-csv", kpiHandler.BulkIngestCSV)
-				kpiDefsGroup.DELETE("/:id", kpiHandler.DeleteKPIDefinition)
-			}
-		}
-	}
-
 	// Unified Query Engine (Phase 1.5: Unified API Implementation)
 	if s.config.UnifiedQuery.Enabled {
 		s.setupUnifiedQueryEngine(v1, rcaEngineForEndpoints)
@@ -351,6 +325,10 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 	// Create unified query handler
 	unifiedHandler := handlers.NewUnifiedQueryHandler(unifiedEngine, s.logger, s.kpiRepo, s.config.Engine)
 
+	// Create RCA handler for unified RCA endpoints
+	rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
+	rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints, s.config.Engine, s.kpiRepo)
+
 	// Register unified query routes
 	unifiedGroup := router.Group("/unified")
 	{
@@ -364,10 +342,11 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 		unifiedGroup.GET("/stats", unifiedHandler.HandleUnifiedStats)
 		// Phase 4: RCA endpoint
 		unifiedGroup.POST("/rca", func(c *gin.Context) {
-			// Create a temporary RCA handler just for this endpoint
-			rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
-			rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints, s.config.Engine, s.kpiRepo)
 			rcaHandler.HandleComputeRCA(c)
+		})
+		// Migrated service-graph endpoint
+		unifiedGroup.POST("/service-graph", func(c *gin.Context) {
+			rcaHandler.GetServiceGraph(c)
 		})
 	}
 
@@ -448,6 +427,12 @@ func (s *Server) Start(ctx context.Context) error {
 func (s *Server) initializeMetricsMetadataComponents() error {
 	// Create Valkey metadata store
 	metadataStore := bleve.NewValkeyMetadataStore(s.cache, s.logger)
+
+	// If repo is DefaultKPIRepo, wire the metadata store so repo-level
+	// delete operations can remove Bleve metadata as part of cleanup.
+	if dr, ok := s.kpiRepo.(*repo.DefaultKPIRepo); ok {
+		dr.SetMetadataStore(metadataStore)
+	}
 
 	// Create document mapper
 	documentMapper := mapping.NewBleveDocumentMapper(s.logger)

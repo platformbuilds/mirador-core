@@ -10,6 +10,7 @@ import (
 
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -28,7 +29,9 @@ func (m *MockKPIRepoForTest) ModifyKPI(ctx context.Context, k *models.KPIDefinit
 func (m *MockKPIRepoForTest) ModifyKPIBulk(ctx context.Context, items []*models.KPIDefinition) ([]*models.KPIDefinition, []error) {
 	return nil, nil
 }
-func (m *MockKPIRepoForTest) DeleteKPI(ctx context.Context, id string) error          { return nil }
+func (m *MockKPIRepoForTest) DeleteKPI(ctx context.Context, id string) (repo.DeleteResult, error) {
+	return repo.DeleteResult{}, nil
+}
 func (m *MockKPIRepoForTest) DeleteKPIBulk(ctx context.Context, ids []string) []error { return nil }
 func (m *MockKPIRepoForTest) GetKPI(ctx context.Context, id string) (*models.KPIDefinition, error) {
 	now := time.Now()
