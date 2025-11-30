@@ -1,2525 +1,565 @@
 openapi: "3.0.3"
 info:
-  title: MIRADOR-CORE API
-  description: Mirador Core is a comprehensive observability and analytics platform that provides KPI definitions, user preferences, metrics, logs, traces, and unified queries for monitoring and analyzing system metrics.
+  title: MIRADOR-CORE API (code-first)
+  description: |
+    This OpenAPI document is generated from the code-first route registrations
+    in internal/api/server.go. It lists only endpoints actually registered by
+    the server bootstrap (health, metrics, docs, swagger, /api/v1/* groups
+    for RCA, KPI definitions, Unified and UQL).
   version: "8.0.0"
-  contact:
-    name: Platform Builds Team
-    url: https://github.com/platformbuilds/mirador-core
-    email: support@platformbuilds.com
-  license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
-  termsOfService: http://swagger.io/terms/
 servers:
   - url: "{scheme}://{host}:{port}"
-    description: Configurable server
+    description: "Configurable server"
     variables:
       scheme:
-        default: http
-        description: The protocol scheme (http or https)
+        description: "URL scheme"
+        default: "http"
         enum:
-          - http
-          - https
+          - "http"
+          - "https"
       host:
-        default: localhost
-        description: The hostname or IP address
+        description: "Hostname or IP address"
+        default: "127.0.0.1"
       port:
+        description: "Server port"
         default: "8010"
-        description: The port number
-externalDocs:
-  description: OpenAPI
-  url: https://swagger.io/resources/open-api/
 
 paths:
-  # Health and system endpoints
-  /health:
+  /:
     get:
-      summary: Health check
-      description: Check the health status of the service
-      tags:
-        - system
+      summary: Root redirect to Swagger UI
       responses:
-        "200":
-          description: Service is healthy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  service:
-                    type: string
-                    example: mirador-core
-                  status:
-                    type: string
-                    example: healthy
-                  version:
-                    type: string
-                  timestamp:
-                    type: string
-        "503":
-          description: Service is unhealthy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  service:
-                    type: string
-                  status:
-                    type: string
-                    example: unhealthy
-                  timestamp:
-                    type: string
+        '302':
+          description: Redirect
 
-  /ready:
+  /swagger/index.html:
     get:
-      summary: Readiness check
-      description: Check if the service is ready to handle requests
-      tags:
-        - system
+      summary: Swagger UI entry
       responses:
-        "200":
-          description: Service is ready
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  service:
-                    type: string
-                    example: mirador-core
-                  status:
-                    type: string
-                    example: ready
-                  timestamp:
-                    type: string
-        "503":
-          description: Service is not ready
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  service:
-                    type: string
-                  status:
-                    type: string
-                    example: not_ready
-                  timestamp:
-                    type: string
+        '200':
+          description: OK
 
-  /microservices/status:
+  /api/openapi.yaml:
     get:
-      summary: Microservices status
-      description: Get the status of all microservices
-      tags:
-        - system
+      summary: OpenAPI YAML
       responses:
-        "200":
-          description: Microservices status
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties:
-                  type: object
-                  properties:
-                    status:
-                      type: string
-                    version:
-                      type: string
-                    timestamp:
-                      type: string
+        '200':
+          description: OK
+
+  /api/openapi.json:
+    get:
+      summary: OpenAPI JSON
+      responses:
+        '200':
+          description: OK
 
   /metrics:
     get:
       summary: Prometheus metrics
-      description: Get Prometheus metrics for monitoring
-      tags:
-        - system
       responses:
-        "200":
-          description: Prometheus metrics
-          content:
-            text/plain:
-              schema:
-                type: string
+        '200':
+          description: Prometheus metrics text
 
-  # KPI endpoints
+  /health:
+    get:
+      summary: Public health check
+      responses:
+        '200':
+          description: OK
+
+  /ready:
+    get:
+      summary: Readiness check
+      responses:
+        '200':
+          description: OK
+
+  /microservices/status:
+    get:
+      summary: Microservices status
+      responses:
+        '200':
+          description: OK
+
+  # API v1 group
+  /api/v1/metrics:
+    get:
+      summary: Prometheus metrics (v1 group)
+      responses:
+        '200':
+          description: Prometheus metrics text
+
+  /api/v1/health:
+    get:
+      summary: API-v1 health
+      responses:
+        '200':
+          description: OK
+
+  /api/v1/ready:
+    get:
+      summary: API-v1 readiness
+      responses:
+        '200':
+          description: OK
+
+  /api/v1/microservices/status:
+    get:
+      summary: API-v1 microservices status
+      responses:
+        '200':
+          description: OK
+
+  # RCA endpoints (v1)
+  /api/v1/rca/correlations:
+    get:
+      summary: Get active RCA correlations
+      responses:
+        '200':
+          description: OK
+
+  /api/v1/rca/investigate:
+    post:
+      summary: Start an RCA investigation
+      responses:
+        '200':
+          description: OK
+
+  /api/v1/rca/patterns:
+    get:
+      summary: Get failure patterns
+      responses:
+        '200':
+          description: OK
+
+  /api/v1/rca/service-graph:
+    post:
+      summary: Build / retrieve service-graph for RCA
+      responses:
+        '200':
+          description: OK
+
+  /api/v1/rca/store:
+    post:
+      summary: Store correlation result
+      responses:
+        '200':
+          description: OK
+
+  # KPI definition APIs (v1)
   /api/v1/kpi/defs:
     get:
-      summary: Get KPI definitions
-      description: Retrieve a paginated list of KPI definitions with optional filtering by tags
-      tags:
-        - kpi-definitions
-      parameters:
-        - name: tags
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-          style: form
-          explode: false
-          description: Filter by tags (comma-separated)
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 10
-          description: Maximum number of results
-        - name: offset
-          in: query
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
-          description: Pagination offset
+      summary: List KPI definitions
       responses:
-        "200":
+        '200':
           description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/KPIListResponse'
-        "400":
-          description: Invalid query parameters
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to list KPIs
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
     post:
       summary: Create or update KPI definition
-      description: Create a new KPI definition or update an existing one. If ID is not provided, a new UUID will be generated.
-      tags:
-        - kpi-definitions
       requestBody:
+        description: 'KPI definition to create or update. Wrap the KPI object in { "kpiDefinition": { ... } }.'
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/KPIDefinitionRequest'
+              type: object
+              properties:
+                kpiDefinition:
+                  type: object
+            example:
+              kpiDefinition:
+                name: "api_errors_total"
+                kind: "tech"
+                namespace: "apigw_springboot_top_10_kpi"
+                unit: "count"
+                format: "integer"
+                layer: "impact"
+                signalType: "metrics"
+                classifier: "errors"
+                definition: "Total number of API errors observed at the gateway per minute."
+                sentiment: "negative"
+                businessImpact: "If errors increase, end users may experience failed requests and revenue impact."
+                tags: ["apigw","errors","pagerduty"]
+                examples:
+                  - service.name: "api-gateway"
+                    region: "us-east-1"
+                    value: 42
+                aggregationWindowHint: "1m"
+                dimensionsHint: ["service.name","region"]
       responses:
-        "200":
-          description: KPI created/updated successfully
+        '200':
+          description: OK
+        '201':
+          description: Created (new KPI)
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: ok
-                  id:
-                    type: string
-        "400":
-          description: Invalid payload or validation error
+              example:
+                status: "created"
+                id: "api_errors_total--apigw_springboot_top_10_kpi"
+
+  /api/v1/kpi/defs/bulk-json:
+    post:
+      summary: Bulk ingest KPI definitions (JSON)
+      requestBody:
+        description: 'Bulk JSON payload containing an array of KPI definition objects.'
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+            example:
+              items:
+                - name: "api_errors_total"
+                  layer: "impact"
+                  signalType: "metrics"
+                  sentiment: "negative"
+                  definition: "Total number of API errors observed at the gateway per minute."
+                  tags: ["apigw","errors"]
+                - name: "api_request_latency_p95"
+                  layer: "cause"
+                  signalType: "metrics"
+                  sentiment: "negative"
+                  classifier: "latency"
+                  componentType: "springboot"
+      responses:
+        '200':
+          description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to upsert KPI
+              example:
+                total: 2
+                successCount: 2
+                failureCount: 0
+                failures: []
+
+  /api/v1/kpi/defs/bulk-csv:
+    post:
+      summary: Bulk ingest KPI definitions (CSV)
+      requestBody:
+        description: 'Multipart form with `file` field containing CSV. First row must be headers such as id,name,namespace,kind,layer,signalType,sentiment,definition,tags,examples'
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+              example:
+                total: 3
+                successCount: 2
+                failureCount: 1
+                failures:
+                  - row: 3
+                    message: "invalid examples JSON"
 
   /api/v1/kpi/defs/{id}:
     delete:
-      summary: Delete KPI definition
-      description: Delete a KPI definition by its ID. Requires confirmation via query parameter.
-      tags:
-        - kpi-definitions
+      summary: Delete KPI definition by id
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
-          description: KPI definition ID
-        - name: confirm
-          in: query
-          required: true
-          schema:
-            type: string
-            enum: ["1", "true", "yes"]
-          description: Confirmation flag
       responses:
-        "200":
-          description: KPI deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: deleted
-        "400":
-          description: Missing id or confirmation required
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to delete KPI
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+        '200':
+          description: OK
 
-  # Metrics endpoints
-  /api/v1/metrics/query:
-    post:
-      summary: Execute metrics query
-      description: Execute a PromQL query against VictoriaMetrics
-      tags:
-        - metrics
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                query:
-                  type: string
-                time:
-                  type: string
-                  format: date-time
-                timeout:
-                  type: string
-      responses:
-        "200":
-          description: Query executed successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "400":
-          description: Invalid query
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Query execution failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/metrics/query_range:
-    post:
-      summary: Execute metrics range query
-      description: Execute a PromQL range query against VictoriaMetrics
-      tags:
-        - metrics
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                query:
-                  type: string
-                start:
-                  type: string
-                  format: date-time
-                end:
-                  type: string
-                  format: date-time
-                step:
-                  type: string
-                timeout:
-                  type: string
-      responses:
-        "200":
-          description: Range query executed successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "400":
-          description: Invalid query
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Query execution failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/metrics/names:
-    get:
-      summary: Get metric names
-      description: Get available metric names from VictoriaMetrics
-      tags:
-        - metrics
-      responses:
-        "200":
-          description: Metric names retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: array
-                    items:
-                      type: string
-        "500":
-          description: Failed to retrieve metric names
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/metrics/series:
-    get:
-      summary: Get metric series
-      description: Get time series data for metrics
-      tags:
-        - metrics
-      parameters:
-        - name: match[]
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-          style: form
-          explode: true
-          description: Series selectors
-        - name: start
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: Start time
-        - name: end
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: End time
-      responses:
-        "200":
-          description: Series data retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve series data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/metrics/labels:
-    post:
-      summary: Get labels
-      description: Get label names and values from VictoriaMetrics
-      tags:
-        - metrics
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                start:
-                  type: string
-                  format: date-time
-                end:
-                  type: string
-                  format: date-time
-                match:
-                  type: array
-                  items:
-                    type: string
-      responses:
-        "200":
-          description: Labels retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve labels
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/metrics/label/{name}/values:
-    get:
-      summary: Get label values
-      description: Get values for a specific label
-      tags:
-        - metrics
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Label name
-        - name: start
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: Start time
-        - name: end
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: End time
-        - name: match[]
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-          style: form
-          explode: true
-          description: Series selectors
-      responses:
-        "200":
-          description: Label values retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: string
-        "500":
-          description: Failed to retrieve label values
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # Logs endpoints
-  /api/v1/logs/query:
-    post:
-      summary: Execute logs query
-      description: Execute a LogsQL query against VictoriaLogs
-      tags:
-        - logs
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                query:
-                  type: string
-                limit:
-                  type: integer
-                  default: 100
-                start:
-                  type: string
-                  format: date-time
-                end:
-                  type: string
-                  format: date-time
-      responses:
-        "200":
-          description: Query executed successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "400":
-          description: Invalid query
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Query execution failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/logs/streams:
-    get:
-      summary: Get log streams
-      description: Get available log streams from VictoriaLogs
-      tags:
-        - logs
-      responses:
-        "200":
-          description: Log streams retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve log streams
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/logs/fields:
-    get:
-      summary: Get log fields
-      description: Get available log fields from VictoriaLogs
-      tags:
-        - logs
-      responses:
-        "200":
-          description: Log fields retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve log fields
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/logs/export:
-    post:
-      summary: Export logs
-      description: Export logs based on query
-      tags:
-        - logs
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                query:
-                  type: string
-                format:
-                  type: string
-                  enum: ["json", "csv", "txt"]
-                  default: "json"
-                start:
-                  type: string
-                  format: date-time
-                end:
-                  type: string
-                  format: date-time
-      responses:
-        "200":
-          description: Logs exported successfully
-          content:
-            application/octet-stream:
-              schema:
-                type: string
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Export failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/logs/store:
-    post:
-      summary: Store log event
-      description: Store a JSON log event in VictoriaLogs (for AI engines)
-      tags:
-        - logs
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        "200":
-          description: Log event stored successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "400":
-          description: Invalid log event
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to store log event
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # Logs histogram and facets endpoints
-  /api/v1/logs/histogram:
-    get:
-      summary: Get logs histogram
-      description: Get histogram data for logs over time
-      tags:
-        - logs
-      parameters:
-        - name: query
-          in: query
-          schema:
-            type: string
-          description: LogsQL query
-        - name: start
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: Start time
-        - name: end
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: End time
-        - name: step
-          in: query
-          schema:
-            type: string
-          description: Histogram step
-      responses:
-        "200":
-          description: Histogram data retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve histogram
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/logs/facets:
-    get:
-      summary: Get logs facets
-      description: Get facet data for logs
-      tags:
-        - logs
-      parameters:
-        - name: query
-          in: query
-          schema:
-            type: string
-          description: LogsQL query
-        - name: start
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: Start time
-        - name: end
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: End time
-      responses:
-        "200":
-          description: Facet data retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve facets
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/logs/search:
-    post:
-      summary: Search logs
-      description: Search logs with advanced filtering
-      tags:
-        - logs
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                query:
-                  type: string
-                start:
-                  type: string
-                  format: date-time
-                end:
-                  type: string
-                  format: date-time
-                limit:
-                  type: integer
-                  default: 100
-                offset:
-                  type: integer
-                  default: 0
-      responses:
-        "200":
-          description: Search results retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Search failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/logs/tail:
-    get:
-      summary: Tail logs
-      description: Stream live logs via WebSocket
-      tags:
-        - logs
-      parameters:
-        - name: query
-          in: query
-          schema:
-            type: string
-          description: LogsQL query
-      responses:
-        "101":
-          description: WebSocket upgrade successful
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # Traces endpoints
-  /api/v1/traces/services:
-    get:
-      summary: Get services
-      description: Get list of services from traces
-      tags:
-        - traces
-      responses:
-        "200":
-          description: Services retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve services
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/traces/services/{service}/operations:
-    get:
-      summary: Get service operations
-      description: Get operations for a specific service
-      tags:
-        - traces
-      parameters:
-        - name: service
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Service name
-      responses:
-        "200":
-          description: Operations retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve operations
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/traces/{traceId}:
-    get:
-      summary: Get trace
-      description: Get a specific trace by ID
-      tags:
-        - traces
-      parameters:
-        - name: traceId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Trace ID
-      responses:
-        "200":
-          description: Trace retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "404":
-          description: Trace not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to retrieve trace
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/traces/{traceId}/flamegraph:
-    get:
-      summary: Get trace flamegraph
-      description: Get flamegraph data for a trace
-      tags:
-        - traces
-      parameters:
-        - name: traceId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Trace ID
-      responses:
-        "200":
-          description: Flamegraph data retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve flamegraph
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/traces/search:
-    post:
-      summary: Search traces
-      description: Search traces with filters
-      tags:
-        - traces
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                service:
-                  type: string
-                operation:
-                  type: string
-                tags:
-                  type: object
-                  additionalProperties:
-                    type: string
-                start:
-                  type: string
-                  format: date-time
-                end:
-                  type: string
-                  format: date-time
-                minDuration:
-                  type: string
-                maxDuration:
-                  type: string
-                limit:
-                  type: integer
-                  default: 20
-      responses:
-        "200":
-          description: Search results retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Search failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/traces/flamegraph/search:
-    post:
-      summary: Search flamegraphs
-      description: Search traces and return flamegraph data
-      tags:
-        - traces
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                service:
-                  type: string
-                operation:
-                  type: string
-                start:
-                  type: string
-                  format: date-time
-                end:
-                  type: string
-                  format: date-time
-      responses:
-        "200":
-          description: Flamegraph search results retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Search failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # RCA endpoints
-  /api/v1/rca/correlations:
-    get:
-      summary: Get active correlations
-      description: Get list of active correlations from RCA engine
-      tags:
-        - rca
-      responses:
-        "200":
-          description: Active correlations retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve correlations
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/rca/investigate:
-    post:
-      summary: Start investigation
-      description: Start an RCA investigation for a service or component
-      tags:
-        - rca
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                service:
-                  type: string
-                component:
-                  type: string
-                startTime:
-                  type: string
-                  format: date-time
-                endTime:
-                  type: string
-                  format: date-time
-                severity:
-                  type: string
-                  enum: ["low", "medium", "high", "critical"]
-      responses:
-        "200":
-          description: Investigation started successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  investigationId:
-                    type: string
-                  status:
-                    type: string
-                    example: started
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to start investigation
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/rca/patterns:
-    get:
-      summary: Get failure patterns
-      description: Get known failure patterns from RCA engine
-      tags:
-        - rca
-      responses:
-        "200":
-          description: Failure patterns retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve patterns
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/rca/service-graph:
-    post:
-      summary: Get service graph
-      description: Generate service dependency graph for RCA analysis
-      tags:
-        - rca
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                service:
-                  type: string
-                depth:
-                  type: integer
-                  default: 3
-                startTime:
-                  type: string
-                  format: date-time
-                endTime:
-                  type: string
-                  format: date-time
-      responses:
-        "200":
-          description: Service graph generated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to generate service graph
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/rca/store:
-    post:
-      summary: Store correlation
-      description: Store a correlation result back to VictoriaLogs
-      tags:
-        - rca
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        "200":
-          description: Correlation stored successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "500":
-          description: Failed to store correlation
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # Configuration endpoints
-  /api/v1/config/datasources:
-    get:
-      summary: Get data sources
-      description: Get configured data sources
-      tags:
-        - config
-      responses:
-        "200":
-          description: Data sources retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve data sources
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    post:
-      summary: Add data source
-      description: Add a new data source configuration
-      tags:
-        - config
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        "201":
-          description: Data source added successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "400":
-          description: Invalid data source configuration
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to add data source
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/config/integrations:
-    get:
-      summary: Get integrations
-      description: Get configured integrations
-      tags:
-        - config
-      responses:
-        "200":
-          description: Integrations retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve integrations
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # User preferences endpoints
-  /api/v1/config/user-preferences:
-    get:
-      summary: Get user preferences
-      description: Get user preferences and UI state
-      tags:
-        - config
-      responses:
-        "200":
-          description: User preferences retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve user preferences
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    post:
-      summary: Create user preferences
-      description: Create user preferences
-      tags:
-        - config
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        "201":
-          description: User preferences created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "500":
-          description: Failed to create user preferences
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    put:
-      summary: Update user preferences
-      description: Update user preferences
-      tags:
-        - config
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        "200":
-          description: User preferences updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "500":
-          description: Failed to update user preferences
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    delete:
-      summary: Delete user preferences
-      description: Delete user preferences
-      tags:
-        - config
-      responses:
-        "200":
-          description: User preferences deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "500":
-          description: Failed to delete user preferences
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # Feature flags and runtime config
-  /api/v1/config/features:
-    get:
-      summary: Get feature flags
-      description: Get runtime feature flags
-      tags:
-        - config
-      responses:
-        "200":
-          description: Feature flags retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve feature flags
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    put:
-      summary: Update feature flags
-      description: Update runtime feature flags
-      tags:
-        - config
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        "200":
-          description: Feature flags updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "500":
-          description: Failed to update feature flags
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    post:
-      summary: Reset feature flags
-      description: Reset feature flags to defaults
-      tags:
-        - config
-      responses:
-        "200":
-          description: Feature flags reset successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "500":
-          description: Failed to reset feature flags
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # gRPC endpoint configuration
-  /api/v1/config/grpc/endpoints:
-    get:
-      summary: Get gRPC endpoints
-      description: Get configured gRPC endpoints
-      tags:
-        - config
-      responses:
-        "200":
-          description: gRPC endpoints retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve gRPC endpoints
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    put:
-      summary: Update gRPC endpoints
-      description: Update gRPC endpoint configurations
-      tags:
-        - config
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        "200":
-          description: gRPC endpoints updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "500":
-          description: Failed to update gRPC endpoints
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-    post:
-      summary: Reset gRPC endpoints
-      description: Reset gRPC endpoints to defaults
-      tags:
-        - config
-      responses:
-        "200":
-          description: gRPC endpoints reset successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-        "500":
-          description: Failed to reset gRPC endpoints
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # Session management [REMOVED]
-  # Session endpoints removed from Mirador Core - see external auth provider for session index
-
-  # WebSocket streams
-  /api/v1/ws/metrics:
-    get:
-      summary: Metrics WebSocket stream
-      description: WebSocket stream for real-time metrics data
-      tags:
-        - websockets
-      responses:
-        "101":
-          description: WebSocket upgrade successful
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/ws/alerts:
-    get:
-      summary: Alerts WebSocket stream
-      description: WebSocket stream for real-time alerts
-      tags:
-        - websockets
-      responses:
-        "101":
-          description: WebSocket upgrade successful
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "403":
-          description: Insufficient permissions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # Unified Query Engine
+  # Unified query engine (v1)
   /api/v1/unified/query:
     post:
-      summary: Execute unified query
-      description: Execute a unified query across metrics, logs, and traces
-      tags:
-        - unified-query
+      summary: Unified query
       requestBody:
+        description: |
+          Unified query accepts either a wrapped object { "query": { ... } }
+          (UnifiedQueryRequest) or a direct UnifiedQuery object. Use snake_case
+          for UnifiedQuery timestamps (`start_time` / `end_time`).
         required: true
         content:
           application/json:
             schema:
               type: object
-              properties:
-                query:
-                  type: string
-                start:
-                  type: string
-                  format: date-time
-                end:
-                  type: string
-                  format: date-time
-                engines:
-                  type: array
-                  items:
-                    type: string
-                  enum: ["metrics", "logs", "traces"]
+            examples:
+              wrapped:
+                summary: Wrapped UnifiedQueryRequest (preferred)
+                value:
+                  query:
+                    id: "q-123"
+                    type: "metrics"
+                    query: "metrics:http_requests > 1000"
+                    start_time: "2025-11-29T12:00:00Z"
+                    end_time: "2025-11-29T12:05:00Z"
+                    timeout: "30s"
+                    parameters:
+                      limit: 100
+                      groupBy: ["service.name"]
+                    correlation_options:
+                      enabled: true
+                      correlation_keys: ["trace_id"]
+                      time_window: "5m"
+                      engines: ["metrics","logs"]
+                    cache_options:
+                      enabled: true
+                      ttl: "5m"
+                      bypass_cache: false
+              direct:
+                summary: Direct UnifiedQuery (legacy / shorthand)
+                value:
+                  id: "q-123"
+                  type: "metrics"
+                  query: "metrics:http_requests > 1000"
+                  start_time: "2025-11-29T12:00:00Z"
+                  end_time: "2025-11-29T12:05:00Z"
       responses:
-        "200":
-          description: Query executed successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "400":
-          description: Invalid query
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Query execution failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+        '200':
+          description: OK
 
   /api/v1/unified/correlation:
     post:
-      summary: Execute unified correlation
-      description: Execute correlation analysis across multiple data sources
-      tags:
-        - unified-query
+      summary: Unified correlation
       requestBody:
+        description: |
+          Correlation endpoint supports two shapes:
+           - Preferred canonical TimeWindowRequest: { "startTime", "endTime" } (camelCase)
+           - Legacy UnifiedQuery appears here for backward compatibility (see examples).
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TimeWindowRequest'
+              type: object
+            examples:
+              timeWindow:
+                summary: Canonical time-window request (Stage-01 contract)
+                value:
+                  startTime: "2025-11-29T12:00:00Z"
+                  endTime: "2025-11-29T12:15:00Z"
+              legacyUnifiedQuery:
+                summary: Legacy UnifiedQuery example (accepted by handler for now)
+                value:
+                  query:
+                    id: "corr-xyz"
+                    type: "correlation"
+                    query: "logs:error AND metrics:high_latency"
       responses:
-        "200":
-          description: Correlation analysis completed
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Correlation analysis failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+        '200':
+          description: OK
 
-  /api/v1/unified/rca:
+  /api/v1/unified/failures/detect:
     post:
-      summary: Compute RCA over a time window
-      description: |
-        Run the RCA engine for the provided time window. The public contract is
-        intentionally small: the request body MUST contain only `startTime` and
-        `endTime` (RFC3339). Legacy RCARequest shapes are supported via a
-        deprecated compatibility shim but will be removed in a later release.
-      tags:
-        - unified-query
+      summary: Detect failures in unified query engine
       requestBody:
+        description: Failure detection runs over a TimeRange and optional components list.
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TimeWindowRequest'
+              type: object
+            examples:
+              basic:
+                summary: Detect failures for components in a time range
+                value:
+                  time_range:
+                    start: "2025-11-29T11:45:00Z"
+                    end:   "2025-11-29T12:15:00Z"
+                  components: ["api-gateway", "kafka"]
       responses:
-        "200":
-          description: RCA computation completed
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: RCA computation failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+        '200':
+          description: OK
+
+  /api/v1/unified/failures/correlate:
+    post:
+      summary: Correlate failures in unified query engine
+      requestBody:
+        description: Correlate transaction failures by list of transaction IDs and time range.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            examples:
+              transactions:
+                summary: Correlate specific transactions
+                value:
+                  transaction_ids: ["txn-123","txn-456"]
+                  time_range:
+                    start: "2025-11-29T11:50:00Z"
+                    end:   "2025-11-29T12:10:00Z"
+      responses:
+        '200':
+          description: OK
 
   /api/v1/unified/metadata:
     get:
-      summary: Get unified query metadata
-      description: Get metadata about available unified query capabilities
-      tags:
-        - unified-query
+      summary: Unified query metadata
       responses:
-        "200":
-          description: Metadata retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve metadata
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+        '200':
+          description: OK
 
   /api/v1/unified/health:
     get:
-      summary: Unified query engine health
-      description: Check health of unified query engine
-      tags:
-        - unified-query
+      summary: Unified engine health
       responses:
-        "200":
-          description: Engine is healthy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: healthy
-                  engines:
-                    type: object
-                    properties:
-                      metrics:
-                        type: string
-                      logs:
-                        type: string
-                      traces:
-                        type: string
-        "503":
-          description: Engine is unhealthy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: unhealthy
-                  error:
-                    type: string
+        '200':
+          description: OK
 
   /api/v1/unified/search:
     post:
       summary: Unified search
-      description: Search across all data sources
-      tags:
-        - unified-query
       requestBody:
+        description: Search accepts a UnifiedQuery or wrapped UnifiedQueryRequest (same shapes as /query).
         required: true
         content:
           application/json:
             schema:
               type: object
-              properties:
-                query:
-                  type: string
-                start:
-                  type: string
-                  format: date-time
-                end:
-                  type: string
-                  format: date-time
-                limit:
-                  type: integer
-                  default: 100
+            examples:
+              searchExample:
+                summary: Search for specific error events in logs
+                value:
+                  query:
+                    id: "search-001"
+                    type: "logs"
+                    query: "logs:exception AND service.name:\"checkout-service\""
+                    start_time: "2025-11-29T11:50:00Z"
+                    end_time: "2025-11-29T12:05:00Z"
       responses:
-        "200":
-          description: Search completed successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "400":
-          description: Invalid search query
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Search failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+        '200':
+          description: OK
 
   /api/v1/unified/stats:
     get:
-      summary: Unified query statistics
-      description: Get statistics about unified query usage
-      tags:
-        - unified-query
+      summary: Unified engine stats
       responses:
-        "200":
-          description: Statistics retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "500":
-          description: Failed to retrieve statistics
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+        '200':
+          description: OK
 
-  # UQL (Unified Query Language)
-  /api/v1/uql/query:
+  /api/v1/unified/rca:
     post:
-      summary: Execute UQL query
-      description: Execute a query using Unified Query Language
-      tags:
-        - uql
+      summary: Compute RCA using Unified engine (POST)
       requestBody:
+        description: |
+          RCA endpoint expects the canonical time-window payload: { "startTime", "endTime" }.
+          For compatibility, legacy RCA shapes are still accepted by handlers but the public contract is time-window-only.
         required: true
         content:
           application/json:
             schema:
               type: object
-              properties:
-                query:
-                  type: string
-                parameters:
-                  type: object
-                  additionalProperties: true
+            examples:
+              timeWindowRCA:
+                summary: RCA time-window request
+                value:
+                  startTime: "2025-11-29T11:00:00Z"
+                  endTime: "2025-11-29T12:00:00Z"
       responses:
-        "200":
-          description: UQL query executed successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "400":
-          description: Invalid UQL query
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: UQL query execution failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+        '200':
+          description: OK
+
+  # UQL endpoints (v1)
+  /api/v1/uql/query:
+    post:
+      summary: UQL query
+      requestBody:
+        description: |
+          Execute a Unified Query Language (UQL) query. The handler expects a wrapped
+          payload { "query": { ... } } where the inner object follows the
+          UnifiedQuery shape (id, type, query, start_time/end_time, parameters, etc.).
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            examples:
+              logsSelect:
+                summary: Logs SELECT query (wrapped)
+                value:
+                  query:
+                    id: "uql-logs-001"
+                    type: "logs"
+                    query: "SELECT service, level FROM logs:_time:5m WHERE level='error' GROUP BY service"
+                    start_time: "2025-11-29T11:50:00Z"
+                    end_time: "2025-11-29T12:05:00Z"
+                    timeout: "30s"
+                    parameters:
+                      limit: 100
+                    correlation_options:
+                      enabled: true
+                      correlation_keys: ["trace_id"]
+                      time_window: "5m"
+                      engines: ["logs", "metrics"]
+                    cache_options:
+                      enabled: true
+                      ttl: "5m"
+                      bypass_cache: false
+              metricsAgg:
+                summary: Metrics aggregation UQL
+                value:
+                  query:
+                    id: "uql-metrics-agg-01"
+                    type: "metrics"
+                    query: "AVG(response_time) FROM metrics:http_requests WHERE status='200' GROUP BY service"
+                    start_time: "2025-11-29T11:00:00Z"
+                    end_time: "2025-11-29T12:00:00Z"
+      responses:
+        '200':
+          description: OK
 
   /api/v1/uql/validate:
     post:
-      summary: Validate UQL query
-      description: Validate a UQL query syntax and semantics
-      tags:
-        - uql
+      summary: UQL validation
       requestBody:
+        description: |
+          Validate the syntax of a UQL query string. Supply a small object with a
+          top-level `query` string field. The endpoint will return whether the
+          query is syntactically valid without executing it.
         required: true
         content:
           application/json:
             schema:
               type: object
-              properties:
-                query:
-                  type: string
+            examples:
+              basic:
+                summary: Validate a simple UQL SELECT
+                value:
+                  query: "SELECT service, count(*) FROM logs:_time:5m GROUP BY service"
       responses:
-        "200":
-          description: UQL query is valid
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  valid:
-                    type: boolean
-                    example: true
-                  parsed:
-                    type: object
-                    additionalProperties: true
-        "400":
-          description: UQL query is invalid
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  valid:
-                    type: boolean
-                    example: false
-                  error:
-                    type: string
-        "500":
-          description: Validation failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+        '200':
+          description: OK
 
   /api/v1/uql/explain:
     post:
-      summary: Explain UQL query
-      description: Get execution plan for a UQL query
-      tags:
-        - uql
+      summary: UQL explain
       requestBody:
+        description: |
+          Return a (simplified) execution plan for a UQL query. Supply a wrapped
+          request { "query": { ... } } where the inner query contains the UQL string
+          and optional metadata (id, type, time-range) used to produce the plan.
         required: true
         content:
           application/json:
             schema:
               type: object
-              properties:
-                query:
-                  type: string
-      responses:
-        "200":
-          description: Query explanation generated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
+            examples:
+              explainLogs:
+                summary: Explain a logs SELECT query
+                value:
                   query:
-                    type: string
-                  plan:
-                    type: object
-                    additionalProperties: true
-                  estimatedCost:
-                    type: number
-        "400":
-          description: Invalid UQL query
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Explanation generation failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  # Metrics Metadata Discovery
-  /api/v1/metrics/search:
-    post:
-      summary: Search metrics metadata
-      description: Search for metrics metadata using Bleve
-      tags:
-        - metrics-metadata
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                query:
-                  type: string
-                limit:
-                  type: integer
-                  default: 50
+                    id: "test-uql-1"
+                    type: "logs"
+                    query: "SELECT service, level FROM logs:_time:5m WHERE level='error'"
       responses:
-        "200":
-          description: Search completed successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "400":
-          description: Invalid search query
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Search failed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
+        '200':
+          description: OK
 
-  /api/v1/metrics/sync:
-    post:
-      summary: Sync metrics metadata
-      description: Trigger manual sync of metrics metadata
-      tags:
-        - metrics-metadata
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                fullSync:
-                  type: boolean
-                  default: false
-      responses:
-        "200":
-          description: Sync triggered successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: sync_started
-                  syncId:
-                    type: string
-        "400":
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Sync failed to start
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-  /api/v1/metrics/health:
-    get:
-      summary: Metrics metadata health
-      description: Check health of metrics metadata system
-      tags:
-        - metrics-metadata
-      responses:
-        "200":
-          description: System is healthy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: healthy
-                  indexer:
-                    type: string
-                  synchronizer:
-                    type: string
-        "503":
-          description: System is unhealthy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: unhealthy
-                  error:
-                    type: string
-
-  /api/v1/metrics/sync/config:
-    put:
-      summary: Update sync config
-      description: Update metrics metadata synchronization configuration
-      tags:
-        - metrics-sync
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        "200":
-          description: Configuration updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: updated
-        "400":
-          description: Invalid configuration
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-        "500":
-          description: Failed to update configuration
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-
-components:
-  schemas:
-    # KPI schemas
-    KPIDefinition:
-      type: object
-      properties:
-        id:
-          type: string
-        kind:
-          type: string
-          enum: ["business", "tech"]
-        name:
-          type: string
-        unit:
-          type: string
-        format:
-          type: string
-        query:
-          type: object
-          additionalProperties: true
-        thresholds:
-          type: array
-          items:
-            $ref: '#/components/schemas/Threshold'
-        tags:
-          type: array
-          items:
-            type: string
-        definition:
-          type: string
-        sentiment:
-          type: string
-          enum: ["NEGATIVE", "POSITIVE", "NEUTRAL"]
-        sparkline:
-          type: object
-          additionalProperties: true
-        visibility:
-          type: string
-          enum: ["private", "team", "org"]
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-
-    KPIDefinitionRequest:
-      type: object
-      properties:
-        kpiDefinition:
-          $ref: '#/components/schemas/KPIDefinition'
-
-    KPIListResponse:
-      type: object
-      properties:
-        kpiDefinitions:
-          type: array
-          items:
-            $ref: '#/components/schemas/KPIDefinition'
-        total:
-          type: integer
-        nextOffset:
-          type: integer
-
-    Threshold:
-      type: object
-      properties:
-        color:
-          type: string
-        description:
-          type: string
-        level:
-          type: string
-        operator:
-          type: string
-        value:
-          type: number
-
-    # User schemas
-    User:
-      type: object
-      properties:
-        id:
-          type: string
-        email:
-          type: string
-        username:
-          type: string
-        fullName:
-          type: string
-        globalRole:
-          type: string
-          enum: ["admin", "user"]
-        passwordHash:
-          type: string
-          writeOnly: true
-        mfaEnabled:
-          type: boolean
-        mfaSecret:
-          type: string
-          writeOnly: true
-        status:
-          type: string
-          enum: ["active", "suspended", "pending_verification", "deactivated"]
-        emailVerified:
-          type: boolean
-        avatar:
-          type: string
-        phone:
-          type: string
-        timezone:
-          type: string
-        language:
-          type: string
-        lastLoginAt:
-          type: string
-          format: date-time
-          nullable: true
-        loginCount:
-          type: integer
-        failedLoginCount:
-          type: integer
-        lockedUntil:
-          type: string
-          format: date-time
-          nullable: true
-        metadata:
-          type: object
-          additionalProperties: true
-        tags:
-          type: array
-          items:
-            type: string
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        createdBy:
-          type: string
-        updatedBy:
-          type: string
-
-    CreateUserRequest:
-      type: object
-      required:
-        - email
-      properties:
-        email:
-          type: string
-          format: email
-
-    UpdateUserRequest:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-
-    TimeWindowRequest:
-      type: object
-      required:
-        - startTime
-        - endTime
-      properties:
-        startTime:
-          type: string
-          format: date-time
-          description: RFC3339 timestamp (UTC)
-        endTime:
-          type: string
-          format: date-time
-          description: RFC3339 timestamp (UTC)
-
-
-
+components: {}
