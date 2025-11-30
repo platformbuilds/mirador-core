@@ -261,8 +261,26 @@ jobs:
 
       - name: Ensure Docker Compose
         run: |
-          sudo apt-get update
-          sudo apt-get -y install docker-compose-plugin docker-compose
+          set -euxo pipefail
+          # Try installing via apt first (works when Docker apt repo is present)
+          sudo apt-get update || true
+          if apt-cache policy docker-compose-plugin | grep -q Candidate; then
+            sudo apt-get -y install docker-compose-plugin docker-compose || true
+          else
+            echo "docker-compose-plugin not available from apt; installing Compose CLI plugin from GitHub releases"
+            ARCH_UNAME="$(uname -m)"
+            case "$ARCH_UNAME" in
+              x86_64) ARCH=amd64 ;;
+              aarch64|arm64) ARCH=arm64 ;;
+              *) ARCH="$ARCH_UNAME" ;;
+            esac
+            TAG=$(curl -sL https://api.github.com/repos/docker/compose/releases/latest | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+            mkdir -p /usr/local/lib/docker/cli-plugins
+            curl -fsSL "https://github.com/docker/compose/releases/download/${TAG}/docker-compose-linux-${ARCH}" -o /usr/local/lib/docker/cli-plugins/docker-compose
+            chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+            ln -sf /usr/local/lib/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
+            docker compose version || true
+          fi
 
       - name: Run E2E pipeline
         run: |
