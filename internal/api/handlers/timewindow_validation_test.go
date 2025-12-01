@@ -37,7 +37,7 @@ func (f *fakeUnifiedEngine) HealthCheck(ctx context.Context) (*models.EngineHeal
 func (f *fakeUnifiedEngine) InvalidateCache(ctx context.Context, queryPattern string) error {
 	return nil
 }
-func (f *fakeUnifiedEngine) DetectComponentFailures(ctx context.Context, timeRange models.TimeRange, components []models.FailureComponent) (*models.FailureCorrelationResult, error) {
+func (f *fakeUnifiedEngine) DetectComponentFailures(ctx context.Context, timeRange models.TimeRange, components []models.FailureComponent, services []string) (*models.FailureCorrelationResult, error) {
 	return &models.FailureCorrelationResult{}, nil
 }
 func (f *fakeUnifiedEngine) CorrelateTransactionFailures(ctx context.Context, transactionIDs []string, timeRange models.TimeRange) (*models.FailureCorrelationResult, error) {

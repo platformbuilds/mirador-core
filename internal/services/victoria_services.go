@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -574,12 +576,34 @@ func (s *VictoriaTracesService) SearchTraces(ctx context.Context, request *model
 	}
 	defer resp.Body.Close()
 
+	// If the server returned a non-200 status, include a short snippet
+	// of the response body in the error to aid debugging (often the
+	// VictoriaTraces/Jaeger endpoint returns plain-text errors).
+	if resp.StatusCode != http.StatusOK {
+		snippetBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		snippet := strings.TrimSpace(string(snippetBytes))
+		if snippet == "" {
+			return nil, fmt.Errorf("VictoriaTraces returned status %d", resp.StatusCode)
+		}
+		return nil, fmt.Errorf("VictoriaTraces returned status %d: %q", resp.StatusCode, snippet)
+	}
+
 	var response struct {
 		Data []map[string]interface{} `json:"data"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return nil, fmt.Errorf("failed to parse VictoriaTraces response: %w", err)
+	// Read a limited amount of the response body and attempt to parse it.
+	// If parsing fails, include a short body snippet in the error message.
+	// Allow larger JSON payloads from traces; set a generous cap to avoid
+	// truncation for normal traces responses while protecting memory.
+	const maxBody = 100 * 1024 * 1024 // 100 MiB
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read VictoriaTraces response: %w", err)
+	}
+	if err := json.Unmarshal(bodyBytes, &response); err != nil {
+		snippet := strings.TrimSpace(string(bodyBytes))
+		return nil, fmt.Errorf("failed to parse VictoriaTraces response: %w - body: %q", err, snippet)
 	}
 
 	return &models.TraceSearchResult{
@@ -695,15 +719,25 @@ func (s *VictoriaTracesService) searchTracesSingleEndpoint(ctx context.Context, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("VictoriaTraces returned status %d", resp.StatusCode)
+		snippetBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		snippet := strings.TrimSpace(string(snippetBytes))
+		if snippet == "" {
+			return nil, fmt.Errorf("VictoriaTraces returned status %d", resp.StatusCode)
+		}
+		return nil, fmt.Errorf("VictoriaTraces returned status %d: %q", resp.StatusCode, snippet)
 	}
 
 	var response struct {
 		Data []map[string]interface{} `json:"data"`
 	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return nil, fmt.Errorf("failed to parse VictoriaTraces response: %w", err)
+	const maxBodySingle = 100 * 1024 * 1024 // 100 MiB
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxBodySingle))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read VictoriaTraces response: %w", err)
+	}
+	if err := json.Unmarshal(bodyBytes, &response); err != nil {
+		snippet := strings.TrimSpace(string(bodyBytes))
+		return nil, fmt.Errorf("failed to parse VictoriaTraces response: %w - body: %q", err, snippet)
 	}
 
 	return &models.TraceSearchResult{

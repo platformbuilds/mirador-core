@@ -336,7 +336,6 @@ paths:
         description: |
           Correlation endpoint supports two shapes:
            - Preferred canonical TimeWindowRequest: { "startTime", "endTime" } (camelCase)
-           - Legacy UnifiedQuery appears here for backward compatibility (see examples).
         required: true
         content:
           application/json:
@@ -348,60 +347,627 @@ paths:
                 value:
                   startTime: "2025-11-29T12:00:00Z"
                   endTime: "2025-11-29T12:15:00Z"
-              legacyUnifiedQuery:
-                summary: Legacy UnifiedQuery example (accepted by handler for now)
-                value:
-                  query:
-                    id: "corr-xyz"
-                    type: "correlation"
-                    query: "logs:error AND metrics:high_latency"
       responses:
         '200':
           description: OK
 
   /api/v1/unified/failures/detect:
     post:
-      summary: Detect failures in unified query engine
+      summary: Detect component failures in a time range
+      description: |
+        Detects component failures using error signals (spans with error tag = true) and 
+        anomaly metrics (iforest_is_anomaly = true) within a specified time window. 
+        Returns summarized results with service+component breakdowns, failure IDs, UUIDs, 
+        and metrics summaries. Automatically persists failures to Weaviate storage.
       requestBody:
-        description: Failure detection runs over a TimeRange and optional components list.
+        description: |
+          FailureDetectionRequest with required time_range and optional components/services.
+          Validates that end > start, returns HTTP 400 if invalid.
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - time_range
+              properties:
+                time_range:
+                  type: object
+                  required:
+                    - start
+                    - end
+                  properties:
+                    start:
+                      type: string
+                      format: date-time
+                      description: Start of detection window (RFC3339 UTC)
+                    end:
+                      type: string
+                      format: date-time
+                      description: End of detection window (RFC3339 UTC, must be > start)
+                components:
+                  type: array
+                  items:
+                    type: string
+                  description: Optional list of component names to filter detection
+                  example: ["api-gateway", "kafka", "cassandra"]
+                services:
+                  type: array
+                  items:
+                    type: string
+                  description: Optional list of service names to target for detection
+                  example: ["fintrans-simulator", "payment-service"]
             examples:
               basic:
-                summary: Detect failures for components in a time range
+                summary: Detect all failures in time range
                 value:
                   time_range:
-                    start: "2025-11-29T11:45:00Z"
-                    end:   "2025-11-29T12:15:00Z"
+                    start: "2025-12-01T05:30:00Z"
+                    end:   "2025-12-02T05:30:00Z"
+              filtered:
+                summary: Detect failures for specific components
+                value:
+                  time_range:
+                    start: "2025-12-01T10:00:00Z"
+                    end:   "2025-12-01T11:00:00Z"
                   components: ["api-gateway", "kafka"]
+                  services: ["fintrans-simulator"]
+              invalid:
+                summary: Invalid time window (end <= start)
+                value:
+                  time_range:
+                    start: "2025-12-01T12:00:00Z"
+                    end:   "2025-12-01T11:00:00Z"
       responses:
         '200':
-          description: OK
+          description: Failure detection successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  incidents:
+                    type: array
+                    description: List of detected failure incidents (empty if none found)
+                    items:
+                      type: object
+                      properties:
+                        incident_id:
+                          type: string
+                          example: "incident_kafka_1733022000"
+                        failure_id:
+                          type: string
+                          description: Human-readable identifier (service-component-YYYYMMDD-HHMMSS)
+                          example: "kafka-producer-kafka-20251201-103000"
+                        failure_uuid:
+                          type: string
+                          format: uuid
+                          description: Deterministic UUID v5 for deduplication
+                          example: "e458d90f-f525-58a9-9e92-9f91faa73cf2"
+                        time_range:
+                          type: object
+                          properties:
+                            start:
+                              type: string
+                              format: date-time
+                            end:
+                              type: string
+                              format: date-time
+                        primary_component:
+                          type: string
+                        affected_transaction_ids:
+                          type: array
+                          items:
+                            type: string
+                        services_involved:
+                          type: array
+                          items:
+                            type: string
+                        failure_mode:
+                          type: string
+                        confidence:
+                          type: number
+                          format: float
+                        severity:
+                          type: string
+                          enum: ["low", "medium", "high", "critical"]
+                  summary:
+                    type: object
+                    properties:
+                      total_incidents:
+                        type: integer
+                      time_range:
+                        type: object
+                        properties:
+                          start:
+                            type: string
+                            format: date-time
+                          end:
+                            type: string
+                            format: date-time
+                      service_component_summaries:
+                        type: array
+                        description: Summary for each service+component combination
+                        items:
+                          type: object
+                          properties:
+                            service:
+                              type: string
+                            component:
+                              type: string
+                            failure_id:
+                              type: string
+                              description: Human-readable identifier
+                            failure_uuid:
+                              type: string
+                              format: uuid
+                              description: Unique identifier for Weaviate storage
+                            failure_count:
+                              type: integer
+                            affected_transactions:
+                              type: integer
+                            average_anomaly_score:
+                              type: number
+                              format: float
+                            average_confidence:
+                              type: number
+                              format: float
+                            error_spans_count:
+                              type: integer
+                            error_metrics_count:
+                              type: integer
+                            last_failure_timestamp:
+                              type: string
+                              format: date-time
+                      metrics_error_summary:
+                        type: object
+                        description: Aggregated error and anomaly metrics
+                        properties:
+                          total_error_metrics:
+                            type: integer
+                            description: Count of metrics with status_code=STATUS_CODE_ERROR
+                          total_anomaly_metrics:
+                            type: integer
+                            description: Count of metrics with iforest_is_anomaly=true
+                          error_metrics_by_name:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                metric_name:
+                                  type: string
+                                count:
+                                  type: integer
+                                labels:
+                                  type: object
+                                  additionalProperties:
+                                    type: string
+                                average_value:
+                                  type: number
+                                  format: float
+                                last_value:
+                                  type: number
+                                  format: float
+                                last_timestamp:
+                                  type: string
+                                  format: date-time
+                          anomaly_metrics_by_name:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                metric_name:
+                                  type: string
+                                count:
+                                  type: integer
+                                labels:
+                                  type: object
+                                  additionalProperties:
+                                    type: string
+                                average_value:
+                                  type: number
+                                  format: float
+                                last_value:
+                                  type: number
+                                  format: float
+                                last_timestamp:
+                                  type: string
+                                  format: date-time
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - "Invalid request format"
+                      - "Invalid time window: end time must be after start time"
+              examples:
+                invalidFormat:
+                  value:
+                    error: "Invalid request format"
+                    details: "EOF"
+                invalidTimeWindow:
+                  value:
+                    error: "Invalid time window: end time must be after start time"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  details:
+                    type: string
 
   /api/v1/unified/failures/correlate:
     post:
-      summary: Correlate failures in unified query engine
+      summary: Correlate transaction failures
+      description: |
+        Correlates failures for specific transaction IDs within a time window.
+        Returns failures affecting the specified transactions with correlation details.
       requestBody:
-        description: Correlate transaction failures by list of transaction IDs and time range.
+        description: TransactionFailureCorrelationRequest with transaction IDs and time range
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - transaction_ids
+                - time_range
+              properties:
+                transaction_ids:
+                  type: array
+                  items:
+                    type: string
+                  description: List of transaction IDs to correlate
+                  example: ["tx-001", "tx-002", "tx-003"]
+                time_range:
+                  type: object
+                  required:
+                    - start
+                    - end
+                  properties:
+                    start:
+                      type: string
+                      format: date-time
+                      description: Start of correlation window (RFC3339 UTC)
+                    end:
+                      type: string
+                      format: date-time
+                      description: End of correlation window (RFC3339 UTC)
             examples:
               transactions:
                 summary: Correlate specific transactions
                 value:
-                  transaction_ids: ["txn-123","txn-456"]
+                  transaction_ids: ["txn-123", "txn-456", "txn-789"]
                   time_range:
-                    start: "2025-11-29T11:50:00Z"
-                    end:   "2025-11-29T12:10:00Z"
+                    start: "2025-12-01T10:00:00Z"
+                    end:   "2025-12-01T11:00:00Z"
       responses:
         '200':
-          description: OK
+          description: Transaction correlation successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  incidents:
+                    type: array
+                    items:
+                      type: object
+                  summary:
+                    type: object
+        '400':
+          description: Bad Request - Invalid request format or time window
+        '500':
+          description: Internal Server Error
+
+  /api/v1/unified/failures/list:
+    get:
+      summary: List all failure records from Weaviate storage
+      description: |
+        Returns a paginated list of all stored failure records with minimal information:
+        failure_id, summary (services, components, detector version, confidence, counts),
+        and timestamps. Full details can be retrieved via /failures/get endpoint.
+      parameters:
+        - name: limit
+          in: query
+          description: Number of records per page (default 100, max 1000)
+          required: false
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+        - name: offset
+          in: query
+          description: Pagination offset (default 0)
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: Failure list retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  failures:
+                    type: array
+                    description: List of failure records with minimal info
+                    items:
+                      type: object
+                      properties:
+                        failure_id:
+                          type: string
+                          description: Human-readable identifier
+                          example: "fintrans-simulator-api-gatewaycall-tps-20251201-101045"
+                        summary:
+                          type: object
+                          properties:
+                            services:
+                              type: array
+                              items:
+                                type: string
+                              example: ["fintrans-simulator"]
+                            components:
+                              type: array
+                              items:
+                                type: string
+                              example: ["api-gateway.call_tps"]
+                            detector:
+                              type: string
+                              example: "1.0.0"
+                            confidence:
+                              type: number
+                              format: float
+                            error_count:
+                              type: integer
+                              description: Number of error signals
+                            anomaly_count:
+                              type: integer
+                              description: Number of anomaly signals
+                        timestamps:
+                          type: object
+                          properties:
+                            detection:
+                              type: string
+                              format: date-time
+                              description: When failure was detected
+                            start:
+                              type: string
+                              format: date-time
+                              description: Time window start
+                            end:
+                              type: string
+                              format: date-time
+                              description: Time window end
+                            created_at:
+                              type: string
+                              format: date-time
+                              description: Record creation timestamp
+                            updated_at:
+                              type: string
+                              format: date-time
+                              description: Last update timestamp
+                  count:
+                    type: integer
+                    description: Number of records in this page
+                  total:
+                    type: integer
+                    description: Total number of failure records in storage
+                  limit:
+                    type: integer
+                    description: Page size used
+                  offset:
+                    type: integer
+                    description: Offset used
+              example:
+                failures:
+                  - failure_id: "fintrans-simulator-api-gatewaycall-tps-20251201-101045"
+                    summary:
+                      services: ["fintrans-simulator"]
+                      components: ["api-gateway.call_tps"]
+                      detector: "1.0.0"
+                      confidence: 0.85
+                      error_count: 2
+                      anomaly_count: 0
+                    timestamps:
+                      detection: "2025-12-01T10:20:28Z"
+                      start: "2025-12-01T10:00:00Z"
+                      end: "2025-12-01T10:30:00Z"
+                      created_at: "2025-12-01T10:20:28Z"
+                      updated_at: "2025-12-01T10:20:28Z"
+                count: 1
+                total: 1
+                limit: 100
+                offset: 0
+        '500':
+          description: Internal Server Error - Failure store not available or query failed
+
+  /api/v1/unified/failures/get:
+    get:
+      summary: Get full failure record details including verbose output
+      description: |
+        Retrieves a complete failure record by failure_id, including all raw error signals,
+        raw anomaly signals, and complete metadata. Returns verbose, unprocessed data 
+        suitable for detailed investigation and RCA.
+      parameters:
+        - name: failure_id
+          in: query
+          required: true
+          description: Human-readable failure ID (format service-component-YYYYMMDD-HHMMSS)
+          schema:
+            type: string
+            example: "fintrans-simulator-api-gatewaycall-tps-20251201-101045"
+      responses:
+        '200':
+          description: Full failure record retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  failure:
+                    type: object
+                    properties:
+                      failure_uuid:
+                        type: string
+                        format: uuid
+                        description: Unique identifier (UUID v5)
+                      failure_id:
+                        type: string
+                        description: Human-readable identifier
+                      time_range:
+                        type: object
+                        properties:
+                          start:
+                            type: string
+                            format: date-time
+                          end:
+                            type: string
+                            format: date-time
+                      services:
+                        type: array
+                        items:
+                          type: string
+                      components:
+                        type: array
+                        items:
+                          type: string
+                      raw_error_signals:
+                        type: array
+                        description: All raw error signals (spans with error tag and error metrics)
+                        items:
+                          type: object
+                          properties:
+                            signal_type:
+                              type: string
+                              enum: ["span", "metric"]
+                            metric_name:
+                              type: string
+                              description: Only present for metric signals
+                            service:
+                              type: string
+                            component:
+                              type: string
+                            data:
+                              type: object
+                              additionalProperties: true
+                              description: Raw signal data (trace info, metric values, labels)
+                            timestamp:
+                              type: string
+                              format: date-time
+                      raw_anomaly_signals:
+                        type: array
+                        description: All raw anomaly signals (metrics with iforest_is_anomaly=true)
+                        items:
+                          type: object
+                          properties:
+                            signal_type:
+                              type: string
+                              enum: ["span", "metric"]
+                            metric_name:
+                              type: string
+                            service:
+                              type: string
+                            component:
+                              type: string
+                            data:
+                              type: object
+                              additionalProperties: true
+                            timestamp:
+                              type: string
+                              format: date-time
+                      detection_timestamp:
+                        type: string
+                        format: date-time
+                        description: When the failure was detected
+                      detector_version:
+                        type: string
+                        description: Version of the detection engine
+                      confidence_score:
+                        type: number
+                        format: float
+                        description: Confidence in detection (0-1)
+                      created_at:
+                        type: string
+                        format: date-time
+                      updated_at:
+                        type: string
+                        format: date-time
+        '400':
+          description: Bad Request - failure_id parameter required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "failure_id query parameter is required"
+        '404':
+          description: Not Found - Failure record does not exist
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Failure not found"
+        '500':
+          description: Internal Server Error
+
+  /api/v1/unified/failures/delete:
+    delete:
+      summary: Delete a failure record from storage
+      description: |
+        Deletes a failure record from Weaviate storage by its failure_id.
+        Once deleted, the record cannot be retrieved.
+      parameters:
+        - name: failure_id
+          in: query
+          required: true
+          description: Human-readable failure ID to delete
+          schema:
+            type: string
+            example: "fintrans-simulator-api-gatewaycall-tps-20251201-101045"
+      responses:
+        '200':
+          description: Failure record deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Failure deleted successfully"
+                  failure_id:
+                    type: string
+        '400':
+          description: Bad Request - failure_id parameter required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "failure_id query parameter is required"
+        '500':
+          description: Internal Server Error
 
   /api/v1/unified/metadata:
     get:
@@ -568,6 +1134,327 @@ paths:
 
 components:
   schemas:
+    TimeRange:
+      type: object
+      required:
+        - start
+        - end
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: Start timestamp (RFC3339 UTC)
+        end:
+          type: string
+          format: date-time
+          description: End timestamp (RFC3339 UTC, must be > start)
+
+    MetricSummaryItem:
+      type: object
+      description: Aggregated metrics summary for a single metric name
+      properties:
+        metric_name:
+          type: string
+        count:
+          type: integer
+          description: Number of times this metric appeared
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: Labels associated with this metric
+        average_value:
+          type: number
+          format: float
+          description: Average value across instances
+        last_value:
+          type: number
+          format: float
+          description: Most recent value
+        last_timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of most recent occurrence
+
+    MetricsErrorSummary:
+      type: object
+      description: Aggregated summary of error and anomaly metrics
+      properties:
+        total_error_metrics:
+          type: integer
+          description: Total count of error metrics (status_code=STATUS_CODE_ERROR)
+        total_anomaly_metrics:
+          type: integer
+          description: Total count of anomaly metrics (iforest_is_anomaly=true)
+        error_metrics_by_name:
+          type: array
+          description: Breakdown of error metrics by name
+          items:
+            $ref: '#/components/schemas/MetricSummaryItem'
+        anomaly_metrics_by_name:
+          type: array
+          description: Breakdown of anomaly metrics by name
+          items:
+            $ref: '#/components/schemas/MetricSummaryItem'
+
+    ServiceComponentSummary:
+      type: object
+      description: Failure summary for a specific service+component combination
+      properties:
+        service:
+          type: string
+          description: Service name
+        component:
+          type: string
+          description: Component name
+        failure_id:
+          type: string
+          description: Human-readable identifier (service-component-YYYYMMDD-HHMMSS)
+        failure_uuid:
+          type: string
+          format: uuid
+          description: Deterministic UUID v5 for Weaviate storage and deduplication
+        failure_count:
+          type: integer
+          description: Number of failures detected
+        affected_transactions:
+          type: integer
+          description: Number of affected transactions
+        average_anomaly_score:
+          type: number
+          format: float
+          description: Average anomaly score (0-1)
+        average_confidence:
+          type: number
+          format: float
+          description: Average confidence (0-1)
+        error_spans_count:
+          type: integer
+          description: Number of error spans (with error tag = true)
+        error_metrics_count:
+          type: integer
+          description: Number of error metrics (status_code=STATUS_CODE_ERROR)
+        last_failure_timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the most recent failure
+
+    FailureIncident:
+      type: object
+      description: Individual failure incident record
+      properties:
+        incident_id:
+          type: string
+          description: Legacy incident identifier
+        failure_id:
+          type: string
+          description: Human-readable failure identifier
+        failure_uuid:
+          type: string
+          format: uuid
+          description: Unique UUID v5 for deduplication
+        time_range:
+          $ref: '#/components/schemas/TimeRange'
+        primary_component:
+          type: string
+        affected_transaction_ids:
+          type: array
+          items:
+            type: string
+        services_involved:
+          type: array
+          items:
+            type: string
+        failure_mode:
+          type: string
+          description: Type of failure (e.g., CONNECTION_ERROR, TIMEOUT)
+        confidence:
+          type: number
+          format: float
+          description: Confidence score (0-1)
+        severity:
+          type: string
+          enum: ["low", "medium", "high", "critical"]
+
+    FailureDetectionRequest:
+      type: object
+      required:
+        - time_range
+      properties:
+        time_range:
+          $ref: '#/components/schemas/TimeRange'
+        components:
+          type: array
+          items:
+            type: string
+          description: Optional list of components to filter detection
+        services:
+          type: array
+          items:
+            type: string
+          description: Optional list of services to target
+
+    FailureCorrelationResult:
+      type: object
+      description: Result of failure detection or correlation
+      properties:
+        incidents:
+          type: array
+          description: List of detected incidents (empty array if none)
+          items:
+            $ref: '#/components/schemas/FailureIncident'
+        summary:
+          type: object
+          properties:
+            total_incidents:
+              type: integer
+            time_range:
+              $ref: '#/components/schemas/TimeRange'
+            components_affected:
+              type: object
+              additionalProperties:
+                type: integer
+              description: Count of failures per component
+            services_involved:
+              type: array
+              items:
+                type: string
+            failure_modes:
+              type: object
+              additionalProperties:
+                type: integer
+              description: Count of failures per failure mode
+            average_confidence:
+              type: number
+              format: float
+            anomaly_detected:
+              type: boolean
+            service_component_summaries:
+              type: array
+              items:
+                $ref: '#/components/schemas/ServiceComponentSummary'
+            metrics_error_summary:
+              $ref: '#/components/schemas/MetricsErrorSummary'
+
+    FailureSignal:
+      type: object
+      description: Individual error or anomaly signal in a failure record
+      properties:
+        signal_type:
+          type: string
+          enum: ["span", "metric"]
+          description: Type of signal (span or metric)
+        metric_name:
+          type: string
+          description: Only present for metric signals
+        service:
+          type: string
+        component:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+          description: Raw signal data (trace info, metric values, labels, etc.)
+        timestamp:
+          type: string
+          format: date-time
+
+    FailureRecord:
+      type: object
+      description: Complete failure record stored in Weaviate (verbose)
+      properties:
+        failure_uuid:
+          type: string
+          format: uuid
+          description: Unique identifier (UUID v5)
+        failure_id:
+          type: string
+          description: Human-readable identifier
+        time_range:
+          $ref: '#/components/schemas/TimeRange'
+        services:
+          type: array
+          items:
+            type: string
+          description: Affected services
+        components:
+          type: array
+          items:
+            type: string
+          description: Affected components
+        raw_error_signals:
+          type: array
+          description: All raw error signals (unprocessed)
+          items:
+            $ref: '#/components/schemas/FailureSignal'
+        raw_anomaly_signals:
+          type: array
+          description: All raw anomaly signals (unprocessed)
+          items:
+            $ref: '#/components/schemas/FailureSignal'
+        detection_timestamp:
+          type: string
+          format: date-time
+          description: When the failure was detected
+        detector_version:
+          type: string
+          description: Version of detection engine
+        confidence_score:
+          type: number
+          format: float
+          description: Confidence in detection (0-1)
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FailureListItem:
+      type: object
+      description: Minimal failure record in list response
+      properties:
+        failure_id:
+          type: string
+        summary:
+          type: object
+          properties:
+            services:
+              type: array
+              items:
+                type: string
+            components:
+              type: array
+              items:
+                type: string
+            detector:
+              type: string
+            confidence:
+              type: number
+              format: float
+            error_count:
+              type: integer
+            anomaly_count:
+              type: integer
+        timestamps:
+          type: object
+          properties:
+            detection:
+              type: string
+              format: date-time
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
     DeleteStoreResult:
       type: object
       properties:

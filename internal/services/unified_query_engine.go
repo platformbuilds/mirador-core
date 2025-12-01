@@ -41,7 +41,8 @@ type UnifiedQueryEngine interface {
 	InvalidateCache(ctx context.Context, queryPattern string) error
 
 	// DetectComponentFailures detects component failures in the financial transaction system
-	DetectComponentFailures(ctx context.Context, timeRange models.TimeRange, components []models.FailureComponent) (*models.FailureCorrelationResult, error)
+	// Accepts an optional list of service names to constrain trace queries.
+	DetectComponentFailures(ctx context.Context, timeRange models.TimeRange, components []models.FailureComponent, services []string) (*models.FailureCorrelationResult, error)
 
 	// CorrelateTransactionFailures correlates failures for specific transaction IDs
 	CorrelateTransactionFailures(ctx context.Context, transactionIDs []string, timeRange models.TimeRange) (*models.FailureCorrelationResult, error)
@@ -1498,12 +1499,12 @@ func (u *UnifiedQueryEngineImpl) generateCachePatternsForResult(result *models.U
 }
 
 // DetectComponentFailures detects component failures in the financial transaction system
-func (u *UnifiedQueryEngineImpl) DetectComponentFailures(ctx context.Context, timeRange models.TimeRange, components []models.FailureComponent) (*models.FailureCorrelationResult, error) {
+func (u *UnifiedQueryEngineImpl) DetectComponentFailures(ctx context.Context, timeRange models.TimeRange, components []models.FailureComponent, services []string) (*models.FailureCorrelationResult, error) {
 	if u.correlationEngine == nil {
 		return nil, fmt.Errorf("correlation engine not configured")
 	}
 
-	return u.correlationEngine.DetectComponentFailures(ctx, timeRange, components)
+	return u.correlationEngine.DetectComponentFailures(ctx, timeRange, components, services)
 }
 
 // CorrelateTransactionFailures correlates failures for specific transaction IDs

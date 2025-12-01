@@ -22,7 +22,7 @@ type correlationAnomalyProvider struct {
 func (p *correlationAnomalyProvider) GetAnomalies(ctx context.Context, startTime time.Time, endTime time.Time, servicesFilter []string) ([]*rca.AnomalyEvent, error) {
 	tr := models.TimeRange{Start: startTime, End: endTime}
 
-	result, err := p.ce.DetectComponentFailures(ctx, tr, nil)
+	result, err := p.ce.DetectComponentFailures(ctx, tr, nil, nil)
 	if err != nil {
 		if p.logger != nil {
 			p.logger.Warn("correlationAnomalyProvider: DetectComponentFailures failed", "error", err)

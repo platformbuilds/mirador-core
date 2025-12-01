@@ -2,6 +2,39 @@ package weavstore
 
 import "time"
 
+// FailureSignal represents a single error or anomaly signal in a failure record
+type FailureSignal struct {
+	SignalType string         `json:"signal_type"` // "span" or "metric"
+	MetricName string         `json:"metric_name"` // Only for metric signals
+	Service    string         `json:"service"`
+	Component  string         `json:"component"`
+	Data       map[string]any `json:"data"` // Raw signal data
+	Timestamp  time.Time      `json:"timestamp"`
+}
+
+// TimeRange represents a time window
+type TimeRange struct {
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
+}
+
+// FailureRecord represents a complete failure detection record for Weaviate storage.
+// This contains verbose, unprocessed raw signals for historical reference and analysis.
+type FailureRecord struct {
+	FailureUUID        string          `json:"failure_uuid"`        // Unique identifier (UUID v5)
+	FailureID          string          `json:"failure_id"`          // Human-readable identifier
+	TimeRange          TimeRange       `json:"time_range"`          // Detection time window
+	Services           []string        `json:"services"`            // Affected services
+	Components         []string        `json:"components"`          // Affected components
+	RawErrorSignals    []FailureSignal `json:"raw_error_signals"`   // Unprocessed error signals
+	RawAnomalySignals  []FailureSignal `json:"raw_anomaly_signals"` // Unprocessed anomaly signals
+	DetectionTimestamp time.Time       `json:"detection_timestamp"` // When detection occurred
+	DetectorVersion    string          `json:"detector_version"`    // Version of detection engine
+	ConfidenceScore    float64         `json:"confidence_score"`    // Confidence in detection (0-1)
+	CreatedAt          time.Time       `json:"created_at"`          // Record creation time
+	UpdatedAt          time.Time       `json:"updated_at"`          // Last update time
+}
+
 // KPIDefinition represents a KPI definition in Weaviate.
 // This is a local copy to avoid direct model imports (depguard compliance).
 type KPIDefinition struct {

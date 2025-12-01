@@ -324,6 +324,8 @@ const (
 // FailureIncident represents a correlated failure incident
 type FailureIncident struct {
 	IncidentID             string           `json:"incident_id"`
+	FailureID              string           `json:"failure_id"`   // Human-readable identifier (e.g., "kafka-failure-1733022000")
+	FailureUUID            string           `json:"failure_uuid"` // Unique UUID v5 identifier
 	TimeRange              TimeRange        `json:"time_range"`
 	PrimaryComponent       FailureComponent `json:"primary_component"`
 	AffectedTransactionIDs []string         `json:"affected_transaction_ids"`
@@ -351,21 +353,57 @@ type FailureCorrelationResult struct {
 	Summary   FailureSummary    `json:"summary"`
 }
 
+// ServiceComponentSummary provides a summary for a specific service+component combination
+type ServiceComponentSummary struct {
+	Service              string    `json:"service"`
+	Component            string    `json:"component"`
+	FailureCount         int       `json:"failure_count"`
+	AffectedTransactions int       `json:"affected_transactions"`
+	AverageAnomalyScore  float64   `json:"average_anomaly_score"`
+	AverageConfidence    float64   `json:"average_confidence"`
+	ErrorSpansCount      int       `json:"error_spans_count"`
+	ErrorMetricsCount    int       `json:"error_metrics_count"`
+	LastFailureTimestamp time.Time `json:"last_failure_timestamp"`
+	FailureID            string    `json:"failure_id"`   // User-readable identifier
+	FailureUUID          string    `json:"failure_uuid"` // UUID v5 for Weaviate storage
+}
+
+// MetricSummaryItem represents a single metric in the error metrics summary
+type MetricSummaryItem struct {
+	MetricName    string                 `json:"metric_name"`
+	Count         int                    `json:"count"`
+	Labels        map[string]interface{} `json:"labels"`
+	AverageValue  float64                `json:"average_value"`
+	LastValue     float64                `json:"last_value"`
+	LastTimestamp time.Time              `json:"last_timestamp"`
+}
+
+// MetricsErrorSummary summarizes all error metrics (status_code=STATUS_CODE_ERROR)
+type MetricsErrorSummary struct {
+	TotalErrorMetrics    int                 `json:"total_error_metrics"`
+	TotalAnomalyMetrics  int                 `json:"total_anomaly_metrics"`
+	ErrorMetricsByName   []MetricSummaryItem `json:"error_metrics_by_name"`
+	AnomalyMetricsByName []MetricSummaryItem `json:"anomaly_metrics_by_name"`
+}
+
 // FailureSummary provides summary statistics for failure incidents
 type FailureSummary struct {
-	TotalIncidents     int                      `json:"total_incidents"`
-	TimeRange          TimeRange                `json:"time_range"`
-	ComponentsAffected map[FailureComponent]int `json:"components_affected"`
-	ServicesInvolved   []string                 `json:"services_involved"`
-	FailureModes       map[string]int           `json:"failure_modes"`
-	AverageConfidence  float64                  `json:"average_confidence"`
-	AnomalyDetected    bool                     `json:"anomaly_detected"`
+	TotalIncidents            int                       `json:"total_incidents"`
+	TimeRange                 TimeRange                 `json:"time_range"`
+	ComponentsAffected        map[FailureComponent]int  `json:"components_affected"`
+	ServicesInvolved          []string                  `json:"services_involved"`
+	FailureModes              map[string]int            `json:"failure_modes"`
+	AverageConfidence         float64                   `json:"average_confidence"`
+	AnomalyDetected           bool                      `json:"anomaly_detected"`
+	ServiceComponentSummaries []ServiceComponentSummary `json:"service_component_summaries"`
+	MetricsErrorSummary       *MetricsErrorSummary      `json:"metrics_error_summary,omitempty"`
 }
 
 // FailureDetectionRequest represents a request to detect component failures
 type FailureDetectionRequest struct {
 	TimeRange  TimeRange          `json:"time_range"`
 	Components []FailureComponent `json:"components,omitempty"` // Optional: filter by specific components
+	Services   []string           `json:"services,omitempty"`   // Optional: list of services to target for detection
 }
 
 // TransactionFailureCorrelationRequest represents a request to correlate failures for specific transactions
