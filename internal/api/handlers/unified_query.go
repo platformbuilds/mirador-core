@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -686,15 +685,15 @@ func (h *UnifiedQueryHandler) HandleFailureDetection(c *gin.Context) {
 					"service", svc.Service,
 					"component", svc.Component,
 					"failure_uuid", svc.FailureUUID)
-				
+
 				// Extract signals relevant to this service+component
 				var errorSignals []weavstore.FailureSignal
 				var anomalySignals []weavstore.FailureSignal
-				
+
 				// Populate signals from result if available
 				// Convert models.FailureSignal to weavstore.FailureSignal
 				// Note: This stores the raw verbose data from the correlation result
-				
+
 				// Create a failure record for each service+component combination with full details
 				// Note: Services and Components are stored as single strings, not arrays
 				// (Weaviate schema defines them as text, not text[])
@@ -702,20 +701,20 @@ func (h *UnifiedQueryHandler) HandleFailureDetection(c *gin.Context) {
 					FailureUUID:        svc.FailureUUID,
 					FailureID:          svc.FailureID,
 					TimeRange:          weavstore.TimeRange{Start: req.TimeRange.Start, End: req.TimeRange.End},
-					Services:           []string{svc.Service},     // Single service
-					Components:         []string{svc.Component},   // Single component
-					RawErrorSignals:    errorSignals,              // Store all error signals
-					RawAnomalySignals:  anomalySignals,            // Store all anomaly signals
+					Services:           []string{svc.Service},   // Single service
+					Components:         []string{svc.Component}, // Single component
+					RawErrorSignals:    errorSignals,            // Store all error signals
+					RawAnomalySignals:  anomalySignals,          // Store all anomaly signals
 					DetectionTimestamp: time.Now(),
-					DetectorVersion:    "1.0.0",                   // TODO: Get from config/version
+					DetectorVersion:    "1.0.0", // TODO: Get from config/version
 					ConfidenceScore:    svc.AverageConfidence,
 					CreatedAt:          time.Now(),
 					UpdatedAt:          time.Now(),
 				}
 
 				if _, _, err := h.failureStore.CreateOrUpdateFailure(c.Request.Context(), failureRecord); err != nil {
-					h.logger.Warn("Failed to persist failure record", 
-						"failure_id", svc.FailureID, 
+					h.logger.Warn("Failed to persist failure record",
+						"failure_id", svc.FailureID,
 						"service", svc.Service,
 						"component", svc.Component,
 						"error", err)
@@ -773,18 +772,27 @@ func (h *UnifiedQueryHandler) HandleGetFailures(c *gin.Context) {
 		return
 	}
 
-	// Get query parameters for pagination
+	// Parse JSON body for pagination parameters
+	var req struct {
+		Limit  int `json:"limit" binding:"omitempty"`
+		Offset int `json:"offset" binding:"omitempty"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Failed to parse list failures request", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+
 	limit := 100
 	offset := 0
-	if l := c.Query("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
-			limit = parsed
-		}
+	if req.Limit > 0 {
+		limit = req.Limit
 	}
-	if o := c.Query("offset"); o != "" {
-		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
-			offset = parsed
-		}
+	if req.Offset >= 0 {
+		offset = req.Offset
 	}
 
 	failures, total, err := h.failureStore.ListFailures(c.Request.Context(), limit, offset)
@@ -840,19 +848,23 @@ func (h *UnifiedQueryHandler) HandleGetFailureDetail(c *gin.Context) {
 		return
 	}
 
-	// Get failure_id from query parameter (human-readable ID like "fintrans-simulator-api-gatewaycall-tps-20251201-121215")
-	failureID := c.Query("failure_id")
-	if failureID == "" {
+	// Parse JSON body for failure_id
+	var req struct {
+		FailureID string `json:"failure_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Failed to parse failure detail request", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "failure_id query parameter is required",
+			"error":   "Invalid request format",
+			"details": err.Error(),
 		})
 		return
 	}
 
 	// Search by human-readable failure_id (using GetFailureByID method)
-	failure, err := h.failureStore.GetFailureByID(c.Request.Context(), failureID)
+	failure, err := h.failureStore.GetFailureByID(c.Request.Context(), req.FailureID)
 	if err != nil {
-		h.logger.Error("Failed to retrieve failure detail", "failure_id", failureID, "error", err)
+		h.logger.Error("Failed to retrieve failure detail", "failure_id", req.FailureID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to retrieve failure",
 			"details": err.Error(),
@@ -883,18 +895,22 @@ func (h *UnifiedQueryHandler) HandleDeleteFailure(c *gin.Context) {
 		return
 	}
 
-	// Get failure_id from query parameter (human-readable ID)
-	failureID := c.Query("failure_id")
-	if failureID == "" {
+	// Parse JSON body for failure_id
+	var req struct {
+		FailureID string `json:"failure_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Failed to parse delete failure request", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "failure_id query parameter is required",
+			"error":   "Invalid request format",
+			"details": err.Error(),
 		})
 		return
 	}
 
 	// Delete by human-readable failure_id (using DeleteFailureByID method)
-	if err := h.failureStore.DeleteFailureByID(c.Request.Context(), failureID); err != nil {
-		h.logger.Error("Failed to delete failure", "failure_id", failureID, "error", err)
+	if err := h.failureStore.DeleteFailureByID(c.Request.Context(), req.FailureID); err != nil {
+		h.logger.Error("Failed to delete failure", "failure_id", req.FailureID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to delete failure",
 			"details": err.Error(),
@@ -904,7 +920,7 @@ func (h *UnifiedQueryHandler) HandleDeleteFailure(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":    "Failure deleted successfully",
-		"failure_id": failureID,
+		"failure_id": req.FailureID,
 	})
 }
 
