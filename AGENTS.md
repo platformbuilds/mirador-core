@@ -128,12 +128,26 @@ Mirador Core uses a comprehensive testing strategy:
 
 ### 2.1 Standard Make Targets
 
-Primary targets:
-
+For any local code testing, always use 
 ```bash
-make localdev-test-all-api     # Full checks: code quality + API tests
-make localdev-test-api-only    # API tests only, skipping code quality
+make localdev-up
 ```
+
+To tear down the local build completely, use 
+```bash
+make localdev-down
+```
+
+To send otel synthetic testing data, use the command:
+```bash
+cd /Users/aarvee/repos/github/public/miradorstack/otel-fintrans-simulator && ./bin/otel-fintrans-simulator --config ./simulator-config.yaml --data-interval 1s --failure-mode mixed --transactions 50000 --concurrency 2000
+```
+
+To Ship KPI Sample data, use
+```bash
+make localdev-seed-data
+```
+
 
 **Rules:**
 
