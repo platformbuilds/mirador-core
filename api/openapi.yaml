@@ -670,30 +670,41 @@ paths:
           description: Internal Server Error
 
   /api/v1/unified/failures/list:
-    get:
+    post:
       summary: List all failure records from Weaviate storage
       description: |
         Returns a paginated list of all stored failure records with minimal information:
         failure_id, summary (services, components, detector version, confidence, counts),
         and timestamps. Full details can be retrieved via /failures/get endpoint.
-      parameters:
-        - name: limit
-          in: query
-          description: Number of records per page (default 100, max 1000)
-          required: false
-          schema:
-            type: integer
-            default: 100
-            minimum: 1
-            maximum: 1000
-        - name: offset
-          in: query
-          description: Pagination offset (default 0)
-          required: false
-          schema:
-            type: integer
-            default: 0
-            minimum: 0
+      requestBody:
+        description: Pagination parameters (all optional)
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                limit:
+                  type: integer
+                  description: Number of records per page (default 100, max 1000)
+                  default: 100
+                  minimum: 1
+                  maximum: 1000
+                offset:
+                  type: integer
+                  description: Pagination offset (default 0)
+                  default: 0
+                  minimum: 0
+            examples:
+              list_all:
+                summary: List all failures with defaults
+                value:
+                  limit: 100
+                  offset: 0
+              list_with_pagination:
+                summary: List with custom pagination
+                value:
+                  limit: 50
+                  offset: 100
       responses:
         '200':
           description: Failure list retrieved successfully
@@ -796,20 +807,31 @@ paths:
           description: Internal Server Error - Failure store not available or query failed
 
   /api/v1/unified/failures/get:
-    get:
+    post:
       summary: Get full failure record details including verbose output
       description: |
         Retrieves a complete failure record by failure_id, including all raw error signals,
         raw anomaly signals, and complete metadata. Returns verbose, unprocessed data 
         suitable for detailed investigation and RCA.
-      parameters:
-        - name: failure_id
-          in: query
-          required: true
-          description: Human-readable failure ID (format service-component-YYYYMMDD-HHMMSS)
-          schema:
-            type: string
-            example: "fintrans-simulator-api-gatewaycall-tps-20251201-101045"
+      requestBody:
+        description: Request parameters for retrieving failure details
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - failure_id
+              properties:
+                failure_id:
+                  type: string
+                  description: Human-readable failure ID (format service-component-YYYYMMDD-HHMMSS)
+                  example: "fintrans-simulator-api-gatewaycall-tps-20251201-101045"
+            examples:
+              retrieve_failure:
+                summary: Retrieve failure by ID
+                value:
+                  failure_id: "fintrans-simulator-api-gatewaycall-tps-20251201-101045"
       responses:
         '200':
           description: Full failure record retrieved successfully
@@ -915,7 +937,7 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: "failure_id query parameter is required"
+                    example: "Invalid request format"
         '404':
           description: Not Found - Failure record does not exist
           content:
@@ -930,19 +952,30 @@ paths:
           description: Internal Server Error
 
   /api/v1/unified/failures/delete:
-    delete:
+    post:
       summary: Delete a failure record from storage
       description: |
         Deletes a failure record from Weaviate storage by its failure_id.
         Once deleted, the record cannot be retrieved.
-      parameters:
-        - name: failure_id
-          in: query
-          required: true
-          description: Human-readable failure ID to delete
-          schema:
-            type: string
-            example: "fintrans-simulator-api-gatewaycall-tps-20251201-101045"
+      requestBody:
+        description: Request parameters for deleting a failure
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - failure_id
+              properties:
+                failure_id:
+                  type: string
+                  description: Human-readable failure ID to delete
+                  example: "fintrans-simulator-api-gatewaycall-tps-20251201-101045"
+            examples:
+              delete_failure:
+                summary: Delete failure by ID
+                value:
+                  failure_id: "fintrans-simulator-api-gatewaycall-tps-20251201-101045"
       responses:
         '200':
           description: Failure record deleted successfully
