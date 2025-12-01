@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
+	"github.com/platformbuilds/mirador-core/internal/weavstore"
 	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
@@ -24,6 +26,7 @@ type UnifiedQueryHandler struct {
 	logger        logging.Logger
 	kpiRepo       repo.KPIRepo
 	engineCfg     config.EngineConfig
+	failureStore  *weavstore.WeaviateFailureStore
 }
 
 func NewUnifiedQueryHandler(unifiedEngine services.UnifiedQueryEngine, logger corelogger.Logger, kpiRepo repo.KPIRepo, cfg config.EngineConfig) *UnifiedQueryHandler {
@@ -33,6 +36,11 @@ func NewUnifiedQueryHandler(unifiedEngine services.UnifiedQueryEngine, logger co
 		kpiRepo:       kpiRepo,
 		engineCfg:     cfg,
 	}
+}
+
+// SetFailureStore sets the weaviate failure store for the handler
+func (h *UnifiedQueryHandler) SetFailureStore(store *weavstore.WeaviateFailureStore) {
+	h.failureStore = store
 }
 
 // bindUnifiedQuery is tolerant: it accepts either a wrapped payload
@@ -647,8 +655,17 @@ func (h *UnifiedQueryHandler) HandleFailureDetection(c *gin.Context) {
 		return
 	}
 
-	// Execute failure detection
-	result, err := h.unifiedEngine.DetectComponentFailures(c.Request.Context(), req.TimeRange, req.Components)
+	// Validate time window: end must be after start
+	if !req.TimeRange.End.After(req.TimeRange.Start) {
+		h.logger.Warn("Invalid time window", "start", req.TimeRange.Start, "end", req.TimeRange.End)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid time window: end time must be after start time",
+		})
+		return
+	}
+
+	// Execute failure detection (forward optional services list)
+	result, err := h.unifiedEngine.DetectComponentFailures(c.Request.Context(), req.TimeRange, req.Components, req.Services)
 	if err != nil {
 		h.logger.Error("Failed to detect component failures", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -656,6 +673,65 @@ func (h *UnifiedQueryHandler) HandleFailureDetection(c *gin.Context) {
 			"details": err.Error(),
 		})
 		return
+	}
+
+	// Persist failures to store if available
+	if h.failureStore != nil {
+		h.logger.Info("Failure store is available, attempting to persist failures",
+			"service_component_count", len(result.Summary.ServiceComponentSummaries))
+		if result.Summary.ServiceComponentSummaries != nil && len(result.Summary.ServiceComponentSummaries) > 0 {
+			for _, svc := range result.Summary.ServiceComponentSummaries {
+				h.logger.Info("Persisting failure record",
+					"failure_id", svc.FailureID,
+					"service", svc.Service,
+					"component", svc.Component,
+					"failure_uuid", svc.FailureUUID)
+				
+				// Extract signals relevant to this service+component
+				var errorSignals []weavstore.FailureSignal
+				var anomalySignals []weavstore.FailureSignal
+				
+				// Populate signals from result if available
+				// Convert models.FailureSignal to weavstore.FailureSignal
+				// Note: This stores the raw verbose data from the correlation result
+				
+				// Create a failure record for each service+component combination with full details
+				// Note: Services and Components are stored as single strings, not arrays
+				// (Weaviate schema defines them as text, not text[])
+				failureRecord := &weavstore.FailureRecord{
+					FailureUUID:        svc.FailureUUID,
+					FailureID:          svc.FailureID,
+					TimeRange:          weavstore.TimeRange{Start: req.TimeRange.Start, End: req.TimeRange.End},
+					Services:           []string{svc.Service},     // Single service
+					Components:         []string{svc.Component},   // Single component
+					RawErrorSignals:    errorSignals,              // Store all error signals
+					RawAnomalySignals:  anomalySignals,            // Store all anomaly signals
+					DetectionTimestamp: time.Now(),
+					DetectorVersion:    "1.0.0",                   // TODO: Get from config/version
+					ConfidenceScore:    svc.AverageConfidence,
+					CreatedAt:          time.Now(),
+					UpdatedAt:          time.Now(),
+				}
+
+				if _, _, err := h.failureStore.CreateOrUpdateFailure(c.Request.Context(), failureRecord); err != nil {
+					h.logger.Warn("Failed to persist failure record", 
+						"failure_id", svc.FailureID, 
+						"service", svc.Service,
+						"component", svc.Component,
+						"error", err)
+					// Don't fail the request if storage fails - still return the detected results
+				} else {
+					h.logger.Info("Successfully persisted failure record",
+						"failure_id", svc.FailureID,
+						"service", svc.Service,
+						"component", svc.Component)
+				}
+			}
+		} else {
+			h.logger.Warn("No service component summaries to persist")
+		}
+	} else {
+		h.logger.Warn("Failure store is nil - not persisting failures")
 	}
 
 	c.JSON(http.StatusOK, result)
@@ -685,4 +761,228 @@ func (h *UnifiedQueryHandler) HandleTransactionFailureCorrelation(c *gin.Context
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// HandleGetFailures returns paginated list of failures with minimal info (id, summary, timestamps)
+func (h *UnifiedQueryHandler) HandleGetFailures(c *gin.Context) {
+	if h.failureStore == nil {
+		h.logger.Error("Failure store not configured")
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Failure store not available",
+		})
+		return
+	}
+
+	// Get query parameters for pagination
+	limit := 100
+	offset := 0
+	if l := c.Query("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	if o := c.Query("offset"); o != "" {
+		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+
+	failures, total, err := h.failureStore.ListFailures(c.Request.Context(), limit, offset)
+	if err != nil {
+		h.logger.Error("Failed to retrieve failures from store", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to retrieve failures",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Map to minimal summary response
+	summaries := make([]gin.H, 0, len(failures))
+	for _, f := range failures {
+		summary := gin.H{
+			"failure_id": f.FailureID,
+			"summary": gin.H{
+				"services":      f.Services,
+				"components":    f.Components,
+				"detector":      f.DetectorVersion,
+				"confidence":    f.ConfidenceScore,
+				"error_count":   len(f.RawErrorSignals),
+				"anomaly_count": len(f.RawAnomalySignals),
+			},
+			"timestamps": gin.H{
+				"detection":  f.DetectionTimestamp,
+				"start":      f.TimeRange.Start,
+				"end":        f.TimeRange.End,
+				"created_at": f.CreatedAt,
+				"updated_at": f.UpdatedAt,
+			},
+		}
+		summaries = append(summaries, summary)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"failures": summaries,
+		"count":    len(summaries),
+		"total":    total,
+		"limit":    limit,
+		"offset":   offset,
+	})
+}
+
+// HandleGetFailureDetail returns the full failure record including verbose output
+func (h *UnifiedQueryHandler) HandleGetFailureDetail(c *gin.Context) {
+	if h.failureStore == nil {
+		h.logger.Error("Failure store not configured")
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Failure store not available",
+		})
+		return
+	}
+
+	// Get failure_id from query parameter (human-readable ID like "fintrans-simulator-api-gatewaycall-tps-20251201-121215")
+	failureID := c.Query("failure_id")
+	if failureID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "failure_id query parameter is required",
+		})
+		return
+	}
+
+	// Search by human-readable failure_id (using GetFailureByID method)
+	failure, err := h.failureStore.GetFailureByID(c.Request.Context(), failureID)
+	if err != nil {
+		h.logger.Error("Failed to retrieve failure detail", "failure_id", failureID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to retrieve failure",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	if failure == nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Failure not found",
+		})
+		return
+	}
+
+	// Return the full failure record with verbose output
+	c.JSON(http.StatusOK, gin.H{
+		"failure": failure,
+	})
+}
+
+// HandleDeleteFailure deletes a failure record by its ID
+func (h *UnifiedQueryHandler) HandleDeleteFailure(c *gin.Context) {
+	if h.failureStore == nil {
+		h.logger.Error("Failure store not configured")
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Failure store not available",
+		})
+		return
+	}
+
+	// Get failure_id from query parameter (human-readable ID)
+	failureID := c.Query("failure_id")
+	if failureID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "failure_id query parameter is required",
+		})
+		return
+	}
+
+	// Delete by human-readable failure_id (using DeleteFailureByID method)
+	if err := h.failureStore.DeleteFailureByID(c.Request.Context(), failureID); err != nil {
+		h.logger.Error("Failed to delete failure", "failure_id", failureID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to delete failure",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Failure deleted successfully",
+		"failure_id": failureID,
+	})
+}
+
+// HandleStoreFailure stores a failure record in the failure store (deprecated - use POST /failures/store)
+func (h *UnifiedQueryHandler) HandleStoreFailure(c *gin.Context) {
+	if h.failureStore == nil {
+		h.logger.Error("Failure store not configured")
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Failure store not available",
+		})
+		return
+	}
+
+	var failure weavstore.FailureRecord
+	if err := c.ShouldBindJSON(&failure); err != nil {
+		h.logger.Error("Failed to bind failure record", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	result, status, err := h.failureStore.CreateOrUpdateFailure(c.Request.Context(), &failure)
+	if err != nil {
+		h.logger.Error("Failed to store failure record", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to store failure",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	statusCode := http.StatusCreated
+	if status == "updated" || status == "no-change" {
+		statusCode = http.StatusOK
+	}
+
+	c.JSON(statusCode, gin.H{
+		"message": "Failure record stored successfully",
+		"status":  status,
+		"failure": result,
+	})
+}
+
+// HandleClearFailures clears all failure records from the failure store (deprecated)
+func (h *UnifiedQueryHandler) HandleClearFailures(c *gin.Context) {
+	if h.failureStore == nil {
+		h.logger.Error("Failure store not configured")
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Failure store not available",
+		})
+		return
+	}
+
+	// Get all failures and delete them one by one
+	failures, _, err := h.failureStore.ListFailures(c.Request.Context(), 10000, 0)
+	if err != nil {
+		h.logger.Error("Failed to list failures for clearing", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to clear failures",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	deleted := 0
+	for _, failure := range failures {
+		if err := h.failureStore.DeleteFailure(c.Request.Context(), failure.FailureUUID); err != nil {
+			h.logger.Warn("Failed to delete failure record", "uuid", failure.FailureUUID, "error", err)
+		} else {
+			deleted++
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Failure records cleared successfully",
+		"deleted": deleted,
+		"total":   len(failures),
+	})
 }

@@ -46,7 +46,7 @@ func (m *mockResolvedUnifiedEngine) HealthCheck(ctx context.Context) (*models.En
 func (m *mockResolvedUnifiedEngine) InvalidateCache(ctx context.Context, queryPattern string) error {
 	return nil
 }
-func (m *mockResolvedUnifiedEngine) DetectComponentFailures(ctx context.Context, timeRange models.TimeRange, components []models.FailureComponent) (*models.FailureCorrelationResult, error) {
+func (m *mockResolvedUnifiedEngine) DetectComponentFailures(ctx context.Context, timeRange models.TimeRange, components []models.FailureComponent, services []string) (*models.FailureCorrelationResult, error) {
 	return &models.FailureCorrelationResult{}, nil
 }
 func (m *mockResolvedUnifiedEngine) CorrelateTransactionFailures(ctx context.Context, transactionIDs []string, timeRange models.TimeRange) (*models.FailureCorrelationResult, error) {

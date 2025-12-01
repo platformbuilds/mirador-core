@@ -21,7 +21,7 @@ func TestCorrelationEngine_DetectComponentFailures(t *testing.T) {
 	}
 
 	// Test with no services (should return empty result)
-	result, err := engine.DetectComponentFailures(context.Background(), timeRange, nil)
+	result, err := engine.DetectComponentFailures(context.Background(), timeRange, nil, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Empty(t, result.Incidents)

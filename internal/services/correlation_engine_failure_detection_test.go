@@ -130,7 +130,7 @@ func TestDetectComponentFailures_KafkaFailure(t *testing.T) {
 		End:   now.Add(5 * time.Minute),
 	}
 
-	result, err := engine.DetectComponentFailures(ctx, timeRange, []models.FailureComponent{models.FailureComponentKafka})
+	result, err := engine.DetectComponentFailures(ctx, timeRange, []models.FailureComponent{models.FailureComponentKafka}, nil)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -140,6 +140,30 @@ func TestDetectComponentFailures_KafkaFailure(t *testing.T) {
 	}
 
 	t.Logf("Found %d incidents", len(result.Incidents))
+
+	// Verify that incidents have the required fields for failure management
+	if len(result.Incidents) > 0 {
+		incident := result.Incidents[0]
+
+		// Check that failure_id is populated
+		if incident.FailureID == "" {
+			t.Error("Expected failure_id to be populated, but got empty string")
+		} else {
+			t.Logf("Incident has failure_id: %s", incident.FailureID)
+		}
+
+		// Check that failure_uuid is populated and valid UUID format
+		if incident.FailureUUID == "" {
+			t.Error("Expected failure_uuid to be populated, but got empty string")
+		} else {
+			t.Logf("Incident has failure_uuid: %s", incident.FailureUUID)
+		}
+
+		// Verify incidents array is not nil (should be empty array if no incidents)
+		if result.Incidents == nil {
+			t.Error("Expected incidents array to be non-nil")
+		}
+	}
 }
 
 func TestFailureSignalGrouping(t *testing.T) {

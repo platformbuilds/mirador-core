@@ -48,6 +48,7 @@ type Server struct {
 	router                      *gin.Engine
 	httpServer                  *http.Server
 	tracerProvider              *tracing.TracerProvider
+	weaviateClient              *wv.Client
 }
 
 func NewServer(
@@ -138,7 +139,8 @@ func (s *Server) initTracing(cfg *config.Config, log logger.Logger) *tracing.Tra
 }
 
 // initWeaviateStore initializes a Weaviate client/store if enabled and returns
-// the store and the zap logger used for it.
+// the store and the zap logger used for it. It also stores the client in the Server
+// for later use (e.g., in failure store initialization).
 func (s *Server) initWeaviateStore(cfg *config.Config, log logger.Logger) (*weavstore.WeaviateKPIStore, *zap.Logger) {
 	if !cfg.Weaviate.Enabled {
 		return nil, zap.NewNop()
@@ -149,6 +151,7 @@ func (s *Server) initWeaviateStore(cfg *config.Config, log logger.Logger) (*weav
 	}
 	conf := wv.Config{Scheme: cfg.Weaviate.Scheme, Host: hostPort}
 	if client, err := wv.NewClient(conf); err == nil {
+		s.weaviateClient = client
 		zapLogger := logging.ExtractZapLogger(log)
 		store := weavstore.NewWeaviateKPIStore(client, zapLogger)
 		return store, zapLogger
@@ -289,6 +292,22 @@ func (s *Server) setupRoutes() {
 	// Create RCA engine for endpoints (wire correlation engine for TimeRange API)
 	rcaEngineForEndpoints := rca.NewRCAEngine(candidateCauseServiceForEngine, rcaServiceGraphForEngine, s.logger, s.config.Engine, correlationEngineForProvider)
 
+	// KPI APIs (primary interface for schema definitions)
+	if s.kpiRepo != nil {
+		kpiHandler := handlers.NewKPIHandler(s.config, s.kpiRepo, s.cache, s.logger)
+		if kpiHandler != nil {
+			// KPI Definitions API
+			kpiDefsGroup := v1.Group("/kpi/defs")
+			{
+				kpiDefsGroup.GET("", kpiHandler.GetKPIDefinitions)
+				kpiDefsGroup.POST("", kpiHandler.CreateOrUpdateKPIDefinition)
+				kpiDefsGroup.POST("/bulk-json", kpiHandler.BulkIngestJSON)
+				kpiDefsGroup.POST("/bulk-csv", kpiHandler.BulkIngestCSV)
+				kpiDefsGroup.DELETE("/:id", kpiHandler.DeleteKPIDefinition)
+			}
+		}
+	}
+
 	// Unified Query Engine (Phase 1.5: Unified API Implementation)
 	if s.config.UnifiedQuery.Enabled {
 		s.setupUnifiedQueryEngine(v1, rcaEngineForEndpoints)
@@ -325,6 +344,13 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 	// Create unified query handler
 	unifiedHandler := handlers.NewUnifiedQueryHandler(unifiedEngine, s.logger, s.kpiRepo, s.config.Engine)
 
+	// Initialize failure store if Weaviate is enabled and client is available
+	if s.config.Weaviate.Enabled && s.weaviateClient != nil {
+		zapLogger := logging.ExtractZapLogger(s.logger)
+		failureStore := weavstore.NewWeaviateFailureStore(s.weaviateClient, zapLogger)
+		unifiedHandler.SetFailureStore(failureStore)
+	}
+
 	// Create RCA handler for unified RCA endpoints
 	rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
 	rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints, s.config.Engine, s.kpiRepo)
@@ -336,6 +362,9 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 		unifiedGroup.POST("/correlation", unifiedHandler.HandleUnifiedCorrelation)
 		unifiedGroup.POST("/failures/detect", unifiedHandler.HandleFailureDetection)
 		unifiedGroup.POST("/failures/correlate", unifiedHandler.HandleTransactionFailureCorrelation)
+		unifiedGroup.GET("/failures/list", unifiedHandler.HandleGetFailures)
+		unifiedGroup.GET("/failures/get", unifiedHandler.HandleGetFailureDetail)
+		unifiedGroup.DELETE("/failures/delete", unifiedHandler.HandleDeleteFailure)
 		unifiedGroup.GET("/metadata", unifiedHandler.HandleQueryMetadata)
 		unifiedGroup.GET("/health", unifiedHandler.HandleHealthCheck)
 		unifiedGroup.POST("/search", unifiedHandler.HandleUnifiedSearch)
