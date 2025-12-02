@@ -678,7 +678,7 @@ func (h *UnifiedQueryHandler) HandleFailureDetection(c *gin.Context) {
 	if h.failureStore != nil {
 		h.logger.Info("Failure store is available, attempting to persist failures",
 			"service_component_count", len(result.Summary.ServiceComponentSummaries))
-		if result.Summary.ServiceComponentSummaries != nil && len(result.Summary.ServiceComponentSummaries) > 0 {
+		if len(result.Summary.ServiceComponentSummaries) > 0 {
 			for _, svc := range result.Summary.ServiceComponentSummaries {
 				h.logger.Info("Persisting failure record",
 					"failure_id", svc.FailureID,

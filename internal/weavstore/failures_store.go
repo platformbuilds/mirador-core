@@ -35,6 +35,14 @@ var (
 	ErrFailureUUIDEmpty                   = errors.New("failure uuid is empty")
 	ErrWeaviateFailureDeleteAndScanFailed = errors.New("weaviate delete attempts failed and object scan failed")
 	ErrWeaviateFailureDeleteFailed        = errors.New("weaviate delete attempts failed for failure_uuid")
+	ErrFailureNotFoundWithID              = errors.New("failure not found with id")
+)
+
+const (
+	statusCreated   = "created"
+	statusUpdated   = "updated"
+	statusNoChange  = "no-change"
+	maxObjectsLimit = 10000
 )
 
 func makeFailureObjectID(uuid string) string {
@@ -91,13 +99,13 @@ func (s *WeaviateFailureStore) CreateOrUpdateFailure(ctx context.Context, f *Fai
 	if existing != nil {
 		if failureEqual(existing, f) {
 			// No change detected; return existing as success
-			return existing, "no-change", nil
+			return existing, statusNoChange, nil
 		}
 		// There is a modification: perform update
 		if err := s.client.Data().Updater().WithClassName("FailureRecord").WithID(objID).WithProperties(props).Do(ctx); err != nil {
 			return nil, "", err
 		}
-		return f, "updated", nil
+		return f, statusUpdated, nil
 	}
 
 	// Not found -> create. If create fails because the object already exists,
@@ -112,7 +120,7 @@ func (s *WeaviateFailureStore) CreateOrUpdateFailure(ctx context.Context, f *Fai
 			if err2 := s.client.Data().Updater().WithClassName("FailureRecord").WithID(objID).WithProperties(props).Do(ctx); err2 != nil {
 				return nil, "", fmt.Errorf("create conflict: update also failed: %w (create err: %v)", err2, err)
 			}
-			return f, "updated", nil
+			return f, statusUpdated, nil
 		}
 		return nil, "", err
 	}
@@ -284,7 +292,7 @@ func (s *WeaviateFailureStore) DeleteFailureByID(ctx context.Context, failureID 
 		}
 	}
 
-	return fmt.Errorf("failure not found with ID=%s", failureID)
+	return fmt.Errorf("%w", ErrFailureNotFoundWithID)
 }
 
 // tryDeleteFailureByObjectID attempts to delete using the object ID
@@ -690,7 +698,7 @@ func (s *WeaviateFailureStore) ensureFailureRecordClass(ctx context.Context) err
 }
 
 // ListFailures returns failure records with pagination
-func (s *WeaviateFailureStore) ListFailures(ctx context.Context, limit int, offset int) ([]*FailureRecord, int64, error) {
+func (s *WeaviateFailureStore) ListFailures(ctx context.Context, limit, offset int) ([]*FailureRecord, int64, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -719,79 +727,7 @@ func (s *WeaviateFailureStore) ListFailures(ctx context.Context, limit int, offs
 		if o == nil {
 			continue
 		}
-		f := &FailureRecord{}
-
-		// Extract all properties from the Weaviate object
-		var props map[string]any
-		if o.Properties != nil {
-			if m, ok := o.Properties.(map[string]any); ok {
-				props = m
-			}
-		}
-
-		if props != nil {
-			// Map all fields (matching GetFailure pattern)
-			if v, ok := props["failureUuid"].(string); ok {
-				f.FailureUUID = v
-			}
-			if v, ok := props["failureId"].(string); ok {
-				f.FailureID = v
-			}
-			if v, ok := props["startTime"].(string); ok {
-				if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
-					f.TimeRange.Start = t
-				}
-			}
-			if v, ok := props["endTime"].(string); ok {
-				if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
-					f.TimeRange.End = t
-				}
-			}
-			if v, ok := props["services"].([]any); ok {
-				for _, svc := range v {
-					if s, ok := svc.(string); ok {
-						f.Services = append(f.Services, s)
-					}
-				}
-			}
-			if v, ok := props["components"].([]any); ok {
-				for _, comp := range v {
-					if c, ok := comp.(string); ok {
-						f.Components = append(f.Components, c)
-					}
-				}
-			}
-			if v, ok := props["rawErrorSignals"]; ok {
-				f.RawErrorSignals = propsToFailureSignals(v)
-			}
-			if v, ok := props["rawAnomalySignals"]; ok {
-				f.RawAnomalySignals = propsToFailureSignals(v)
-			}
-			if v, ok := props["detectionTimestamp"].(string); ok {
-				if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
-					f.DetectionTimestamp = t
-				}
-			}
-			if v, ok := props["detectorVersion"].(string); ok {
-				f.DetectorVersion = v
-			}
-			if v, ok := props["confidenceScore"].(float64); ok {
-				f.ConfidenceScore = v
-			}
-			if v, ok := props["createdAt"].(string); ok {
-				if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
-					f.CreatedAt = t
-				}
-			}
-			if v, ok := props["updatedAt"].(string); ok {
-				if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
-					f.UpdatedAt = t
-				}
-			}
-		} else if add := o.ID.String(); add != "" {
-			f.FailureUUID = add
-		}
-
+		f := s.extractFailureRecordFromWeaviateObject(o)
 		out = append(out, f)
 	}
 
@@ -799,13 +735,115 @@ func (s *WeaviateFailureStore) ListFailures(ctx context.Context, limit int, offs
 	total := int64(len(out))
 
 	// Try to fetch the full count of FailureRecord objects from Weaviate.
-	if all, terr := s.client.Data().ObjectsGetter().WithClassName("FailureRecord").WithLimit(10000).Do(ctx); terr == nil {
+	if all, terr := s.client.Data().ObjectsGetter().WithClassName("FailureRecord").WithLimit(maxObjectsLimit).Do(ctx); terr == nil {
 		total = int64(len(all))
 	} else if s.logger != nil {
 		s.logger.Warn("weaviate: failed to get total failure count; falling back to page size", zap.Error(terr))
 	}
 
 	return out, total, nil
+}
+
+// extractFailureRecordFromWeaviateObject extracts a FailureRecord from a Weaviate object response.
+func (s *WeaviateFailureStore) extractFailureRecordFromWeaviateObject(o *wm.Object) *FailureRecord {
+	f := &FailureRecord{}
+
+	// Extract all properties from the Weaviate object
+	var props map[string]any
+	if o.Properties != nil {
+		if m, ok := o.Properties.(map[string]any); ok {
+			props = m
+		}
+	}
+
+	if props != nil {
+		s.extractIdentityFields(props, f)
+		s.extractTimeRangeFields(props, f)
+		s.extractServiceComponentFields(props, f)
+		s.extractSignalFields(props, f)
+		s.extractMetadataFields(props, f)
+	} else if add := o.ID.String(); add != "" {
+		f.FailureUUID = add
+	}
+
+	return f
+}
+
+// extractIdentityFields extracts failureUuid and failureId.
+func (s *WeaviateFailureStore) extractIdentityFields(props map[string]any, f *FailureRecord) {
+	if v, ok := props["failureUuid"].(string); ok {
+		f.FailureUUID = v
+	}
+	if v, ok := props["failureId"].(string); ok {
+		f.FailureID = v
+	}
+}
+
+// extractTimeRangeFields extracts startTime and endTime.
+func (s *WeaviateFailureStore) extractTimeRangeFields(props map[string]any, f *FailureRecord) {
+	if v, ok := props["startTime"].(string); ok {
+		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+			f.TimeRange.Start = t
+		}
+	}
+	if v, ok := props["endTime"].(string); ok {
+		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+			f.TimeRange.End = t
+		}
+	}
+}
+
+// extractServiceComponentFields extracts services and components arrays.
+func (s *WeaviateFailureStore) extractServiceComponentFields(props map[string]any, f *FailureRecord) {
+	if v, ok := props["services"].([]any); ok {
+		for _, svc := range v {
+			if svcStr, ok := svc.(string); ok {
+				f.Services = append(f.Services, svcStr)
+			}
+		}
+	}
+	if v, ok := props["components"].([]any); ok {
+		for _, comp := range v {
+			if compStr, ok := comp.(string); ok {
+				f.Components = append(f.Components, compStr)
+			}
+		}
+	}
+}
+
+// extractSignalFields extracts rawErrorSignals and rawAnomalySignals.
+func (s *WeaviateFailureStore) extractSignalFields(props map[string]any, f *FailureRecord) {
+	if v, ok := props["rawErrorSignals"]; ok {
+		f.RawErrorSignals = propsToFailureSignals(v)
+	}
+	if v, ok := props["rawAnomalySignals"]; ok {
+		f.RawAnomalySignals = propsToFailureSignals(v)
+	}
+}
+
+// extractMetadataFields extracts detection timestamp, detector version, confidence score, and timestamps.
+func (s *WeaviateFailureStore) extractMetadataFields(props map[string]any, f *FailureRecord) {
+	if v, ok := props["detectionTimestamp"].(string); ok {
+		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+			f.DetectionTimestamp = t
+		}
+	}
+	if v, ok := props["detectorVersion"].(string); ok {
+		f.DetectorVersion = v
+	}
+	if v, ok := props["confidenceScore"].(float64); ok {
+		f.ConfidenceScore = v
+	}
+	if v, ok := props["createdAt"].(string); ok {
+		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+			f.CreatedAt = t
+		}
+	}
+	if v, ok := props["updatedAt"].(string); ok {
+		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+			f.UpdatedAt = t
+		}
+	}
 }
 
 // failureSignalsToMapArray converts FailureSignal slice into an array of map dictionaries

@@ -13,7 +13,7 @@ func timeAlmostEqual(t1, t2 time.Time) bool {
 }
 
 // failureSignalAlmostEqual checks if two failure signals are equal, ignoring monotonic clock readings
-func failureSignalAlmostEqual(a, b FailureSignal) bool {
+func failureSignalAlmostEqual(a, b *FailureSignal) bool {
 	if a.SignalType != b.SignalType {
 		return false
 	}
@@ -70,7 +70,7 @@ func TestFailureSignalsConversionRoundTrip(t *testing.T) {
 
 	// Use custom comparison that ignores monotonic clock differences
 	for i := range in {
-		if !failureSignalAlmostEqual(in[i], out[i]) {
+		if !failureSignalAlmostEqual(&in[i], &out[i]) {
 			t.Fatalf("signal %d mismatch:\nexpected: %+v\nactual:   %+v", i, in[i], out[i])
 		}
 	}
