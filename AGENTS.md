@@ -354,6 +354,10 @@ make check-todos            # Run TODO violations check
 make check-engine-hygiene   # Run both checks (recommended before commits)
 ```
 
+## Always ensire lint and test pass
+Ensure that `make lint` and `make test` pass, else do not push tp upstream
+
+
 **Git Pre-Commit Hook:**
 
 Install pre-commit hooks that automatically run enforcement checks:
