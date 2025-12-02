@@ -337,8 +337,8 @@ github.com/valkey-io/valkey-go/mock v1.0.68 h1:6VZzVT1x/mvbdUmMlQcNIhylUDGxZ20qN
 github.com/valkey-io/valkey-go/mock v1.0.68/go.mod h1:LTRfLT8gTobQ0a3rxw+z1wXlWYgsCXFjKnO/I0/6qyg=
 github.com/valkey-io/valkey-go/valkeycompat v1.0.68 h1:SZG5xPIQeprg35H4yMAZTgJT45+kJmIyNxkb5oxlIlY=
 github.com/valkey-io/valkey-go/valkeycompat v1.0.68/go.mod h1:GvCsyJs54b5fZATpnoTr1toMoSNE8ogZOmS7n8XZ0hc=
-github.com/weaviate/weaviate v1.34.0 h1:4RduarEUKHGYxs7njsDIVymJLCuwUZrFJiIP4g7IYc8=
-github.com/weaviate/weaviate v1.34.0/go.mod h1:49CuEZoC4dfxsWw6DJWgJ6DcmmbfQ5i0I7Ops/7m/3o=
+github.com/weaviate/weaviate v1.34.2 h1:m34L/4BQYq8PdCSXmVlhQVSQf9dPo7/QhKJwrJuy5IQ=
+github.com/weaviate/weaviate v1.34.2/go.mod h1:G+oWKHWu/GVNU2Bbzbgjhm4xdLCVZpEpSfI/bFj/yn4=
 github.com/weaviate/weaviate-go-client/v5 v5.5.0 h1:+5qkHodrL3/Qc7kXvMXnDaIxSBN5+djivLqzmCx7VS4=
 github.com/weaviate/weaviate-go-client/v5 v5.5.0/go.mod h1:Zdm2MEXG27I0Nf6fM0FZ3P2vLR4JM0iJZrOxwc+Zj34=
 github.com/xdg-go/pbkdf2 v1.0.0/go.mod h1:jrpuAogTd400dnrH08LKmI/xc1MbPOebTwRqcT5RDeI=
