@@ -68,6 +68,13 @@ func (f *IntegrationTestFramework) SetupMetricsData(query string, result *models
 	f.MetricsService.On("ExecuteQuery", mock.Anything, mock.MatchedBy(func(req *models.MetricsQLQueryRequest) bool {
 		return req.Query == query
 	})).Return(result, nil)
+
+	// Also stub ExecuteRangeQuery to return a corresponding range result so
+	// code paths that probe using range queries find data in tests.
+	rangeRes := &models.MetricsQLRangeQueryResult{Status: "success", Data: result.Data, DataPointCount: 1}
+	f.MetricsService.On("ExecuteRangeQuery", mock.Anything, mock.MatchedBy(func(req *models.MetricsQLRangeQueryRequest) bool {
+		return req.Query == query
+	})).Return(rangeRes, nil)
 }
 
 // SetupLogsData configures mock logs data
@@ -115,6 +122,14 @@ func (m *MockMetricsService) ExecuteQuery(ctx context.Context, req *models.Metri
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*models.MetricsQLQueryResult), args.Error(1)
+}
+
+func (m *MockMetricsService) ExecuteRangeQuery(ctx context.Context, req *models.MetricsQLRangeQueryRequest) (*models.MetricsQLRangeQueryResult, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.MetricsQLRangeQueryResult), args.Error(1)
 }
 
 func (m *MockMetricsService) HealthCheck(ctx context.Context) error {

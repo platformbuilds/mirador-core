@@ -140,14 +140,31 @@ make localdev-down
 
 To send otel synthetic testing data, use the command:
 ```bash
-cd /Users/aarvee/repos/github/public/miradorstack/otel-fintrans-simulator && ./bin/otel-fintrans-simulator --config ./simulator-config.yaml --data-interval 1s --failure-mode mixed --transactions 50000 --concurrency 2000
+cd /Users/aarvee/repos/github/public/miradorstack/otel-fintrans-simulator && ./bin/otel-fintrans-simulator --config ./simulator-config.yaml --data-interval 100ms --failure-mode mixed --transactions 50000 --concurrency 2000 --time-window 10m --start-time-offset -15m
 ```
 
-To Ship KPI Sample data, use
+To seed KPI and signal sample data, use
 ```bash
 make localdev-seed-data
 ```
 
+**Container Port Configuration:**
+
+Mirador Core container runs on port **8010**. All API calls to the running container should target:
+```
+http://localhost:8010/api/v1/...
+```
+
+**RCA Endpoint Reference:**
+- POST `/api/v1/unified/rca`
+- Request body: `{ "startTime": "ISO8601-UTC", "endTime": "ISO8601-UTC" }`
+- Maximum window: 1 hour (enforced by EngineConfig.MaxWindow)
+- Example:
+  ```bash
+  curl -X POST http://localhost:8010/api/v1/unified/rca \
+    -H "Content-Type: application/json" \
+    -d '{"startTime":"2025-12-02T14:45:00Z","endTime":"2025-12-02T15:45:00Z"}'
+  ```
 
 **Rules:**
 
