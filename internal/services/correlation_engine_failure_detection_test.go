@@ -22,6 +22,13 @@ func (m *mockMetricsService) ExecuteQuery(ctx context.Context, req *models.Metri
 	return m.queryResult, nil
 }
 
+func (m *mockMetricsService) ExecuteRangeQuery(ctx context.Context, req *models.MetricsQLRangeQueryRequest) (*models.MetricsQLRangeQueryResult, error) {
+	if m.queryErr != nil {
+		return nil, m.queryErr
+	}
+	return &models.MetricsQLRangeQueryResult{Status: "success", Data: m.queryResult.Data, DataPointCount: m.queryResult.SeriesCount}, nil
+}
+
 type mockLogsService struct {
 	queryResult *models.LogsQLQueryResult
 	queryErr    error

@@ -163,9 +163,12 @@ func TestMetrics_Aggregated_Labels_Union(t *testing.T) {
 		"/api/v1/series": func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(struct {
-				Status string   `json:"status"`
-				Data   []string `json:"data"`
-			}{Status: "success", Data: []string{"__name__", "job"}})
+				Status string                   `json:"status"`
+				Data   []map[string]interface{} `json:"data"`
+			}{Status: "success", Data: []map[string]interface{}{
+				{"__name__": "metric1", "job": "job1"},
+				{"__name__": "metric1", "job": "job2"},
+			}})
 		},
 	})
 	defer srvA.Close()
@@ -173,9 +176,12 @@ func TestMetrics_Aggregated_Labels_Union(t *testing.T) {
 		"/api/v1/series": func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(struct {
-				Status string   `json:"status"`
-				Data   []string `json:"data"`
-			}{Status: "success", Data: []string{"instance", "job", "__name__"}})
+				Status string                   `json:"status"`
+				Data   []map[string]interface{} `json:"data"`
+			}{Status: "success", Data: []map[string]interface{}{
+				{"__name__": "metric2", "instance": "instance1", "job": "job3"},
+				{"__name__": "metric2", "instance": "instance2", "job": "job4"},
+			}})
 		},
 	})
 	defer srvB.Close()

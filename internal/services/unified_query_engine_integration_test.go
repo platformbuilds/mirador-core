@@ -199,6 +199,7 @@ func TestUnifiedQueryEngine_ExecuteCorrelationQuery_TimeWindowResolvesKPINames(t
 	// Setup probes to return data and allow candidate discovery
 	metricsRes := &models.MetricsQLQueryResult{Status: "success", SeriesCount: 1, Data: map[string]interface{}{"result": []interface{}{map[string]interface{}{"metric": map[string]string{"service": "checkout"}}}}}
 	mockMetrics.On("ExecuteQuery", mock.Anything, mock.Anything).Return(metricsRes, nil)
+	mockMetrics.On("ExecuteRangeQuery", mock.Anything, mock.Anything).Return(&models.MetricsQLRangeQueryResult{Status: "success", Data: metricsRes.Data, DataPointCount: 1}, nil)
 
 	logsRes := &models.LogsQLQueryResult{Logs: []map[string]interface{}{{"timestamp": time.Now().Format(time.RFC3339), "message": "oops", "service": "checkout"}}}
 	mockLogs.On("ExecuteQuery", mock.Anything, mock.Anything).Return(logsRes, nil)

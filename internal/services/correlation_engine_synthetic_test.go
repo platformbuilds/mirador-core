@@ -70,6 +70,33 @@ func (s *seqMetrics) ExecuteQuery(ctx context.Context, req *models.MetricsQLQuer
 	return &models.MetricsQLQueryResult{Status: "success", Data: data, SeriesCount: 1}, nil
 }
 
+func (s *seqMetrics) ExecuteRangeQuery(ctx context.Context, req *models.MetricsQLRangeQueryRequest) (*models.MetricsQLRangeQueryResult, error) {
+	// For synthetic tests, ExecuteRangeQuery should return a small matrix with one data point
+	// matching the current sequence value for the query string.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	seq, ok := s.sequences[req.Query]
+	if !ok || len(seq) == 0 {
+		return &models.MetricsQLRangeQueryResult{Status: "success", Data: map[string]interface{}{"result": []interface{}{}}, DataPointCount: 0}, nil
+	}
+	idx := s.calls[req.Query]
+	if idx >= len(seq) {
+		idx = len(seq) - 1
+	}
+	v := seq[idx]
+	s.calls[req.Query] = s.calls[req.Query] + 1
+
+	ts := time.Now().Unix()
+	data := map[string]interface{}{
+		"resultType": "matrix",
+		"result": []interface{}{map[string]interface{}{
+			"metric": map[string]string{"__name__": req.Query},
+			"values": [][]interface{}{{float64(ts), fmt.Sprintf("%.2f", v)}},
+		}},
+	}
+	return &models.MetricsQLRangeQueryResult{Status: "success", Data: data, DataPointCount: 1}, nil
+}
+
 // fakeKPIRepo implements minimal parts of repo.KPIRepo used by Correlate.
 type fakeKPIRepo struct {
 	kpis map[string]*models.KPIDefinition

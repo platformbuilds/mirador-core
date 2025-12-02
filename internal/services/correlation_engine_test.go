@@ -25,6 +25,14 @@ func (m *MockVictoriaMetricsService) ExecuteQuery(ctx context.Context, req *mode
 	return args.Get(0).(*models.MetricsQLQueryResult), args.Error(1)
 }
 
+func (m *MockVictoriaMetricsService) ExecuteRangeQuery(ctx context.Context, req *models.MetricsQLRangeQueryRequest) (*models.MetricsQLRangeQueryResult, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.MetricsQLRangeQueryResult), args.Error(1)
+}
+
 type MockVictoriaLogsService struct {
 	mock.Mock
 }

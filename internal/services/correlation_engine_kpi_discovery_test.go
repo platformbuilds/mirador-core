@@ -97,6 +97,7 @@ func TestCorrelationEngine_KPIDiscoveryAndLabelExtraction(t *testing.T) {
 		Data:        map[string]interface{}{"result": []interface{}{map[string]interface{}{"metric": map[string]string{"service": "checkout", "instance": "i-123"}}}},
 	}
 	mockMetrics.On("ExecuteQuery", mock.Anything, mock.Anything).Return(metricsRes, nil)
+	mockMetrics.On("ExecuteRangeQuery", mock.Anything, mock.Anything).Return(&models.MetricsQLRangeQueryResult{Status: "success", Data: metricsRes.Data, DataPointCount: 1}, nil)
 
 	// Logs query returns one log with service label
 	logsRes := &models.LogsQLQueryResult{

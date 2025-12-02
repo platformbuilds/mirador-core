@@ -773,13 +773,31 @@ func (s *VictoriaMetricsService) GetLabels(ctx context.Context, request *models.
 	}
 
 	var vmResponse struct {
-		Status string   `json:"status"`
-		Data   []string `json:"data"`
+		Status string                   `json:"status"`
+		Data   []map[string]interface{} `json:"data"` // /api/v1/series returns array of label sets
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&vmResponse); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decode series response: %w", err)
 	}
-	return vmResponse.Data, nil
+
+	if vmResponse.Status != "success" {
+		return nil, fmt.Errorf("VictoriaMetrics returned non-success status: %s", vmResponse.Status)
+	}
+
+	// Extract unique label names from all series
+	labelSet := make(map[string]struct{})
+	for _, series := range vmResponse.Data {
+		for labelName := range series {
+			labelSet[labelName] = struct{}{}
+		}
+	}
+
+	labels := make([]string, 0, len(labelSet))
+	for label := range labelSet {
+		labels = append(labels, label)
+	}
+
+	return labels, nil
 }
 
 // getLabelsMultiEndpoint aggregates labels from all configured endpoints in this service

@@ -58,6 +58,8 @@ type CorrelationEngine interface {
 // MetricsService interface for metrics operations
 type MetricsService interface {
 	ExecuteQuery(ctx context.Context, req *models.MetricsQLQueryRequest) (*models.MetricsQLQueryResult, error)
+	// ExecuteRangeQuery executes a range query (query_range) against VictoriaMetrics
+	ExecuteRangeQuery(ctx context.Context, req *models.MetricsQLRangeQueryRequest) (*models.MetricsQLRangeQueryResult, error)
 }
 
 // LogsService interface for logs operations
@@ -252,6 +254,44 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 						}
 					}
 					if qstr != "" && ce.metricsService != nil {
+						// Use a small range query to probe for data instead of relying on a single instant.
+						// Instant queries can return empty results if samples don't align exactly with the
+						// requested timestamp. A range query over the probe window is more robust.
+						rreq := &models.MetricsQLRangeQueryRequest{
+							Query: qstr,
+							Start: probeStart.Format(time.RFC3339),
+							End:   probeEnd.Format(time.RFC3339),
+							// step: 60s resolution for probes (stable and inexpensive)
+							Step: "60",
+						}
+						rres, err := ce.metricsService.ExecuteRangeQuery(ctx, rreq)
+						if err != nil {
+							if ce.logger != nil {
+								ce.logger.Debug("metrics probe (range) failed for KPI", "kpi", kp.ID, "name", kp.Name, "query", qstr, "err", err)
+							}
+						} else if rres != nil && rres.DataPointCount > 0 {
+							if ce.logger != nil {
+								ce.logger.Debug("metrics probe SUCCESS for KPI (range)", "kpi", kp.ID, "name", kp.Name, "points", rres.DataPointCount, "layer", kp.Layer)
+							}
+							// Extract labels from any returned data (use the same extractor path)
+							ur := &models.UnifiedResult{Data: rres.Data}
+							dls := ce.extractLabelsFromMetricsResult(ur)
+							for _, dl := range dls {
+								for k, v := range dl.Labels {
+									if labelIndex[kpiID][k] == nil {
+										labelIndex[kpiID][k] = make(map[string]struct{})
+									}
+									labelIndex[kpiID][k][v] = struct{}{}
+								}
+							}
+							candidateKPIs = append(candidateKPIs, kp.ID)
+							if strings.ToLower(kp.Layer) == "impact" {
+								impactKPIs = append(impactKPIs, kp.ID)
+							}
+							// move to next KPI
+							continue
+						}
+						// Fall back to an instant probe if range probe did not return points
 						req := &models.MetricsQLQueryRequest{
 							Query: qstr,
 							Time:  probeEnd.Format(time.RFC3339),
@@ -259,7 +299,7 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 						res, err := ce.metricsService.ExecuteQuery(ctx, req)
 						if err != nil {
 							if ce.logger != nil {
-								ce.logger.Debug("metrics probe failed for KPI", "kpi", kp.ID, "name", kp.Name, "query", qstr, "err", err)
+								ce.logger.Debug("metrics instant probe failed for KPI", "kpi", kp.ID, "name", kp.Name, "query", qstr, "err", err)
 							}
 						} else if res != nil && res.SeriesCount > 0 {
 							if ce.logger != nil {
@@ -516,10 +556,10 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 		var impactVals []float64
 		var causeVals []float64
 		for _, r := range rings {
-			_ = r // ring time currently unused for simple per-ring mean extraction
+			// Use instant query at ring end time for deterministic per-ring sampling
 			// Query impact KPI for ring
 			if impactKPI != nil && impactKPI.Formula != "" && ce.metricsService != nil {
-				req := &models.MetricsQLQueryRequest{Query: impactKPI.Formula}
+				req := &models.MetricsQLQueryRequest{Query: impactKPI.Formula, Time: r.End.Format(time.RFC3339)}
 				res, err := ce.metricsService.ExecuteQuery(ctx, req)
 				if err == nil {
 					if v := extractAverageFromMetricsResult(res); !math.IsNaN(v) {
@@ -530,7 +570,7 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 
 			// Query candidate KPI for ring
 			if candKPI != nil && candKPI.Formula != "" && ce.metricsService != nil {
-				req := &models.MetricsQLQueryRequest{Query: candKPI.Formula}
+				req := &models.MetricsQLQueryRequest{Query: candKPI.Formula, Time: r.End.Format(time.RFC3339)}
 				res, err := ce.metricsService.ExecuteQuery(ctx, req)
 				if err == nil {
 					if v := extractAverageFromMetricsResult(res); !math.IsNaN(v) {
@@ -564,9 +604,10 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 						if kind == "infra" || strings.Contains(kind, "load") || (kp.Tags != nil && (containsString(kp.Tags, "confounder") || containsString(kp.Tags, "role=confounder"))) {
 							// fetch per-ring aggregates for this candidate confounder
 							var vals []float64
-							for range rings {
+							for _, r := range rings {
 								if kp.Formula != "" && ce.metricsService != nil {
-									req := &models.MetricsQLQueryRequest{Query: kp.Formula}
+									// Use instant query at ring end time for deterministic sampling
+									req := &models.MetricsQLQueryRequest{Query: kp.Formula, Time: r.End.Format(time.RFC3339)}
 									res, err := ce.metricsService.ExecuteQuery(ctx, req)
 									if err == nil {
 										if v := extractAverageFromMetricsResult(res); !math.IsNaN(v) {
