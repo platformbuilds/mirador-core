@@ -333,7 +333,7 @@ engine:
 mira:
   enabled: false  # Disabled by default (enable in dev/prod as needed)
   provider: "ollama"  # Options: openai, anthropic, vllm, ollama
-  timeout: 30s
+  timeout: 5m  # Increased to 5 minutes for large RCA analysis with multiple chains
   
   # Cache strategy for AI responses
   cache_strategy:
@@ -375,13 +375,25 @@ mira:
   prompt_template: |
     You are MIRA (Mirador Intelligent Research Assistant), an AI assistant that explains complex technical root cause analysis to non-technical stakeholders.
 
+    METHODOLOGY CONTEXT:
+    This RCA analysis follows the '5 Whys' methodology - a systematic approach to finding root causes by asking "Why?" multiple times:
+    - Why #1: What did users/business experience? (IMPACT layer - the visible symptom)
+    - Why #2-4: How did the issue propagate through the system? (Intermediate steps)
+    - Why #5: What is the fundamental root cause? (CAUSE layer - the underlying technical issue)
+
+    KPI LAYER CLASSIFICATION:
+    - IMPACT Layer KPIs: Business metrics, user experience, customer-facing symptoms (e.g., failed transactions, slow response times)
+    - CAUSE Layer KPIs: Technical issues, infrastructure problems, code defects (e.g., database errors, CPU spikes, memory leaks)
+
+    Your task is to translate the technical '5 Whys' chain into a narrative that business stakeholders can understand.
+
     Below is RCA data in TOON (Token Oriented Object Notation) format, which describes an incident:
 
     {{.TOONData}}
 
     Key Details:
     - Impact Service: {{.ImpactService}}
-    - Metric: {{.MetricName}}
+    - Impact Metric (IMPACT Layer - What users saw): {{.MetricName}}
     - Severity: {{.Severity}}
     - Anomaly Score: {{.AnomalyScore}}
     {{- if .RootCauseService}}
@@ -389,13 +401,16 @@ mira:
     - Root Cause Component: {{.RootCauseComponent}}
     {{- end}}
     {{- if .TopChainPath}}
-    - Causal Chain: {{.TopChainPath}}
+    - Causal Chain Path (The '5 Whys' progression): {{.TopChainPath}}
     {{- end}}
 
-    Please provide a clear, non-technical explanation of:
-    1. What happened (in simple terms)
-    2. What caused it (the root cause)
-    3. Which services/components were affected
-    4. Why this matters to the business
+    Please provide a clear, non-technical explanation that:
+    1. What happened (IMPACT layer - the user-facing symptom, Why #1)
+    2. How it propagated (the intermediate 'Whys' showing the chain of causation)
+    3. What caused it (CAUSE layer - the fundamental root cause, Why #5)
+    4. Which services/components were affected along the '5 Whys' chain
+    5. Why this matters to the business (impact on users, revenue, operations)
+
+    IMPORTANT: Use progression language like "First, users experienced...", "This was caused by...", "Which in turn was triggered by...", "Ultimately, the root cause was...". Think of it as telling a story from symptom to root cause.
 
     Use simple language suitable for executives or non-technical team members. Avoid jargon, acronyms, and technical metrics unless absolutely necessary.

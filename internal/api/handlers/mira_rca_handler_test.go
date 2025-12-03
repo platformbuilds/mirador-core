@@ -173,8 +173,15 @@ func TestMIRARCAHandler_HandleMIRARCAAnalyze_Success(t *testing.T) {
 	data, ok := response["data"].(map[string]interface{})
 	require.True(t, ok)
 
-	assert.Equal(t, mockService.explanation, data["explanation"])
-	assert.Equal(t, float64(mockService.tokensUsed), data["tokensUsed"])
+	// With chunking, explanation is now stitched with markdown header and footer
+	explanation, ok := data["explanation"].(string)
+	require.True(t, ok)
+	// Verify the core explanation is present in the stitched output
+	assert.Contains(t, explanation, mockService.explanation)
+	assert.Contains(t, explanation, "Root Cause Analysis Summary")
+	
+	// Token count is now doubled due to 2 chunks (impact+rootCause chunk + chains chunk)
+	assert.Equal(t, float64(mockService.tokensUsed*2), data["tokensUsed"])
 	assert.Equal(t, mockService.providerName, data["provider"])
 	assert.Equal(t, mockService.modelName, data["model"])
 	assert.Equal(t, false, data["cached"])
@@ -325,7 +332,7 @@ func TestMIRARCAHandler_PromptDataExtraction(t *testing.T) {
 	rcaResponse := createTestRCAResponse()
 
 	// Extract prompt data
-	promptData := handler.extractPromptData(&rcaResponse, "test-toon-data")
+	promptData := handler.ExtractPromptData(&rcaResponse, "test-toon-data")
 
 	// Assertions
 	assert.Equal(t, "test-toon-data", promptData["TOONData"])
