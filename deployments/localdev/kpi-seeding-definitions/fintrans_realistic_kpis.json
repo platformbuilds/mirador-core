@@ -9,10 +9,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "business",
-    "tags": ["transaction", "success", "business-kpi"],
+    "tags": [
+      "transaction",
+      "success",
+      "business-kpi"
+    ],
     "query": {
       "query": "sum(rate(transactions_total{success=\"true\"}[5m])) / sum(rate(transactions_total[5m])) * 100"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Transaction Failure Rate",
@@ -24,10 +29,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "business",
-    "tags": ["transaction", "failure", "business-kpi"],
+    "tags": [
+      "transaction",
+      "failure",
+      "business-kpi"
+    ],
     "query": {
       "query": "sum(rate(transactions_failed_total[5m])) / sum(rate(transactions_total[5m])) * 100"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Transaction Latency p99",
@@ -39,10 +49,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "performance",
-    "tags": ["transaction", "latency", "performance"],
+    "tags": [
+      "transaction",
+      "latency",
+      "performance"
+    ],
     "query": {
       "query": "histogram_quantile(0.99, sum(rate(transaction_latency_seconds_bucket[5m])) by (le))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Transaction Latency p95",
@@ -54,10 +69,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "performance",
-    "tags": ["transaction", "latency", "performance"],
+    "tags": [
+      "transaction",
+      "latency",
+      "performance"
+    ],
     "query": {
       "query": "histogram_quantile(0.95, sum(rate(transaction_latency_seconds_bucket[5m])) by (le))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Transaction Rate",
@@ -69,10 +89,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "business",
-    "tags": ["transaction", "throughput", "business-kpi"],
+    "tags": [
+      "transaction",
+      "throughput",
+      "business-kpi"
+    ],
     "query": {
       "query": "sum(rate(transactions_total[5m]))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "DB Latency p99",
@@ -84,10 +109,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["database", "latency", "performance"],
+    "tags": [
+      "database",
+      "latency",
+      "performance"
+    ],
     "query": {
       "query": "histogram_quantile(0.99, sum(rate(db_latency_seconds_bucket[5m])) by (le, service_name))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "DB Latency p95",
@@ -99,10 +129,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["database", "latency", "performance"],
+    "tags": [
+      "database",
+      "latency",
+      "performance"
+    ],
     "query": {
       "query": "histogram_quantile(0.95, sum(rate(db_latency_seconds_bucket[5m])) by (le, service_name))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "DB Failed Requests %",
@@ -114,10 +149,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["database", "failure", "error-rate"],
+    "tags": [
+      "database",
+      "failure",
+      "error-rate"
+    ],
     "query": {
       "query": "sum(rate(db_latency_seconds_bucket{failed=\"true\"}[5m])) by (service_name) / sum(rate(db_latency_seconds_bucket[5m])) by (service_name) * 100"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "DB Operations Rate",
@@ -129,10 +169,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["database", "throughput", "operations"],
+    "tags": [
+      "database",
+      "throughput",
+      "operations"
+    ],
     "query": {
       "query": "sum(rate(db_ops_total[5m]))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Span Calls Rate",
@@ -144,10 +189,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "performance",
-    "tags": ["traces", "span", "throughput"],
+    "tags": [
+      "traces",
+      "span",
+      "throughput"
+    ],
     "query": {
       "query": "sum(rate(traces_span_metrics_calls_total[5m])) by (service_name, span_name)"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Span Error Rate %",
@@ -159,10 +209,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "error",
-    "tags": ["traces", "span", "error-rate"],
+    "tags": [
+      "traces",
+      "span",
+      "error-rate"
+    ],
     "query": {
       "query": "sum(rate(traces_span_metrics_calls_total{status_code=\"ERROR\"}[5m])) by (service_name, span_name) / sum(rate(traces_span_metrics_calls_total[5m])) by (service_name, span_name) * 100"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Span Duration p99",
@@ -174,10 +229,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "performance",
-    "tags": ["traces", "span", "latency"],
+    "tags": [
+      "traces",
+      "span",
+      "latency"
+    ],
     "query": {
       "query": "histogram_quantile(0.99, sum(rate(traces_span_metrics_duration_milliseconds_bucket[5m])) by (le, service_name, span_name))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Span Duration p95",
@@ -189,10 +249,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "performance",
-    "tags": ["traces", "span", "latency"],
+    "tags": [
+      "traces",
+      "span",
+      "latency"
+    ],
     "query": {
       "query": "histogram_quantile(0.95, sum(rate(traces_span_metrics_duration_milliseconds_bucket[5m])) by (le, service_name, span_name))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Service Request Success Rate",
@@ -204,10 +269,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "performance",
-    "tags": ["service-graph", "success", "performance"],
+    "tags": [
+      "service-graph",
+      "success",
+      "performance"
+    ],
     "query": {
       "query": "sum(rate(traces_service_graph_request_total[5m])) - sum(rate(traces_service_graph_request_failed_total[5m])) / sum(rate(traces_service_graph_request_total[5m])) * 100"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Service Request Failure Rate %",
@@ -219,10 +289,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "error",
-    "tags": ["service-graph", "failure", "error-rate"],
+    "tags": [
+      "service-graph",
+      "failure",
+      "error-rate"
+    ],
     "query": {
       "query": "sum(rate(traces_service_graph_request_failed_total[5m])) / sum(rate(traces_service_graph_request_total[5m])) * 100"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Service Request Latency p99",
@@ -234,10 +309,14 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "performance",
-    "tags": ["service-graph", "latency"],
+    "tags": [
+      "service-graph",
+      "latency"
+    ],
     "query": {
       "query": "histogram_quantile(0.99, sum(rate(traces_service_graph_request_server_seconds_bucket[5m])) by (le))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Service Request Latency p95",
@@ -249,10 +328,14 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "performance",
-    "tags": ["service-graph", "latency"],
+    "tags": [
+      "service-graph",
+      "latency"
+    ],
     "query": {
       "query": "histogram_quantile(0.95, sum(rate(traces_service_graph_request_server_seconds_bucket[5m])) by (le))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Kafka Produce Latency p99",
@@ -264,10 +347,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["kafka", "produce", "latency"],
+    "tags": [
+      "kafka",
+      "produce",
+      "latency"
+    ],
     "query": {
       "query": "histogram_quantile(0.99, sum(rate(kafka_produce_latency_seconds_bucket[5m])) by (le))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Kafka Produce Total",
@@ -279,10 +367,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["kafka", "produce", "throughput"],
+    "tags": [
+      "kafka",
+      "produce",
+      "throughput"
+    ],
     "query": {
       "query": "sum(rate(kafka_produce_total[5m]))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Kafka Consume Latency p99",
@@ -294,10 +387,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["kafka", "consume", "latency"],
+    "tags": [
+      "kafka",
+      "consume",
+      "latency"
+    ],
     "query": {
       "query": "histogram_quantile(0.99, sum(rate(kafka_consume_latency_seconds_bucket[5m])) by (le))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Kafka Consume Total",
@@ -309,10 +407,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["kafka", "consume", "throughput"],
+    "tags": [
+      "kafka",
+      "consume",
+      "throughput"
+    ],
     "query": {
       "query": "sum(rate(kafka_consume_total[5m]))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "JVM Memory Used %",
@@ -324,10 +427,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["jvm", "memory", "resource"],
+    "tags": [
+      "jvm",
+      "memory",
+      "resource"
+    ],
     "query": {
       "query": "sum(jvm_memory_used_bytes{area=\"heap\"}) / sum(jvm_memory_max_bytes{area=\"heap\"}) * 100"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "GC Pause Duration Rate",
@@ -339,10 +447,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["jvm", "gc", "resource"],
+    "tags": [
+      "jvm",
+      "gc",
+      "resource"
+    ],
     "query": {
       "query": "sum(rate(jvm_gc_pause_seconds_sum_total[5m]))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "CPU Usage %",
@@ -354,10 +467,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["cpu", "process", "resource"],
+    "tags": [
+      "cpu",
+      "process",
+      "resource"
+    ],
     "query": {
       "query": "process_cpu_usage * 100"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Node Context Switches Rate",
@@ -369,10 +487,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["node", "cpu", "system"],
+    "tags": [
+      "node",
+      "cpu",
+      "system"
+    ],
     "query": {
       "query": "sum(rate(node_context_switches_total[5m]))"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Redis Memory Used",
@@ -384,10 +507,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["redis", "memory", "resource"],
+    "tags": [
+      "redis",
+      "memory",
+      "resource"
+    ],
     "query": {
       "query": "redis_memory_used_bytes"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "HikariCP Active Connections",
@@ -399,10 +527,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["database", "connection", "resource"],
+    "tags": [
+      "database",
+      "connection",
+      "resource"
+    ],
     "query": {
       "query": "hikaricp_connections_active"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Tomcat Busy Threads %",
@@ -414,10 +547,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["tomcat", "threads", "resource"],
+    "tags": [
+      "tomcat",
+      "threads",
+      "resource"
+    ],
     "query": {
       "query": "tomcat_threads_busy_threads / 200 * 100"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Tomcat Queue Time",
@@ -429,10 +567,15 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "performance",
-    "tags": ["tomcat", "queue", "latency"],
+    "tags": [
+      "tomcat",
+      "queue",
+      "latency"
+    ],
     "query": {
       "query": "tomcat_threads_queue_seconds"
-    }
+    },
+    "serviceFamily": "fintrans"
   },
   {
     "name": "Node Disk IO Time Rate",
@@ -444,9 +587,14 @@
     "datastore": "metrics",
     "query_type": "metric",
     "kind": "infrastructure",
-    "tags": ["disk", "io", "performance"],
+    "tags": [
+      "disk",
+      "io",
+      "performance"
+    ],
     "query": {
       "query": "sum(rate(node_disk_io_time_seconds_total[5m]))"
-    }
+    },
+    "serviceFamily": "fintrans"
   }
 ]

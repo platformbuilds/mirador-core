@@ -9,7 +9,8 @@
       "sentiment": "negative",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "servicegraph"
     },
     {
       "kpi_name": "Inter-Service Latency (95th Percentile)",
@@ -20,7 +21,8 @@
       "sentiment": "negative",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "servicegraph"
     },
     {
       "kpi_name": "Weighted Anomaly Score by Service Dependency",
@@ -31,7 +33,8 @@
       "sentiment": "negative",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "servicegraph"
     },
     {
       "kpi_name": "Service Dependency Saturation",
@@ -42,7 +45,8 @@
       "sentiment": "negative",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "servicegraph"
     },
     {
       "kpi_name": "High Anomaly Score Request Rate",
@@ -53,7 +57,8 @@
       "sentiment": "negative",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "servicegraph"
     },
     {
       "kpi_name": "Service Error Ratio",
@@ -64,7 +69,8 @@
       "sentiment": "negative",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "servicegraph"
     },
     {
       "kpi_name": "Connection Type Distribution",
@@ -75,7 +81,8 @@
       "sentiment": "neutral",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "servicegraph"
     },
     {
       "kpi_name": "Service Fan-Out Rate",
@@ -86,7 +93,8 @@
       "sentiment": "negative",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "servicegraph"
     },
     {
       "kpi_name": "Anomaly Score Trend by Connection Type",
@@ -97,7 +105,8 @@
       "sentiment": "negative",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "servicegraph"
     },
     {
       "kpi_name": "Failed Connection Rate by Type",
@@ -108,7 +117,8 @@
       "sentiment": "negative",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "servicegraph"
     }
   ]
 }

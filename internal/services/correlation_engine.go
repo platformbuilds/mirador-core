@@ -202,8 +202,8 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 	rings := BuildRings(tr, ce.engineCfg)
 
 	// KPI-first discovery: list KPIs from Stage-00 KPI registry and probe backends
-	impactKPIs := []string{}
-	candidateKPIs := []string{}
+	impactKPIs := []*models.KPIDefinition{}
+	candidateKPIs := []*models.KPIDefinition{}
 
 	// Map to hold discovered label index per KPI id
 	labelIndex := make(map[string]map[string]map[string]struct{}) // kpiID -> labelKey -> set(values)
@@ -284,9 +284,9 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 									labelIndex[kpiID][k][v] = struct{}{}
 								}
 							}
-							candidateKPIs = append(candidateKPIs, kp.ID)
+							candidateKPIs = append(candidateKPIs, kp)
 							if strings.ToLower(kp.Layer) == "impact" {
-								impactKPIs = append(impactKPIs, kp.ID)
+								impactKPIs = append(impactKPIs, kp)
 							}
 							// move to next KPI
 							continue
@@ -316,10 +316,10 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 									labelIndex[kpiID][k][v] = struct{}{}
 								}
 							}
-							candidateKPIs = append(candidateKPIs, kp.ID)
+							candidateKPIs = append(candidateKPIs, kp)
 							// If KPI classifies as impact via Layer hint, promote
 							if strings.ToLower(kp.Layer) == "impact" {
-								impactKPIs = append(impactKPIs, kp.ID)
+								impactKPIs = append(impactKPIs, kp)
 							}
 						}
 					}
@@ -358,9 +358,9 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 									labelIndex[kpiID][k][v] = struct{}{}
 								}
 							}
-							candidateKPIs = append(candidateKPIs, kp.ID)
+							candidateKPIs = append(candidateKPIs, kp)
 							if strings.ToLower(kp.Layer) == "impact" {
-								impactKPIs = append(impactKPIs, kp.ID)
+								impactKPIs = append(impactKPIs, kp)
 							}
 						}
 					}
@@ -395,9 +395,9 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 									labelIndex[kpiID][k][v] = struct{}{}
 								}
 							}
-							candidateKPIs = append(candidateKPIs, kp.ID)
+							candidateKPIs = append(candidateKPIs, kp)
 							if strings.ToLower(kp.Layer) == "impact" {
-								impactKPIs = append(impactKPIs, kp.ID)
+								impactKPIs = append(impactKPIs, kp)
 							}
 						}
 					}
@@ -406,8 +406,9 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 		}
 	} else {
 		// Fallback: if no KPI registry available, keep previous probe behaviour using config probes
+		// Create synthetic KPI definitions from config probes
 		probes := ce.engineCfg.Probes
-		for _, q := range probes {
+		for i, q := range probes {
 			req := &models.MetricsQLQueryRequest{Query: q}
 			res, err := ce.metricsService.ExecuteQuery(ctx, req)
 			if err != nil {
@@ -417,7 +418,15 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 				continue
 			}
 			if res != nil && res.SeriesCount > 0 {
-				candidateKPIs = append(candidateKPIs, q)
+				// Create synthetic KPI definition for this probe query
+				syntheticKPI := &models.KPIDefinition{
+					ID:            fmt.Sprintf("probe_%d", i),
+					Name:          q, // Use query as name
+					Formula:       q,
+					ServiceFamily: "unknown",
+					Layer:         "candidate",
+				}
+				candidateKPIs = append(candidateKPIs, syntheticKPI)
 			}
 		}
 		if len(impactKPIs) == 0 && len(candidateKPIs) > 0 {
@@ -430,18 +439,20 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 	var redAnchors []*models.RedAnchor
 	// Resolve impact KPI IDs to human names when possible (preserve original id in KPIUUID fields)
 	resolvedAffected := make([]string, 0, len(impactKPIs))
-	for _, k := range impactKPIs {
-		svc := k
-		metric := k
-		// attempt to resolve KPI definition
-		if ce.kpiRepo != nil {
-			if kp, err := ce.kpiRepo.GetKPI(ctx, k); err == nil && kp != nil {
-				// Use human-readable name when available
-				if kp.Name != "" {
-					svc = kp.Name
-					metric = kp.Formula
-				}
-			}
+	for _, kp := range impactKPIs {
+		svc := kp.ID
+		metric := kp.ID
+		// Use ServiceFamily for service name and Name for metric/component
+		if kp.ServiceFamily != "" {
+			svc = kp.ServiceFamily
+		} else if kp.Name != "" {
+			// Fallback to Name if ServiceFamily not set
+			svc = kp.Name
+		}
+		if kp.Name != "" {
+			metric = kp.Name
+		} else if kp.Formula != "" {
+			metric = kp.Formula
 		}
 
 		node := models.RedAnchor{
@@ -503,38 +514,37 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 	// across runs (maps may iterate in arbitrary order). This sorts by KPI
 	// id/name which keeps synthetic tests deterministic.
 	if len(candidateKPIs) > 1 {
-		sort.Strings(candidateKPIs)
+		sort.Slice(candidateKPIs, func(i, j int) bool {
+			return candidateKPIs[i].ID < candidateKPIs[j].ID
+		})
 	}
 
 	// Populate Causes with a deterministic baseline suspicion score so downstream
 	// RCA machinery can consume candidate scoring during AT-007 work.
 	// Replace baseline scoring with real statistical wiring across rings.
-	for _, k := range candidateKPIs {
+	for _, candKPI := range candidateKPIs {
 		// Default candidate entry (will be updated when stats available)
+		// Use human-readable name from KPI definition we already have
 		cand := models.CauseCandidate{
-			KPI:            k,
+			KPI:            candKPI.Name,
+			KPIUUID:        candKPI.ID,
+			KPIFormula:     candKPI.Formula,
 			Service:        "",
 			SuspicionScore: 0.0,
 			Reasons:        []string{},
 			Stats:          nil,
 		}
 
-		// Obtain KPI definitions when available (for query/formula)
-		var candKPI *models.KPIDefinition
-		if ce.kpiRepo != nil {
-			if kp, err := ce.kpiRepo.GetKPI(ctx, k); err == nil {
-				candKPI = kp
-			}
-		}
-
-		// If we resolved a KPI definition, prefer the human-readable name in the
-		// KPI field and preserve original id and formula in the new fields.
-		if candKPI != nil {
-			if candKPI.Name != "" {
-				cand.KPI = candKPI.Name
-			}
-			cand.KPIUUID = candKPI.ID
-			cand.KPIFormula = candKPI.Formula
+		// Populate Service field from ServiceFamily (AGENTS.md §3.6 compliance)
+		// Fallback to Name if ServiceFamily not set (for backward compatibility)
+		if candKPI.ServiceFamily != "" {
+			cand.Service = candKPI.ServiceFamily
+		} else if candKPI.Name != "" {
+			cand.Service = candKPI.Name
+		} else {
+			// Last resort fallback to ID if both ServiceFamily and Name are empty
+			cand.Service = candKPI.ID
+			cand.KPI = candKPI.ID
 		}
 
 		// Use first discovered impact KPI as the impact signal for pairwise stats
@@ -544,13 +554,7 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 			corr.Causes = append(corr.Causes, cand)
 			continue
 		}
-		impactID := impactKPIs[0]
-		var impactKPI *models.KPIDefinition
-		if ce.kpiRepo != nil {
-			if kp, err := ce.kpiRepo.GetKPI(ctx, impactID); err == nil {
-				impactKPI = kp
-			}
-		}
+		impactKPI := impactKPIs[0]
 
 		// Build per-ring sample vectors by computing a ring-level aggregate (mean)
 		var impactVals []float64

@@ -128,24 +128,15 @@ func DefaultMIRAConfig() MIRAConfig {
 }
 
 func defaultPromptTemplate() string {
-	return `You are an expert at explaining technical incidents to non-technical stakeholders.
-
-Below is a Root Cause Analysis (RCA) from our monitoring system in TOON format:
+	return `You are MIRA. Explain this technical incident in simple terms for business stakeholders.
 
 {{.TOONData}}
 
-Affected KPIs:
-{{range .KPIs}}
-- {{.Name}}: {{.Description}}
-{{end}}
+Provide:
+1. What happened (2-3 sentences)
+2. User impact
+3. Root cause (no jargon)
+4. Prevention steps
 
-Please provide a clear, non-technical explanation covering:
-
-1. **What Happened**: Describe the incident in simple terms (2-3 sentences)
-2. **Business Impact**: What did users/customers experience?
-3. **Root Cause**: What ultimately caused this? (no technical jargon)
-4. **Prevention**: What should be done to prevent this in the future?
-
-Keep your response under 400 words. Use analogies where helpful.
-Avoid terms like "metrics", "pods", "latency", "throughput" - use business language.`
+Keep under 400 words. Use business language.`
 }

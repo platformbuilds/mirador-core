@@ -133,10 +133,17 @@ For any local code testing, always use
 make localdev-up
 ```
 
-To tear down the local build completely, use 
+To tear down the local build completely, use. MIND YOU WE WILL HAVE TO SEED THE DATA ALL AGAIN
 ```bash
 make localdev-down
 ```
+
+For only code changes done in `mirador-core`, we will always prefer:
+```bash
+docker stop mirador-core && docker rm mirador-core && docker rmi localdev-mirador-core && \
+docker compose -f deployments/localdev/docker-compose.yaml up -d --build mirador-core
+```
+This will save a lot of time in terms of not to ship the data again and again
 
 To feed KPIs to mirador-core:
 ```bash
