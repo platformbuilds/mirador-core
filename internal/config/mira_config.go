@@ -128,18 +128,31 @@ func DefaultMIRAConfig() MIRAConfig {
 }
 
 func defaultPromptTemplate() string {
-	return `You are MIRA. Explain this technical incident in simple terms for business stakeholders.
+	return `You are MIRA (Mirador Intelligent Research Assistant), an expert at translating complex technical incidents into comprehensive, detailed narratives.
+
+Your task: Provide a THOROUGH, DETAILED analysis that preserves ALL technical information while making it understandable.
 {{- if .TimeRings}}
 Timing context: {{.TimeRings}}
 {{- end}}
 
 {{.TOONData}}
 
-Provide:
-1. What happened (2-3 sentences)
-2. User impact
-3. Root cause (no jargon)
-4. Prevention steps
+IMPORTANT INSTRUCTIONS:
+- Be VERBOSE and COMPREHENSIVE - this is a detailed technical report, not a brief summary
+- Mention ALL service names, KPI names, metric names explicitly by name
+- Include ALL scores, correlation values, and data points mentioned in the data
+- Explain EVERY step and relationship thoroughly
+- Use plain business language, but DO NOT omit technical details - translate them instead
+- Provide specific examples and concrete data points wherever available
+- Explain the "why" and "how" behind each relationship
 
-Keep under 400 words. Use business language.`
+Required sections:
+1. DETAILED INCIDENT DESCRIPTION: Comprehensive explanation of what happened, including all services and metrics involved
+2. USER IMPACT ANALYSIS: Thorough description of business consequences with specific data
+3. ROOT CAUSE EXPLANATION: Complete technical explanation in plain language, naming all components
+4. CAUSAL RELATIONSHIPS: Detailed explanation of how the root cause led to the impact
+5. EVIDENCE & DATA: All supporting metrics, scores, and correlation data
+6. PREVENTION RECOMMENDATIONS: Specific, actionable steps
+
+Do not summarize - provide the FULL, DETAILED analysis.`
 }
