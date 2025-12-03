@@ -179,7 +179,7 @@ func TestMIRARCAHandler_HandleMIRARCAAnalyze_Success(t *testing.T) {
 	// Verify the core explanation is present in the stitched output
 	assert.Contains(t, explanation, mockService.explanation)
 	assert.Contains(t, explanation, "Root Cause Analysis Summary")
-	
+
 	// Token count is now doubled due to 2 chunks (impact+rootCause chunk + chains chunk)
 	assert.Equal(t, float64(mockService.tokensUsed*2), data["tokensUsed"])
 	assert.Equal(t, mockService.providerName, data["provider"])

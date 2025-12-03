@@ -60,11 +60,12 @@ FORBIDDEN_PATTERNS=(
     '"payment-service"'
     '"notification-service"'
     
-    # Label keys (non-canonical)
-    '"service.name"'
+    # Label keys (non-canonical only - canonical keys like "service", "service_name", "service.name" are allowed per AGENTS.md §3.6)
     '"kubernetes.pod_name"'
     '"container.name"'
     '"host.name"'
+    '"k8s.deployment.name"'
+    '"k8s.statefulset.name"'
 )
 
 # Files to check (engine code only, exclude tests and exempted paths)

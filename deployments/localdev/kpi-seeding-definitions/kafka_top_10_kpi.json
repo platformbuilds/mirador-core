@@ -1,114 +1,76 @@
 {
   "kafka_jmx_top_10_kpis": [
     {
-      "kpi_name": "Under-Replicated Partitions",
-      "kpi_formula": "kafka_controller_KafkaController_Value{name=\"UnderReplicatedPartitions\"}",
-      "kpi_definition": "The number of partitions that don't have enough replica copies. High values indicate data reliability risks - if a broker fails, data might become unavailable or lost.",
-      "layer": "cause",
-      "classifier": "data_reliability",
-      "sentiment": "negative",
-      "signal_type": "metrics",
-      "query_type": "PromQL",
-      "datastore": "victoriametrics"
-    },
-    {
-      "kpi_name": "Request Latency (99th Percentile)",
-      "kpi_formula": "kafka_network_RequestMetrics_999thPercentile{request=~\"Produce|Fetch\"}",
-      "kpi_definition": "The slowest 1% of produce/consume requests. High latency here means some messages are taking very long to process, causing delays in data pipelines and real-time applications.",
-      "layer": "cause",
-      "classifier": "message_throughput",
-      "sentiment": "negative",
-      "signal_type": "metrics",
-      "query_type": "PromQL",
-      "datastore": "victoriametrics"
-    },
-    {
-      "kpi_name": "Consumer Lag",
-      "kpi_formula": "kafka_consumer_consumer_lag",
-      "kpi_definition": "The number of messages waiting to be processed by consumers. High lag means consumers can't keep up with message flow, causing delays in data processing and stale information.",
-      "layer": "cause",
-      "classifier": "consumer_performance",
-      "sentiment": "negative",
-      "signal_type": "metrics",
-      "query_type": "PromQL",
-      "datastore": "victoriametrics"
-    },
-    {
-      "kpi_name": "Active Controller Count",
-      "kpi_formula": "kafka_controller_KafkaController_Value{name=\"ActiveControllerCount\"}",
-      "kpi_definition": "Should always be 1. If it's 0, the cluster has no leader; if >1, there's a split-brain scenario. Both situations can cause cluster instability and message processing failures.",
-      "layer": "cause",
-      "classifier": "cluster_leadership",
-      "sentiment": "positive",
-      "signal_type": "metrics",
-      "query_type": "PromQL",
-      "datastore": "victoriametrics"
-    },
-    {
-      "kpi_name": "Network Request Rate",
-      "kpi_formula": "sum(rate(kafka_network_RequestMetrics_RequestsPerSec{request=~\"Produce|Fetch\"}[5m]))",
-      "kpi_definition": "The number of messages being sent to Kafka per second. Sudden drops may indicate producer issues; sustained high rates may require cluster scaling.",
+      "kpi_name": "Kafka Produce Total",
+      "kpi_formula": "sum(kafka_produce_total)",
+      "kpi_definition": "Total count of messages produced to Kafka topics. Tracks overall producer activity.",
       "layer": "cause",
       "classifier": "producer_throughput",
       "sentiment": "neutral",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "kafka"
     },
     {
-      "kpi_name": "Bytes In/Out Rate",
-      "kpi_formula": "sum(rate(kafka_server_BrokerTopicMetrics_BytesInPerSec[5m]))",
-      "kpi_definition": "The data volume flowing into and out of Kafka. Helps understand network bandwidth usage and identify potential bottlenecks in data pipelines.",
+      "kpi_name": "Kafka Consume Total",
+      "kpi_formula": "sum(kafka_consume_total)",
+      "kpi_definition": "Total count of messages consumed from Kafka topics. Tracks overall consumer activity.",
       "layer": "cause",
-      "classifier": "network_throughput",
+      "classifier": "consumer_performance",
       "sentiment": "neutral",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "kafka"
     },
     {
-      "kpi_name": "Topic Partition Size",
-      "kpi_formula": "kafka_log_Log_Value{name=\"Size\"}",
-      "kpi_definition": "The amount of disk space used by each topic partition. Approaching disk limits can cause broker failures and data unavailability.",
+      "kpi_name": "Kafka Produce Latency",
+      "kpi_formula": "sum(kafka_produce_latency_seconds_sum) / sum(kafka_produce_latency_seconds_count)",
+      "kpi_definition": "Average time taken to produce messages to Kafka. High latency indicates broker resource constraints or network issues.",
       "layer": "cause",
-      "classifier": "storage_capacity",
+      "classifier": "message_latency",
       "sentiment": "negative",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "kafka"
     },
     {
-      "kpi_name": "Failed Fetch/Produce Requests",
-      "kpi_formula": "sum(rate(kafka_network_RequestMetrics_ErrorsPerSec{request=~\"Fetch|Produce\"}[5m]))",
-      "kpi_definition": "The rate of failed read/write operations. High error rates indicate client connectivity issues, authentication problems, or broker resource constraints.",
+      "kpi_name": "Kafka Consume Latency",
+      "kpi_formula": "sum(kafka_consume_latency_seconds_sum) / sum(kafka_consume_latency_seconds_count)",
+      "kpi_definition": "Average time taken to consume messages from Kafka. High latency indicates consumer processing bottlenecks.",
       "layer": "cause",
-      "classifier": "request_reliability",
+      "classifier": "message_latency",
       "sentiment": "negative",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "kafka"
     },
     {
-      "kpi_name": "ISR Shrinks/Expands",
-      "kpi_formula": "rate(kafka_controller_KafkaController_Value{name=\"IsrShrinksPerSec\"}[5m]) + rate(kafka_controller_KafkaController_Value{name=\"IsrExpandsPerSec\"}[5m])",
-      "kpi_definition": "How frequently replicas are being added/removed from the In-Sync Replica set. High churn indicates network issues or broker instability.",
+      "kpi_name": "Kafka Produce Latency P99",
+      "kpi_formula": "histogram_quantile(0.99, sum(kafka_produce_latency_seconds_bucket) by (le))",
+      "kpi_definition": "The slowest 1% of produce requests. High latency here means some messages are taking very long to process.",
       "layer": "cause",
-      "classifier": "replication_stability",
+      "classifier": "message_throughput",
       "sentiment": "negative",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "kafka"
     },
     {
-      "kpi_name": "Garbage Collection Pauses",
-      "kpi_formula": "rate(java_gc_pause_seconds_sum[5m])",
-      "kpi_definition": "Time spent on garbage collection. Long GC pauses can cause Kafka timeouts, partition leadership changes, and degraded cluster performance.",
+      "kpi_name": "Kafka Consume Latency P99",
+      "kpi_formula": "histogram_quantile(0.99, sum(kafka_consume_latency_seconds_bucket) by (le))",
+      "kpi_definition": "The slowest 1% of consume requests. High latency indicates some consumers are experiencing severe delays.",
       "layer": "cause",
-      "classifier": "jvm_health",
+      "classifier": "message_throughput",
       "sentiment": "negative",
       "signal_type": "metrics",
       "query_type": "PromQL",
-      "datastore": "victoriametrics"
+      "datastore": "victoriametrics",
+      "serviceFamily": "kafka"
     }
   ]
 }

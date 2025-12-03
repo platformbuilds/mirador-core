@@ -44,11 +44,11 @@ type TaskProgress struct {
 
 // MIRARCAAsyncHandler handles async MIRA RCA explanation endpoints with Valkey-backed state.
 type MIRARCAAsyncHandler struct {
-	miraHandler  *MIRARCAHandler
-	cache        cache.ValkeyCluster       // Valkey cache for task state persistence (hot cache, 24h TTL)
+	miraHandler   *MIRARCAHandler
+	cache         cache.ValkeyCluster             // Valkey cache for task state persistence (hot cache, 24h TTL)
 	weaviateStore *weavstore.WeaviateMIRARCAStore // Weaviate for long-term task storage (permanent)
-	logger       logging.Logger
-	config       config.MIRAConfig
+	logger        logging.Logger
+	config        config.MIRAConfig
 }
 
 // NewMIRARCAAsyncHandler creates a new async MIRA RCA handler with Valkey and Weaviate backing.

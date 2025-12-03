@@ -393,7 +393,7 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinitio
 	}
 	objID := makeObjectID("KPIDefinition", id)
 
-	// Fetch objects of the class and search for matching object id. The
+	// Fetch all objects of the class and search for matching object id. The
 	// ObjectsGetter returns a slice of objects in the SDK.
 	resp, err := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").Do(ctx)
 	if err != nil {

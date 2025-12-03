@@ -204,7 +204,8 @@ func (engine *RCAEngineImpl) ComputeRCAByTimeRange(ctx context.Context, tr TimeR
 
 	result := NewRCAIncident(incident)
 
-	// Build candidate chains from top red anchors (deterministic template)
+	// Build 5-Why chains from correlation evidence (registry-driven, no hardcoding)
+	// Each chain traces from business impact through correlated causes using actual telemetry data.
 	maxChains := 3
 	for i, anchor := range corr.RedAnchors {
 		if i >= maxChains {
@@ -212,7 +213,7 @@ func (engine *RCAEngineImpl) ComputeRCAByTimeRange(ctx context.Context, tr TimeR
 		}
 		chain := NewRCAChain()
 
-		// Step 1: Business impact (Why 1)
+		// Why 1: Business impact (what failed from user perspective)
 		s1 := NewRCAStep(1, incident.ImpactService, incident.ImpactSignal.MetricName)
 		s1.TimeRange = tr
 		s1.Ring = RingImmediate
@@ -222,7 +223,7 @@ func (engine *RCAEngineImpl) ComputeRCAByTimeRange(ctx context.Context, tr TimeR
 		s1.Summary = TemplateBasedSummary(s1, incident.ImpactService, result.Diagnostics)
 		chain.AddStep(s1)
 
-		// Step 2: Entry service degradation (anchor service)
+		// Why 2: Entry service degradation (which service exhibited the impact)
 		s2 := NewRCAStep(2, anchor.Service, anchor.Metric)
 		s2.TimeRange = tr
 		s2.Ring = RingImmediate
@@ -232,35 +233,65 @@ func (engine *RCAEngineImpl) ComputeRCAByTimeRange(ctx context.Context, tr TimeR
 		s2.Summary = TemplateBasedSummary(s2, incident.ImpactService)
 		chain.AddStep(s2)
 
-		// Steps 3-5: simple template upstream placeholders
-		s3 := NewRCAStep(3, fmt.Sprintf("%s-dep", anchor.Service), "dependency")
-		s3.TimeRange = tr
-		s3.Ring = RingShort
-		s3.Direction = DirectionUpstream
-		s3.Score = anchor.Score * 0.7
-		s3.AddEvidence("inferred", s3.Service, "inferred from service graph and anchor")
-		s3.Summary = TemplateBasedSummary(s3, incident.ImpactService)
-		chain.AddStep(s3)
+		// Why 3-5: Build upstream chain from correlation causes (evidence-driven)
+		// Use top-ranked cause candidates by suspicion score from correlation result.
+		// Each step represents a correlated cause with statistical evidence (Pearson, Spearman, etc.)
+		if len(corr.Causes) > 0 {
+			// Sort causes by suspicion score (descending) to get most suspicious first
+			sortedCauses := make([]models.CauseCandidate, len(corr.Causes))
+			copy(sortedCauses, corr.Causes)
+			sort.Slice(sortedCauses, func(a, b int) bool {
+				return sortedCauses[a].SuspicionScore > sortedCauses[b].SuspicionScore
+			})
 
-		s4 := NewRCAStep(4, "infrastructure", "database")
-		s4.TimeRange = tr
-		s4.Ring = RingShort
-		s4.Direction = DirectionUpstream
-		s4.Score = anchor.Score * 0.5
-		s4.AddEvidence("inferred", "infra_db", "inferred infra contention")
-		s4.Summary = TemplateBasedSummary(s4, incident.ImpactService)
-		chain.AddStep(s4)
+			// Add up to 3 more "why" steps from top correlation causes
+			whyIndex := 3
+			maxWhySteps := 5
+			for _, cause := range sortedCauses {
+				if whyIndex > maxWhySteps {
+					break
+				}
+				// Skip if this cause is the same as the anchor (already in step 2)
+				if cause.Service == anchor.Service && cause.KPI == anchor.Metric {
+					continue
+				}
 
-		s5 := NewRCAStep(5, "process", "deployment")
-		s5.TimeRange = tr
-		s5.Ring = RingShort
-		s5.Direction = DirectionUpstream
-		s5.Score = anchor.Score * 0.3
-		s5.AddEvidence("inferred", "process_gap", "missing guardrail or rollout check")
-		s5.Summary = TemplateBasedSummary(s5, incident.ImpactService)
-		chain.AddStep(s5)
+				step := NewRCAStep(whyIndex, cause.Service, cause.KPI)
+				step.TimeRange = tr
+				step.Ring = RingShort // Upstream causes typically detected in short ring
+				step.Direction = DirectionUpstream
+				step.Score = cause.SuspicionScore
 
-		chain.Score = (s1.Score + s2.Score + s3.Score + s4.Score + s5.Score) / 5.0
+				// Add statistical evidence from correlation
+				if cause.Stats != nil {
+					step.AddEvidence("correlation_stats", cause.KPI, fmt.Sprintf(
+						"pearson=%.2f spearman=%.2f cross_lag=%d suspicion=%.2f",
+						cause.Stats.Pearson, cause.Stats.Spearman, cause.Stats.CrossCorrLag, cause.SuspicionScore))
+				}
+
+				// Add reasoning tags as evidence
+				for _, reason := range cause.Reasons {
+					step.AddEvidence("correlation_reason", cause.KPI, reason)
+				}
+
+				step.Summary = TemplateBasedSummary(step, incident.ImpactService)
+				chain.AddStep(step)
+				whyIndex++
+			}
+		}
+
+		// Compute chain score as weighted average (earlier steps more important)
+		totalScore := 0.0
+		totalWeight := 0.0
+		for idx, step := range chain.Steps {
+			weight := 1.0 / float64(idx+1) // Step 1 has weight 1.0, step 2 has 0.5, etc.
+			totalScore += step.Score * weight
+			totalWeight += weight
+		}
+		if totalWeight > 0 {
+			chain.Score = totalScore / totalWeight
+		}
+
 		result.AddChain(chain)
 	}
 

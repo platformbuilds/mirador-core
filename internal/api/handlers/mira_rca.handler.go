@@ -239,7 +239,7 @@ func (h *MIRARCAHandler) RenderPrompt(data map[string]interface{}) (string, erro
 // and stitches the final explanation together. Each chunk includes context from previous
 // responses to maintain coherence.
 func (h *MIRARCAHandler) GenerateChunkedExplanation(ctx context.Context, rca *models.RCAResponse, basePrompt string) (string, int, bool, error) {
-	const maxTokensPerChunk = 3000 // Leave buffer for response tokens (4096 - 1096 = 3000)
+	const maxTokensPerChunk = 2800 // Reduced from 3000 to provide more buffer (4096 - 1296 = 2800)
 
 	// Step 1: Split RCA into logical chunks
 	chunks := h.splitRCAIntoChunks(rca, maxTokensPerChunk)
@@ -258,11 +258,23 @@ func (h *MIRARCAHandler) GenerateChunkedExplanation(ctx context.Context, rca *mo
 		// Build prompt with previous context
 		chunkPrompt := h.buildChunkPrompt(basePrompt, chunk, i+1, len(chunks), conversationContext.String())
 
+		// Estimate token count (rough approximation: 1 token ≈ 4 characters)
+		estimatedTokens := len(chunkPrompt) / 4
+
 		h.logger.Debug("Processing chunk",
 			"chunk_number", i+1,
 			"total_chunks", len(chunks),
 			"prompt_length", len(chunkPrompt),
+			"estimated_tokens", estimatedTokens,
 			"has_context", len(conversationContext.String()) > 0)
+
+		if estimatedTokens > maxTokensPerChunk {
+			h.logger.Warn("Chunk prompt may exceed token limit",
+				"chunk_number", i+1,
+				"estimated_tokens", estimatedTokens,
+				"max_tokens", maxTokensPerChunk,
+				"overage", estimatedTokens-maxTokensPerChunk)
+		}
 
 		// Generate explanation for this chunk
 		miraResponse, err := h.miraService.GenerateExplanation(ctx, chunkPrompt)
@@ -274,8 +286,12 @@ func (h *MIRARCAHandler) GenerateChunkedExplanation(ctx context.Context, rca *mo
 		totalTokens += miraResponse.TokensUsed
 		allCached = allCached && miraResponse.Cached
 
-		// Add this response to conversation context for next chunk
-		conversationContext.WriteString(fmt.Sprintf("\n[Previous Analysis Part %d]: %s\n", i+1, miraResponse.Explanation))
+		// Add this response to conversation context for next chunk (truncate to save tokens)
+		truncatedResponse := miraResponse.Explanation
+		if len(truncatedResponse) > 300 {
+			truncatedResponse = truncatedResponse[:300] + "..."
+		}
+		conversationContext.WriteString(fmt.Sprintf("\n[Part %d]: %s\n", i+1, truncatedResponse))
 
 		h.logger.Debug("Chunk processed",
 			"chunk_number", i+1,
@@ -291,35 +307,50 @@ func (h *MIRARCAHandler) GenerateChunkedExplanation(ctx context.Context, rca *mo
 }
 
 // splitRCAIntoChunks divides the RCA response into smaller chunks that fit within token limits.
+// Only includes essential fields to minimize token usage.
 func (h *MIRARCAHandler) splitRCAIntoChunks(rca *models.RCAResponse, maxTokensPerChunk int) []map[string]interface{} {
 	var chunks []map[string]interface{}
 
-	// Always include impact in first chunk
+	// Chunk 1: Impact and root cause (essential summary data only)
 	chunk1 := map[string]interface{}{
-		"type":      "impact_and_root_cause",
-		"impact":    rca.Data.Impact,
-		"rootCause": rca.Data.RootCause,
-		"timeRings": rca.Data.TimeRings,
+		"type": "impact_and_root_cause",
 	}
+
+	// Extract only essential impact fields
+	if rca.Data.Impact != nil {
+		chunk1["impact"] = map[string]interface{}{
+			"service":    rca.Data.Impact.ImpactService,
+			"metric":     rca.Data.Impact.MetricName,
+			"severity":   rca.Data.Impact.Severity,
+			"timeStart":  rca.Data.Impact.TimeStartStr,
+			"timeEnd":    rca.Data.Impact.TimeEndStr,
+		}
+	}
+
+	// Extract only essential root cause fields
+	if rca.Data.RootCause != nil {
+		chunk1["rootCause"] = map[string]interface{}{
+			"service":   rca.Data.RootCause.Service,
+			"component": rca.Data.RootCause.Component,
+			"score":     rca.Data.RootCause.Score,
+			"summary":   rca.Data.RootCause.Summary,
+		}
+	}
+
 	chunks = append(chunks, chunk1)
 
-	// Split chains into separate chunks (each chain can be explained independently)
+	// Split chains into separate chunks (include only key fields per step)
 	if len(rca.Data.Chains) > 0 {
-		// Dynamically calculate chains per chunk based on total chains
-		// Strategy: Minimize chunks while staying within model context limits
-		// For 1-5 chains: Include all in one chunk (better context)
-		// For 6-10 chains: 5 per chunk (2 chunks total)
-		// For 11+ chains: 5 per chunk (multiple chunks)
 		totalChains := len(rca.Data.Chains)
 		var chainsPerChunk int
 
 		switch {
 		case totalChains <= 5:
-			chainsPerChunk = totalChains // All chains in one chunk for better coherence
+			chainsPerChunk = totalChains
 		case totalChains <= 10:
-			chainsPerChunk = 5 // 2 chunks: 5+5 or 5+remaining
+			chainsPerChunk = 5
 		default:
-			chainsPerChunk = 5 // For 11+ chains, use 5 per chunk
+			chainsPerChunk = 5
 		}
 
 		h.logger.Info("Splitting chains into chunks",
@@ -332,9 +363,28 @@ func (h *MIRARCAHandler) splitRCAIntoChunks(rca *models.RCAResponse, maxTokensPe
 				end = len(rca.Data.Chains)
 			}
 
+			// Extract only essential chain fields
+			compactChains := make([]map[string]interface{}, 0, end-i)
+			for _, chain := range rca.Data.Chains[i:end] {
+				compactSteps := make([]map[string]interface{}, 0, len(chain.Steps))
+				for _, step := range chain.Steps {
+					compactSteps = append(compactSteps, map[string]interface{}{
+						"service":  step.Service,
+						"kpi":      step.KPIName,
+						"whyIndex": step.WhyIndex,
+						"score":    step.Score,
+						"ring":     step.Ring,
+					})
+				}
+				compactChains = append(compactChains, map[string]interface{}{
+					"score": chain.Score,
+					"steps": compactSteps,
+				})
+			}
+
 			chunk := map[string]interface{}{
 				"type":       "chains",
-				"chains":     rca.Data.Chains[i:end],
+				"chains":     compactChains,
 				"chainRange": fmt.Sprintf("%d-%d of %d", i+1, end, len(rca.Data.Chains)),
 			}
 			chunks = append(chunks, chunk)
@@ -352,64 +402,48 @@ func (h *MIRARCAHandler) buildChunkPrompt(basePrompt string, chunk map[string]in
 	var promptBuilder strings.Builder
 
 	if chunkNum == 1 {
-		// First chunk gets the base instructions
-		promptBuilder.WriteString("You are MIRA (Mirador Intelligent Research Assistant). ")
-		promptBuilder.WriteString("This is a multi-part explanation. Focus on clarity and simplicity.\n\n")
+		promptBuilder.WriteString("MIRA analysis part 1 of " + fmt.Sprintf("%d", totalChunks) + ". Be concise.\n\n")
 	} else {
-		promptBuilder.WriteString(fmt.Sprintf("Continuing MIRA analysis (part %d of %d).\n\n", chunkNum, totalChunks))
-
-		// Include previous analysis for context
+		promptBuilder.WriteString(fmt.Sprintf("Part %d/%d.\n", chunkNum, totalChunks))
 		if previousContext != "" {
-			promptBuilder.WriteString("PREVIOUS ANALYSIS (for context):\n")
-			promptBuilder.WriteString(previousContext)
-			promptBuilder.WriteString("\n---\n\n")
-			promptBuilder.WriteString("Now continue the analysis with the following information:\n\n")
+			// Truncate previous context to max 200 chars to save tokens
+			truncatedContext := previousContext
+			if len(truncatedContext) > 200 {
+				truncatedContext = truncatedContext[:200] + "..."
+			}
+			promptBuilder.WriteString("Prior: " + truncatedContext + "\n\n")
 		}
 	}
 
 	switch chunkType {
 	case "impact_and_root_cause":
-		promptBuilder.WriteString("Part 1: IMPACT & ROOT CAUSE SUMMARY\n")
-		promptBuilder.WriteString("Explain WHAT happened, WHEN it happened, and the PRIMARY root cause.\n\n")
-		promptBuilder.WriteString("IMPORTANT CONTEXT:\n")
-		promptBuilder.WriteString("- This analysis follows the '5 Whys' methodology: each causal chain traces back through up to 5 levels of causation\n")
-		promptBuilder.WriteString("- KPIs are classified into layers: IMPACT layer (user-facing symptoms) and CAUSE layer (underlying technical issues)\n")
-		promptBuilder.WriteString("- The Impact KPI represents what users/business experienced\n")
-		promptBuilder.WriteString("- The Root Cause KPI is the deepest 'Why' we found (Why #5 in the chain)\n\n")
+		promptBuilder.WriteString("IMPACT & ROOT CAUSE:\n")
+		promptBuilder.WriteString("5 Whys: Why#1 (impact) → Why#5 (root). IMPACT=user symptoms, CAUSE=tech issues.\n\n")
 
-		// Convert chunk data to JSON for structured input
+		// Serialize only essential fields
 		if impact, ok := chunk["impact"]; ok {
-			impactJSON, _ := json.MarshalIndent(impact, "", "  ")
-			promptBuilder.WriteString(fmt.Sprintf("Impact (IMPACT Layer - What users saw):\n%s\n\n", impactJSON))
+			impactJSON, _ := json.Marshal(impact)
+			promptBuilder.WriteString(fmt.Sprintf("Impact: %s\n", impactJSON))
 		}
 		if rootCause, ok := chunk["rootCause"]; ok {
-			rcJSON, _ := json.MarshalIndent(rootCause, "", "  ")
-			promptBuilder.WriteString(fmt.Sprintf("Root Cause (CAUSE Layer - The deepest 'Why'):\n%s\n\n", rcJSON))
+			rcJSON, _ := json.Marshal(rootCause)
+			promptBuilder.WriteString(fmt.Sprintf("Root: %s\n", rcJSON))
 		}
 
-		promptBuilder.WriteString("Provide a clear explanation that:\n")
-		promptBuilder.WriteString("1. Describes the IMPACT (what business/users experienced)\n")
-		promptBuilder.WriteString("2. Identifies the ROOT CAUSE (the fundamental issue at Why #5)\n")
-		promptBuilder.WriteString("3. Uses simple language - no technical jargon\n\n")
+		promptBuilder.WriteString("\nExplain: (1) What users saw (2) Root cause (3) Simple language\n")
 
 	case "chains":
 		chainRange := chunk["chainRange"].(string)
-		promptBuilder.WriteString(fmt.Sprintf("Part %d: CAUSAL CHAINS - THE '5 WHYS' PROPAGATION (%s)\n", chunkNum, chainRange))
-		promptBuilder.WriteString("\nEach chain shows the '5 Whys' progression from Impact (Why #1) to Root Cause (up to Why #5).\n")
-		promptBuilder.WriteString("The 'whyIndex' field shows the depth: 1 = user-facing impact, 5 = deepest root cause.\n\n")
-		promptBuilder.WriteString("KPI Layer Guide:\n")
-		promptBuilder.WriteString("- IMPACT layer KPIs (whyIndex 1-2): What users/business experienced\n")
-		promptBuilder.WriteString("- CAUSE layer KPIs (whyIndex 3-5): Technical issues that triggered the impact\n\n")
+		promptBuilder.WriteString(fmt.Sprintf("CHAINS %s:\n", chainRange))
+		promptBuilder.WriteString("whyIndex: 1=user impact, 5=root. IMPACT (1-2) → CAUSE (3-5).\n\n")
 
 		if chains, ok := chunk["chains"]; ok {
-			chainsJSON, _ := json.MarshalIndent(chains, "", "  ")
-			promptBuilder.WriteString(fmt.Sprintf("Chains (each step has 'whyIndex' showing its depth in the '5 Whys'):\n%s\n\n", chainsJSON))
+			// Use compact JSON without indentation to save tokens
+			chainsJSON, _ := json.Marshal(chains)
+			promptBuilder.WriteString(fmt.Sprintf("Data: %s\n", chainsJSON))
 		}
 
-		promptBuilder.WriteString("For each chain, explain:\n")
-		promptBuilder.WriteString("1. The '5 Whys' progression: Why #1 (impact) → Why #2 → ... → Why #5 (root cause)\n")
-		promptBuilder.WriteString("2. How IMPACT layer KPIs (user symptoms) connect to CAUSE layer KPIs (technical issues)\n")
-		promptBuilder.WriteString("3. The propagation path in simple, business-friendly language\n\n")
+		promptBuilder.WriteString("\nExplain progression Why#1→Why#5 in business terms.\n")
 	}
 
 	return promptBuilder.String()

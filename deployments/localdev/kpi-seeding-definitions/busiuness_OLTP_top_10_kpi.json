@@ -11,7 +11,8 @@
       "query_type": "PromQL",
       "datastore": "victoriametrics",
       "emotional_impact": "Public confidence in digital payments",
-      "business_impact": "Brand reputation and user adoption"
+      "business_impact": "Brand reputation and user adoption",
+      "serviceFamily": "business_oltp"
     },
     {
       "kpi_name": "Partner Bank Success Health Score",
@@ -24,7 +25,8 @@
       "query_type": "PromQL",
       "datastore": "victoriametrics",
       "emotional_impact": "Inter-bank customer trust",
-      "business_impact": "Partner relationship management"
+      "business_impact": "Partner relationship management",
+      "serviceFamily": "business_oltp"
     },
     {
       "kpi_name": "Business Decline Rate by Bank",
@@ -37,7 +39,8 @@
       "query_type": "PromQL",
       "datastore": "victoriametrics",
       "emotional_impact": "Customer frustration and financial anxiety",
-      "business_impact": "Bank customer satisfaction scores"
+      "business_impact": "Bank customer satisfaction scores",
+      "serviceFamily": "business_oltp"
     },
     {
       "kpi_name": "Technical Failure Impact Score",
@@ -50,7 +53,8 @@
       "query_type": "PromQL",
       "datastore": "victoriametrics",
       "emotional_impact": "Customer anger and loss of trust",
-      "business_impact": "Direct revenue loss and recovery costs"
+      "business_impact": "Direct revenue loss and recovery costs",
+      "serviceFamily": "business_oltp"
     },
     {
       "kpi_name": "Peak Hour Transaction Resilience",
@@ -63,7 +67,8 @@
       "query_type": "PromQL",
       "datastore": "victoriametrics",
       "emotional_impact": "Evening family payment disruptions",
-      "business_impact": "Prime-time revenue assurance"
+      "business_impact": "Prime-time revenue assurance",
+      "serviceFamily": "business_oltp"
     },
     {
       "kpi_name": "Bank Performance Ranking",
@@ -76,7 +81,8 @@
       "query_type": "PromQL",
       "datastore": "victoriametrics",
       "emotional_impact": "Bank pride and competitive spirit",
-      "business_impact": "Performance-driven improvements"
+      "business_impact": "Performance-driven improvements",
+      "serviceFamily": "business_oltp"
     },
     {
       "kpi_name": "Critical Failure Escalation Index",
@@ -89,7 +95,8 @@
       "query_type": "PromQL",
       "datastore": "victoriametrics",
       "emotional_impact": "National payment system anxiety",
-      "business_impact": "Regulatory scrutiny and media impact"
+      "business_impact": "Regulatory scrutiny and media impact",
+      "serviceFamily": "business_oltp"
     },
     {
       "kpi_name": "Small Merchant Success Rate",
@@ -102,7 +109,8 @@
       "query_type": "PromQL",
       "datastore": "victoriametrics",
       "emotional_impact": "Small business survival and trust",
-      "business_impact": "Financial inclusion metrics"
+      "business_impact": "Financial inclusion metrics",
+      "serviceFamily": "business_oltp"
     },
     {
       "kpi_name": "Bank Outage Impact Score",
@@ -115,7 +123,8 @@
       "query_type": "PromQL",
       "datastore": "victoriametrics",
       "emotional_impact": "Widespread customer distress",
-      "business_impact": "Regulatory compliance and fines"
+      "business_impact": "Regulatory compliance and fines",
+      "serviceFamily": "business_oltp"
     },
     {
       "kpi_name": "Digital India Confidence Index",
@@ -128,7 +137,8 @@
       "query_type": "PromQL",
       "datastore": "victoriametrics",
       "emotional_impact": "National pride in digital infrastructure",
-      "business_impact": "Foreign investment attractiveness"
+      "business_impact": "Foreign investment attractiveness",
+      "serviceFamily": "business_oltp"
     }
   ]
 }

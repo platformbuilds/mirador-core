@@ -9,7 +9,8 @@
       "datastore": "victoriametrics",
       "layer": "impact",
       "classifier": "business",
-      "sentiment": "positive"
+      "sentiment": "positive",
+      "serviceFamily": "fintrans"
     },
     {
       "kpi_name": "Transaction Latency",
@@ -20,7 +21,8 @@
       "datastore": "victoriametrics",
       "layer": "impact",
       "classifier": "performance",
-      "sentiment": "neutral"
+      "sentiment": "neutral",
+      "serviceFamily": "fintrans"
     },
     {
       "kpi_name": "Transaction Amount",
@@ -31,7 +33,8 @@
       "datastore": "victoriametrics",
       "layer": "impact",
       "classifier": "business",
-      "sentiment": "positive"
+      "sentiment": "positive",
+      "serviceFamily": "fintrans"
     },
     {
       "kpi_name": "DB Operations",
@@ -42,7 +45,8 @@
       "datastore": "victoriametrics",
       "layer": "impact",
       "classifier": "performance",
-      "sentiment": "neutral"
+      "sentiment": "neutral",
+      "serviceFamily": "fintrans"
     },
     {
       "kpi_name": "Failed Transactions",
@@ -53,7 +57,8 @@
       "datastore": "victoriametrics",
       "layer": "impact",
       "classifier": "error",
-      "sentiment": "negative"
+      "sentiment": "negative",
+      "serviceFamily": "fintrans"
     }
   ]
 }
