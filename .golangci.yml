@@ -85,7 +85,7 @@ linters:
     lll:
       line-length: 140
     misspell:
-      locale: US
+      locale: US  # Use US English for code (standard in Go ecosystem)
     mnd:
       checks:
         - argument

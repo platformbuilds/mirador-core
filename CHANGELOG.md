@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **BREAKING**: MIRA endpoint renamed from `POST /api/v1/mira/rca_analyse` to `POST /api/v1/mira/rca_analyze` (US English spelling)
+  - All metric names updated from `mira_rca_analyse_*` to `mira_rca_analyze_*`
+  - This aligns with Go ecosystem naming conventions which use US English
+  - Update your API clients to use the new endpoint path
+
+### Added
+- **MIRA (Mirador Intelligent Research Assistant)**: AI-powered RCA explanation service
+  - New endpoint: `POST /api/v1/mira/rca_analyze` for translating technical RCA output into non-technical narratives
+  - Multi-provider support: OpenAI (GPT-4, GPT-3.5), Anthropic (Claude 3.5 Sonnet), vLLM, and Ollama
+  - TOON (Token Oriented Object Notation) format support for 30-60% token reduction
+  - Smart caching layer with Valkey for cost optimization (70%+ cache hit rate)
+  - Dedicated rate limiting for MIRA endpoints (configurable requests per minute)
+  - Comprehensive configuration via `mira` section in config files
+  - Support for custom prompt templates using Go text/template syntax
+  - Token usage tracking and metrics for cost monitoring
+- **MIRA Rate Limiter Middleware**: Dedicated rate limiting for AI endpoints
+  - Configurable limits via `MIRAConfig.RateLimit`
+  - X-RateLimit-* headers in all responses
+  - Separate rate limit key namespace (`rate_limit:mira:`)
+- **MIRA Integration Tests**: Comprehensive test suite with 7 test cases
+  - Success scenarios with all 4 providers
+  - Error handling (invalid JSON, missing fields, service failures)
+  - Prompt data extraction validation
+  - Mock service implementation for testing
+- **Documentation**: Complete MIRA usage guide at `docs/mira-rca-explain.md`
+  - API reference with request/response examples
+  - Provider comparison and cost analysis
+  - Configuration guide with all options
+  - Troubleshooting and best practices
+  - Monitoring metrics and alerts
+
+### Technical Implementation
+- **MIRA Service Layer**: `internal/services/mira_service.go` - Interface and caching
+- **Provider Implementations**: 
+  - `internal/services/mira_provider_openai.go`
+  - `internal/services/mira_provider_anthropic.go`
+  - `internal/services/mira_provider_vllm.go`
+  - `internal/services/mira_provider_ollama.go`
+- **TOON Converter**: `internal/utils/toon_converter.go` - RCA to TOON format conversion
+- **Handler Layer**: `internal/api/handlers/mira_rca.handler.go` - HTTP request handling
+- **Middleware**: `internal/api/middleware/mira_rate_limiter.middleware.go` - Rate limiting
+- **Configuration**: `internal/config/mira_config.go` - MIRA-specific configuration structures
+
+### Dependencies
+- Added `github.com/alpkeskin/gotoon v1.0.1` for TOON format support
+- Added `github.com/sashabaranov/go-openai v1.41.2` for OpenAI integration
+
 ## [9.0.0] - 2025-11-15
 
 ### Security

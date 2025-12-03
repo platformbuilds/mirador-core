@@ -194,10 +194,13 @@ engine:
   strict_time_window: false
   # Default list of metric probes used to seed impact/candidate KPI discovery.
   probes:
+    - "db_ops_total"
+    - "kafka_consume_total"
+    - "kafka_produce_total"
+    - "http_request_duration_seconds_count"
+    - "db_latency_seconds_count"
     - "transactions_failed_total"
     - "http_errors_total"
-    - "cpu_usage"
-    - "memory_usage"
   # Services used as candidates for traces fallback/search heuristics.
   service_candidates:
     - "api-gateway"
@@ -324,3 +327,75 @@ engine:
           - span_kind
           - status_code
           - le
+
+# MIRA (Mirador Intelligent Research Assistant) - AI-powered RCA Explanations
+# MIRA-001: Feature for generating non-technical explanations from RCA data
+mira:
+  enabled: false  # Disabled by default (enable in dev/prod as needed)
+  provider: "ollama"  # Options: openai, anthropic, vllm, ollama
+  timeout: 30s
+  
+  # Cache strategy for AI responses
+  cache_strategy:
+    enabled: true
+    use_valkey_for_fast_cache: true
+    ttl: 3600  # 1 hour cache for explanations
+  
+  # Rate limiting for MIRA endpoints
+  rate_limit:
+    enabled: true
+    requests_per_minute: 10
+    burst: 5
+  
+  # OpenAI configuration (when provider=openai)
+  openai:
+    api_key: "${OPENAI_API_KEY}"  # Set via environment variable
+    model: "gpt-4"  # Or: gpt-3.5-turbo
+    max_tokens: 2000
+  
+  # Anthropic configuration (when provider=anthropic)
+  anthropic:
+    api_key: "${ANTHROPIC_API_KEY}"  # Set via environment variable
+    model: "claude-3-5-sonnet-20241022"
+    max_tokens: 2000
+  
+  # vLLM configuration (when provider=vllm)
+  vllm:
+    endpoint: "http://vllm-server:8000/v1/completions"
+    model: "meta-llama/Llama-3.1-70B-Instruct"
+    max_tokens: 2000
+  
+  # Ollama configuration (when provider=ollama) - Local, free option
+  ollama:
+    endpoint: "http://localhost:11434/api/generate"
+    model: "llama3.2:3b"  # 3B model (2GB, 128K context) - optimized for M1 Apple Silicon
+    max_tokens: 2000
+  
+  # Prompt template for generating explanations
+  prompt_template: |
+    You are MIRA (Mirador Intelligent Research Assistant), an AI assistant that explains complex technical root cause analysis to non-technical stakeholders.
+
+    Below is RCA data in TOON (Token Oriented Object Notation) format, which describes an incident:
+
+    {{.TOONData}}
+
+    Key Details:
+    - Impact Service: {{.ImpactService}}
+    - Metric: {{.MetricName}}
+    - Severity: {{.Severity}}
+    - Anomaly Score: {{.AnomalyScore}}
+    {{- if .RootCauseService}}
+    - Root Cause Service: {{.RootCauseService}}
+    - Root Cause Component: {{.RootCauseComponent}}
+    {{- end}}
+    {{- if .TopChainPath}}
+    - Causal Chain: {{.TopChainPath}}
+    {{- end}}
+
+    Please provide a clear, non-technical explanation of:
+    1. What happened (in simple terms)
+    2. What caused it (the root cause)
+    3. Which services/components were affected
+    4. Why this matters to the business
+
+    Use simple language suitable for executives or non-technical team members. Avoid jargon, acronyms, and technical metrics unless absolutely necessary.

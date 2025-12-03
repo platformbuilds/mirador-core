@@ -131,7 +131,7 @@ localdev: localdev-up localdev-wait localdev-seed-otel localdev-seed-data locald
 
 .PHONY: openapi-json openapi-validate
 openapi-json:
-	@python3 scripts/gen_openapi_json.py
+	@python3 tools/gen_openapi_json.py
 
 openapi-validate:
 	@python3 tools/validate_openapi.py

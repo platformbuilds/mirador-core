@@ -1,0 +1,594 @@
+basePath: /api/v1
+definitions:
+  github_com_platformbuilds_mirador-core_internal_models.EvidenceRefDTO:
+    properties:
+      details:
+        type: string
+      id:
+        type: string
+      type:
+        type: string
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.IncidentContextDTO:
+    properties:
+      id:
+        type: string
+      impactService:
+        type: string
+      impactServiceUuid:
+        description: ImpactServiceUUID is the original UUID if ImpactService was resolved
+          from a KPI
+        type: string
+      impactSummary:
+        type: string
+      metricName:
+        type: string
+      metricNameUuid:
+        description: MetricNameUUID is the original UUID if MetricName was resolved
+          from a KPI
+        type: string
+      severity:
+        type: number
+      timeEnd:
+        type: string
+      timeStart:
+        type: string
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.KPIDefinition:
+    properties:
+      aggregationWindowHint:
+        description: AggregationWindowHint suggests a preferred aggregation window
+          (e.g. "1m", "5m").
+        type: string
+      businessImpact:
+        description: BusinessImpact explains the user/business consequence when this
+          KPI degrades.
+        type: string
+      category:
+        description: Category is a free-form category for additional grouping/classification.
+        type: string
+      classifier:
+        description: Classifier is the measurement category (latency, errors, tps,
+          cpu_utilization, anomaly_score, ...).
+        type: string
+      componentType:
+        description: ComponentType indicates the type of component this KPI maps to
+          (springboot, kafka-broker, cassandra-node, node, valkey, ...).
+        type: string
+      createdAt:
+        type: string
+      datastore:
+        description: Datastore is the telemetry/metrics store where this KPI is sourced
+          from (victoriametrics, clickhouse, ...).
+        type: string
+      definition:
+        description: Definition of what the signal means
+        type: string
+      dimensionsHint:
+        description: DimensionsHint lists key dimensions expected on this KPI (e.g.
+          ["service.name", "orgId"]).
+        items:
+          type: string
+        type: array
+      domain:
+        description: Domain indicates the business or technical domain this KPI applies
+          to (payments, kafka, cassandra, infra, ...).
+        type: string
+      emotionalImpact:
+        description: EmotionalImpact is an optional short severity/emotive hint for
+          narrative generation.
+        type: string
+      examples:
+        description: Examples contains example values/contexts; stored as arbitrary
+          JSON objects.
+        items:
+          additionalProperties: true
+          type: object
+        type: array
+      format:
+        type: string
+      formula:
+        description: Formula holds the raw query/formula string; treated as opaque
+          by the engines.
+        type: string
+      id:
+        type: string
+      kind:
+        description: '"business" or "tech"'
+        type: string
+      layer:
+        description: 'Layer indicates whether the KPI is an impact or cause signal.
+          Allowed: "impact", "cause".'
+        type: string
+      name:
+        type: string
+      namespace:
+        description: |-
+          Namespace groups related KPIs (e.g. file or collection name).
+          Example: "apigw_springboot_top_10_kpi".
+        type: string
+      query:
+        additionalProperties: true
+        description: JSON query definition
+        type: object
+      queryType:
+        description: QueryType indicates the query language or type (MetricsQL, SQL,
+          PromQL, etc.).
+        type: string
+      retryAllowed:
+        description: RetryAllowed indicates whether automated retry logic is permitted
+          for incidents related to this KPI.
+        type: boolean
+      sentiment:
+        description: '"NEGATIVE", "POSITIVE", or "NEUTRAL" - increase sentiment'
+        type: string
+      serviceFamily:
+        description: ServiceFamily groups related services (apigw, oltp, issuer-bank,
+          ...).
+        type: string
+      signalType:
+        description: SignalType is the high-level signal kind (metrics, traces, logs,
+          business, synthetic, ...).
+        type: string
+      source:
+        description: Source identifies where this KPI definition originated (seed
+          file, tool, etc.).
+        type: string
+      sourceId:
+        description: SourceID is a short identifier within the source (e.g. CSV row
+          key).
+        type: string
+      sparkline:
+        additionalProperties: true
+        description: JSON sparkline config
+        type: object
+      tags:
+        items:
+          type: string
+        type: array
+      thresholds:
+        description: JSON thresholds array
+        items:
+          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.Threshold'
+        type: array
+      unit:
+        type: string
+      updatedAt:
+        type: string
+      visibility:
+        description: '"private", "team", "org"'
+        type: string
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.KPIDefinitionRequest:
+    properties:
+      kpiDefinition:
+        $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIDefinition'
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.KPIListResponse:
+    properties:
+      kpiDefinitions:
+        items:
+          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIDefinition'
+        type: array
+      nextOffset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.RCAChainDTO:
+    properties:
+      durationHops:
+        description: DurationHops number of steps
+        type: integer
+      impactPath:
+        description: ImpactPath service names
+        items:
+          type: string
+        type: array
+      rank:
+        description: Rank (1 = best chain)
+        type: integer
+      score:
+        description: Score of this chain
+        type: number
+      steps:
+        description: Steps in the chain from impact to root cause
+        items:
+          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAStepDTO'
+        type: array
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.RCADiagnosticsDTO:
+    properties:
+      dimensionDetectionStatus:
+        additionalProperties:
+          type: boolean
+        description: DimensionDetectionStatus maps dimension keys to detection status
+        type: object
+      isolationForestIssues:
+        description: IsolationForestIssues lists any potential IsolationForest tuning
+          issues
+        items:
+          type: string
+        type: array
+      metricsQueryErrors:
+        description: MetricsQueryErrors captures any metrics query issues
+        items:
+          type: string
+        type: array
+      missingLabels:
+        description: MissingLabels lists standard labels not found in the metrics
+        items:
+          type: string
+        type: array
+      reducedAccuracyReasons:
+        description: ReducedAccuracyReasons explains why confidence is lower than
+          optimal
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.RCAIncidentDTO:
+    properties:
+      chains:
+        description: Chains are all candidate RCA chains
+        items:
+          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAChainDTO'
+        type: array
+      diagnostics:
+        allOf:
+        - $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCADiagnosticsDTO'
+        description: Diagnostics contains warnings about missing labels, dimension
+          detection, IsolationForest tuning, etc.
+      generatedAt:
+        description: GeneratedAt is when this RCA was computed
+        type: string
+      impact:
+        allOf:
+        - $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.IncidentContextDTO'
+        description: Impact is the incident context
+      notes:
+        description: Notes are optional observations
+        items:
+          type: string
+        type: array
+      rootCause:
+        allOf:
+        - $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAStepDTO'
+        description: RootCause is the selected root cause step
+      score:
+        description: Score is the overall confidence (0..1)
+        type: number
+      timeRings:
+        allOf:
+        - $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.TimeRingsDTO'
+        description: |-
+          TimeRings describes the time ring definitions and per-chain computed ranges
+          relative to the incident peak time. This is optional and may be empty.
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.RCAResponse:
+    properties:
+      data:
+        allOf:
+        - $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAIncidentDTO'
+        description: Data contains the RCAIncidentDTO if successful
+      error:
+        description: Error message if status is "error"
+        type: string
+      status:
+        description: Status is "success" or "error"
+        type: string
+      timestamp:
+        description: Timestamp when the response was generated
+        type: string
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.RCAStepDTO:
+    properties:
+      component:
+        description: Component name (resolved from KPI if applicable, otherwise component
+          identifier)
+        type: string
+      componentUuid:
+        description: ComponentUUID is the original UUID if Component was resolved
+          from a KPI
+        type: string
+      direction:
+        description: Direction (upstream/downstream/same/unknown)
+        type: string
+      distance:
+        description: Distance in hops to impact service
+        type: integer
+      evidence:
+        description: Evidence references
+        items:
+          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.EvidenceRefDTO'
+        type: array
+      kpiFormula:
+        description: KPIFormula is the query formula of the KPI if Service/Component
+          is a KPI UUID
+        type: string
+      kpiName:
+        description: KPIName is the human-readable name of the KPI if Service/Component
+          is a KPI UUID
+        type: string
+      ring:
+        description: Ring classification
+        type: string
+      score:
+        description: Score for this step
+        type: number
+      service:
+        description: Service name (resolved from KPI if applicable, otherwise service
+          identifier)
+        type: string
+      serviceUuid:
+        description: ServiceUUID is the original UUID if Service was resolved from
+          a KPI
+        type: string
+      summary:
+        description: Summary explanation
+        type: string
+      timeEnd:
+        description: TimeEnd of the anomaly window
+        type: string
+      timeStart:
+        description: TimeStart when this anomaly was detected
+        type: string
+      whyIndex:
+        description: Why index in the chain (1 = most user-facing)
+        type: integer
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.Threshold:
+    properties:
+      color:
+        description: Display color
+        type: string
+      description:
+        description: Description of the threshold
+        type: string
+      level:
+        description: e.g., "warning", "critical"
+        type: string
+      operator:
+        description: e.g., "gt", "lt", "eq"
+        type: string
+      value:
+        description: Threshold value
+        type: number
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.TimeRangeDTO:
+    properties:
+      endTime:
+        type: string
+      startTime:
+        type: string
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.TimeRingDefinitionDTO:
+    properties:
+      description:
+        type: string
+      duration:
+        type: string
+      label:
+        type: string
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.TimeRingsDTO:
+    properties:
+      definitions:
+        additionalProperties:
+          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.TimeRingDefinitionDTO'
+        type: object
+      perChain:
+        items:
+          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.TimeRingsPerChainDTO'
+        type: array
+    type: object
+  github_com_platformbuilds_mirador-core_internal_models.TimeRingsPerChainDTO:
+    properties:
+      chainRank:
+        type: integer
+      peakTime:
+        type: string
+      rings:
+        additionalProperties:
+          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.TimeRangeDTO'
+        type: object
+      windowEnd:
+        type: string
+      windowStart:
+        type: string
+    type: object
+  internal_api_handlers.MIRARCARequest:
+    properties:
+      rcaData:
+        $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAResponse'
+    required:
+    - rcaData
+    type: object
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+host: localhost:8010
+info:
+  contact:
+    email: support@platformbuilds.org
+    name: Platform Builds Team
+    url: https://github.com/platformbuilds/mirador-core
+  description: Mirador Core is a comprehensive observability and analytics platform
+    that provides KPI definitions and unified queries for monitoring and analyzing
+    system metrics.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Mirador Core API
+  version: 8.0.0
+paths:
+  /api/v1/kpi/defs:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a paginated list of KPI definitions with optional filtering
+        by tags
+      parameters:
+      - collectionFormat: csv
+        description: Filter by tags (comma-separated)
+        in: query
+        items:
+          type: string
+        name: tags
+        type: array
+      - description: 'Maximum number of results (default: 10)'
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      - description: 'Pagination offset (default: 0)'
+        in: query
+        minimum: 0
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIListResponse'
+        "400":
+          description: 'error: invalid query parameters'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to list KPIs'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get KPI definitions
+      tags:
+      - kpi-definitions
+    post:
+      consumes:
+      - application/json
+      description: Create a new KPI definition or update an existing one. If ID is
+        not provided, a new UUID will be generated.
+      parameters:
+      - description: KPI definition payload
+        in: body
+        name: kpi
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIDefinitionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: ok, id: kpi_id'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'error: invalid payload or validation error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to upsert KPI'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create or update KPI definition
+      tags:
+      - kpi-definitions
+  /api/v1/kpi/defs/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a KPI definition by its ID. Requires confirmation via query
+        parameter.
+      parameters:
+      - description: KPI definition ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Confirmation flag (1, true, or yes)
+        enum:
+        - "1"
+        - "true"
+        - "yes"
+        in: query
+        name: confirm
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: deleted'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'error: missing id or confirmation required'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: failed to delete KPI'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete KPI definition
+      tags:
+      - kpi-definitions
+  /api/v1/mira/rca_analyze:
+    post:
+      consumes:
+      - application/json
+      description: 'Translates technical RCA output into non-technical narrative using
+        AI (MIRA - Mirador Intelligent Research Assistant). Supports multiple providers:
+        OpenAI, Anthropic, vLLM, Ollama. Responses are cached for cost optimization.'
+      parameters:
+      - description: RCA response payload from /api/v1/unified/rca
+        in: body
+        name: rcaData
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handlers.MIRARCARequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: success, data: {explanation, tokensUsed, provider,
+            model, generatedAt, cached, generationTimeMs}'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'status: error, error: invalid_json_payload | invalid_rca_data'
+          schema:
+            additionalProperties: true
+            type: object
+        "429":
+          description: 'status: error, error: rate_limit_exceeded'
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 'status: error, error: toon_conversion_failed | prompt_rendering_failed
+            | mira_generation_failed'
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Generate non-technical RCA explanation
+      tags:
+      - mira
+swagger: "2.0"

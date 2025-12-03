@@ -280,6 +280,191 @@ paths:
                         found: true
                         deleted: true
 
+  # MIRA - Mirador Intelligent Research Assistant (AI-powered RCA explanations)
+  /api/v1/mira/rca_analyze:
+    post:
+      summary: Generate AI-powered explanation for RCA results
+      description: |
+        Translates technical RCA (Root Cause Analysis) output into non-technical narratives.
+        Supports multiple AI providers: OpenAI (GPT-4), Anthropic (Claude), vLLM, and Ollama.
+        Includes smart caching with Valkey for cost optimization and rate limiting.
+        
+        **Workflow:**
+        1. Call `POST /api/v1/unified/rca` with time window to get RCA analysis
+        2. Extract the `data` field from the RCA response
+        3. Pass it as `rcaData` to this endpoint
+        4. Receive human-readable explanation
+        
+        **Example:**
+        ```bash
+        # Step 1: Get RCA analysis
+        RCA_RESPONSE=$(curl -X POST http://localhost:8010/api/v1/unified/rca \
+          -H "Content-Type: application/json" \
+          -d '{"startTime":"2025-12-03T07:30:00Z","endTime":"2025-12-03T08:30:00Z"}')
+        
+        # Step 2: Extract data field and send to MIRA
+        echo "$RCA_RESPONSE" | jq '{rcaData: .data}' | \
+          curl -X POST http://localhost:8010/api/v1/mira/rca_analyze \
+          -H "Content-Type: application/json" \
+          -d @-
+        ```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rcaData
+              properties:
+                rcaData:
+                  type: object
+                  description: |
+                    The complete RCA response data object from /api/v1/unified/rca endpoint.
+                    This should be the 'data' field from the RCA response (RCAIncidentDTO).
+                  properties:
+                    impact:
+                      type: object
+                      description: Impact/incident context
+                      properties:
+                        id:
+                          type: string
+                          example: "corr_1764756501"
+                        impactService:
+                          type: string
+                          example: "DB Operations"
+                        metricName:
+                          type: string
+                          example: "sum(db_ops_total)"
+                        timeStart:
+                          type: string
+                          format: date-time
+                        timeEnd:
+                          type: string
+                          format: date-time
+                        impactSummary:
+                          type: string
+                        severity:
+                          type: number
+                          format: float
+                    rootCause:
+                      type: object
+                      description: Selected root cause step
+                      properties:
+                        whyIndex:
+                          type: integer
+                        service:
+                          type: string
+                        component:
+                          type: string
+                        ring:
+                          type: string
+                        summary:
+                          type: string
+                        score:
+                          type: number
+                    chains:
+                      type: array
+                      description: All candidate RCA chains
+                      items:
+                        type: object
+                        properties:
+                          steps:
+                            type: array
+                            items:
+                              type: object
+                          score:
+                            type: number
+                          rank:
+                            type: integer
+                    generatedAt:
+                      type: string
+                      format: date-time
+                    score:
+                      type: number
+                      format: float
+                    diagnostics:
+                      type: object
+                    timeRings:
+                      type: object
+            examples:
+              fullRCAResponse:
+                summary: Complete RCA data (from /api/v1/unified/rca response.data)
+                value:
+                  rcaData:
+                    impact:
+                      id: "corr_1764756501"
+                      impactService: "DB Operations"
+                      metricName: "sum(db_ops_total)"
+                      timeStart: "2025-12-03T07:30:00Z"
+                      timeEnd: "2025-12-03T08:30:00Z"
+                      impactSummary: "Impact detected on DB Operations"
+                      severity: 0.9
+                    rootCause:
+                      whyIndex: 5
+                      service: "process"
+                      component: "deployment"
+                      ring: "R2_SHORT"
+                      summary: "Why 5: process (deployment) showed anomalies"
+                      score: 0.27
+                    chains:
+                      - steps:
+                          - whyIndex: 1
+                            service: "DB Operations"
+                            component: "sum(db_ops_total)"
+                            ring: "R1_IMMEDIATE"
+                            score: 0.9
+                        score: 0.63
+                        rank: 1
+                    generatedAt: "2025-12-03T10:08:21Z"
+                    score: 0.63
+      responses:
+        '200':
+          description: Successfully generated AI explanation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      explanation:
+                        type: string
+                        description: Non-technical narrative explanation
+                      provider:
+                        type: string
+                        description: AI provider used (openai, anthropic, ollama, vllm)
+                      model:
+                        type: string
+                        description: Model name (e.g., gpt-4, claude-3.5-sonnet)
+                      tokensUsed:
+                        type: integer
+                        description: Number of tokens consumed
+                      cached:
+                        type: boolean
+                        description: Whether response was served from cache
+              examples:
+                success:
+                  summary: Successful AI explanation
+                  value:
+                    status: "success"
+                    data:
+                      explanation: "Your application experienced a spike in failed transactions at 2:30 PM. This was caused by database connection errors, which started 2 minutes earlier when the connection pool became exhausted due to increased traffic."
+                      provider: "openai"
+                      model: "gpt-4"
+                      tokensUsed: 245
+                      cached: false
+        '400':
+          description: Invalid request (missing rcaData or malformed JSON)
+        '429':
+          description: Rate limit exceeded
+        '500':
+          description: AI service error or internal server error
+
   # Unified query engine (v1)
   /api/v1/unified/query:
     post:
