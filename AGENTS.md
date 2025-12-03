@@ -138,6 +138,12 @@ To tear down the local build completely, use
 make localdev-down
 ```
 
+To feed KPIs to mirador-core:
+```bash
+make localdev-seed-data
+```
+
+
 To send otel synthetic testing data, use the command:
 ```bash
 cd /Users/aarvee/repos/github/public/miradorstack/otel-fintrans-simulator && ./bin/otel-fintrans-simulator --config ./simulator-config.yaml --data-interval 100ms --failure-mode mixed --transactions 50000 --concurrency 2000 --time-window 10m --start-time-offset -15m
