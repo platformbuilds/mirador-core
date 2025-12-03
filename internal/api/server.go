@@ -355,6 +355,20 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 	rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
 	rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints, s.config.Engine, s.kpiRepo)
 
+	// Create MIRA handler for AI-powered RCA explanations (if enabled)
+	var miraHandler *handlers.MIRARCAHandler
+	if s.config.MIRA.Enabled {
+		miraService, err := services.NewMIRAService(s.config.MIRA, s.logger, s.cache)
+		if err != nil {
+			s.logger.Warn("Failed to initialize MIRA service", "error", err)
+		} else {
+			// Wrap with caching layer
+			cachedMIRAService := services.NewCachedMIRAService(miraService, s.config.MIRA.Cache, s.cache, s.logger)
+			miraHandler = handlers.NewMIRARCAHandler(cachedMIRAService, s.config.MIRA, s.logger)
+			s.logger.Info("MIRA service initialized", "provider", s.config.MIRA.Provider, "model", miraService.GetModelName())
+		}
+	}
+
 	// Register unified query routes
 	unifiedGroup := router.Group("/unified")
 	{
@@ -385,6 +399,19 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 		uqlGroup.POST("/query", unifiedHandler.HandleUQLQuery)
 		uqlGroup.POST("/validate", unifiedHandler.HandleUQLValidate)
 		uqlGroup.POST("/explain", unifiedHandler.HandleUQLExplain)
+	}
+
+	// Register MIRA routes (AI-powered RCA explanations)
+	if miraHandler != nil {
+		miraGroup := router.Group("/mira")
+		// Apply MIRA-specific rate limiting (stricter than default)
+		miraGroup.Use(middleware.MIRARateLimiter(s.cache, s.config.MIRA.RateLimit))
+		{
+			miraGroup.POST("/rca_analyze", miraHandler.HandleMIRARCAAnalyze)
+		}
+		s.logger.Info("MIRA routes registered with rate limiting",
+			"enabled", s.config.MIRA.RateLimit.Enabled,
+			"requests_per_minute", s.config.MIRA.RateLimit.RequestsPerMinute)
 	}
 
 	s.logger.Info("Unified query engine initialized and routes registered")

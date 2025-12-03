@@ -50,16 +50,46 @@ Cross-platform note (Apple Silicon, ARM64, x86_64): All localdev images are mult
 
 MIRADOR-CORE is a pure observability engine that assumes external authentication and authorization. All requests are processed without internal auth checks - security should be handled by external proxies, API gateways, or service mesh.
 
+**NEW: MIRA AI-Powered RCA Explanations**
+
+The localdev setup now includes Ollama for AI-powered RCA explanations via MIRA (Mirador Intelligent Research Assistant). This is enabled by default in development:
+
+- **Model**: `llama3.1:8b` (4.9GB, optimized for M1 Pro 16GB)
+- **Auto-setup**: Model pulls automatically on first start (may take 3-5 minutes)
+- **Endpoint**: `POST /api/v1/mira/rca_analyze`
+
 ```bash
 cd public/mirador-core/deployments/localdev
-# Build locally for native arch and start
+# Build locally for native arch and start (includes Ollama)
 docker compose -f mirador-core-docker-compose.yaml up -d --build
 ```
 
 - MIRADOR-CORE: http://localhost:8010
 - Health: http://localhost:8010/health
+- Ollama: http://localhost:11434 (model server)
 
-Tip: The `mirador-core` service is configured to `build` locally, which produces a native binary for your host (arm64 on Apple Silicon, amd64 on Intel/AMD). If you prefer to pull a published image instead, comment out the `build:` block and set `image: platformbuilds/mirador-core:<multi-arch-tag>`. On Linux, if `host.docker.internal` doesn’t resolve, uncomment `extra_hosts: ["host.docker.internal:host-gateway"]` in the compose file.
+**Testing MIRA:**
+
+```bash
+# 1. Get RCA data first
+RCA_RESPONSE=$(curl -s -X POST http://localhost:8010/api/v1/unified/rca \
+  -H "Content-Type: application/json" \
+  -d '{"startTime":"2025-12-03T07:30:00Z","endTime":"2025-12-03T08:30:00Z"}')
+
+# 2. Get AI explanation
+curl -X POST http://localhost:8010/api/v1/mira/rca_analyze \
+  -H "Content-Type: application/json" \
+  -d "{\"rcaData\": $RCA_RESPONSE}" | jq .
+```
+
+**Model Information:**
+- **llama3.1:8b**: Excellent quality on M1 Pro 16GB (~ 2-4 seconds per explanation)
+- **Memory**: ~5-6GB RAM usage (comfortable for 16GB system)
+- **Quality**: High-quality explanations, production-ready for self-hosted deployments
+
+For cloud-based production, switch to OpenAI (gpt-4) or Anthropic (claude-3-5-sonnet) in production config.
+
+Tip: The `mirador-core` service is configured to `build` locally, which produces a native binary for your host (arm64 on Apple Silicon, amd64 on Intel/AMD). If you prefer to pull a published image instead, comment out the `build:` block and set `image: platformbuilds/mirador-core:<multi-arch-tag>`. On Linux, if `host.docker.internal` doesn't resolve, uncomment `extra_hosts: ["host.docker.internal:host-gateway"]` in the compose file.
 
 ## 4) Generate Synthetic OTEL Data (telemetrygen)
 

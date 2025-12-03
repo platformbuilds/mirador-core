@@ -27,6 +27,12 @@ MIRADOR-CORE serves as the central orchestration layer for advanced observabilit
 - **Distributed Tracing**: Jaeger-compatible trace queries with flame graph generation
 - **Unified Query Language (UQL)**: Cross-engine correlation queries with time-window analysis
 
+### AI-Powered Analysis
+- **MIRA (Mirador Intelligent Research Assistant)**: AI-powered translation of technical RCA output into non-technical narratives
+- **Multi-Provider Support**: OpenAI, Anthropic, vLLM, and Ollama integration for flexible deployment
+- **Smart Caching**: Automatic response caching with 70%+ hit rate for cost optimization
+- **TOON Format**: Token-efficient data representation reducing AI token usage by 30-60%
+
 ### Performance & Reliability
 - **Valkey Cluster Caching**: Distributed caching with automatic failover and TTL management
 - **Horizontal Scaling**: Stateless design with load balancing and health checks

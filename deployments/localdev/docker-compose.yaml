@@ -115,6 +115,36 @@ services:
       - mirador-net
 
   # ──────────────────────────────────────────────
+  # Ollama (Local AI Model Server for MIRA)
+  # ──────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    pull_policy: if_not_present
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - mirador-net
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # Optimized for Docker CPU: Using llama3.2:1b (740MB, fast inference without GPU)
+    # Auto-pull model on first start:
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        sleep 5
+        ollama pull llama3.2:3b
+        wait
+
+  # ──────────────────────────────────────────────
   # MIRADOR CORE (Main Application)
   # ──────────────────────────────────────────────
   mirador-core:
@@ -129,6 +159,8 @@ services:
       valkey:
         condition: service_healthy
       weaviate:
+        condition: service_healthy
+      ollama:
         condition: service_healthy
       victoriametrics:
         condition: service_started
@@ -167,6 +199,11 @@ services:
 
       # Stage-01 RCA/Correlation API enforcement (AGENTS.md §3.1)
       - MIRADOR_ENGINE_STRICT_TIMEWINDOW_PAYLOAD=true
+
+      # MIRA (AI-powered RCA explanations)
+      - MIRA_ENABLED=true
+      - MIRA_PROVIDER=ollama
+      - OLLAMA_ENDPOINT=http://ollama:11434/api/generate
     healthcheck:
       test: ["CMD", "/mirador-core", "healthcheck"]
       interval: 10s
@@ -188,6 +225,7 @@ volumes:
   weavdata: {}
   valkeydata: {}
   bleve-data: {}
+  ollama-data: {}
 
 # ──────────────────────────────────────────────
 # NETWORKS

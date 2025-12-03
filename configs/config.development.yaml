@@ -129,3 +129,68 @@ weaviate:
     - "tags"
     - "examples"
     - "allowed_values"
+
+# MIRA (Mirador Intelligent Research Assistant) - AI-powered RCA Explanations
+# MIRA-001: Enabled in development for testing
+mira:
+  enabled: true  # Enabled for local development
+  provider: "ollama"  # Using free local Ollama for dev
+  timeout: 300s  # Increased for 3B model on CPU (first request can take 2-3 minutes for chunked analysis)
+  
+  cache_strategy:
+    enabled: true
+    use_valkey_for_fast_cache: true
+    ttl: 1800  # 30 minutes cache in dev (shorter for testing)
+  
+  rate_limit:
+    enabled: false  # Disabled for development ease
+    requests_per_minute: 100
+    burst: 20
+  
+  openai:
+    api_key: "${OPENAI_API_KEY}"
+    model: "gpt-3.5-turbo"  # Cheaper model for dev
+    max_tokens: 1500
+  
+  anthropic:
+    api_key: "${ANTHROPIC_API_KEY}"
+    model: "claude-3-5-sonnet-20241022"
+    max_tokens: 1500
+  
+  vllm:
+    endpoint: "http://localhost:8000/v1/completions"
+    model: "meta-llama/Llama-3.1-70B-Instruct"
+    max_tokens: 1500
+  
+  ollama:
+    endpoint: "${OLLAMA_ENDPOINT}"
+    model: "llama3.2:3b"  # 3B model for better quality on M1 (2GB, 128K context, optimized for Apple Silicon)
+    max_tokens: 1500
+  
+  prompt_template: |
+    You are MIRA (Mirador Intelligent Research Assistant), an AI assistant that explains complex technical root cause analysis to non-technical stakeholders.
+
+    Below is RCA data in TOON (Token Oriented Object Notation) format, which describes an incident:
+
+    {{.TOONData}}
+
+    Key Details:
+    - Impact Service: {{.ImpactService}}
+    - Metric: {{.MetricName}}
+    - Severity: {{.Severity}}
+    - Anomaly Score: {{.AnomalyScore}}
+    {{- if .RootCauseService}}
+    - Root Cause Service: {{.RootCauseService}}
+    - Root Cause Component: {{.RootCauseComponent}}
+    {{- end}}
+    {{- if .TopChainPath}}
+    - Causal Chain: {{.TopChainPath}}
+    {{- end}}
+
+    Please provide a clear, non-technical explanation of:
+    1. What happened (in simple terms)
+    2. What caused it (the root cause)
+    3. Which services/components were affected
+    4. Why this matters to the business
+
+    Use simple language suitable for executives or non-technical team members. Avoid jargon, acronyms, and technical metrics unless absolutely necessary.

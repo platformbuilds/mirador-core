@@ -22,6 +22,9 @@ type Config struct {
 
 	// Engine configuration for Correlation & RCA engines (AT-004)
 	Engine EngineConfig `mapstructure:"engine" yaml:"engine"`
+
+	// MIRA (Mirador Intelligent Research Assistant) configuration for RCA analysis (MIRA-001)
+	MIRA MIRAConfig `mapstructure:"mira" yaml:"mira"`
 }
 
 // EngineConfig controls Correlation and RCA behavior (AT-004)
