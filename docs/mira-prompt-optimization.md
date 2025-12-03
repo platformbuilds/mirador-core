@@ -160,6 +160,34 @@ if len(truncatedResponse) > 300 {
 conversationContext.WriteString(fmt.Sprintf("\n[Part %d]: %s\n", i+1, truncatedResponse))
 ```
 
+### 7. Time Ring Context for Temporal Awareness
+**Files Modified:**
+- `internal/api/handlers/mira_rca.handler.go` - `ExtractPromptData()`, `splitRCAIntoChunks()`, `buildChunkPrompt()`
+- `configs/config.yaml` - Updated prompt template
+- `internal/config/mira_config.go` - Updated default template
+
+**New Feature:**
+- Extract and include time ring definitions (R1_IMMEDIATE, R2_SHORT, R3_MEDIUM, R4_LONG) in prompts
+- Add peak time context to help AI understand temporal sequence
+- Include ring durations so AI can explain when events occurred relative to incident peak
+- Provides temporal boundaries for each analysis chunk
+
+**Example Ring Context:**
+```
+Time rings: R1_IMMEDIATE=5s, R2_SHORT=30s, R3_MEDIUM=2m0s, R4_LONG=10m0s
+Peak: 2025-12-03T16:15:00Z
+```
+
+This helps the AI generate explanations like:
+- "Just 5 seconds before the peak (R1_IMMEDIATE), database operations spiked..."
+- "Starting 30 seconds earlier (R2_SHORT), Kafka consumption began failing..."
+- "The root cause traces back 2 minutes (R3_MEDIUM) to..."
+
+**Token Impact:**
+- Adds ~40-60 tokens per chunk
+- High value: significantly improves temporal clarity in explanations
+- Helps users understand the timeline and propagation of the incident
+
 ## Impact Summary
 
 | Component | Before (tokens) | After (tokens) | Reduction |

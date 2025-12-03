@@ -129,6 +129,9 @@ func DefaultMIRAConfig() MIRAConfig {
 
 func defaultPromptTemplate() string {
 	return `You are MIRA. Explain this technical incident in simple terms for business stakeholders.
+{{- if .TimeRings}}
+Timing context: {{.TimeRings}}
+{{- end}}
 
 {{.TOONData}}
 

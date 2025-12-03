@@ -376,6 +376,12 @@ mira:
     You are MIRA. Explain this RCA to business stakeholders in simple terms.
 
     RCA follows 5 Whys: Why #1 (impact) → Why #2-4 (propagation) → Why #5 (root cause)
+    {{- if .TimeRings}}
+    Time rings: {{.TimeRings}}
+    {{- end}}
+    {{- if .PeakTime}}
+    Peak: {{.PeakTime}}
+    {{- end}}
     
     {{.TOONData}}
 

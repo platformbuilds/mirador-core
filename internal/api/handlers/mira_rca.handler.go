@@ -214,6 +214,22 @@ func (h *MIRARCAHandler) ExtractPromptData(rca *models.RCAResponse, toonData str
 			data["TimeWindowStart"] = rca.Data.Impact.TimeStartStr
 			data["TimeWindowEnd"] = rca.Data.Impact.TimeEndStr
 		}
+
+		// Extract time ring definitions for temporal context
+		if rca.Data.TimeRings != nil && len(rca.Data.TimeRings.Definitions) > 0 {
+			var ringDefs []string
+			for ring, def := range rca.Data.TimeRings.Definitions {
+				if ring != "R_OUT_OF_SCOPE" {
+					ringDefs = append(ringDefs, fmt.Sprintf("%s=%s (%s)", ring, def.Duration, def.Description))
+				}
+			}
+			data["TimeRings"] = strings.Join(ringDefs, ", ")
+
+			// Extract peak time if available
+			if len(rca.Data.TimeRings.PerChain) > 0 {
+				data["PeakTime"] = rca.Data.TimeRings.PerChain[0].PeakTime
+			}
+		}
 	}
 
 	return data
@@ -316,14 +332,31 @@ func (h *MIRARCAHandler) splitRCAIntoChunks(rca *models.RCAResponse, maxTokensPe
 		"type": "impact_and_root_cause",
 	}
 
+	// Add time ring context to first chunk
+	if rca.Data.TimeRings != nil {
+		var ringDefs []string
+		for ring, def := range rca.Data.TimeRings.Definitions {
+			if ring != "R_OUT_OF_SCOPE" {
+				ringDefs = append(ringDefs, fmt.Sprintf("%s=%s", ring, def.Duration))
+			}
+		}
+		if len(ringDefs) > 0 {
+			chunk1["timeRings"] = strings.Join(ringDefs, ", ")
+		}
+
+		if len(rca.Data.TimeRings.PerChain) > 0 {
+			chunk1["peakTime"] = rca.Data.TimeRings.PerChain[0].PeakTime
+		}
+	}
+
 	// Extract only essential impact fields
 	if rca.Data.Impact != nil {
 		chunk1["impact"] = map[string]interface{}{
-			"service":    rca.Data.Impact.ImpactService,
-			"metric":     rca.Data.Impact.MetricName,
-			"severity":   rca.Data.Impact.Severity,
-			"timeStart":  rca.Data.Impact.TimeStartStr,
-			"timeEnd":    rca.Data.Impact.TimeEndStr,
+			"service":   rca.Data.Impact.ImpactService,
+			"metric":    rca.Data.Impact.MetricName,
+			"severity":  rca.Data.Impact.Severity,
+			"timeStart": rca.Data.Impact.TimeStartStr,
+			"timeEnd":   rca.Data.Impact.TimeEndStr,
 		}
 	}
 
@@ -413,6 +446,17 @@ func (h *MIRARCAHandler) buildChunkPrompt(basePrompt string, chunk map[string]in
 			}
 			promptBuilder.WriteString("Prior: " + truncatedContext + "\n\n")
 		}
+	}
+
+	// Add time ring context if available (for all chunk types)
+	if timeRings, ok := chunk["timeRings"].(string); ok && timeRings != "" {
+		promptBuilder.WriteString("Time rings: " + timeRings + "\n")
+	}
+	if peakTime, ok := chunk["peakTime"].(string); ok && peakTime != "" {
+		promptBuilder.WriteString("Peak: " + peakTime + "\n")
+	}
+	if len(chunk) > 2 { // Has time context
+		promptBuilder.WriteString("\n")
 	}
 
 	switch chunkType {

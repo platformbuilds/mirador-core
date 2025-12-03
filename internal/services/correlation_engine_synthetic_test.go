@@ -150,6 +150,7 @@ func TestCorrelate_StrongAndWeakCauses(t *testing.T) {
 	repo := newFakeKPIRepo()
 	repo.kpis["impact_kpi"] = &models.KPIDefinition{
 		ID:            "impact_kpi",
+		Name:          "impact_kpi",
 		Layer:         "impact",
 		Formula:       "impact_kpi",
 		ServiceFamily: "svc-impact",
@@ -158,6 +159,7 @@ func TestCorrelate_StrongAndWeakCauses(t *testing.T) {
 	}
 	repo.kpis["cause_A"] = &models.KPIDefinition{
 		ID:            "cause_A",
+		Name:          "cause_A",
 		Layer:         "cause",
 		Formula:       "cause_A",
 		ServiceFamily: "svc-a",
@@ -166,6 +168,7 @@ func TestCorrelate_StrongAndWeakCauses(t *testing.T) {
 	}
 	repo.kpis["cause_B"] = &models.KPIDefinition{
 		ID:            "cause_B",
+		Name:          "cause_B",
 		Layer:         "cause",
 		Formula:       "cause_B",
 		ServiceFamily: "svc-b",
@@ -244,6 +247,7 @@ func TestCorrelate_LaggedCause(t *testing.T) {
 	repo := newFakeKPIRepo()
 	repo.kpis["impact_kpi"] = &models.KPIDefinition{
 		ID:         "impact_kpi",
+		Name:       "impact_kpi",
 		Layer:      "impact",
 		Formula:    "impact_kpi",
 		SignalType: "metric",
@@ -251,6 +255,7 @@ func TestCorrelate_LaggedCause(t *testing.T) {
 	}
 	repo.kpis["lag_cause"] = &models.KPIDefinition{
 		ID:         "lag_cause",
+		Name:       "lag_cause",
 		Layer:      "cause",
 		Formula:    "lag_cause",
 		SignalType: "metric",
