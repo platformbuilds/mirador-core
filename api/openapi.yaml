@@ -465,6 +465,286 @@ paths:
         '500':
           description: AI service error or internal server error
 
+  /api/v1/mira/rca_analyze_async:
+    post:
+      summary: Submit async MIRA RCA analysis task
+      description: |
+        Submits RCA data for asynchronous AI-powered explanation generation. Returns immediately with a task ID.
+        Client can poll the task status endpoint to check progress and retrieve results.
+        
+        **Advantages over sync API:**
+        - No HTTP timeout for large RCA analysis (sync API has 5 minute limit)
+        - Real-time progress tracking (chunk-by-chunk processing visibility)
+        - Optional webhook callbacks for event-driven architectures
+        - Task state persisted in Valkey (survives server restarts)
+        
+        **Workflow:**
+        1. Submit RCA data → Receive taskId immediately (202 Accepted)
+        2. Poll `GET /api/v1/mira/rca_analyze/{taskId}` every 5-10 seconds
+        3. When status = "completed", retrieve result from response
+        4. (Optional) Provide callbackUrl for webhook notification
+        
+        **Example:**
+        ```bash
+        # Step 1: Submit async task
+        TASK_RESPONSE=$(curl -X POST http://localhost:8010/api/v1/mira/rca_analyze_async \
+          -H "Content-Type: application/json" \
+          -d '{
+            "rcaData": {...},
+            "callbackUrl": "https://webhook.example.com/mira-callback"
+          }')
+        
+        # Step 2: Extract taskId
+        TASK_ID=$(echo "$TASK_RESPONSE" | jq -r '.taskId')
+        
+        # Step 3: Poll for status
+        while true; do
+          STATUS=$(curl http://localhost:8010/api/v1/mira/rca_analyze/$TASK_ID | jq -r '.status')
+          if [ "$STATUS" = "completed" ] || [ "$STATUS" = "failed" ]; then
+            break
+          fi
+          echo "Progress: $(curl http://localhost:8010/api/v1/mira/rca_analyze/$TASK_ID | jq '.progress')"
+          sleep 5
+        done
+        ```
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rcaData
+              properties:
+                rcaData:
+                  type: object
+                  description: Complete RCA response data (same as sync API)
+                callbackUrl:
+                  type: string
+                  format: uri
+                  description: Optional webhook URL for completion notification (POST with task status)
+            examples:
+              withCallback:
+                summary: Async task with webhook callback
+                value:
+                  rcaData:
+                    impact:
+                      id: "corr_1764756501"
+                      impactService: "DB Operations"
+                      metricName: "sum(db_ops_total)"
+                      severity: 0.9
+                    rootCause:
+                      whyIndex: 5
+                      service: "process"
+                      component: "deployment"
+                      score: 0.27
+                    chains:
+                      - steps: [...]
+                        score: 0.63
+                  callbackUrl: "https://webhook.example.com/mira-callback"
+      responses:
+        '202':
+          description: Task accepted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "accepted"
+                  taskId:
+                    type: string
+                    format: uuid
+                    description: UUID v4 task identifier
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  statusUrl:
+                    type: string
+                    description: URL to poll for task status
+                    example: "/api/v1/mira/rca_analyze/550e8400-e29b-41d4-a716-446655440000"
+                  message:
+                    type: string
+                    example: "Task submitted for processing. Poll statusUrl for results."
+        '400':
+          description: Invalid request (missing rcaData or malformed JSON)
+        '500':
+          description: Task creation failed
+
+  /api/v1/mira/rca_analyze/{taskId}:
+    get:
+      summary: Get MIRA task status and result
+      description: |
+        Retrieves the current status and result of an async MIRA analysis task.
+        Task data is stored in Valkey with 24-hour TTL.
+        
+        **Task Status Flow:**
+        - `pending` → Task queued, not yet started
+        - `processing` → Background processing in progress (check `progress` field for details)
+        - `completed` → Task finished successfully (result available in `result` field)
+        - `failed` → Task failed (error message in `error` field)
+        
+        **Progress Tracking:**
+        When status = "processing", the `progress` object shows:
+        - `totalChunks` - Total number of chunks to process
+        - `completedChunks` - Chunks finished so far
+        - `currentChunk` - Current chunk being processed
+        - `currentStage` - Current processing stage (e.g., "chunk_2_processing")
+        - `lastUpdated` - Timestamp of last progress update
+        
+        **Stages:**
+        - `toon_conversion` - Converting RCA to TOON format
+        - `prompt_rendering` - Building AI prompts
+        - `chunk_processing_started` - Beginning chunked generation
+        - `chunk_N_processing` - Processing chunk N
+        - `chunk_N_completed` - Chunk N finished
+        - `stitching_final_explanation` - Combining chunk results
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Task ID returned from POST /api/v1/mira/rca_analyze_async
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Task status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  taskId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [pending, processing, completed, failed]
+                  progress:
+                    type: object
+                    description: Progress tracking (present when status = processing or completed)
+                    properties:
+                      totalChunks:
+                        type: integer
+                      completedChunks:
+                        type: integer
+                      currentChunk:
+                        type: integer
+                      currentStage:
+                        type: string
+                      lastUpdated:
+                        type: string
+                        format: date-time
+                  submittedAt:
+                    type: string
+                    format: date-time
+                  startedAt:
+                    type: string
+                    format: date-time
+                    description: When processing started (null if pending)
+                  completedAt:
+                    type: string
+                    format: date-time
+                    description: When task finished (null if not completed/failed)
+                  result:
+                    type: object
+                    description: Analysis result (present when status = completed)
+                    properties:
+                      status:
+                        type: string
+                      data:
+                        type: object
+                        properties:
+                          explanation:
+                            type: string
+                          provider:
+                            type: string
+                          model:
+                            type: string
+                          tokensUsed:
+                            type: integer
+                          cached:
+                            type: boolean
+                          totalChunks:
+                            type: integer
+                          generationTimeMs:
+                            type: integer
+                  error:
+                    type: string
+                    description: Error message (present when status = failed)
+                  callbackUrl:
+                    type: string
+                    description: Webhook URL (if provided during submission)
+              examples:
+                pending:
+                  summary: Task pending (not yet started)
+                  value:
+                    taskId: "550e8400-e29b-41d4-a716-446655440000"
+                    status: "pending"
+                    submittedAt: "2025-12-03T14:30:00Z"
+                processing:
+                  summary: Task processing (chunk 2 of 3)
+                  value:
+                    taskId: "550e8400-e29b-41d4-a716-446655440000"
+                    status: "processing"
+                    progress:
+                      totalChunks: 3
+                      completedChunks: 1
+                      currentChunk: 2
+                      currentStage: "chunk_2_processing"
+                      lastUpdated: "2025-12-03T14:32:15Z"
+                    submittedAt: "2025-12-03T14:30:00Z"
+                    startedAt: "2025-12-03T14:30:01Z"
+                completed:
+                  summary: Task completed successfully
+                  value:
+                    taskId: "550e8400-e29b-41d4-a716-446655440000"
+                    status: "completed"
+                    progress:
+                      totalChunks: 3
+                      completedChunks: 3
+                      currentChunk: 3
+                      currentStage: "completed"
+                      lastUpdated: "2025-12-03T14:35:42Z"
+                    result:
+                      status: "success"
+                      data:
+                        explanation: "First, users experienced failed transactions (Why #1, IMPACT layer)..."
+                        provider: "openai"
+                        model: "gpt-4"
+                        tokensUsed: 3891
+                        cached: false
+                        totalChunks: 3
+                        generationTimeMs: 341000
+                    submittedAt: "2025-12-03T14:30:00Z"
+                    startedAt: "2025-12-03T14:30:01Z"
+                    completedAt: "2025-12-03T14:35:42Z"
+                failed:
+                  summary: Task failed
+                  value:
+                    taskId: "550e8400-e29b-41d4-a716-446655440000"
+                    status: "failed"
+                    error: "AI provider timeout after 3 retries"
+                    submittedAt: "2025-12-03T14:30:00Z"
+                    startedAt: "2025-12-03T14:30:01Z"
+                    completedAt: "2025-12-03T14:32:18Z"
+        '404':
+          description: Task not found (invalid taskId or expired after 24h TTL)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  error:
+                    type: string
+                    example: "task_not_found"
+                  taskId:
+                    type: string
+
   # Unified query engine (v1)
   /api/v1/unified/query:
     post:

@@ -357,6 +357,7 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 
 	// Create MIRA handler for AI-powered RCA explanations (if enabled)
 	var miraHandler *handlers.MIRARCAHandler
+	var miraServiceForAsync services.MIRAService // Store for async handler
 	if s.config.MIRA.Enabled {
 		miraService, err := services.NewMIRAService(s.config.MIRA, s.logger, s.cache)
 		if err != nil {
@@ -365,6 +366,7 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 			// Wrap with caching layer
 			cachedMIRAService := services.NewCachedMIRAService(miraService, s.config.MIRA.Cache, s.cache, s.logger)
 			miraHandler = handlers.NewMIRARCAHandler(cachedMIRAService, s.config.MIRA, s.logger)
+			miraServiceForAsync = cachedMIRAService // Store for async handler
 			s.logger.Info("MIRA service initialized", "provider", s.config.MIRA.Provider, "model", miraService.GetModelName())
 		}
 	}
@@ -407,11 +409,32 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 		// Apply MIRA-specific rate limiting (stricter than default)
 		miraGroup.Use(middleware.MIRARateLimiter(s.cache, s.config.MIRA.RateLimit))
 		{
+			// Sync API (blocks until completion, may timeout for large RCA)
 			miraGroup.POST("/rca_analyze", miraHandler.HandleMIRARCAAnalyze)
+
+			// Async API with dual persistence: Valkey (hot cache) + Weaviate (long-term storage)
+			if miraServiceForAsync != nil {
+				// Initialize Weaviate MIRA RCA store if Weaviate is enabled
+				var mirarcaStore *weavstore.WeaviateMIRARCAStore
+				if s.weaviateClient != nil {
+					mirarcaStore = weavstore.NewWeaviateMIRARCAStore(s.weaviateClient, zap.L())
+					s.logger.Info("MIRA RCA Weaviate store initialized for long-term task persistence")
+				}
+
+				miraAsyncHandler := handlers.NewMIRARCAAsyncHandler(miraServiceForAsync, s.config.MIRA, s.cache, mirarcaStore, s.logger)
+				miraGroup.POST("/rca_analyze_async", miraAsyncHandler.HandleMIRARCAAnalyzeAsync)
+				miraGroup.GET("/rca_analyze/:taskId", miraAsyncHandler.HandleGetTaskStatus)
+			}
+		}
+		storageBackends := "valkey"
+		if s.weaviateClient != nil {
+			storageBackends = "valkey+weaviate"
 		}
 		s.logger.Info("MIRA routes registered with rate limiting",
 			"enabled", s.config.MIRA.RateLimit.Enabled,
-			"requests_per_minute", s.config.MIRA.RateLimit.RequestsPerMinute)
+			"requests_per_minute", s.config.MIRA.RateLimit.RequestsPerMinute,
+			"async_api", "enabled",
+			"task_storage", storageBackends)
 	}
 
 	s.logger.Info("Unified query engine initialized and routes registered")

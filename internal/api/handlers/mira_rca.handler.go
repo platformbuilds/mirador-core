@@ -107,10 +107,10 @@ func (h *MIRARCAHandler) HandleMIRARCAAnalyze(c *gin.Context) {
 	}
 
 	// Extract key information for prompt template
-	promptData := h.extractPromptData(&req.RCAData, toonData)
+	promptData := h.ExtractPromptData(&req.RCAData, toonData)
 
 	// Render base prompt from template
-	basePrompt, err := h.renderPrompt(promptData)
+	basePrompt, err := h.RenderPrompt(promptData)
 	if err != nil {
 		h.logger.Error("Failed to render prompt", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -131,7 +131,7 @@ func (h *MIRARCAHandler) HandleMIRARCAAnalyze(c *gin.Context) {
 	// model context limits. Each chunk is processed separately and responses are cached
 	// in Valkey, then stitched together for final response.
 	startTime := time.Now()
-	explanation, totalTokens, cached, err := h.generateChunkedExplanation(ctx, &req.RCAData, basePrompt)
+	explanation, totalTokens, cached, err := h.GenerateChunkedExplanation(ctx, &req.RCAData, basePrompt)
 	if err != nil {
 		h.logger.Error("MIRA chunked explanation generation failed", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -164,8 +164,8 @@ func (h *MIRARCAHandler) HandleMIRARCAAnalyze(c *gin.Context) {
 	})
 }
 
-// extractPromptData extracts key information from RCA response for prompt template.
-func (h *MIRARCAHandler) extractPromptData(rca *models.RCAResponse, toonData string) map[string]interface{} {
+// ExtractPromptData extracts key information from RCA response for prompt template.
+func (h *MIRARCAHandler) ExtractPromptData(rca *models.RCAResponse, toonData string) map[string]interface{} {
 	data := map[string]interface{}{
 		"TOONData": toonData,
 	}
@@ -217,8 +217,10 @@ func (h *MIRARCAHandler) extractPromptData(rca *models.RCAResponse, toonData str
 	}
 
 	return data
-} // renderPrompt renders the prompt template with extracted data.
-func (h *MIRARCAHandler) renderPrompt(data map[string]interface{}) (string, error) {
+}
+
+// RenderPrompt renders the prompt template with extracted data.
+func (h *MIRARCAHandler) RenderPrompt(data map[string]interface{}) (string, error) {
 	tmpl, err := template.New("mira_prompt").Parse(h.config.PromptTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse prompt template: %w", err)
@@ -232,11 +234,11 @@ func (h *MIRARCAHandler) renderPrompt(data map[string]interface{}) (string, erro
 	return buf.String(), nil
 }
 
-// generateChunkedExplanation breaks large RCA data into chunks, processes each chunk
+// GenerateChunkedExplanation breaks large RCA data into chunks, processes each chunk
 // separately to stay within model context limits, caches intermediate results in Valkey,
 // and stitches the final explanation together. Each chunk includes context from previous
 // responses to maintain coherence.
-func (h *MIRARCAHandler) generateChunkedExplanation(ctx context.Context, rca *models.RCAResponse, basePrompt string) (string, int, bool, error) {
+func (h *MIRARCAHandler) GenerateChunkedExplanation(ctx context.Context, rca *models.RCAResponse, basePrompt string) (string, int, bool, error) {
 	const maxTokensPerChunk = 3000 // Leave buffer for response tokens (4096 - 1096 = 3000)
 
 	// Step 1: Split RCA into logical chunks
@@ -304,21 +306,20 @@ func (h *MIRARCAHandler) splitRCAIntoChunks(rca *models.RCAResponse, maxTokensPe
 	// Split chains into separate chunks (each chain can be explained independently)
 	if len(rca.Data.Chains) > 0 {
 		// Dynamically calculate chains per chunk based on total chains
-		// Target: Keep chunks balanced, typically 2-3 chains per chunk for 3B model
-		// For 1-3 chains: 2 per chunk
-		// For 4-5 chains: 2-3 per chunk (split evenly)
-		// For 6+ chains: 3 per chunk
+		// Strategy: Minimize chunks while staying within model context limits
+		// For 1-5 chains: Include all in one chunk (better context)
+		// For 6-10 chains: 5 per chunk (2 chunks total)
+		// For 11+ chains: 5 per chunk (multiple chunks)
 		totalChains := len(rca.Data.Chains)
 		var chainsPerChunk int
 
 		switch {
-		case totalChains <= 3:
-			chainsPerChunk = 2 // Up to 2 chunks for 3 chains
 		case totalChains <= 5:
-			// Split evenly: 4 chains → 2+2, 5 chains → 3+2
-			chainsPerChunk = (totalChains + 1) / 2
+			chainsPerChunk = totalChains // All chains in one chunk for better coherence
+		case totalChains <= 10:
+			chainsPerChunk = 5 // 2 chunks: 5+5 or 5+remaining
 		default:
-			chainsPerChunk = 3 // For 6+ chains, use 3 per chunk
+			chainsPerChunk = 5 // For 11+ chains, use 5 per chunk
 		}
 
 		h.logger.Info("Splitting chains into chunks",
@@ -370,30 +371,45 @@ func (h *MIRARCAHandler) buildChunkPrompt(basePrompt string, chunk map[string]in
 	case "impact_and_root_cause":
 		promptBuilder.WriteString("Part 1: IMPACT & ROOT CAUSE SUMMARY\n")
 		promptBuilder.WriteString("Explain WHAT happened, WHEN it happened, and the PRIMARY root cause.\n\n")
+		promptBuilder.WriteString("IMPORTANT CONTEXT:\n")
+		promptBuilder.WriteString("- This analysis follows the '5 Whys' methodology: each causal chain traces back through up to 5 levels of causation\n")
+		promptBuilder.WriteString("- KPIs are classified into layers: IMPACT layer (user-facing symptoms) and CAUSE layer (underlying technical issues)\n")
+		promptBuilder.WriteString("- The Impact KPI represents what users/business experienced\n")
+		promptBuilder.WriteString("- The Root Cause KPI is the deepest 'Why' we found (Why #5 in the chain)\n\n")
 
 		// Convert chunk data to JSON for structured input
 		if impact, ok := chunk["impact"]; ok {
 			impactJSON, _ := json.MarshalIndent(impact, "", "  ")
-			promptBuilder.WriteString(fmt.Sprintf("Impact:\n%s\n\n", impactJSON))
+			promptBuilder.WriteString(fmt.Sprintf("Impact (IMPACT Layer - What users saw):\n%s\n\n", impactJSON))
 		}
 		if rootCause, ok := chunk["rootCause"]; ok {
 			rcJSON, _ := json.MarshalIndent(rootCause, "", "  ")
-			promptBuilder.WriteString(fmt.Sprintf("Root Cause:\n%s\n\n", rcJSON))
+			promptBuilder.WriteString(fmt.Sprintf("Root Cause (CAUSE Layer - The deepest 'Why'):\n%s\n\n", rcJSON))
 		}
 
-		promptBuilder.WriteString("Provide a 2-3 sentence summary in simple language.\n")
+		promptBuilder.WriteString("Provide a clear explanation that:\n")
+		promptBuilder.WriteString("1. Describes the IMPACT (what business/users experienced)\n")
+		promptBuilder.WriteString("2. Identifies the ROOT CAUSE (the fundamental issue at Why #5)\n")
+		promptBuilder.WriteString("3. Uses simple language - no technical jargon\n\n")
 
 	case "chains":
 		chainRange := chunk["chainRange"].(string)
-		promptBuilder.WriteString(fmt.Sprintf("Part %d: CAUSAL CHAINS (%s)\n", chunkNum, chainRange))
-		promptBuilder.WriteString("Explain HOW the root cause propagated through the system, building on the context above.\n\n")
+		promptBuilder.WriteString(fmt.Sprintf("Part %d: CAUSAL CHAINS - THE '5 WHYS' PROPAGATION (%s)\n", chunkNum, chainRange))
+		promptBuilder.WriteString("\nEach chain shows the '5 Whys' progression from Impact (Why #1) to Root Cause (up to Why #5).\n")
+		promptBuilder.WriteString("The 'whyIndex' field shows the depth: 1 = user-facing impact, 5 = deepest root cause.\n\n")
+		promptBuilder.WriteString("KPI Layer Guide:\n")
+		promptBuilder.WriteString("- IMPACT layer KPIs (whyIndex 1-2): What users/business experienced\n")
+		promptBuilder.WriteString("- CAUSE layer KPIs (whyIndex 3-5): Technical issues that triggered the impact\n\n")
 
 		if chains, ok := chunk["chains"]; ok {
 			chainsJSON, _ := json.MarshalIndent(chains, "", "  ")
-			promptBuilder.WriteString(fmt.Sprintf("Chains:\n%s\n\n", chainsJSON))
+			promptBuilder.WriteString(fmt.Sprintf("Chains (each step has 'whyIndex' showing its depth in the '5 Whys'):\n%s\n\n", chainsJSON))
 		}
 
-		promptBuilder.WriteString("For each chain, explain the propagation path in 1-2 sentences, referring back to the root cause identified earlier.\n")
+		promptBuilder.WriteString("For each chain, explain:\n")
+		promptBuilder.WriteString("1. The '5 Whys' progression: Why #1 (impact) → Why #2 → ... → Why #5 (root cause)\n")
+		promptBuilder.WriteString("2. How IMPACT layer KPIs (user symptoms) connect to CAUSE layer KPIs (technical issues)\n")
+		promptBuilder.WriteString("3. The propagation path in simple, business-friendly language\n\n")
 	}
 
 	return promptBuilder.String()
