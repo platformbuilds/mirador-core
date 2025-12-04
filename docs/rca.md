@@ -6,15 +6,18 @@ This page documents Mirador Core's RCA engine: how it receives requests, how it 
 
 RCA follows the same Stage-01 time-window-only request contract as Correlation. Public handlers accept only a JSON object with `startTime` and `endTime` fields:
 
-POST /api/v1/unified/rca
+`POST /api/v1/unified/rca`
 
 Request (exact shape):
 
+We maintain UTC Timestamps in order to support global deployments of applications and Coordinated Universal Time will guard us against Day Light Saving rules. For more details please refer [RFC#3339 - Date and Time on the Internet: Timestamps](https://www.rfc-editor.org/rfc/rfc3339#section-4.1){:target="_blank"}
+
+```json
 {
   "startTime": "2025-11-01T12:00:00Z",
   "endTime":   "2025-11-01T13:00:00Z"
 }
-
+```
 EngineConfig and the KPI registry provide the rest of the context — RCA builds on correlation results and registry metadata, not request-scoped knobs.
 
 ## High-level flow
@@ -38,6 +41,7 @@ EngineConfig and the KPI registry provide the rest of the context — RCA builds
 
 ## Example response (simplified)
 
+```json
 {
   "impact": { "time": "2025-11-01T12:24:00Z", "kpi_id": "kpi.http.error_rate" },
   "why_chains": [
@@ -51,6 +55,7 @@ EngineConfig and the KPI registry provide the rest of the context — RCA builds
   ],
   "metadata": { "execution_time_ms": 250, "engine_results": {...} }
 }
+```
 
 ## Operator guidance
 
@@ -59,4 +64,3 @@ EngineConfig and the KPI registry provide the rest of the context — RCA builds
 
 ---
 
-If you want targeted examples (curl, SDK or sample Why-chain data using your KPIs), I can add short worked examples tailored for your team.

@@ -522,7 +522,7 @@ func (h *MIRARCAHandler) splitRCAIntoChunks(rca *models.RCAResponse, maxTokensPe
 					if kpiInfo == "" && step.Component != "" {
 						kpiInfo = step.Component
 					}
-					
+
 					compactSteps = append(compactSteps, map[string]interface{}{
 						"service":  step.Service,
 						"kpi":      kpiInfo,
