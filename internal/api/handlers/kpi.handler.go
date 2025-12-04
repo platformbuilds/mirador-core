@@ -559,6 +559,40 @@ func (h *KPIHandler) DeleteKPIDefinition(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"result": res})
 }
 
+// GetKPIDefinition retrieves a KPI definition by ID
+// @Summary Get KPI definition
+// @Description Retrieve a KPI definition by its ID
+// @Tags kpi-definitions
+// @Accept json
+// @Produce json
+// @Param id path string true "KPI definition ID"
+// @Success 200 {object} models.KPIDefinition
+// @Failure 400 {object} map[string]string "error: missing id"
+// @Failure 404 {object} map[string]string "error: not found"
+// @Failure 500 {object} map[string]string "error: failed to fetch KPI"
+// @Router /api/v1/kpi/defs/{id} [get]
+// (no internal auth)
+func (h *KPIHandler) GetKPIDefinition(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "KPI id is required"})
+		return
+	}
+
+	kpi, err := h.repo.GetKPI(c.Request.Context(), id)
+	if err != nil {
+		h.logger.Error("failed to get KPI", "error", err, "id", id)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch KPI"})
+		return
+	}
+	if kpi == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "kpi not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, kpi)
+}
+
 // ------------------- Implementation methods (extracted from unified handler) -------------------
 
 func (h *KPIHandler) listKPIs(ctx context.Context, req models.KPIListRequest) ([]*models.KPIDefinition, int, error) {

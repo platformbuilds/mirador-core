@@ -226,11 +226,8 @@ func (s *Server) setupRoutes() {
 	s.router.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/swagger/index.html")
 	})
-
 	// API v1 group
 	v1 := s.router.Group("/api/v1")
-
-	// Back-compat: expose health under /api/v1 as well
 	v1.GET("/health", healthHandler.HealthCheck)
 	v1.GET("/ready", healthHandler.ReadinessCheck)
 	v1.GET("/microservices/status", healthHandler.MicroservicesStatus)
@@ -303,6 +300,7 @@ func (s *Server) setupRoutes() {
 				kpiDefsGroup.POST("", kpiHandler.CreateOrUpdateKPIDefinition)
 				kpiDefsGroup.POST("/bulk-json", kpiHandler.BulkIngestJSON)
 				kpiDefsGroup.POST("/bulk-csv", kpiHandler.BulkIngestCSV)
+				kpiDefsGroup.GET("/:id", kpiHandler.GetKPIDefinition)
 				kpiDefsGroup.DELETE("/:id", kpiHandler.DeleteKPIDefinition)
 			}
 		}
