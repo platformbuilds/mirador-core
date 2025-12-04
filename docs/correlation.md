@@ -10,15 +10,18 @@ The Correlation engine compares candidate KPIs and signals across a time window 
 
 For Stage-01 the Correlation and RCA endpoints accept a canonical time-window payload only. The public contract is strict — handlers should accept exactly the JSON body shown below and reject extra fields.
 
-POST /api/v1/unified/correlate (or POST /api/v1/unified/correlation in some deployments)
+`POST /api/v1/unified/correlate` (or POST /api/v1/unified/correlation in some deployments)
 
 Request body (exact):
 
+We maintain UTC Timestamps in order to support global deployments of applications and Coordinated Universal Time will guard us against Day Light Saving rules. For more details please refer [RFC#3339 - Date and Time on the Internet: Timestamps](https://www.rfc-editor.org/rfc/rfc3339#section-4.1){:target="_blank"}
+
+```json
 {
   "startTime": "2025-11-01T12:00:00Z",
   "endTime":   "2025-11-01T13:00:00Z"
 }
-
+```
 NOTE: This time-window-only contract is deliberate — correlation computations are window-based and engine-level tuning/config must live in EngineConfig, not request payloads.
 
 ## Time anchoring: impact time & rings
@@ -51,7 +54,7 @@ Correlation results return:
 - engine metadata (execution time, per-source record counts)
 
 Example response (simplified):
-
+```json
 {
   "summary": {
     "total_correlations": 3,
@@ -63,7 +66,7 @@ Example response (simplified):
   ],
   "metadata": { "time_range": "1h0m0s", "engine_results": { ... } }
 }
-
+```
 ## Error and validation rules
 
 - The handler will reject payloads where endTime <= startTime.
@@ -78,4 +81,3 @@ Example response (simplified):
 
 ---
 
-Ask me if you'd like a short curl example tailored to your environment or an explanation of how rings are computed with a simple numeric example.

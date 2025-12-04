@@ -10,6 +10,8 @@ unified-query
 kpi
 correlation
 rca
+rca-analyze-mira-ai
+api-docs
 ```
 
 ## Who this is for
@@ -18,8 +20,4 @@ rca
 - Developers integrating with Mirador's Unified Query API
 - Observability engineers who configure KPI discovery and RCA pipelines
 
-If you need deeper operational runbooks or long-form guides that were present previously, those legacy pages are still available in the repository but are intentionally not included in the main documentation navigation.
-
 ---
-
-If you'd like a different structure (for example a short getting-started, architecture, or migration pages in the main TOC), tell me and I will update the index and the four pages accordingly.

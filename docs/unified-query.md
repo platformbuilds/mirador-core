@@ -22,7 +22,7 @@ Supported endpoints (examples):
 
 The Unified Query HTTP handlers accept one of two JSON shapes:
 
-- Wrapped form: { "query": { ...UnifiedQuery fields... } }  (this is the canonical request wrapper `UnifiedQueryRequest`)
+- Wrapped form: `{ "query": { ...UnifiedQuery fields... } }`  (this is the canonical request wrapper `UnifiedQueryRequest`)
 - Direct form: a top-level UnifiedQuery JSON object (e.g. `{"id":"...","query":"..."}`)
 
 When unmarshalling a UnifiedQuery the code expects the UnifiedQuery JSON fields to be the ones defined in the model: `id`, `type`, `query`, `start_time`, `end_time`, `timeout`, `parameters`, `correlation_options`, `cache_options`.
@@ -30,7 +30,7 @@ When unmarshalling a UnifiedQuery the code expects the UnifiedQuery JSON fields 
 Important: the `start_time` / `end_time` fields in a `UnifiedQuery` are the snake_case fields used by the UnifiedQuery model and must be parseable as RFC3339 timestamps (ISO-8601). Example: "2025-11-01T12:00:00Z".
 
 Response (simplified):
-
+```json
 {
   "query_id": "uuid",
   "type": "metrics",
@@ -38,11 +38,11 @@ Response (simplified):
   "data": { ... },
   "metadata": { "engine_results": { ... } }
 }
-
+```
 Examples — wrapped and direct forms
 
 Wrapped (recommended):
-
+```json
 {
   "query": {
     "id": "req-123",
@@ -52,9 +52,9 @@ Wrapped (recommended):
     "end_time": "2025-11-01T12:05:00Z"
   }
 }
-
+```
 Direct form (accepted):
-
+```json
 {
   "id": "req-123",
   "type": "metrics",
@@ -62,7 +62,7 @@ Direct form (accepted):
   "start_time": "2025-11-01T12:00:00Z",
   "end_time": "2025-11-01T12:05:00Z"
 }
-
+```json
 Response metadata includes execution timing, per-engine record counts, and data_sources used.
 
 Notes on metrics ranges / step
@@ -91,4 +91,3 @@ Important difference: the Correlation / RCA endpoints expose a canonical *time-w
 
 ---
 
-If you'd like working curl examples for your environment or a sample SDK snippet (Go, Python, or cURL examples), tell me which languages and I will add short, tested snippets.

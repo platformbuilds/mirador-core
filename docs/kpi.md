@@ -35,14 +35,45 @@ The platform includes helper tooling to seed standard KPIs used by Mirador. Thes
 - Prefer returning scalar time-series or single-value aggregates for KPI formulas — these work best for correlation and anomaly detection.
 - Attach canonical semantic labels (service, namespace) instead of custom-only labels so engines can synthesize queries across environments.
 - Avoid hardcoded instance names; use label-driven patterns (e.g., service.name=~"api-.*") where appropriate.
+- Define `sentiment` if the value is increasing, like increase in latency is a `negative` sentiment
+- Define `serviceFamily` for sure, this is the greater family a KPI belongs to. RCA engine uses this to group and analyze
+- Define `layer` always as in `impact` or `cause`. Generally Business Metric get impacted because of Technical Issues, hence Bunsiess is `impact` and Tech is `cause`
 
 ## Example KPI (metrics)
 
-id: kpi.http.requests.success_rate
-name: HTTP success rate
-engine: metrics
-query: sum(rate(http_requests_total{status=~"2.."}[5m])) / sum(rate(http_requests_total[5m]))
-description: 5m success rate for HTTP requests across services.
+### Business KPI Metric (Impact Layer)
+```json
+    {
+      "kpi_name": "Technical Failure Impact Score",
+      "kpi_formula": "sum by (OrgName) (rate(transaction_total{success=\"false\", error_code=~\"TD.*\"}[1h])) * avg(transaction_amount)",
+      "kpi_definition": "Monetary impact of technical failures per bank, considering transaction volume and average amount. High scores indicate significant revenue loss and customer inconvenience.",
+      "layer": "impact",
+      "classifier": "revenue_at_risk",
+      "sentiment": "negative",
+      "signal_type": "metrics",
+      "query_type": "PromQL",
+      "datastore": "victoriametrics",
+      "emotional_impact": "Customer anger and loss of trust",
+      "business_impact": "Direct revenue loss and recovery costs",
+      "serviceFamily": "business_oltp"
+    }
+```
+
+### Technical KPI Metric (Cause Layer)
+```json
+    {
+      "kpi_name": "Kafka Consume Latency",
+      "kpi_formula": "sum(kafka_consume_latency_seconds_sum) / sum(kafka_consume_latency_seconds_count)",
+      "kpi_definition": "Average time taken to consume messages from Kafka. High latency indicates consumer processing bottlenecks.",
+      "layer": "cause",
+      "classifier": "message_latency",
+      "sentiment": "negative",
+      "signal_type": "metrics",
+      "query_type": "PromQL",
+      "datastore": "victoriametrics",
+      "serviceFamily": "kafka"
+    }
+```
 
 ## Operator notes
 
@@ -50,5 +81,3 @@ description: 5m success rate for HTTP requests across services.
 - Tests and simulator fixtures are allowed to hardcode example KPI names, but engine code must rely on config and registry for KPI names and not embed environment-specific strings.
 
 ---
-
-If you want, I can expand this page with examples for logs/traces KPIs or a short guide showing how to seed/update KPIs via CLI or API. Which formats would you like included (YAML examples, seed scripts, or API snippets)?
