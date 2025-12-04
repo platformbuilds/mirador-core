@@ -236,6 +236,36 @@ paths:
                     message: "invalid examples JSON"
 
   /api/v1/kpi/defs/{id}:
+    get:
+      summary: Get KPI definition by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: KPI definition retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                id: "api_errors_total--apigw_springboot_top_10_kpi"
+                name: "api_errors_total"
+                namespace: "apigw_springboot_top_10_kpi"
+                kind: "tech"
+                layer: "impact"
+                signalType: "metrics"
+                definition: "Total number of API errors observed at the gateway per minute."
+                tags: ["apigw","errors"]
+        '404':
+          description: KPI not found
+          content:
+            application/json:
+              example:
+                error: "kpi not found"
     delete:
       summary: Delete KPI definition by id
       parameters:
