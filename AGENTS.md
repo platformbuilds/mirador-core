@@ -568,3 +568,31 @@ you must:
 
 All such updates must go through code review like any other change.
 
+---
+
+## 7. Devtools Utility Scripts & Tools
+
+All utility scripts and tools for development, testing, and enforcement are now located in the `devtools/` folder. Below is a summary of each tool and its purpose:
+
+| Tool Name                       | Purpose & Summary                                                                                   |
+|----------------------------------|----------------------------------------------------------------------------------------------------|
+| check-hardcoded-violations.sh    | Scans engine code for hardcoded metric/service/label names. Enforces AGENTS.md §3.6 hygiene rules. |
+| check-todo-violations.sh         | Detects anonymous TODO/FIXME comments without tracker references in engine code.                   |
+| debug_lucene.go                  | Go utility for debugging Lucene-related code (details in source).                                  |
+| deploy-with-api-key-limits.sh    | Script for deploying with API key limits (see script for usage).                                   |
+| gen_openapi_json.py              | Converts OpenAPI YAML spec to JSON format for API documentation and tooling.                       |
+| gen_postman_collection.py        | Generates a Postman collection from the OpenAPI spec for API testing and sharing.                  |
+| generate-proto.sh                | Shell script to generate Protocol Buffer code (see script for details).                            |
+| generate_aggregate_postman.py    | Utility to aggregate Postman collections (see script for details).                                 |
+| localdev_seed_kpis.py            | Seeds local development environment with sample KPIs.                                              |
+| setup-dev-env.sh                 | Sets up the full Mirador Core development environment, checks prerequisites, installs dependencies.|
+| setup-readthedocs.sh             | Prepares the project for ReadTheDocs documentation integration.                                    |
+| test_lucene.go                   | Go test utility for Lucene code (details in source).                                               |
+| test_query.go                    | Go test utility for query code (details in source).                                                |
+| unified_query_loadtest.go        | Go utility for load testing the unified query engine.                                              |
+| validate_openapi.py              | Validates the OpenAPI YAML spec for structure and required fields.                                 |
+| verify-correlation-engine.sh     | Verifies the implementation and registration of the failure correlation engine.                    |
+| generate-proto-code.sh           | (If present) Generates Protocol Buffer code for gRPC and API models.                              |
+
+Refer to each script's header or comments for usage instructions. Many scripts enforce AGENTS.md rules and are referenced in CI, pre-commit hooks, and local development workflows.
+

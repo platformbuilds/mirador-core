@@ -50,8 +50,9 @@ var (
 	maxKPIListLimit = 10000
 )
 
-func makeObjectID(class, id string) string {
-	return uuid.NewV5(nsMirador, fmt.Sprintf("%s|%s", class, id)).String()
+func makeObjectID(id string) string {
+	// class is fixed for KPI objects in this store
+	return uuid.NewV5(nsMirador, fmt.Sprintf("KPIDefinition|%s", id)).String()
 }
 
 // CreateOrUpdateKPI creates a KPI if missing, updates if present. It returns
@@ -76,7 +77,7 @@ func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *KPIDefiniti
 		return nil, "", s.schemaErr
 	}
 
-	objID := makeObjectID("KPIDefinition", k.ID)
+	objID := makeObjectID(k.ID)
 
 	props := map[string]any{
 		"name":            k.Name,
@@ -110,8 +111,12 @@ func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *KPIDefiniti
 		"createdAt":       k.CreatedAt.Format(time.RFC3339Nano),
 		"updatedAt":       k.UpdatedAt.Format(time.RFC3339Nano),
 	}
-	// Check if object already exists in Weaviate
-	existing, err := s.GetKPI(ctx, k.ID)
+	// Check if object already exists in Weaviate and capture the actual
+	// Weaviate object id (o.ID) when present. This is important because the
+	// runtime may contain objects stored under either the legacy/raw KPI id
+	// or the deterministic v5 object id; updates must target the actual
+	// stored object id to avoid 'no object with id' errors from Weaviate.
+	foundObjID, existing, err := s.getKPIWithObjectID(ctx, k.ID)
 	if err != nil {
 		return nil, "", err
 	}
@@ -122,8 +127,14 @@ func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *KPIDefiniti
 			// No change detected; return existing as success
 			return existing, "no-change", nil
 		}
-		// There is a modification: perform update
-		if err := s.client.Data().Updater().WithClassName("KPIDefinition").WithID(objID).WithProperties(props).Do(ctx); err != nil {
+		// There is a modification: perform update against the actual Weaviate
+		// object id (foundObjID). If for some reason foundObjID is empty,
+		// fall back to the deterministic objID.
+		targetID := objID
+		if foundObjID != "" {
+			targetID = foundObjID
+		}
+		if err := s.client.Data().Updater().WithClassName("KPIDefinition").WithID(targetID).WithProperties(props).Do(ctx); err != nil {
 			return nil, "", err
 		}
 		return k, "updated", nil
@@ -242,7 +253,7 @@ func (s *WeaviateKPIStore) DeleteKPI(ctx context.Context, id string) error {
 	if id == "" {
 		return ErrIDEmpty
 	}
-	objID := makeObjectID("KPIDefinition", id)
+	objID := makeObjectID(id)
 
 	// Try delete by deterministic v5 object id first
 	if s.tryDeleteByObjectID(ctx, id, objID) {
@@ -386,12 +397,11 @@ func (s *WeaviateKPIStore) logf(format string, args ...interface{}) {
 	fmt.Printf(format+"\n", args...)
 }
 
-//nolint:gocyclo // Property parsing from Weaviate requires many field mappings
 func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinition, error) {
 	if id == "" {
 		return nil, nil
 	}
-	objID := makeObjectID("KPIDefinition", id)
+	objID := makeObjectID(id)
 
 	// Fetch all objects of the class and search for matching object id. The
 	// ObjectsGetter returns a slice of objects in the SDK.
@@ -422,7 +432,71 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinitio
 	if !found || props == nil {
 		return nil, nil
 	}
+	k := parsePropsToKPI(props, id)
+	return k, nil
+}
+
+// getKPIWithObjectID behaves like GetKPI but also returns the actual Weaviate
+// object id (o.ID) for the matched object. Returning the object id allows
+// callers to perform updates/deletes against the exact Weaviate object that
+// was matched, avoiding mismatches when objects exist under legacy/raw ids
+// or the deterministic v5 object ids.
+func (s *WeaviateKPIStore) getKPIWithObjectID(ctx context.Context, id string) (string, *KPIDefinition, error) {
+	if id == "" {
+		return "", nil, nil
+	}
+
+	objID := makeObjectID(id)
+
+	// Fetch objects of the class and search for matching object id.
+	resp, err := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").Do(ctx)
+	if err != nil {
+		return "", nil, err
+	}
+
+	var props map[string]any
+	var found bool
+	var foundObjID string
+	for _, o := range resp {
+		if o == nil {
+			continue
+		}
+		// Support both deterministic v5 object id and raw id usage
+		if o.ID.String() == objID || o.ID.String() == id {
+			if o.Properties != nil {
+				if m, ok := o.Properties.(map[string]any); ok {
+					props = m
+				}
+			}
+			found = true
+			foundObjID = o.ID.String()
+			break
+		}
+	}
+	if !found || props == nil {
+		return "", nil, nil
+	}
+
+	k := parsePropsToKPI(props, id)
+	return foundObjID, k, nil
+}
+
+// parsePropsToKPI converts a Weaviate properties map into a KPIDefinition.
+func parsePropsToKPI(props map[string]any, id string) *KPIDefinition {
 	k := &KPIDefinition{ID: id}
+
+	parseBasicProps(props, k)
+	parseMetadataProps(props, k)
+	parseQueryProps(props, k)
+	parseImpactProps(props, k)
+	parseCollectionProps(props, k)
+	parseTimestamps(props, k)
+
+	return k
+}
+
+// parseBasicProps extracts basic string properties
+func parseBasicProps(props map[string]any, k *KPIDefinition) {
 	if v, ok := props["name"].(string); ok {
 		k.Name = v
 	}
@@ -444,17 +518,6 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinitio
 	if v, ok := props["format"].(string); ok {
 		k.Format = v
 	}
-	if v, ok := props["query"].(map[string]any); ok {
-		k.Query = v
-	}
-	// thresholds parsing intentionally omitted here; handlers convert when needed
-	if v, ok := props["tags"].([]any); ok {
-		for _, tv := range v {
-			if sstr, ok := tv.(string); ok {
-				k.Tags = append(k.Tags, sstr)
-			}
-		}
-	}
 	if v, ok := props["definition"].(string); ok {
 		k.Definition = v
 	}
@@ -464,9 +527,13 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinitio
 	if v, ok := props["category"].(string); ok {
 		k.Category = v
 	}
-	if v, ok := props["retryAllowed"].(bool); ok {
-		k.RetryAllowed = v
+	if v, ok := props["visibility"].(string); ok {
+		k.Visibility = v
 	}
+}
+
+// parseMetadataProps extracts metadata properties (domain, service, component)
+func parseMetadataProps(props map[string]any, k *KPIDefinition) {
 	if v, ok := props["domain"].(string); ok {
 		k.Domain = v
 	}
@@ -476,22 +543,13 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinitio
 	if v, ok := props["componentType"].(string); ok {
 		k.ComponentType = v
 	}
-	if v, ok := props["sparkline"].(map[string]any); ok {
-		k.Sparkline = v
+	if v, ok := props["retryAllowed"].(bool); ok {
+		k.RetryAllowed = v
 	}
-	if v, ok := props["visibility"].(string); ok {
-		k.Visibility = v
-	}
-	if v, ok := props["createdAt"].(string); ok {
-		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
-			k.CreatedAt = t
-		}
-	}
-	if v, ok := props["updatedAt"].(string); ok {
-		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
-			k.UpdatedAt = t
-		}
-	}
+}
+
+// parseQueryProps extracts query-related properties
+func parseQueryProps(props map[string]any, k *KPIDefinition) {
 	if v, ok := props["layer"].(string); ok {
 		k.Layer = v
 	}
@@ -510,11 +568,32 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinitio
 	if v, ok := props["formula"].(string); ok {
 		k.Formula = v
 	}
+	if v, ok := props["query"].(map[string]any); ok {
+		k.Query = v
+	}
+	if v, ok := props["sparkline"].(map[string]any); ok {
+		k.Sparkline = v
+	}
+}
+
+// parseImpactProps extracts impact-related properties
+func parseImpactProps(props map[string]any, k *KPIDefinition) {
 	if v, ok := props["businessImpact"].(string); ok {
 		k.BusinessImpact = v
 	}
 	if v, ok := props["emotionalImpact"].(string); ok {
 		k.EmotionalImpact = v
+	}
+}
+
+// parseCollectionProps extracts collection properties (tags, examples, thresholds)
+func parseCollectionProps(props map[string]any, k *KPIDefinition) {
+	if v, ok := props["tags"].([]any); ok {
+		for _, tv := range v {
+			if sstr, ok := tv.(string); ok {
+				k.Tags = append(k.Tags, sstr)
+			}
+		}
 	}
 	if v, ok := props["examples"].([]any); ok {
 		for _, ex := range v {
@@ -523,13 +602,23 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinitio
 			}
 		}
 	}
-
-	// thresholds: convert nested properties back to models.Threshold
 	if raw, ok := props["thresholds"]; ok {
 		k.Thresholds = propsToThresholds(raw)
 	}
+}
 
-	return k, nil
+// parseTimestamps extracts timestamp properties
+func parseTimestamps(props map[string]any, k *KPIDefinition) {
+	if v, ok := props["createdAt"].(string); ok {
+		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+			k.CreatedAt = t
+		}
+	}
+	if v, ok := props["updatedAt"].(string); ok {
+		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+			k.UpdatedAt = t
+		}
+	}
 }
 
 // ensureKPIDefinitionClass checks whether the KPIDefinition class exists in
