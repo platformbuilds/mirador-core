@@ -147,10 +147,10 @@ localdev-up:
 	# Pull images only if missing (prevents re-pulling on every run)
 	docker-compose -f deployments/localdev/docker-compose.yaml up -d --build
 	@echo "⏳ Waiting for services to be ready..."
-	@deployments/localdev/scripts/wait-for-url.sh $(BASE_URL)/ready 120 2
+	@deployments/localdev/devtools/wait-for-url.sh $(BASE_URL)/ready 120 2
 
 localdev-wait:
-	@deployments/localdev/scripts/wait-for-url.sh $(BASE_URL)/ready 120 2
+	@deployments/localdev/devtools/wait-for-url.sh $(BASE_URL)/ready 120 2
 
 localdev-test:
 	@echo "🧪 Running unified E2E tests..."
@@ -195,13 +195,13 @@ localdev-seed-otel:
 		--data-interval 30s \
 		--start-time-offset -15m
 	@echo "Seeding KPI and signal definitions via bulk API (idempotent; deterministic IDs)"
-	@# Uses scripts/localdev_seed_kpis.py to POST KPI JSON registries and signal definitions to the server's bulk-json endpoints
-	@python3 scripts/localdev_seed_kpis.py --base-url "$(BASE_URL)" --seed-signals || true
+	@# Uses devtools/localdev_seed_kpis.py to POST KPI JSON registries and signal definitions to the server's bulk-json endpoints
+	@python3 devtools/localdev_seed_kpis.py --base-url "$(BASE_URL)" --seed-signals || true
 
 localdev-seed-data:
 	@echo "Seeding KPI and signal definitions via bulk API (idempotent; deterministic IDs)"
-	@# Uses scripts/localdev_seed_kpis.py to POST KPI JSON registries and signal definitions to the server's bulk-json endpoints
-	@python3 scripts/localdev_seed_kpis.py --base-url "$(BASE_URL)" --seed-signals || true
+	@# Uses devtools/localdev_seed_kpis.py to POST KPI JSON registries and signal definitions to the server's bulk-json endpoints
+	@python3 devtools/localdev_seed_kpis.py --base-url "$(BASE_URL)" --seed-signals || true
 
 localdev-down:
 	@docker-compose -f deployments/localdev/docker-compose.yaml down -v
@@ -334,11 +334,11 @@ fmt:
 
 check-hardcoded: ## Check for hardcoded metric/service names in engine code
 	@echo "🔍 Checking for hardcoded violations..."
-	@./scripts/check-hardcoded-violations.sh
+	@./devtools/check-hardcoded-violations.sh
 
 check-todos: ## Check for anonymous TODO/FIXME comments without tracker references
 	@echo "🔍 Checking for anonymous TODO/FIXME comments..."
-	@./scripts/check-todo-violations.sh
+	@./devtools/check-todo-violations.sh
 
 check-engine-hygiene: check-hardcoded check-todos ## Run all AGENTS.md §3.6 engine hygiene checks
 	@echo "✅ All engine hygiene checks passed!"
