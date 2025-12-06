@@ -270,6 +270,19 @@ type WeaviateConfig struct {
 	UseOfficial bool `mapstructure:"use_official" yaml:"use_official"`
 	// NestedKeys predeclares nestedProperties for object fields like tags/examples/etc.
 	NestedKeys []string `mapstructure:"nested_keys" yaml:"nested_keys"`
+	// Vectorizer config controls which runtime vectorizer/provider weaviate will use
+	// and which model to select. Designed to be CPU-friendly by default (small
+	// transformer models) to avoid the need for GPU infra in many deployments.
+	Vectorizer WeaviateVectorizerConfig `mapstructure:"vectorizer" yaml:"vectorizer"`
+}
+
+// WeaviateVectorizerConfig controls runtime vectorizer provider & model selection
+// for Weaviate schema classes that use a text vectorizer. Defaults should be
+// CPU-friendly (e.g. all-MiniLM family) to support low-cost deployments.
+type WeaviateVectorizerConfig struct {
+	Provider string `mapstructure:"provider" yaml:"provider"` // e.g. "text2vec-transformers" or "text2vec-openai" or "none"
+	Model    string `mapstructure:"model" yaml:"model"`       // e.g. "sentence-transformers/all-MiniLM-L6-v2"
+	UseGPU   bool   `mapstructure:"use_gpu" yaml:"use_gpu"`   // whether to prefer GPU-backed vectorizers
 }
 
 // SearchConfig holds configuration for search engines

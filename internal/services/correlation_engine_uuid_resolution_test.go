@@ -58,6 +58,11 @@ func (m *MockKPIRepoWithDefs) EnsureTelemetryStandards(ctx context.Context, cfg 
 	return nil
 }
 
+// SearchKPIs stub to satisfy interface for tests
+func (m *MockKPIRepoWithDefs) SearchKPIs(ctx context.Context, req models.KPISearchRequest) ([]models.KPISearchResult, int64, error) {
+	return nil, 0, nil
+}
+
 // Test that Correlate resolves KPI names and preserves original IDs/formula
 func TestCorrelationEngine_Correlate_ResolvesKPINames(t *testing.T) {
 	mockMetrics := &MockVictoriaMetricsService{}

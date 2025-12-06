@@ -68,6 +68,11 @@ func (m *mockKPIRepo) EnsureTelemetryStandards(ctx context.Context, cfg *config.
 	return nil
 }
 
+// SearchKPIs stub for tests
+func (m *mockKPIRepo) SearchKPIs(ctx context.Context, req models.KPISearchRequest) ([]models.KPISearchResult, int64, error) {
+	return nil, 0, nil
+}
+
 // mockRCAEngineWithUUIDs returns UUIDs in service/component fields
 type mockRCAEngineWithUUIDs struct{}
 

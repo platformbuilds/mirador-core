@@ -192,6 +192,15 @@ var (
 		[]string{"operation", "collection"},
 	)
 
+	// Weaviate schema missing counter (incremented when a class is missing)
+	weaviateSchemaMissingTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "mirador_core_weaviate_schema_missing_total",
+			Help: "Number of times a Weaviate class/schema was found missing",
+		},
+		[]string{"collection"},
+	)
+
 	// Active connections gauge
 	activeConnections = prometheus.NewGauge(
 		prometheus.GaugeOpts{
@@ -426,6 +435,7 @@ func SetupPrometheusMetrics(router gin.IRoutes) {
 	_ = prometheus.Register(victoriaMetricsQueryDuration) //nolint:errcheck
 	_ = prometheus.Register(weaviateOperationsTotal)      //nolint:errcheck
 	_ = prometheus.Register(weaviateOperationDuration)    //nolint:errcheck
+	_ = prometheus.Register(weaviateSchemaMissingTotal)   //nolint:errcheck
 	_ = prometheus.Register(activeConnections)            //nolint:errcheck
 	_ = prometheus.Register(errorsTotal)                  //nolint:errcheck
 
@@ -545,6 +555,15 @@ func RecordWeaviateOperation(operation, collection string, duration time.Duratio
 
 	weaviateOperationsTotal.WithLabelValues(operation, collection, status).Inc()
 	weaviateOperationDuration.WithLabelValues(operation, collection).Observe(duration.Seconds())
+}
+
+// RecordWeaviateSchemaMissing increments a counter when the runtime schema is
+// missing a Weaviate class (e.g., KPIDefinition). This is useful for
+// detecting uninitialized registries.
+func RecordWeaviateSchemaMissing(collection string) {
+	weaviateSchemaMissingTotal.WithLabelValues(collection).Inc()
+	// Also record as an error type for overall error metrics
+	errorsTotal.WithLabelValues("weaviate_schema_missing", collection).Inc()
 }
 
 // RecordBleveIndexOperation records Bleve index operation metrics

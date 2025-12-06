@@ -157,6 +157,10 @@ weaviate:
     - "tags"
     - "examples"
     - "allowed_values"
+  vectorizer:
+    provider: "text2vec-transformers"
+    model: "sentence-transformers/all-MiniLM-L6-v2"
+    use_gpu: false
 
 # Search Engine Configuration
 search:

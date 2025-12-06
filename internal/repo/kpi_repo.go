@@ -2,11 +2,13 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve"
 	"github.com/platformbuilds/mirador-core/internal/weavstore"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
@@ -25,6 +27,7 @@ type KPIRepo interface {
 	DeleteKPIBulk(ctx context.Context, ids []string) []error
 	GetKPI(ctx context.Context, id string) (*models.KPIDefinition, error)
 	ListKPIs(ctx context.Context, req models.KPIListRequest) ([]*models.KPIDefinition, int64, error)
+	SearchKPIs(ctx context.Context, req models.KPISearchRequest) ([]models.KPISearchResult, int64, error)
 	// EnsureTelemetryStandards ensures platform telemetry KPI/processor schemas
 	// are present in the registry according to the provided engine config.
 	EnsureTelemetryStandards(ctx context.Context, cfg *config.EngineConfig) error
@@ -32,14 +35,15 @@ type KPIRepo interface {
 
 type DefaultKPIRepo struct {
 	// Note: SQL source-of-truth will be added later; for now keep Weaviate available.
-	store    *weavstore.WeaviateKPIStore
+	// store is an abstraction so tests can inject fakes.
+	store    weavstore.KPIStore
 	logger   *zap.Logger
 	valkey   cache.ValkeyCluster
 	metadata bleve.MetadataStore
 }
 
 // NewDefaultKPIRepo constructs the DefaultKPIRepo. Keep signature stable for server wiring.
-func NewDefaultKPIRepo(store *weavstore.WeaviateKPIStore, logger *zap.Logger, valkey cache.ValkeyCluster, metadata bleve.MetadataStore) *DefaultKPIRepo {
+func NewDefaultKPIRepo(store weavstore.KPIStore, logger *zap.Logger, valkey cache.ValkeyCluster, metadata bleve.MetadataStore) *DefaultKPIRepo {
 	return &DefaultKPIRepo{store: store, logger: logger, valkey: valkey, metadata: metadata}
 }
 
@@ -330,6 +334,17 @@ func (r *DefaultKPIRepo) ListKPIs(ctx context.Context, req models.KPIListRequest
 	wreq := toWeavstoreListRequest(&req)
 	wkpis, total, err := r.store.ListKPIs(ctx, wreq)
 	if err != nil {
+		// If the Weaviate runtime schema lacks the KPIDefinition class, treat
+		// it like an empty registry (no KPIs yet) and return no error so callers
+		// can gracefully handle the 'no items' case.
+		if errors.Is(err, weavstore.ErrKPIDefinitionClassMissing) {
+			if r.logger != nil {
+				r.logger.Sugar().Info("kpi repo: kpi_definition class missing in Weaviate; returning empty list")
+			}
+			// Record a metric so operators can detect an uninitialized KPI registry
+			monitoring.RecordWeaviateSchemaMissing("kpi_definition")
+			return []*models.KPIDefinition{}, 0, nil
+		}
 		return nil, 0, err
 	}
 	kpis := make([]*models.KPIDefinition, len(wkpis))
@@ -337,6 +352,53 @@ func (r *DefaultKPIRepo) ListKPIs(ctx context.Context, req models.KPIListRequest
 		kpis[i] = fromWeavstoreKPI(wk)
 	}
 	return kpis, total, nil
+}
+
+func (r *DefaultKPIRepo) SearchKPIs(ctx context.Context, req models.KPISearchRequest) ([]models.KPISearchResult, int64, error) {
+	if r.store == nil {
+		return []models.KPISearchResult{}, 0, nil
+	}
+
+	wreq := &weavstore.KPISearchRequest{
+		Query:   req.Query,
+		Filters: toWeavstoreListRequest(&req.Filters),
+		Mode:    req.Mode,
+		Limit:   int64(req.Limit),
+		Offset:  int64(req.Offset),
+		Explain: req.Explain,
+	}
+
+	wres, total, err := r.store.SearchKPIs(ctx, wreq)
+	if err != nil {
+		// Preserve existing behavior: if schema is missing, treat as empty catalog
+		if errors.Is(err, weavstore.ErrKPIDefinitionClassMissing) {
+			return []models.KPISearchResult{}, 0, nil
+		}
+		return nil, 0, err
+	}
+
+	out := make([]models.KPISearchResult, 0, len(wres))
+	for _, wr := range wres {
+		if wr == nil || wr.KPI == nil {
+			continue
+		}
+		mk := fromWeavstoreKPI(wr.KPI)
+		rres := models.KPISearchResult{
+			ID:                mk.ID,
+			Name:              mk.Name,
+			DefinitionSnippet: mk.Definition,
+			Tags:              mk.Tags,
+			Kind:              mk.Kind,
+			Layer:             mk.Layer,
+			Score:             wr.Score,
+			MatchingFields:    wr.MatchingFields,
+			Highlights:        wr.Highlights,
+			KPI:               mk,
+		}
+		out = append(out, rres)
+	}
+
+	return out, total, nil
 }
 
 func (r *DefaultKPIRepo) GetKPI(ctx context.Context, id string) (*models.KPIDefinition, error) {

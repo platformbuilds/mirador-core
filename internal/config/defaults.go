@@ -163,5 +163,18 @@ func GetDefaultConfig() *Config {
 				Level:      []string{"level", "severity"},
 			},
 		},
+
+		Weaviate: WeaviateConfig{
+			Enabled:     true,
+			Scheme:      "http",
+			Host:        "localhost",
+			Port:        8080,
+			UseOfficial: true,
+			Vectorizer: WeaviateVectorizerConfig{
+				Provider: "text2vec-transformers",
+				Model:    "sentence-transformers/all-MiniLM-L6-v2",
+				UseGPU:   false,
+			},
+		},
 	}
 }

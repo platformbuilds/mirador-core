@@ -129,6 +129,10 @@ weaviate:
     - "tags"
     - "examples"
     - "allowed_values"
+  vectorizer:
+    provider: "text2vec-transformers"
+    model: "sentence-transformers/all-MiniLM-L6-v2"
+    use_gpu: false
 
 # MIRA (Mirador Intelligent Research Assistant) - AI-powered RCA Explanations
 # MIRA-001: Enabled in development for testing

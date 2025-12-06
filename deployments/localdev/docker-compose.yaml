@@ -97,7 +97,25 @@ services:
     restart: unless-stopped
     environment:
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
-      DEFAULT_VECTORIZER_MODULE: "none"
+      # Use Weaviate's built-in text2vec-transformers vectorizer for automatic
+      # embedding generation. NOTE: the Weaviate image must include this module
+      # (official images >= 1.x typically do) *and* you need a transformer
+      # inference backend available to serve the model if not using the
+      # built-in lightweight inference. For localdev, you can keep this as
+      # "none" if you don't want embeddings auto-generated.
+      DEFAULT_VECTORIZER_MODULE: "text2vec-transformers"
+      # Enable the transformers module in Weaviate runtime. This must match
+      # the actual available modules in the image (text2vec-transformers) and
+      # points to the inference API service below.
+      ENABLE_MODULES: "text2vec-transformers"
+      TRANSFORMERS_INFERENCE_API: "http://text2vec-transformers:8080"
+      TRANSFORMERS_INFERENCE_MODEL: "sentence-transformers/all-MiniLM-L6-v2"
+      # Transformer inference service (optional). If you run a local model
+      # server (e.g., huggingface/transformers-inference or text2vec compatible
+      # API), point Weaviate at it here. Keep commented or set to a local URL
+      # when available.
+      # TRANSFORMERS_INFERENCE_API: "http://transformers:8080"
+      # TRANSFORMERS_INFERENCE_MODEL: "sentence-transformers/all-MiniLM-L6-v2"
       QUERY_DEFAULTS_LIMIT: "25"
       PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
       CLUSTER_GOSSIP_BIND_PORT: "7100"
@@ -143,6 +161,29 @@ services:
         sleep 5
         ollama pull llama3.2:3b
         wait
+
+  # Optional: local transformer inference server for Weaviate's text2vec-transformers.
+  # This provides an ONNX-optimized sentence-transformers model suitable for
+  # CPU-based local development. The image is optimized for AMD64 (AVX2) and
+  # ARM64 and uses ONNX runtime for efficient inference.
+  text2vec-transformers:
+    image: cr.weaviate.io/semitechnologies/transformers-inference:sentence-transformers-all-MiniLM-L6-v2-onnx
+    pull_policy: if_not_present
+    container_name: text2vec-transformers
+    ports:
+      - "8081:8080" # expose host:container for testing (internal weaviate calls use the container name)
+    restart: unless-stopped
+    environment:
+      # Model served by this backend. Keep in sync with TRANSFORMERS_INFERENCE_MODEL
+      - MODEL_ID=sentence-transformers/all-MiniLM-L6-v2
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks:
+      - mirador-net
 
   # ──────────────────────────────────────────────
   # MIRADOR CORE (Main Application)

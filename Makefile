@@ -147,7 +147,7 @@ localdev-up:
 	# Pull images only if missing (prevents re-pulling on every run)
 	docker-compose -f deployments/localdev/docker-compose.yaml up -d --build
 	@echo "⏳ Waiting for services to be ready..."
-	@deployments/localdev/devtools/wait-for-url.sh $(BASE_URL)/ready 120 2
+	@deployments/localdev/scripts/wait-for-url.sh $(BASE_URL)/ready 120 2
 
 localdev-wait:
 	@deployments/localdev/devtools/wait-for-url.sh $(BASE_URL)/ready 120 2
