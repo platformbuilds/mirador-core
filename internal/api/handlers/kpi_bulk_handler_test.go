@@ -470,6 +470,11 @@ func (m *mockRepoFail) GetKPI(ctx context.Context, id string) (*models.KPIDefini
 	return nil, nil
 }
 
+// SearchKPIs stub to satisfy KPIRepo interface for tests
+func (m *mockRepoFail) SearchKPIs(ctx context.Context, req models.KPISearchRequest) ([]models.KPISearchResult, int64, error) {
+	return nil, 0, nil
+}
+
 // removed: old ListKPIs with int count
 
 // Correct signature for KPIRepo interface

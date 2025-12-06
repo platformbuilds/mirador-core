@@ -593,6 +593,51 @@ func (h *KPIHandler) GetKPIDefinition(c *gin.Context) {
 	c.JSON(http.StatusOK, kpi)
 }
 
+// SearchKPIs handles POST /api/v1/kpi/search
+// @Summary Search KPIs (human-friendly)
+// @Description Search KPI catalog using natural language query plus optional filters
+// @Tags kpi-definitions
+// @Accept json
+// @Produce json
+// @Param body body models.KPISearchRequest true "search request"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string "error: invalid payload"
+// @Failure 500 {object} map[string]string "error: failed to search KPIs"
+// @Router /api/v1/kpi/search [post]
+func (h *KPIHandler) SearchKPIs(c *gin.Context) {
+	var req models.KPISearchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	// Basic validation
+	if strings.TrimSpace(req.Query) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "query is required"})
+		return
+	}
+
+	// Defaults
+	if req.Limit <= 0 {
+		req.Limit = 10
+	}
+	if req.Offset < 0 {
+		req.Offset = 0
+	}
+	if req.Mode == "" {
+		req.Mode = "hybrid"
+	}
+
+	results, total, err := h.repo.SearchKPIs(c.Request.Context(), req)
+	if err != nil {
+		h.logger.Error("KPI search failed", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to search KPIs"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"query": req.Query, "total": total, "limit": req.Limit, "offset": req.Offset, "results": results})
+}
+
 // ------------------- Implementation methods (extracted from unified handler) -------------------
 
 func (h *KPIHandler) listKPIs(ctx context.Context, req models.KPIListRequest) ([]*models.KPIDefinition, int, error) {

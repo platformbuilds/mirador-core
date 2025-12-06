@@ -141,6 +141,16 @@ func (f *fakeKPIRepo) EnsureTelemetryStandards(ctx context.Context, cfg *config.
 	return nil
 }
 
+// SearchKPIs stub for fake repo used by tests
+func (f *fakeKPIRepo) SearchKPIs(ctx context.Context, req models.KPISearchRequest) ([]models.KPISearchResult, int64, error) {
+	// Very small implementation: return all KPIs as search results
+	out := make([]models.KPISearchResult, 0, len(f.kpis))
+	for id, k := range f.kpis {
+		out = append(out, models.KPISearchResult{ID: id, Name: k.Name, KPI: k, Score: 1.0})
+	}
+	return out, int64(len(out)), nil
+}
+
 // Test: One strong cause (A) and one weak cause (B)
 func TestCorrelate_StrongAndWeakCauses(t *testing.T) {
 	ctx := context.Background()

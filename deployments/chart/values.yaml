@@ -450,7 +450,11 @@ weaviate:
   env:
     # Allow anonymous by default in-cluster; tighten in prod
     AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
-    DEFAULT_VECTORIZER_MODULE: "none" # use BYO vectors by default; set text2vec-* to auto-embed
+    # Default vectorizer module to enable automatic embedding generation for
+    # Kubernetes-based deployments. Change to "none" to opt-out when you use
+    # BYO embeddings (Valkey/other) or do not have a transformer inference
+    # backend available.
+    DEFAULT_VECTORIZER_MODULE: "text2vec-transformers"
     PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
     QUERY_DEFAULTS_LIMIT: "25"
     CLUSTER_GOSSIP_BIND_PORT: "7100"

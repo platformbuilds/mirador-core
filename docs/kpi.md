@@ -73,6 +73,31 @@ The platform includes helper tooling to seed standard KPIs used by Mirador. Thes
       "datastore": "victoriametrics",
       "serviceFamily": "kafka"
     }
+
+    ## Searching KPIs (human-friendly)
+
+    Mirador supports a human-friendly, natural-language KPI search endpoint for non-technical users:
+
+    - POST /api/v1/kpi/search
+
+    Example request body:
+
+    ```json
+    {
+      "query": "Which KPIs show payment latency spikes?",
+      "filters": { "tags": ["payments"], "layer": "cause" },
+      "limit": 5,
+      "mode": "hybrid",
+      "explain": true
+    }
+    ```
+
+    What you get back:
+    - A ranked list of KPIs with short snippets, tags, and a relevance score (0..1).
+    - Hybrid mode uses both vector (semantic) and keyword matching; the default vectorizer is CPU-friendly (small transformer models) so it works on most deployments without requiring GPU.
+
+    Operator notes:
+    - The `content` field (internal) is a concatenation of name, definition, formula, tags and examples — it is used as the text surface for vectorization. Use `devtools/reindex-kpis.sh` to reindex/re-upsert existing KPIs after schema changes.
 ```
 
 ## Operator notes

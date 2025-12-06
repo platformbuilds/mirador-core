@@ -172,7 +172,7 @@
       "post": {
         "summary": "Create or update KPI definition",
         "requestBody": {
-          "description": "KPI definition to create or update. Wrap the KPI object in { \"kpiDefinition\": { ... } }.",
+          "description": "KPI definition to create or update. Wrap the KPI object in { \"kpiDefinition\": { ... } }.\n\nNotes:\n- `query` (if present) must be a JSON object (NOT a string). Example: {\"metric\":\"api_latency\",\"window\":\"5m\"}.\n- `formula` (if present) must be a string containing the raw query/formula.\n- For data-backed KPIs (e.g. layer = `cause` and signalType = metrics/traces/logs), at least one of `query` (object) or `formula` (string) must be provided. Impact/business KPIs may omit both.\n",
           "required": true,
           "content": {
             "application/json": {
@@ -184,36 +184,84 @@
                   }
                 }
               },
-              "example": {
-                "kpiDefinition": {
-                  "name": "api_errors_total",
-                  "kind": "tech",
-                  "namespace": "apigw_springboot_top_10_kpi",
-                  "unit": "count",
-                  "format": "integer",
-                  "layer": "impact",
-                  "signalType": "metrics",
-                  "classifier": "errors",
-                  "definition": "Total number of API errors observed at the gateway per minute.",
-                  "sentiment": "negative",
-                  "businessImpact": "If errors increase, end users may experience failed requests and revenue impact.",
-                  "tags": [
-                    "apigw",
-                    "errors",
-                    "pagerduty"
-                  ],
-                  "examples": [
-                    {
-                      "service.name": "api-gateway",
-                      "region": "us-east-1",
-                      "value": 42
+              "examples": {
+                "impactExample": {
+                  "summary": "Impact KPI example",
+                  "value": {
+                    "kpiDefinition": {
+                      "name": "api_errors_total",
+                      "kind": "tech",
+                      "namespace": "apigw_springboot_top_10_kpi",
+                      "unit": "count",
+                      "format": "integer",
+                      "layer": "impact",
+                      "signalType": "metrics",
+                      "classifier": "errors",
+                      "definition": "Total number of API errors observed at the gateway per minute.",
+                      "sentiment": "negative",
+                      "businessImpact": "If errors increase, end users may experience failed requests and revenue impact.",
+                      "tags": [
+                        "apigw",
+                        "errors",
+                        "pagerduty"
+                      ],
+                      "examples": [
+                        {
+                          "service.name": "api-gateway",
+                          "region": "us-east-1",
+                          "value": 42
+                        }
+                      ],
+                      "aggregationWindowHint": "1m",
+                      "dimensionsHint": [
+                        "service.name",
+                        "region"
+                      ]
                     }
-                  ],
-                  "aggregationWindowHint": "1m",
-                  "dimensionsHint": [
-                    "service.name",
-                    "region"
-                  ]
+                  }
+                },
+                "formulaExample": {
+                  "summary": "Valid cause KPI using a formula (string)",
+                  "value": {
+                    "kpiDefinition": {
+                      "name": "node_network_latency_ms",
+                      "kind": "tech",
+                      "layer": "cause",
+                      "unit": "ms",
+                      "format": "float",
+                      "signalType": "metrics",
+                      "queryType": "MetricsQL",
+                      "classifier": "latency",
+                      "datastore": "victoriametrics",
+                      "sentiment": "negative",
+                      "serviceFamily": "network",
+                      "definition": "Network Latency",
+                      "formula": "max_over_time(node_network_latency_ms[5m])"
+                    }
+                  }
+                },
+                "queryObjectExample": {
+                  "summary": "Valid cause KPI using a structured query object",
+                  "value": {
+                    "kpiDefinition": {
+                      "name": "node_network_latency_ms_query",
+                      "kind": "tech",
+                      "layer": "cause",
+                      "unit": "ms",
+                      "format": "float",
+                      "signalType": "metrics",
+                      "queryType": "MetricsQL",
+                      "classifier": "latency",
+                      "datastore": "victoriametrics",
+                      "sentiment": "negative",
+                      "serviceFamily": "network",
+                      "definition": "Network Latency",
+                      "query": {
+                        "metric": "node_network_latency_ms",
+                        "window": "5m"
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -278,6 +326,79 @@
                     "componentType": "springboot"
                   }
                 ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/kpi/search": {
+      "post": {
+        "summary": "Search KPI definitions",
+        "description": "Search the KPI catalog using a natural language query. Supports optional filters and mode (semantic|keyword|hybrid).",
+        "requestBody": {
+          "description": "Search request payload. Example: {\"query\":\"payment latency\",\"filters\":{\"tags\":[\"payments\"]},\"limit\":10,\"mode\":\"hybrid\"}",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string"
+                  },
+                  "filters": {
+                    "type": "object",
+                    "properties": {
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "layer": {
+                        "type": "string"
+                      },
+                      "signalType": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "default": 10
+                  },
+                  "offset": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "mode": {
+                    "type": "string",
+                    "description": "semantic|keyword|hybrid"
+                  },
+                  "explain": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "example": {
+                "query": "Which KPIs relate to payment latency spikes?",
+                "filters": {
+                  "tags": [
+                    "payments"
+                  ],
+                  "layer": "cause"
+                },
+                "limit": 5,
+                "mode": "hybrid"
               }
             }
           }
@@ -400,6 +521,20 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1",
+                "true",
+                "yes"
+              ]
+            },
+            "description": "Confirmation flag (1, true, or yes). Delete will be rejected unless this query parameter is provided."
           }
         ],
         "responses": {
@@ -2767,6 +2902,34 @@
         "required": [
           "result"
         ]
+      },
+      "KPIDefinition": {
+        "type": "object",
+        "description": "Partial schema and guidance for KPI definitions. Important notes:\n- `query` is a structured JSON object used to represent a query (e.g. {\"metric\":\"m\",\"window\":\"5m\"}). It must be an object if present.\n- `formula` is a string containing a raw query or expression. It must be a string if present.\n- For data-backed KPIs (e.g., layer = \"cause\" and signalType in metrics/traces/logs), at least one of `query` or `formula` must be provided. Impact/business KPIs may omit both.\n",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "layer": {
+            "type": "string",
+            "description": "impact|cause"
+          },
+          "signalType": {
+            "type": "string",
+            "description": "metrics|traces|logs|business|synthetic"
+          },
+          "query": {
+            "type": "object",
+            "description": "Structured query object (JSON). Example: {\"metric\":\"api_latency\",\"window\":\"5m\"}"
+          },
+          "formula": {
+            "type": "string",
+            "description": "Raw query/formula string. Example: max_over_time(api_latency[5m])"
+          }
+        }
       }
     }
   }

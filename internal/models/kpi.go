@@ -113,3 +113,27 @@ type KPIListResponse struct {
 	Total          int              `json:"total"`
 	NextOffset     int              `json:"nextOffset,omitempty"`
 }
+
+// KPISearchRequest is a user-facing search request for KPI catalog.
+type KPISearchRequest struct {
+	Query   string         `json:"query"`             // natural language query
+	Filters KPIListRequest `json:"filters,omitempty"` // reuse list request semantic filters
+	Mode    string         `json:"mode,omitempty"`    // semantic|keyword|hybrid
+	Limit   int            `json:"limit,omitempty"`
+	Offset  int            `json:"offset,omitempty"`
+	Explain bool           `json:"explain,omitempty"`
+}
+
+// KPISearchResult is a concise, user-facing search result returned by the API.
+type KPISearchResult struct {
+	ID                string         `json:"id"`
+	Name              string         `json:"name"`
+	DefinitionSnippet string         `json:"definition_snippet,omitempty"`
+	Tags              []string       `json:"tags,omitempty"`
+	Kind              string         `json:"kind,omitempty"`
+	Layer             string         `json:"layer,omitempty"`
+	Score             float64        `json:"score,omitempty"`
+	MatchingFields    []string       `json:"matchingFields,omitempty"`
+	Highlights        []string       `json:"highlights,omitempty"`
+	KPI               *KPIDefinition `json:"kpi,omitempty"` // optional full object
+}

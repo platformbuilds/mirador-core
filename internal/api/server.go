@@ -153,7 +153,9 @@ func (s *Server) initWeaviateStore(cfg *config.Config, log logger.Logger) (*weav
 	if client, err := wv.NewClient(conf); err == nil {
 		s.weaviateClient = client
 		zapLogger := logging.ExtractZapLogger(log)
-		store := weavstore.NewWeaviateKPIStore(client, zapLogger)
+		// Pass vectorizer configuration so the store can create the class with
+		// the configured vectorizer provider and model (CPU-friendly defaults).
+		store := weavstore.NewWeaviateKPIStore(client, zapLogger, cfg.Weaviate.Vectorizer.Provider, cfg.Weaviate.Vectorizer.Model, cfg.Weaviate.Vectorizer.UseGPU)
 		return store, zapLogger
 	}
 	log.Error("Failed to create Weaviate v5 client", "error", fmt.Errorf("weaviate client init failed"))
@@ -303,6 +305,9 @@ func (s *Server) setupRoutes() {
 				kpiDefsGroup.GET("/:id", kpiHandler.GetKPIDefinition)
 				kpiDefsGroup.DELETE("/:id", kpiHandler.DeleteKPIDefinition)
 			}
+
+			// Human-friendly KPI search endpoint (natural language)
+			v1.POST("/kpi/search", kpiHandler.SearchKPIs)
 		}
 	}
 

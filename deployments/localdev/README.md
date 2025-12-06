@@ -166,3 +166,30 @@ docker compose -f docker-compose.yaml down
   - Build per-arch images and load: `make dockerx-build-local-multi VERSION=v2.1.3` → tags `...:v2.1.3-amd64` and `...:v2.1.3-arm64`.
   - Or publish a real multi-arch tag to a registry: `make dockerx-push VERSION=v2.1.3` and use that tag in compose/Helm.
   - Or export an OCI archive without pushing: `make dockerx-build VERSION=v2.1.3` → `build/mirador-core-v2.1.3.oci`.
+
+  ## Weaviate vectorizer (text2vec-transformers)
+
+  The localdev compose now enables the `text2vec-transformers` vectorizer by
+  default in the Weaviate container. This allows Weaviate to automatically
+  generate embeddings for semantic search / fuzzy KPI discovery.
+
+  Important points:
+
+  - The Weaviate container must include the text2vec-transformers module (many
+    official images do). In some setups a separate transformer inference service
+    is required — see `TRANSFORMERS_INFERENCE_API` in `docker-compose.yaml`.
+  - If you prefer not to run an inference backend or your machine cannot handle
+    a local model, change `DEFAULT_VECTORIZER_MODULE` to `none` in
+    `docker-compose.yaml` to opt out (the codebase supports external/BYO vectors).
+  - For lightweight local testing, consider using `sentence-transformers/all-MiniLM-L6-v2`.
+
+  An optional `text2vec-transformers` inference service is included in the
+  localdev `docker-compose.yaml`. It runs an ONNX-optimized inference image
+  serving `sentence-transformers/all-MiniLM-L6-v2` (good balance of quality
+  and CPU efficiency). Note:
+
+  - Weaviate is configured to enable the `text2vec-transformers` module and
+    points `TRANSFORMERS_INFERENCE_API` to `http://text2vec-transformers:8080`.
+  - The runtime can be heavier on first start (model download + JIT/ONNX loading).
+  - If you prefer to opt out, set `DEFAULT_VECTORIZER_MODULE` to `none` in
+    `docker-compose.yaml`.

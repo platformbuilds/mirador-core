@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -24,11 +25,46 @@ type WeaviateKPIStore struct {
 	// schemaInit ensures we attempt to create the required class only once
 	schemaInit sync.Once
 	schemaErr  error
+	// Vectorizer configuration for schema creation and indexing
+	vectorizerProvider string
+	vectorizerModel    string
+	vectorizerUseGPU   bool
+}
+
+// KPIStore describes the subset of operations a KPI store must implement.
+// This interface allows repo-level code to be tested using simple fakes.
+type KPIStore interface {
+	CreateOrUpdateKPI(ctx context.Context, k *KPIDefinition) (*KPIDefinition, string, error)
+	GetKPI(ctx context.Context, id string) (*KPIDefinition, error)
+	ListKPIs(ctx context.Context, req *KPIListRequest) ([]*KPIDefinition, int64, error)
+	// SearchKPIs performs a search over KPIs. Implementations may use
+	// Weaviate's vector/semantic search (nearText/nearVector), or a fallback
+	// keyword search when semantic support is not available.
+	SearchKPIs(ctx context.Context, req *KPISearchRequest) ([]*KPISearchResult, int64, error)
+	DeleteKPI(ctx context.Context, id string) error
+}
+
+// KPISearchRequest describes user-facing search request options
+type KPISearchRequest struct {
+	Query   string          `json:"query"`
+	Filters *KPIListRequest `json:"filters,omitempty"`
+	Mode    string          `json:"mode,omitempty"` // semantic|keyword|hybrid
+	Limit   int64           `json:"limit,omitempty"`
+	Offset  int64           `json:"offset,omitempty"`
+	Explain bool            `json:"explain,omitempty"`
+}
+
+// KPISearchResult includes the matched KPI and auxiliary scoring / highlight data
+type KPISearchResult struct {
+	KPI            *KPIDefinition `json:"kpi,omitempty"`
+	Score          float64        `json:"score,omitempty"`
+	MatchingFields []string       `json:"matchingFields,omitempty"`
+	Highlights     []string       `json:"highlights,omitempty"`
 }
 
 // NewWeaviateKPIStore constructs a new KPI store.
-func NewWeaviateKPIStore(client *wv.Client, logger *zap.Logger) *WeaviateKPIStore {
-	return &WeaviateKPIStore{client: client, logger: logger}
+func NewWeaviateKPIStore(client *wv.Client, logger *zap.Logger, vectorizerProvider string, vectorizerModel string, vectorizerUseGPU bool) *WeaviateKPIStore {
+	return &WeaviateKPIStore{client: client, logger: logger, vectorizerProvider: vectorizerProvider, vectorizerModel: vectorizerModel, vectorizerUseGPU: vectorizerUseGPU}
 }
 
 // helper: object id generation consistent with previous behavior
@@ -46,13 +82,28 @@ var (
 	ErrWeaviateDeleteFailed        = errors.New("weaviate delete attempts failed for id")
 	ErrWeaviateClientNil           = errors.New("weaviate client is nil")
 
+	// ErrKPIDefinitionClassMissing indicates the Weaviate runtime schema does
+	// not contain the KPIDefinition class. Returned by read/list operations
+	// when the schema is not yet present in the runtime.
+	ErrKPIDefinitionClassMissing = errors.New("weaviate: KPIDefinition class not found")
+
 	// maxKPIListLimit is the maximum limit for listing KPIs in a single query
 	maxKPIListLimit = 10000
 )
 
+// Class name migration: use a new runtime class name for KPI objects
+const (
+	kpiClassOld = "KPIDefinition"  // legacy runtime class
+	kpiClassNew = "kpi_definition" // new runtime class (preferred for new writes)
+)
+
+// makeObjectID returns a deterministic object id for the provided id.
+// New objects are generated using the new class-name seed so they live under
+// the `kpi_definition` class. Legacy objects previously used "KPIDefinition|%s".
 func makeObjectID(id string) string {
-	// class is fixed for KPI objects in this store
-	return uuid.NewV5(nsMirador, fmt.Sprintf("KPIDefinition|%s", id)).String()
+	// use the new seed which includes the class name to avoid collisions and
+	// keep determinism for migrated/new objects.
+	return uuid.NewV5(nsMirador, fmt.Sprintf("%s|%s", kpiClassNew, id)).String()
 }
 
 // CreateOrUpdateKPI creates a KPI if missing, updates if present. It returns
@@ -110,13 +161,16 @@ func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *KPIDefiniti
 		"visibility":      k.Visibility,
 		"createdAt":       k.CreatedAt.Format(time.RFC3339Nano),
 		"updatedAt":       k.UpdatedAt.Format(time.RFC3339Nano),
+		// content is a concatenation of human-friendly fields that are
+		// useful for semantic vectorization/search (name, definition, formula, tags, examples, businessImpact)
+		"content": kpiContent(k),
 	}
 	// Check if object already exists in Weaviate and capture the actual
 	// Weaviate object id (o.ID) when present. This is important because the
 	// runtime may contain objects stored under either the legacy/raw KPI id
 	// or the deterministic v5 object id; updates must target the actual
 	// stored object id to avoid 'no object with id' errors from Weaviate.
-	foundObjID, existing, err := s.getKPIWithObjectID(ctx, k.ID)
+	foundObjID, existing, foundClass, err := s.getKPIWithObjectID(ctx, k.ID)
 	if err != nil {
 		return nil, "", err
 	}
@@ -128,13 +182,18 @@ func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *KPIDefiniti
 			return existing, "no-change", nil
 		}
 		// There is a modification: perform update against the actual Weaviate
-		// object id (foundObjID). If for some reason foundObjID is empty,
-		// fall back to the deterministic objID.
+		// object id (foundObjID) in the class it was found. If for some reason
+		// foundObjID is empty, fall back to the deterministic objID. If the
+		// foundClass is empty (shouldn't happen) prefer the new class.
 		targetID := objID
 		if foundObjID != "" {
 			targetID = foundObjID
 		}
-		if err := s.client.Data().Updater().WithClassName("KPIDefinition").WithID(targetID).WithProperties(props).Do(ctx); err != nil {
+		targetClass := kpiClassNew
+		if foundClass != "" {
+			targetClass = foundClass
+		}
+		if err := s.client.Data().Updater().WithClassName(targetClass).WithID(targetID).WithProperties(props).Do(ctx); err != nil {
 			return nil, "", err
 		}
 		return k, "updated", nil
@@ -144,15 +203,26 @@ func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *KPIDefiniti
 	// fall back to updating the existing object. This handles races where the
 	// object was created between the GetKPI call and the Creator() call and
 	// avoids returning a 422 'id already exists' to callers.
-	if _, err := s.client.Data().Creator().WithClassName("KPIDefinition").WithID(objID).WithProperties(props).Do(ctx); err != nil {
+	if _, err := s.client.Data().Creator().WithClassName(kpiClassNew).WithID(objID).WithProperties(props).Do(ctx); err != nil {
 		// Some Weaviate error responses include messages like "id '...' already exists"
 		// or mention "already exists"; handle those conservatively by attempting
 		// an update instead of failing the whole operation.
 		if strings.Contains(err.Error(), "already exists") || strings.Contains(err.Error(), "id already exists") {
-			if err2 := s.client.Data().Updater().WithClassName("KPIDefinition").WithID(objID).WithProperties(props).Do(ctx); err2 != nil {
-				return nil, "", fmt.Errorf("create conflict: update also failed: %w (create err: %v)", err2, err)
+			// Try an update in the new class first, then fall back to the legacy
+			// class if that fails. Capture the last error to report if both
+			// update attempts fail.
+			var lastErr error
+			if err2 := s.client.Data().Updater().WithClassName(kpiClassNew).WithID(objID).WithProperties(props).Do(ctx); err2 == nil {
+				return k, "updated", nil
+			} else {
+				lastErr = err2
 			}
-			return k, "updated", nil
+			if err3 := s.client.Data().Updater().WithClassName(kpiClassOld).WithID(objID).WithProperties(props).Do(ctx); err3 == nil {
+				return k, "updated", nil
+			} else {
+				lastErr = err3
+			}
+			return nil, "", fmt.Errorf("create conflict: update also failed: %v (create err: %v)", lastErr, err)
 		}
 		return nil, "", err
 	}
@@ -277,7 +347,7 @@ func (s *WeaviateKPIStore) DeleteKPI(ctx context.Context, id string) error {
 func (s *WeaviateKPIStore) tryDeleteByObjectID(ctx context.Context, id, objID string) bool {
 	s.logf("weavstore: attempting delete for KPI id=%s (objID=%s)", id, objID)
 
-	if err := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(objID).Do(ctx); err == nil {
+	if err := s.client.Data().Deleter().WithClassName(kpiClassNew).WithID(objID).Do(ctx); err == nil {
 		s.logf("weavstore: deleted by v5 objID=%s", objID)
 		if s.verifyDeletion(ctx, id, objID) {
 			return true
@@ -295,22 +365,40 @@ func (s *WeaviateKPIStore) tryDeleteByRawID(ctx context.Context, id string) bool
 		rawID = uuidObj.String()
 	}
 
-	if err2 := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(rawID).Do(ctx); err2 == nil {
-		s.logf("weavstore: deleted by raw id=%s", rawID)
+	// Try new class first for raw ids, then fall back to legacy class
+	if err2 := s.client.Data().Deleter().WithClassName(kpiClassNew).WithID(rawID).Do(ctx); err2 == nil {
+		s.logf("weavstore: deleted by raw id=%s (new class)", rawID)
 		if s.verifyDeletion(ctx, id, rawID) {
 			return true
 		}
 	} else {
-		s.logf("weavstore: delete by raw id failed: %v", err2)
+		s.logf("weavstore: delete by raw id (new class) failed: %v", err2)
+	}
+	if errOld := s.client.Data().Deleter().WithClassName(kpiClassOld).WithID(rawID).Do(ctx); errOld == nil {
+		s.logf("weavstore: deleted by raw id=%s (legacy class)", rawID)
+		if s.verifyDeletion(ctx, id, rawID) {
+			return true
+		}
+	} else {
+		s.logf("weavstore: delete by raw id (legacy class) failed: %v", errOld)
 	}
 	return false
 }
 
 // tryDeleteByScan scans for matching objects and deletes them
 func (s *WeaviateKPIStore) tryDeleteByScan(ctx context.Context, id, objID string) bool {
-	objs, gerr := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").Do(ctx)
-	if gerr != nil {
-		s.logf("weavstore: object scan failed: %v", gerr)
+	var objs []*wm.Object
+	if respNew, errNew := s.client.Data().ObjectsGetter().WithClassName(kpiClassNew).Do(ctx); errNew == nil {
+		objs = append(objs, respNew...)
+	} else {
+		s.logf("weavstore: new-class object scan failed: %v", errNew)
+	}
+	if respOld, errOld := s.client.Data().ObjectsGetter().WithClassName(kpiClassOld).Do(ctx); errOld == nil {
+		objs = append(objs, respOld...)
+	} else {
+		s.logf("weavstore: legacy-class object scan failed: %v", errOld)
+	}
+	if len(objs) == 0 {
 		return false
 	}
 
@@ -337,13 +425,22 @@ func (s *WeaviateKPIStore) tryDeleteByScan(ctx context.Context, id, objID string
 
 // tryDeleteAndVerify attempts a delete and verifies it succeeded
 func (s *WeaviateKPIStore) tryDeleteAndVerify(ctx context.Context, id, oid string) bool {
-	if derr := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(oid).Do(ctx); derr == nil {
-		s.logf("weavstore: deleted by scanning object id=%s", oid)
+	// attempt deletion on new class then legacy class
+	if derr := s.client.Data().Deleter().WithClassName(kpiClassNew).WithID(oid).Do(ctx); derr == nil {
+		s.logf("weavstore: deleted by scanning object id=%s (new class)", oid)
 		if s.verifyDeletion(ctx, id, oid) {
 			return true
 		}
 	} else {
-		s.logf("weavstore: scan-delete attempt for oid=%s failed: %v", oid, derr)
+		s.logf("weavstore: scan-delete (new class) attempt for oid=%s failed: %v", oid, derr)
+	}
+	if derrOld := s.client.Data().Deleter().WithClassName(kpiClassOld).WithID(oid).Do(ctx); derrOld == nil {
+		s.logf("weavstore: deleted by scanning object id=%s (legacy class)", oid)
+		if s.verifyDeletion(ctx, id, oid) {
+			return true
+		}
+	} else {
+		s.logf("weavstore: scan-delete (legacy class) attempt for oid=%s failed: %v", oid, derrOld)
 	}
 	return false
 }
@@ -365,13 +462,22 @@ func (s *WeaviateKPIStore) tryDeleteByProperties(ctx context.Context, id string,
 	}
 
 	oid := o.ID.String()
-	if derr := s.client.Data().Deleter().WithClassName("KPIDefinition").WithID(oid).Do(ctx); derr == nil {
-		s.logf("weavstore: deleted by scanning props match id=%s -> oid=%s", id, oid)
+	// attempt delete in new class then legacy class
+	if derr := s.client.Data().Deleter().WithClassName(kpiClassNew).WithID(oid).Do(ctx); derr == nil {
+		s.logf("weavstore: deleted by scanning props match id=%s -> oid=%s (new class)", id, oid)
 		if s.verifyDeletion(ctx, id, oid) {
 			return true
 		}
 	} else {
-		s.logf("weaviate: scan-delete by props for oid=%s failed: %v", oid, derr)
+		s.logf("weaviate: scan-delete (new class) by props for oid=%s failed: %v", oid, derr)
+	}
+	if derrOld := s.client.Data().Deleter().WithClassName(kpiClassOld).WithID(oid).Do(ctx); derrOld == nil {
+		s.logf("weavstore: deleted by scanning props match id=%s -> oid=%s (legacy class)", id, oid)
+		if s.verifyDeletion(ctx, id, oid) {
+			return true
+		}
+	} else {
+		s.logf("weaviate: scan-delete (legacy class) by props for oid=%s failed: %v", oid, derrOld)
 	}
 	return false
 }
@@ -401,12 +507,23 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinitio
 	if id == "" {
 		return nil, nil
 	}
-	objID := makeObjectID(id)
+	objIDNew := makeObjectID(id)
+	// Also compute legacy deterministic id used by older runtime objects
+	objIDLegacy := uuid.NewV5(nsMirador, fmt.Sprintf("%s|%s", kpiClassOld, id)).String()
 
-	// Fetch all objects of the class and search for matching object id. The
-	// ObjectsGetter returns a slice of objects in the SDK.
-	resp, err := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").Do(ctx)
+	// Fetch objects preferring the new class and falling back to the legacy
+	// class. The ObjectsGetter returns a slice of objects in the SDK.
+	resp, err := s.client.Data().ObjectsGetter().WithClassName(kpiClassNew).Do(ctx)
 	if err != nil {
+		// if the new class is missing, try the legacy class
+		if isKPIDefinitionClassMissingErr(err) {
+			resp, err = s.client.Data().ObjectsGetter().WithClassName(kpiClassOld).Do(ctx)
+		}
+	}
+	if err != nil {
+		if isKPIDefinitionClassMissingErr(err) {
+			return nil, ErrKPIDefinitionClassMissing
+		}
 		return nil, err
 	}
 
@@ -417,9 +534,10 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinitio
 			continue
 		}
 		// o.ID is strfmt.UUID; compare using its string form
-		// Support both the deterministic v5 object id (makeObjectID) and the case
-		// where the original KPI id was used as the Weaviate object id directly.
-		if o.ID.String() == objID || o.ID.String() == id {
+		// Support the deterministic v5 object id (new or legacy prefix) and the
+		// case where the original KPI id was used as the Weaviate object id
+		// directly.
+		if o.ID.String() == objIDNew || o.ID.String() == objIDLegacy || o.ID.String() == id {
 			if o.Properties != nil {
 				if m, ok := o.Properties.(map[string]any); ok {
 					props = m
@@ -441,28 +559,44 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinitio
 // callers to perform updates/deletes against the exact Weaviate object that
 // was matched, avoiding mismatches when objects exist under legacy/raw ids
 // or the deterministic v5 object ids.
-func (s *WeaviateKPIStore) getKPIWithObjectID(ctx context.Context, id string) (string, *KPIDefinition, error) {
+// getKPIWithObjectID returns the actual Weaviate object id (o.ID), the parsed
+// KPIDefinition and the runtime class that the object was found in (className).
+func (s *WeaviateKPIStore) getKPIWithObjectID(ctx context.Context, id string) (string, *KPIDefinition, string, error) {
 	if id == "" {
-		return "", nil, nil
+		return "", nil, "", nil
 	}
 
-	objID := makeObjectID(id)
+	objIDNew := makeObjectID(id)
+	objIDLegacy := uuid.NewV5(nsMirador, fmt.Sprintf("%s|%s", kpiClassOld, id)).String()
 
-	// Fetch objects of the class and search for matching object id.
-	resp, err := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").Do(ctx)
+	// Try new class first and fall back to legacy class if missing. Track the
+	// class we actually read from so callers can perform updates/deletes
+	// against the exact class.
+	readClass := kpiClassNew
+	resp, err := s.client.Data().ObjectsGetter().WithClassName(readClass).Do(ctx)
 	if err != nil {
-		return "", nil, err
+		if isKPIDefinitionClassMissingErr(err) {
+			readClass = kpiClassOld
+			resp, err = s.client.Data().ObjectsGetter().WithClassName(readClass).Do(ctx)
+		}
+	}
+	if err != nil {
+		if isKPIDefinitionClassMissingErr(err) {
+			return "", nil, "", ErrKPIDefinitionClassMissing
+		}
+		return "", nil, "", err
 	}
 
 	var props map[string]any
 	var found bool
 	var foundObjID string
+	var foundClass string
 	for _, o := range resp {
 		if o == nil {
 			continue
 		}
-		// Support both deterministic v5 object id and raw id usage
-		if o.ID.String() == objID || o.ID.String() == id {
+		// Support the new and legacy deterministic v5 object id and raw id usage
+		if o.ID.String() == objIDNew || o.ID.String() == objIDLegacy || o.ID.String() == id {
 			if o.Properties != nil {
 				if m, ok := o.Properties.(map[string]any); ok {
 					props = m
@@ -470,15 +604,17 @@ func (s *WeaviateKPIStore) getKPIWithObjectID(ctx context.Context, id string) (s
 			}
 			found = true
 			foundObjID = o.ID.String()
+			// capture the runtime class where the object was found
+			foundClass = readClass
 			break
 		}
 	}
 	if !found || props == nil {
-		return "", nil, nil
+		return "", nil, "", nil
 	}
 
 	k := parsePropsToKPI(props, id)
-	return foundObjID, k, nil
+	return foundObjID, k, foundClass, nil
 }
 
 // parsePropsToKPI converts a Weaviate properties map into a KPIDefinition.
@@ -621,6 +757,40 @@ func parseTimestamps(props map[string]any, k *KPIDefinition) {
 	}
 }
 
+// kpiContent builds a single text surface used for vectorization/search by
+// concatenating several human-facing fields of the KPI definition.
+func kpiContent(k *KPIDefinition) string {
+	if k == nil {
+		return ""
+	}
+	parts := make([]string, 0, 6)
+	if k.Name != "" {
+		parts = append(parts, k.Name)
+	}
+	if k.Definition != "" {
+		parts = append(parts, k.Definition)
+	}
+	if k.Formula != "" {
+		parts = append(parts, k.Formula)
+	}
+	if len(k.Tags) > 0 {
+		parts = append(parts, strings.Join(k.Tags, " "))
+	}
+	if k.BusinessImpact != "" {
+		parts = append(parts, k.BusinessImpact)
+	}
+	if k.EmotionalImpact != "" {
+		parts = append(parts, k.EmotionalImpact)
+	}
+	// Convert examples to compact string representations
+	for _, ex := range k.Examples {
+		if ex != nil {
+			parts = append(parts, fmt.Sprintf("%v", ex))
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
 // ensureKPIDefinitionClass checks whether the KPIDefinition class exists in
 // Weaviate and attempts to create it if missing. This function is safe to call
 // repeatedly; callers should use sync.Once to avoid repeated attempts.
@@ -634,9 +804,14 @@ func (s *WeaviateKPIStore) ensureKPIDefinitionClass(ctx context.Context) error {
 	// Try creating the class directly. If it already exists, treat as success.
 	// This avoids relying on Getter API variations across client versions.
 	// Build a minimal class definition matching runtime expectations.
+	vec := s.vectorizerProvider
+	if vec == "" {
+		vec = "none"
+	}
+
 	classDef := &wm.Class{
-		Class:      "KPIDefinition",
-		Vectorizer: "none",
+		Class:      kpiClassNew,
+		Vectorizer: vec,
 		Properties: []*wm.Property{
 			{Name: "name", DataType: []string{"string"}},
 			{Name: "kind", DataType: []string{"string"}},
@@ -655,6 +830,7 @@ func (s *WeaviateKPIStore) ensureKPIDefinitionClass(ctx context.Context) error {
 			{Name: "thresholds", DataType: []string{"text"}},
 			{Name: "tags", DataType: []string{"string"}},
 			{Name: "definition", DataType: []string{"text"}},
+			{Name: "content", DataType: []string{"text"}},
 			{Name: "sentiment", DataType: []string{"string"}},
 			{Name: "category", DataType: []string{"string"}},
 			{Name: "retryAllowed", DataType: []string{"boolean"}},
@@ -678,11 +854,11 @@ func (s *WeaviateKPIStore) ensureKPIDefinitionClass(ctx context.Context) error {
 			// Another process created it concurrently; treat as success.
 			return nil
 		}
-		return fmt.Errorf("failed to create KPIDefinition class in Weaviate: %w", err)
+		return fmt.Errorf("failed to create %s class in Weaviate: %w", kpiClassNew, err)
 	}
 
 	if s.logger != nil {
-		s.logger.Sugar().Info("weavstore: created KPIDefinition class in Weaviate runtime schema")
+		s.logger.Sugar().Info("weavstore: created ", kpiClassNew, " class in Weaviate runtime schema")
 	}
 	return nil
 }
@@ -701,9 +877,19 @@ func (s *WeaviateKPIStore) ListKPIs(ctx context.Context, req *KPIListRequest) ([
 	}
 
 	// Use ObjectsGetter to fetch class instances; apply limit/offset.
-	resp, err := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").WithLimit(int(limit)).WithOffset(offset).Do(ctx)
+	// prefer new class, fall back to legacy class if not present
+	resp, err := s.client.Data().ObjectsGetter().WithClassName(kpiClassNew).WithLimit(int(limit)).WithOffset(offset).Do(ctx)
 	if err != nil {
-		return nil, 0, err
+		if isKPIDefinitionClassMissingErr(err) {
+			// try legacy class
+			resp, err = s.client.Data().ObjectsGetter().WithClassName(kpiClassOld).WithLimit(int(limit)).WithOffset(offset).Do(ctx)
+		}
+		if err != nil {
+			if isKPIDefinitionClassMissingErr(err) {
+				return nil, 0, ErrKPIDefinitionClassMissing
+			}
+			return nil, 0, err
+		}
 	}
 	out := make([]*KPIDefinition, 0, len(resp))
 	for _, o := range resp {
@@ -845,13 +1031,192 @@ func (s *WeaviateKPIStore) ListKPIs(ctx context.Context, req *KPIListRequest) ([
 	// to avoid breaking callers. Counting requires an additional SDK call.
 	// Note: Weaviate ObjectsGetter has a default limit of 25, so we set a high limit
 	// to get an accurate count. For very large datasets, consider using GraphQL aggregation.
-	if all, terr := s.client.Data().ObjectsGetter().WithClassName("KPIDefinition").WithLimit(maxKPIListLimit).Do(ctx); terr == nil {
-		total = int64(len(all))
+	// Attempt to count objects across both the new and legacy classes so the
+	// total reflects objects that may live in either class during migration.
+	var count int
+	if allNew, terrNew := s.client.Data().ObjectsGetter().WithClassName(kpiClassNew).WithLimit(maxKPIListLimit).Do(ctx); terrNew == nil {
+		count += len(allNew)
 	} else {
-		s.logger.Warn("weaviate: failed to get total KPI count; falling back to page size", zap.Error(terr))
+		s.logger.Warn("weaviate: failed to fetch new-class KPI objects for count", zap.Error(terrNew))
+	}
+	if allOld, terrOld := s.client.Data().ObjectsGetter().WithClassName(kpiClassOld).WithLimit(maxKPIListLimit).Do(ctx); terrOld == nil {
+		count += len(allOld)
+	} else {
+		s.logger.Warn("weaviate: failed to fetch legacy-class KPI objects for count", zap.Error(terrOld))
+	}
+	if count > 0 {
+		total = int64(count)
 	}
 
 	return out, total, nil
+}
+
+// SearchKPIs implements a lightweight search over KPIs. This initial
+// implementation uses a simple keyword-based fallback when a semantic
+// search via Weaviate is not configured/available. In future we should
+// replace the keyword path with a proper nearText/nearVector GraphQL query
+// to take advantage of Weaviate's vector capabilities.
+func (s *WeaviateKPIStore) SearchKPIs(ctx context.Context, req *KPISearchRequest) ([]*KPISearchResult, int64, error) {
+	if req == nil || strings.TrimSpace(req.Query) == "" {
+		return []*KPISearchResult{}, 0, nil
+	}
+
+	// Normalize mode
+	mode := strings.ToLower(strings.TrimSpace(req.Mode))
+	if mode == "" {
+		mode = "hybrid"
+	}
+
+	// If a semantic vectorizer is configured and the client is present, we
+	// could invoke GraphQL nearText here. For now, if provider is none or
+	// client is missing we fallback to keyword scanning.
+	if s.client == nil || s.vectorizerProvider == "" || s.vectorizerProvider == "none" {
+		return s.keywordSearch(ctx, req)
+	}
+
+	// Try semantic mode with a simple GraphQL nearText query. If that fails
+	// or unimplemented for this client we fall back to keyword search.
+	// NOTE: Full GraphQL integration is an enhancement tracked in KP-002.
+	// For now we attempt a simple fallback.
+	if mode == "semantic" || mode == "hybrid" {
+		// If GraphQL / nearText is not available or fails, fallback to keyword
+		// implementation for now.
+		// TODO: Implement proper Weaviate nearText GraphQL query using the SDK.
+		res, total, err := s.keywordSearch(ctx, req)
+		return res, total, err
+	}
+
+	// otherwise default to keyword search
+	return s.keywordSearch(ctx, req)
+}
+
+// keywordSearch is a simple in-memory search for the provided query. This
+// is a fallback that scans KPIs returned by ListKPIs and scores them by
+// basic substring matches against name/definition/content.
+func (s *WeaviateKPIStore) keywordSearch(ctx context.Context, req *KPISearchRequest) ([]*KPISearchResult, int64, error) {
+	// Fetch a large page of KPIs for in-memory ranking. This is a best-effort
+	// fallback and not intended for very large catalogs; we'll rely on
+	// proper vector queries in production.
+	listReq := &KPIListRequest{Limit: int64(maxKPIListLimit), Offset: 0}
+	if req != nil && req.Filters != nil {
+		// copy filters into listReq but preserve Limit/Offset semantics
+		listReq = req.Filters
+		if listReq.Limit == 0 {
+			listReq.Limit = int64(maxKPIListLimit)
+		}
+	}
+
+	items, _, err := s.ListKPIs(ctx, listReq)
+	if err != nil {
+		// If ListKPIs returns ErrKPIDefinitionClassMissing, bubble up that error
+		if errors.Is(err, ErrKPIDefinitionClassMissing) {
+			return []*KPISearchResult{}, 0, ErrKPIDefinitionClassMissing
+		}
+		return nil, 0, err
+	}
+
+	q := strings.ToLower(strings.TrimSpace(req.Query))
+	results := make([]*KPISearchResult, 0, len(items))
+	for _, k := range items {
+		score := 0.0
+		matching := make([]string, 0)
+		highlights := make([]string, 0)
+
+		if k == nil {
+			continue
+		}
+		// name
+		if strings.Contains(strings.ToLower(k.Name), q) {
+			score += 0.6
+			matching = append(matching, "name")
+			highlights = append(highlights, excerpt(k.Name, q))
+		}
+		// definition
+		if strings.Contains(strings.ToLower(k.Definition), q) {
+			score += 0.4
+			matching = appendIfMissing(matching, "definition")
+			highlights = append(highlights, excerpt(k.Definition, q))
+		}
+		// content (composite)
+		content := strings.ToLower(kpiContent(k))
+		if content != "" && strings.Contains(content, q) {
+			score += 0.3
+			matching = appendIfMissing(matching, "content")
+			// give a content highlight
+			highlights = append(highlights, excerpt(content, q))
+		}
+
+		if score > 0 {
+			if score > 1.0 {
+				score = 1.0
+			}
+			results = append(results, &KPISearchResult{KPI: k, Score: score, MatchingFields: matching, Highlights: highlights})
+		}
+	}
+
+	// Sort by score desc
+	sort.Slice(results, func(i, j int) bool { return results[i].Score > results[j].Score })
+
+	total := int64(len(results))
+	// apply offset/limit
+	off := int(req.Offset)
+	lim := int(req.Limit)
+	if lim <= 0 {
+		lim = 10
+	}
+	if off < 0 {
+		off = 0
+	}
+	if off >= len(results) {
+		return []*KPISearchResult{}, total, nil
+	}
+	end := off + lim
+	if end > len(results) {
+		end = len(results)
+	}
+
+	return results[off:end], total, nil
+}
+
+// appendIfMissing adds s to arr if not already present
+func appendIfMissing(arr []string, s string) []string {
+	for _, v := range arr {
+		if v == s {
+			return arr
+		}
+	}
+	return append(arr, s)
+}
+
+// excerpt returns a short snippet containing q if present in text
+func excerpt(text, q string) string {
+	text = strings.TrimSpace(text)
+	if q == "" || text == "" {
+		return ""
+	}
+	li := strings.Index(strings.ToLower(text), strings.ToLower(q))
+	if li == -1 {
+		if len(text) > 140 {
+			return text[:140] + "..."
+		}
+		return text
+	}
+	start := li - 40
+	if start < 0 {
+		start = 0
+	}
+	end := li + len(q) + 40
+	if end > len(text) {
+		end = len(text)
+	}
+	snippet := text[start:end]
+	if start > 0 {
+		snippet = "..." + snippet
+	}
+	if end < len(text) {
+		snippet = snippet + "..."
+	}
+	return snippet
 }
 
 // thresholdsToProps converts Threshold slice into the Weaviate nested
@@ -936,6 +1301,26 @@ func mapToThreshold(m map[string]any) Threshold {
 		th.Description = msg
 	}
 	return th
+}
+
+// isKPIDefinitionClassMissingErr inspects a weaviate client error and returns
+// true when the error indicates the KPIDefinition class/schema is missing.
+// The weaviate SDK does not expose a typed error for this case, so we use
+// conservative substring checks. This helper centralizes detection for tests
+// and repo-level logic.
+func isKPIDefinitionClassMissingErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := strings.ToLower(err.Error())
+	if strings.Contains(s, "class not found") || strings.Contains(s, "class 'kpidefinition'") || strings.Contains(s, "class \"kpidefinition\"") || strings.Contains(s, "kpidefinition class") || strings.Contains(s, "no such class") || strings.Contains(s, "class does not exist") || strings.Contains(s, "not found: kpidefinition") {
+		return true
+	}
+	// Also match patterns like "unknown class 'KPIDefinition'" or HTTP 404
+	if strings.Contains(s, "kpidefinition") && strings.Contains(s, "not") {
+		return true
+	}
+	return false
 }
 
 // Public API methods that work with models package types

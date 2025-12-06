@@ -52,6 +52,26 @@ func TestValidateKPIDefinition_HappyPaths(t *testing.T) {
 	if err := ValidateKPIDefinition(cfg, cause); err != nil {
 		t.Fatalf("expected cause KPI to validate, got error: %v", err)
 	}
+
+	// Cause KPI represented as a query object (no Formula) should also validate
+	causeQuery := &models.KPIDefinition{
+		Name:       "api-p99-latency-query",
+		Layer:      "cause",
+		SignalType: "metrics",
+		Sentiment:  "negative",
+		Classifier: "latency",
+		Datastore:  "victoriametrics",
+		QueryType:  "MetricsQL",
+		Query: map[string]interface{}{
+			"metric": "api_latency",
+			"window": "5m",
+		},
+		Domain:        "payments",
+		ComponentType: "springboot",
+	}
+	if err := ValidateKPIDefinition(cfg, causeQuery); err != nil {
+		t.Fatalf("expected cause KPI with query object to validate, got error: %v", err)
+	}
 }
 
 func TestValidateKPIDefinition_Failures(t *testing.T) {
@@ -97,6 +117,13 @@ func TestValidateKPIDefinition_Failures(t *testing.T) {
 	err = ValidateKPIDefinition(cfg, k6)
 	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "classifier") {
 		t.Fatalf("expected classifier error, got: %v", err)
+	}
+
+	// Missing both query and formula should fail
+	k7 := &models.KPIDefinition{Name: "x7", Layer: "cause", SignalType: "metrics", Sentiment: "negative", Classifier: "errors", Datastore: "victoriametrics", QueryType: "MetricsQL"}
+	err = ValidateKPIDefinition(cfg, k7)
+	if err == nil || !strings.Contains(strings.ToLower(err.Error()), "formula/query") {
+		t.Fatalf("expected formula/query error when both missing, got: %v", err)
 	}
 }
 

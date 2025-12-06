@@ -161,9 +161,29 @@ func ValidateKPIDefinition(cfg *config.Config, k *models.KPIDefinition) error {
 		ve.add("name", "name is required")
 	}
 
-	// 8. Formula / Query
-	if qt != "" && strings.TrimSpace(k.Formula) == "" {
-		ve.add("formula", "formula must be provided when queryType is set")
+	// 8. Formula / Query - a KPI must include either a 'formula' (string) or a
+	// 'query' (object). Additionally, if a QueryType is set but only a Query is
+	// *not* provided then a Formula is required for datastore-backed query types
+	// (e.g., VictoriaMetrics). These rules prevent ambiguous/empty payloads and
+	// make errors explicit.
+	hasFormula := strings.TrimSpace(k.Formula) != ""
+	hasQuery := k.Query != nil && len(k.Query) > 0
+
+	// Only require a query/formula for data-backed KPIs (i.e. cause KPIs or
+	// non-business signal types such as metrics/traces/logs). Impact KPIs are
+	// often business descriptions so we skip this check for impact layer.
+	if layer != "impact" {
+		// For data-backed definitions, at least one of Query or Formula must be present
+		if !hasFormula && !hasQuery {
+			ve.add("formula/query", "either 'formula' (string) or 'query' (object) must be provided for data-backed KPIs (e.g. cause/metrics/traces/logs)")
+		}
+
+		if qt != "" && !hasFormula && !hasQuery {
+			// If queryType is specified but neither a formula nor a query object was
+			// provided, keep the existing queryType -> formula requirement but make
+			// the error message clearer and consistent with the new combined rule.
+			ve.add("queryType", "queryType is set but no 'formula' or 'query' provided; provide a query object or a formula string")
+		}
 	}
 
 	if ve.isEmpty() {
