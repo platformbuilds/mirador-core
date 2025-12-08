@@ -68,6 +68,37 @@ docker compose -f mirador-core-docker-compose.yaml up -d --build
 - Health: http://localhost:8010/health
 - Ollama: http://localhost:11434 (model server)
 
+If you prefer to run Ollama natively on macOS (recommended for better performance on MacBook Pro / Apple Silicon), you can skip the bundled Docker service and run Ollama locally.
+
+Native macOS quick steps (recommended):
+
+```bash
+# Install via Homebrew (preferred if available)
+brew install ollama
+
+# OR use the official installer script
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Start the Ollama model server (runs on port 11434 by default)
+ollama serve &
+
+# Pull a model you want to use (example: llama3.2:3b — fast and small)
+ollama pull llama3.2:3b
+
+# Verify the server
+curl http://localhost:11434/api/version
+```
+
+How to run MIRADOR-CORE with native Ollama running on the same host:
+
+- If you run `mirador-core` on the host (not inside Docker), set `OLLAMA_ENDPOINT=http://localhost:11434/api/generate`.
+- If you run `mirador-core` inside Docker/Compose but keep Ollama native on the host, set `OLLAMA_ENDPOINT=http://host.docker.internal:11434/api/generate` (Docker Desktop / Rancher Desktop provide `host.docker.internal`).
+
+If you choose native Ollama, you can prevent the compose file from starting the `ollama` container by either:
+
+- Commenting out or removing the `ollama` service block in `docker-compose.yaml` (local convenience), OR
+- Starting compose only with the services you need and *without* the Ollama service (e.g. `docker compose up mirador-core weaviate valkey ...`).
+
 **Testing MIRA:**
 
 ```bash
@@ -182,6 +213,30 @@ docker compose -f docker-compose.yaml down
     a local model, change `DEFAULT_VECTORIZER_MODULE` to `none` in
     `docker-compose.yaml` to opt out (the codebase supports external/BYO vectors).
   - For lightweight local testing, consider using `sentence-transformers/all-MiniLM-L6-v2`.
+
+  ## VictoriaMetrics search limits
+
+  Local deployments may produce large synthetic rows and timeseries which can exceed
+  VictoriaMetrics' default search limits. If you see errors like:
+
+  ```
+  the number of matching timeseries exceeds 30000; either narrow down the search or increase -search.max* command-line flag values
+  ```
+
+  then the local compose is set to raise the cap for unique timeseries to 500000
+  for easier experimentation. If you still hit limits, consider further increasing
+  `--search.maxUniqueTimeseries` or narrowing match selectors.
+
+  Warning: raising this value increases memory and search overhead for
+  VictoriaMetrics. If you bump it substantially (e.g., >500k) make sure your
+  host has sufficient RAM and adjust other search flags as necessary.
+
+  Quick restart (local docker compose) after a change to `docker-compose.yaml`:
+
+  ```bash
+  docker compose -f deployments/localdev/docker-compose.yaml up -d --build victoriametrics
+  docker compose -f deployments/localdev/docker-compose.yaml logs -f victoriametrics
+  ```
 
   An optional `text2vec-transformers` inference service is included in the
   localdev `docker-compose.yaml`. It runs an ONNX-optimized inference image

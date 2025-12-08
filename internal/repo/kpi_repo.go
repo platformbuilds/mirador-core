@@ -339,10 +339,10 @@ func (r *DefaultKPIRepo) ListKPIs(ctx context.Context, req models.KPIListRequest
 		// can gracefully handle the 'no items' case.
 		if errors.Is(err, weavstore.ErrKPIDefinitionClassMissing) {
 			if r.logger != nil {
-				r.logger.Sugar().Info("kpi repo: kpi_definition class missing in Weaviate; returning empty list")
+				r.logger.Sugar().Info("kpi repo: Kpi_definition class missing in Weaviate; returning empty list")
 			}
 			// Record a metric so operators can detect an uninitialized KPI registry
-			monitoring.RecordWeaviateSchemaMissing("kpi_definition")
+			monitoring.RecordWeaviateSchemaMissing("Kpi_definition")
 			return []*models.KPIDefinition{}, 0, nil
 		}
 		return nil, 0, err

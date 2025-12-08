@@ -94,12 +94,12 @@ var (
 // Class name migration: use a new runtime class name for KPI objects
 const (
 	kpiClassOld = "KPIDefinition"  // legacy runtime class
-	kpiClassNew = "kpi_definition" // new runtime class (preferred for new writes)
+	kpiClassNew = "Kpi_definition" // new runtime class (preferred for new writes)
 )
 
 // makeObjectID returns a deterministic object id for the provided id.
 // New objects are generated using the new class-name seed so they live under
-// the `kpi_definition` class. Legacy objects previously used "KPIDefinition|%s".
+// the `Kpi_definition` class. Legacy objects previously used "KPIDefinition|%s".
 func makeObjectID(id string) string {
 	// use the new seed which includes the class name to avoid collisions and
 	// keep determinism for migrated/new objects.
@@ -1316,8 +1316,12 @@ func isKPIDefinitionClassMissingErr(err error) bool {
 	if strings.Contains(s, "class not found") || strings.Contains(s, "class 'kpidefinition'") || strings.Contains(s, "class \"kpidefinition\"") || strings.Contains(s, "kpidefinition class") || strings.Contains(s, "no such class") || strings.Contains(s, "class does not exist") || strings.Contains(s, "not found: kpidefinition") {
 		return true
 	}
+	// Match patterns for the new class name format
+	if strings.Contains(s, "class 'kpi_definition'") || strings.Contains(s, "class \"kpi_definition\"") || strings.Contains(s, "kpi_definition class") || strings.Contains(s, "not found: kpi_definition") {
+		return true
+	}
 	// Also match patterns like "unknown class 'KPIDefinition'" or HTTP 404
-	if strings.Contains(s, "kpidefinition") && strings.Contains(s, "not") {
+	if (strings.Contains(s, "kpidefinition") || strings.Contains(s, "kpi_definition")) && strings.Contains(s, "not") {
 		return true
 	}
 	return false
