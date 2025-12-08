@@ -10,8 +10,15 @@ services:
       - "8428:8428"   # Expose for external access
     volumes:
       - vmdata:/victoria-metrics-data
+    # Increase search limits so lookups that match many timeseries don't fail
+    # with the default 30k unique timeseries cap. For high-cardinality datasets
+    # (e.g. heavy synthetic telemetry in localdev) increase this to a larger
+    # value. Note: raising this increases memory/search cost for VictoriaMetrics
+    # and may require more host resources. If you still hit limits, increase
+    # further or narrow down queries.
     command:
       - --storageDataPath=/victoria-metrics-data
+      - --search.maxUniqueTimeseries=500000
     networks:
       - mirador-net
 
@@ -135,7 +142,16 @@ services:
   # ──────────────────────────────────────────────
   # Ollama (Local AI Model Server for MIRA)
   # ──────────────────────────────────────────────
+  # NOTE: If you run Ollama natively on your host (macOS), you can
+  #  - remove/comment this service block to avoid running the container, and
+  #  - set mirador-core's OLLAMA_ENDPOINT to http://host.docker.internal:11434/api/generate
+  #    (when mirador-core runs in Docker) or http://localhost:11434/api/generate (when mirador-core runs natively).
   ollama:
+    # Optional by default: make this service part of the "ollama" profile so it is not
+    # started unless users explicitly ask for it (docker compose --profile ollama up).
+    # This lets macOS users run a native ollama install (brew) without the container
+    # being started by default.
+    profiles: ["ollama"]
     image: ollama/ollama:latest
     pull_policy: if_not_present
     container_name: ollama
@@ -201,8 +217,8 @@ services:
         condition: service_healthy
       weaviate:
         condition: service_healthy
-      ollama:
-        condition: service_healthy
+      # Note: Ollama is optional and not required by default. If you need the
+      # containerized Ollama, start with `docker compose --profile ollama up -d`
       victoriametrics:
         condition: service_started
       victorialogs:
@@ -244,7 +260,10 @@ services:
       # MIRA (AI-powered RCA explanations)
       - MIRA_ENABLED=true
       - MIRA_PROVIDER=ollama
-      - OLLAMA_ENDPOINT=http://ollama:11434/api/generate
+      # Default to host.docker.internal on macOS so containerized mirador-core
+      # can reach a native Ollama running on the host. Override with the
+      # OLLAMA_ENDPOINT env var if you prefer a different endpoint.
+      - OLLAMA_ENDPOINT=${OLLAMA_ENDPOINT:-http://host.docker.internal:11434/api/generate}
     healthcheck:
       test: ["CMD", "/mirador-core", "healthcheck"]
       interval: 10s

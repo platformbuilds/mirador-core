@@ -9,10 +9,10 @@ import (
 func Test_RecordWeaviateSchemaMissing_IncrementsCounter(t *testing.T) {
 	// Reset is not straightforward; rely on a fresh test process for deterministic value.
 	// Call the recorder and check the counter increments at least once.
-	RecordWeaviateSchemaMissing("kpi_definition")
+	RecordWeaviateSchemaMissing("Kpi_definition")
 
 	// Validate the counter for the label
-	v := testutil.ToFloat64(weaviateSchemaMissingTotal.WithLabelValues("kpi_definition"))
+	v := testutil.ToFloat64(weaviateSchemaMissingTotal.WithLabelValues("Kpi_definition"))
 	if v < 1.0 {
 		t.Fatalf("expected weaviate schema missing counter >= 1; got %f", v)
 	}

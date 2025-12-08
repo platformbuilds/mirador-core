@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Transactions — total rate",
+    "formula": "rate(transactions_total[1m])",
+    "definition": "Per-second transaction ingestion rate, averaged over 1 minute.",
+    "signalType": "metrics",
+    "queryType": "MetricsQL",
+    "datastore": "victoriametrics",
+    "layer": "impact",
+    "classifier": "volume",
+    "sentiment": "neutral",
+    "serviceFamily": "fintrans"
+  },
+  {
+    "name": "Transactions — failure rate",
+    "formula": "rate(transactions_failed_total[1m])",
+    "definition": "Per-second rate of failed transactions, averaged over 1 minute.",
+    "signalType": "metrics",
+    "queryType": "MetricsQL",
+    "datastore": "victoriametrics",
+    "layer": "impact",
+    "classifier": "reliability",
+    "sentiment": "negative",
+    "serviceFamily": "fintrans"
+  },
+  {
+    "name": "Tomcat Busy Threads — avg (1m)",
+    "formula": "avg_over_time(tomcat_threads_busy_threads[1m])",
+    "definition": "Average number of busy Tomcat threads (1 minute).",
+    "signalType": "metrics",
+    "queryType": "MetricsQL",
+    "datastore": "victoriametrics",
+    "layer": "cause",
+    "classifier": "capacity",
+    "sentiment": "neutral",
+    "serviceFamily": "fintrans"
+  },
+  {
+    "name": "Tomcat Queue Seconds — avg (1m)",
+    "formula": "avg_over_time(tomcat_threads_queue_seconds[1m])",
+    "definition": "Average queued request time (seconds) for Tomcat thread pools over 1 minute.",
+    "signalType": "metrics",
+    "queryType": "MetricsQL",
+    "datastore": "victoriametrics",
+    "layer": "cause",
+    "classifier": "performance",
+    "sentiment": "negative",
+    "serviceFamily": "fintrans"
+  }
+]
