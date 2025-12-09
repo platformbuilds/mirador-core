@@ -513,11 +513,12 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinitio
 
 	// Fetch objects preferring the new class and falling back to the legacy
 	// class. The ObjectsGetter returns a slice of objects in the SDK.
-	resp, err := s.client.Data().ObjectsGetter().WithClassName(kpiClassNew).Do(ctx)
+	// Use maxKPIListLimit to ensure we fetch all objects, not just the default limit.
+	resp, err := s.client.Data().ObjectsGetter().WithClassName(kpiClassNew).WithLimit(maxKPIListLimit).Do(ctx)
 	if err != nil {
 		// if the new class is missing, try the legacy class
 		if isKPIDefinitionClassMissingErr(err) {
-			resp, err = s.client.Data().ObjectsGetter().WithClassName(kpiClassOld).Do(ctx)
+			resp, err = s.client.Data().ObjectsGetter().WithClassName(kpiClassOld).WithLimit(maxKPIListLimit).Do(ctx)
 		}
 	}
 	if err != nil {

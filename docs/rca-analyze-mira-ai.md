@@ -98,7 +98,7 @@ Async status response (200):
 1. Client prepares RCA data:
    - Call `POST /api/v1/unified/rca` with `{ startTime, endTime }` to get full RCA analysis (or obtain RCA from other flows).
 2. Submit async analysis:
-   - POST `/api/v1/mira/rca_analyze_async` with body `{ "rcaData": <RCA data>, "callbackUrl": <optional> }`
+  - POST `/api/v1/mira/rca_analyze_async` with body `{ "name": "<human-readable-name>", "rcaData": <RCA data>, "callbackUrl": <optional> }` (name is required)
    - Server returns 202 Accepted with JSON `{ taskId, statusUrl }`.
 3. Server enqueues task:
    - A background goroutine/process reads the task, sets status → `processing`, and writes status to Valkey (key: `mira:rca:task:{taskId}`).
@@ -165,12 +165,13 @@ echo "$RCA_RESPONSE" | jq '{ rcaData: .data }' | \
 
 ```bash
 # Submit async task
-TASK_RESPONSE=$(curl -s -X POST http://localhost:8010/api/v1/mira/rca_analyze_async \
-  -H "Content-Type: application/json" \
-  -d '{
-    "rcaData": { ... },
-    "callbackUrl": "https://webhook.example.com/mira-callback"
-  }')
+        TASK_RESPONSE=$(curl -s -X POST http://localhost:8010/api/v1/mira/rca_analyze_async \
+          -H "Content-Type: application/json" \
+          -d '{
+            "name": "db-outage-analysis",
+            "rcaData": {...},
+            "callbackUrl": "https://webhook.example.com/mira-callback"
+          }')
 
 TASK_ID=$(echo "$TASK_RESPONSE" | jq -r '.taskId')
 

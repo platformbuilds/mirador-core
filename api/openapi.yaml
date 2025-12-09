@@ -442,13 +442,17 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - rcaData
-              properties:
-                rcaData:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - name
+                  - rcaData
+                properties:
+                  name:
+                    type: string
+                    description: Human readable name for this RCA analysis (required)
+                  rcaData:
                   type: object
                   description: |
                     The complete RCA response data object from /api/v1/unified/rca endpoint.
@@ -518,12 +522,13 @@ paths:
                       type: object
                     timeRings:
                       type: object
-            examples:
-              fullRCAResponse:
-                summary: Complete RCA data (from /api/v1/unified/rca response.data)
-                value:
-                  rcaData:
-                    impact:
+              examples:
+                fullRCAResponse:
+                  summary: Complete RCA data (from /api/v1/unified/rca response.data)
+                  value:
+                    name: "db-outage-analysis"
+                    rcaData:
+                      impact:
                       id: "corr_1764756501"
                       impactService: "DB Operations"
                       metricName: "sum(db_ops_total)"
@@ -642,24 +647,29 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required:
-                - rcaData
-              properties:
-                rcaData:
+              schema:
+                type: object
+                required:
+                  - name
+                  - rcaData
+                properties:
+                  name:
+                    type: string
+                    description: Human readable name for this RCA analysis (required)
+                  rcaData:
                   type: object
                   description: Complete RCA response data (same as sync API)
                 callbackUrl:
                   type: string
                   format: uri
                   description: Optional webhook URL for completion notification (POST with task status)
-            examples:
-              withCallback:
-                summary: Async task with webhook callback
-                value:
-                  rcaData:
-                    impact:
+              examples:
+                withCallback:
+                  summary: Async task with webhook callback
+                  value:
+                    name: "db-outage-analysis"
+                    rcaData:
+                      impact:
                       id: "corr_1764756501"
                       impactService: "DB Operations"
                       metricName: "sum(db_ops_total)"
@@ -669,10 +679,10 @@ paths:
                       service: "process"
                       component: "deployment"
                       score: 0.27
-                    chains:
-                      - steps: [...]
-                        score: 0.63
-                  callbackUrl: "https://webhook.example.com/mira-callback"
+                      chains:
+                        - steps: [...]
+                          score: 0.63
+                    callbackUrl: "https://webhook.example.com/mira-callback"
       responses:
         '202':
           description: Task accepted for processing
@@ -876,7 +886,100 @@ paths:
                   taskId:
                     type: string
 
-  # Unified query engine (v1)
+    /api/v1/rca_analyze/list:
+      get:
+        summary: List RCA analysis tasks (Weaviate persisted)
+        description: Returns a paginated list of RCA tasks persisted to Weaviate. Requires Weaviate to be configured.
+        parameters:
+          - name: limit
+            in: query
+            schema:
+              type: integer
+              default: 10
+          - name: offset
+            in: query
+            schema:
+              type: integer
+              default: 0
+        responses:
+          '200':
+            description: Paginated list of tasks
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    status:
+                      type: string
+                      example: "ok"
+                    total:
+                      type: integer
+                    items:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          taskId:
+                            type: string
+                          name:
+                            type: string
+                          status:
+                            type: string
+
+    /api/v1/rca_analyze/search:
+      get:
+        summary: Search RCA analysis tasks (semantic/keyword)
+        description: |
+          Search RCA tasks stored in Weaviate using a query string. Mode can be 'semantic', 'hybrid' or 'keyword'.
+          For now, 'semantic' and 'hybrid' fall back to keyword search when vectorization is not configured.
+        parameters:
+          - name: q
+            in: query
+            required: true
+            schema:
+              type: string
+          - name: mode
+            in: query
+            schema:
+              type: string
+              enum: [semantic, hybrid, keyword]
+              default: hybrid
+          - name: limit
+            in: query
+            schema:
+              type: integer
+              default: 10
+          - name: offset
+            in: query
+            schema:
+              type: integer
+              default: 0
+        responses:
+          '200':
+            description: Search results
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    status:
+                      type: string
+                      example: "ok"
+                    total:
+                      type: integer
+                    items:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          taskId:
+                            type: string
+                          name:
+                            type: string
+                          status:
+                            type: string
+
+    # Unified query engine (v1)
   /api/v1/unified/query:
     post:
       summary: Unified query

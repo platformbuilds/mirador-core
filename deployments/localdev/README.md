@@ -52,9 +52,10 @@ MIRADOR-CORE is a pure observability engine that assumes external authentication
 
 **NEW: MIRA AI-Powered RCA Explanations**
 
-The localdev setup now includes Ollama for AI-powered RCA explanations via MIRA (Mirador Intelligent Research Assistant). This is enabled by default in development:
-
-- **Model**: `llama3.1:8b` (4.9GB, optimized for M1 Pro 16GB)
+The localdev setup includes a containerized Ollama model server for AI-powered
+RCA explanations (MIRA — Mirador Intelligent Research Assistant). The Ollama
+container is now started by default as part of the localdev compose stack so
+`docker compose up` will bring up the model service automatically.
 - **Auto-setup**: Model pulls automatically on first start (may take 3-5 minutes)
 - **Endpoint**: `POST /api/v1/mira/rca_analyze`
 
@@ -68,9 +69,11 @@ docker compose -f mirador-core-docker-compose.yaml up -d --build
 - Health: http://localhost:8010/health
 - Ollama: http://localhost:11434 (model server)
 
-If you prefer to run Ollama natively on macOS (recommended for better performance on MacBook Pro / Apple Silicon), you can skip the bundled Docker service and run Ollama locally.
 
-Native macOS quick steps (recommended):
+If you'd rather run Ollama natively on macOS (sometimes faster on Apple
+Silicon), you can skip the bundled Docker service and run Ollama on the host.
+
+Native macOS quick steps (optional):
 
 ```bash
 # Install via Homebrew (preferred if available)
@@ -89,15 +92,21 @@ ollama pull llama3.2:3b
 curl http://localhost:11434/api/version
 ```
 
-How to run MIRADOR-CORE with native Ollama running on the same host:
+How to run MIRADOR-CORE with native Ollama running on the same host (optional):
 
-- If you run `mirador-core` on the host (not inside Docker), set `OLLAMA_ENDPOINT=http://localhost:11434/api/generate`.
-- If you run `mirador-core` inside Docker/Compose but keep Ollama native on the host, set `OLLAMA_ENDPOINT=http://host.docker.internal:11434/api/generate` (Docker Desktop / Rancher Desktop provide `host.docker.internal`).
+- If you run `mirador-core` on the host (not inside Docker), set
+  `OLLAMA_ENDPOINT=http://localhost:11434/api/generate`.
+- If you run `mirador-core` inside Docker/Compose but keep Ollama native on the host,
+  set `OLLAMA_ENDPOINT=http://host.docker.internal:11434/api/generate` (Docker Desktop / Rancher
+  Desktop provide `host.docker.internal`).
 
-If you choose native Ollama, you can prevent the compose file from starting the `ollama` container by either:
+If you choose native Ollama you may prevent the compose file from starting the
+containerized Ollama by commenting out its service block in the compose file or
+starting the set of services you need without `ollama`, e.g.
 
-- Commenting out or removing the `ollama` service block in `docker-compose.yaml` (local convenience), OR
-- Starting compose only with the services you need and *without* the Ollama service (e.g. `docker compose up mirador-core weaviate valkey ...`).
+```bash
+docker compose up mirador-core weaviate valkey ...
+```
 
 **Testing MIRA:**
 

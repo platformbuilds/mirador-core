@@ -427,6 +427,10 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 				miraAsyncHandler := handlers.NewMIRARCAAsyncHandler(miraServiceForAsync, s.config.MIRA, s.cache, mirarcaStore, s.logger)
 				miraGroup.POST("/rca_analyze_async", miraAsyncHandler.HandleMIRARCAAnalyzeAsync)
 				miraGroup.GET("/rca_analyze/:taskId", miraAsyncHandler.HandleGetTaskStatus)
+
+				// Also expose list/search endpoints at top-level: /api/v1/rca_analyze/list and /api/v1/rca_analyze/search
+				router.GET("/rca_analyze/list", miraAsyncHandler.HandleListTasks)
+				router.GET("/rca_analyze/search", miraAsyncHandler.HandleSearchTasks)
 			}
 		}
 		storageBackends := "valkey"
