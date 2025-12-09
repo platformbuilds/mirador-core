@@ -4,7 +4,7 @@ go 1.24.10
 
 require (
 	github.com/alpkeskin/gotoon v0.1.1
-	github.com/blevesearch/bleve/v2 v2.5.5
+	github.com/blevesearch/bleve/v2 v2.5.6
 	github.com/blevesearch/upsidedown_store_api v1.0.2
 	github.com/gin-gonic/gin v1.11.0
 	github.com/gofrs/uuid/v5 v5.4.0
