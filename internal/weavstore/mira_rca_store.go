@@ -27,6 +27,16 @@ type WeaviateMIRARCAStore struct {
 	schemaErr  error
 }
 
+// MIRARCATaskStore is the minimal interface for MIRA RCA task storage used by handlers.
+// It allows the async handler to depend on an abstraction for easier testing.
+type MIRARCATaskStore interface {
+	CreateOrUpdateMIRARCATask(ctx context.Context, task *MIRARCATask) (*MIRARCATask, string, error)
+	GetMIRARCATask(ctx context.Context, taskID string) (*MIRARCATask, error)
+	ListMIRARCATasks(ctx context.Context, limit, offset int) ([]*MIRARCATask, int64, error)
+	DeleteMIRARCATask(ctx context.Context, taskID string) error
+	SearchMIRARCATasks(ctx context.Context, query string, mode string, limit, offset int) ([]*MIRARCATask, int64, error)
+}
+
 // NewWeaviateMIRARCAStore constructs a new MIRA RCA store.
 func NewWeaviateMIRARCAStore(client *wv.Client, logger *zap.Logger) *WeaviateMIRARCAStore {
 	return &WeaviateMIRARCAStore{client: client, logger: logger}
@@ -49,6 +59,7 @@ func makeMIRARCAObjectID(taskID string) string {
 // MIRARCATask represents a MIRA RCA analysis task stored in Weaviate.
 type MIRARCATask struct {
 	TaskID      string                 `json:"taskId"`
+	Name        string                 `json:"name,omitempty"`
 	Status      string                 `json:"status"` // pending, processing, completed, failed
 	RCAData     map[string]interface{} `json:"rcaData"`
 	Result      map[string]interface{} `json:"result,omitempty"`
@@ -94,6 +105,7 @@ func (s *WeaviateMIRARCAStore) CreateOrUpdateMIRARCATask(ctx context.Context, ta
 
 	props := map[string]any{
 		"taskId":      task.TaskID,
+		"name":        task.Name,
 		"status":      task.Status,
 		"rcaData":     string(rcaDataJSON),
 		"result":      string(resultJSON),
@@ -124,6 +136,14 @@ func (s *WeaviateMIRARCAStore) CreateOrUpdateMIRARCATask(ctx context.Context, ta
 		}
 		// There is a modification: perform update
 		if err := s.client.Data().Updater().WithClassName("MIRARCATask").WithID(objID).WithProperties(props).Do(ctx); err != nil {
+			// Attempt to add missing 'name' property if update failed due to schema mismatch,
+			// then retry once. Best-effort: ignore errors when property creation is unsupported.
+			if perr := s.client.Schema().PropertyCreator().WithClassName("MIRARCATask").WithProperty(&wm.Property{Name: "name", DataType: []string{"string"}}).Do(ctx); perr == nil {
+				// retry update after ensuring property
+				if err2 := s.client.Data().Updater().WithClassName("MIRARCATask").WithID(objID).WithProperties(props).Do(ctx); err2 == nil {
+					return task, statusUpdated, nil
+				}
+			}
 			return nil, "", fmt.Errorf("failed to update MIRA RCA task: %w", err)
 		}
 		return task, statusUpdated, nil
@@ -138,6 +158,12 @@ func (s *WeaviateMIRARCAStore) CreateOrUpdateMIRARCATask(ctx context.Context, ta
 			}
 			return task, statusUpdated, nil
 		}
+		// Try to add missing 'name' property if create failed due to schema mismatch, then retry create
+		if perr := s.client.Schema().PropertyCreator().WithClassName("MIRARCATask").WithProperty(&wm.Property{Name: "name", DataType: []string{"string"}}).Do(ctx); perr == nil {
+			if _, err3 := s.client.Data().Creator().WithClassName("MIRARCATask").WithID(objID).WithProperties(props).Do(ctx); err3 == nil {
+				return task, statusCreated, nil
+			}
+		}
 		return nil, "", fmt.Errorf("failed to create MIRA RCA task: %w", err)
 	}
 	return task, statusCreated, nil
@@ -148,7 +174,7 @@ func mirarcaTaskEqual(a, b *MIRARCATask) bool {
 	if a == nil || b == nil {
 		return false
 	}
-	if a.TaskID != b.TaskID || a.Status != b.Status || a.Error != b.Error || a.CallbackURL != b.CallbackURL {
+	if a.TaskID != b.TaskID || a.Name != b.Name || a.Status != b.Status || a.Error != b.Error || a.CallbackURL != b.CallbackURL {
 		return false
 	}
 	if !a.SubmittedAt.Equal(b.SubmittedAt) || !a.CompletedAt.Equal(b.CompletedAt) {
@@ -214,6 +240,9 @@ func (s *WeaviateMIRARCAStore) GetMIRARCATask(ctx context.Context, taskID string
 	// Parse string fields
 	if v, ok := props["taskId"].(string); ok {
 		task.TaskID = v
+	}
+	if v, ok := props["name"].(string); ok {
+		task.Name = v
 	}
 	if v, ok := props["status"].(string); ok {
 		task.Status = v
@@ -445,6 +474,9 @@ func (s *WeaviateMIRARCAStore) ListMIRARCATasks(ctx context.Context, limit, offs
 		if v, ok := props["taskId"].(string); ok {
 			task.TaskID = v
 		}
+		if v, ok := props["name"].(string); ok {
+			task.Name = v
+		}
 		if v, ok := props["status"].(string); ok {
 			task.Status = v
 		}
@@ -507,6 +539,58 @@ func (s *WeaviateMIRARCAStore) ListMIRARCATasks(ctx context.Context, limit, offs
 	return out, total, nil
 }
 
+// SearchMIRARCATasks performs a lightweight search over MIRARCATask objects.
+// For now this uses a keyword-based fallback by retrieving a large page and
+// filtering client-side. In future, if vector/nearText is configured, this
+// should use a proper GraphQL nearText/nearVector query.
+func (s *WeaviateMIRARCAStore) SearchMIRARCATasks(ctx context.Context, query string, mode string, limit, offset int) ([]*MIRARCATask, int64, error) {
+	query = strings.TrimSpace(strings.ToLower(query))
+	if query == "" {
+		return []*MIRARCATask{}, 0, nil
+	}
+
+	// Fetch a large page and do in-memory filtering as a fallback
+	tasks, _, err := s.ListMIRARCATasks(ctx, maxMIRARCAObjectsLimit, 0)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	matches := make([]*MIRARCATask, 0)
+	for _, t := range tasks {
+		// check name
+		if strings.Contains(strings.ToLower(t.Name), query) {
+			matches = append(matches, t)
+			continue
+		}
+		// check result explanation text if present
+		if t.Result != nil {
+			if expl, ok := t.Result["explanation"].(string); ok && strings.Contains(strings.ToLower(expl), query) {
+				matches = append(matches, t)
+				continue
+			}
+		}
+		// check rcadata serialized as string in some cases
+		if t.RCAData != nil {
+			j, _ := json.Marshal(t.RCAData)
+			if strings.Contains(strings.ToLower(string(j)), query) {
+				matches = append(matches, t)
+				continue
+			}
+		}
+	}
+
+	total := int64(len(matches))
+	// Apply pagination
+	if offset >= len(matches) {
+		return []*MIRARCATask{}, total, nil
+	}
+	end := offset + limit
+	if end > len(matches) {
+		end = len(matches)
+	}
+	return matches[offset:end], total, nil
+}
+
 // ensureMIRARCATaskClass checks whether the MIRARCATask class exists in
 // Weaviate and attempts to create it if missing.
 func (s *WeaviateMIRARCAStore) ensureMIRARCATaskClass(ctx context.Context) error {
@@ -520,6 +604,7 @@ func (s *WeaviateMIRARCAStore) ensureMIRARCATaskClass(ctx context.Context) error
 		Vectorizer: "none",
 		Properties: []*wm.Property{
 			{Name: "taskId", DataType: []string{"string"}},
+			{Name: "name", DataType: []string{"string"}},
 			{Name: "status", DataType: []string{"string"}},
 			{Name: "rcaData", DataType: []string{"text"}}, // JSON stored as text
 			{Name: "result", DataType: []string{"text"}},  // JSON stored as text

@@ -147,11 +147,10 @@ services:
   #  - set mirador-core's OLLAMA_ENDPOINT to http://host.docker.internal:11434/api/generate
   #    (when mirador-core runs in Docker) or http://localhost:11434/api/generate (when mirador-core runs natively).
   ollama:
-    # Optional by default: make this service part of the "ollama" profile so it is not
-    # started unless users explicitly ask for it (docker compose --profile ollama up).
-    # This lets macOS users run a native ollama install (brew) without the container
-    # being started by default.
-    profiles: ["ollama"]
+    # The Ollama container runs by default in localdev. Previously this service
+    # lived under a separate profile so native host installs could be preferred;
+    # we now ship the containerized Ollama as the default dev experience so
+    # docker compose up will bring up Ollama automatically.
     image: ollama/ollama:latest
     pull_policy: if_not_present
     container_name: ollama
@@ -260,10 +259,11 @@ services:
       # MIRA (AI-powered RCA explanations)
       - MIRA_ENABLED=true
       - MIRA_PROVIDER=ollama
-      # Default to host.docker.internal on macOS so containerized mirador-core
-      # can reach a native Ollama running on the host. Override with the
-      # OLLAMA_ENDPOINT env var if you prefer a different endpoint.
-      - OLLAMA_ENDPOINT=${OLLAMA_ENDPOINT:-http://host.docker.internal:11434/api/generate}
+      # Default to the containerized Ollama service so mirador-core inside
+      # Compose reaches the Ollama container by service name. If you prefer to
+      # reach a native host Ollama, set OLLAMA_ENDPOINT in your environment to
+      # "http://host.docker.internal:11434/api/generate" (macOS/Docker Desktop).
+      - OLLAMA_ENDPOINT=${OLLAMA_ENDPOINT:-http://ollama:11434/api/generate}
     healthcheck:
       test: ["CMD", "/mirador-core", "healthcheck"]
       interval: 10s

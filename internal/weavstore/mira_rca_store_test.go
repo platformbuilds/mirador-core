@@ -14,6 +14,7 @@ func TestMIRARCATaskConversionRoundTrip(t *testing.T) {
 
 	task := &MIRARCATask{
 		TaskID: "550e8400-e29b-41d4-a716-446655440000",
+		Name:   "example-analysis",
 		Status: "completed",
 		RCAData: map[string]interface{}{
 			"impact": map[string]interface{}{
@@ -76,6 +77,7 @@ func TestMIRARCATaskEquality(t *testing.T) {
 
 	task1 := &MIRARCATask{
 		TaskID:      "task-1",
+		Name:        "task-one",
 		Status:      "completed",
 		RCAData:     map[string]interface{}{"key": "value"},
 		Result:      map[string]interface{}{"explanation": "test"},
@@ -90,6 +92,7 @@ func TestMIRARCATaskEquality(t *testing.T) {
 
 	task2 := &MIRARCATask{
 		TaskID:      "task-1",
+		Name:        "task-one",
 		Status:      "completed",
 		RCAData:     map[string]interface{}{"key": "value"},
 		Result:      map[string]interface{}{"explanation": "test"},

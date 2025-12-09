@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +25,7 @@ import (
 // MIRARCATaskStatus represents the status of an async MIRA RCA task.
 type MIRARCATaskStatus struct {
 	TaskID      string                 `json:"taskId"`
+	Name        string                 `json:"name,omitempty"`
 	Status      string                 `json:"status"` // pending, processing, completed, failed
 	Progress    *TaskProgress          `json:"progress,omitempty"`
 	SubmittedAt time.Time              `json:"submittedAt"`
@@ -45,14 +48,14 @@ type TaskProgress struct {
 // MIRARCAAsyncHandler handles async MIRA RCA explanation endpoints with Valkey-backed state.
 type MIRARCAAsyncHandler struct {
 	miraHandler   *MIRARCAHandler
-	cache         cache.ValkeyCluster             // Valkey cache for task state persistence (hot cache, 24h TTL)
-	weaviateStore *weavstore.WeaviateMIRARCAStore // Weaviate for long-term task storage (permanent)
+	cache         cache.ValkeyCluster        // Valkey cache for task state persistence (hot cache, 24h TTL)
+	weaviateStore weavstore.MIRARCATaskStore // Weaviate (or other store) for long-term task storage
 	logger        logging.Logger
 	config        config.MIRAConfig
 }
 
 // NewMIRARCAAsyncHandler creates a new async MIRA RCA handler with Valkey and Weaviate backing.
-func NewMIRARCAAsyncHandler(miraService services.MIRAService, miraCfg config.MIRAConfig, valkeyCache cache.ValkeyCluster, weaviateStore *weavstore.WeaviateMIRARCAStore, logger corelogger.Logger) *MIRARCAAsyncHandler {
+func NewMIRARCAAsyncHandler(miraService services.MIRAService, miraCfg config.MIRAConfig, valkeyCache cache.ValkeyCluster, weaviateStore weavstore.MIRARCATaskStore, logger corelogger.Logger) *MIRARCAAsyncHandler {
 	return &MIRARCAAsyncHandler{
 		miraHandler:   NewMIRARCAHandler(miraService, miraCfg, logger),
 		cache:         valkeyCache,
@@ -64,6 +67,8 @@ func NewMIRARCAAsyncHandler(miraService services.MIRAService, miraCfg config.MIR
 
 // MIRAAsyncRequest represents async RCA analysis request.
 type MIRAAsyncRequest struct {
+	// user-provided readable name for the RCA analysis
+	Name        string             `json:"name" binding:"required"`
 	RCAData     models.RCAResponse `json:"rcaData" binding:"required"`
 	CallbackURL string             `json:"callbackUrl,omitempty"` // Optional webhook for completion notification
 }
@@ -193,6 +198,7 @@ func (h *MIRARCAAsyncHandler) HandleMIRARCAAnalyzeAsync(c *gin.Context) {
 	task := &MIRARCATaskStatus{
 		TaskID:      taskID,
 		Status:      "pending",
+		Name:        req.Name,
 		SubmittedAt: time.Now(),
 		CallbackURL: req.CallbackURL,
 	}
@@ -257,6 +263,70 @@ func (h *MIRARCAAsyncHandler) HandleGetTaskStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, task)
 }
 
+// HandleListTasks handles GET /api/v1/rca_analyze/list
+// Query params: limit (int), offset (int)
+func (h *MIRARCAAsyncHandler) HandleListTasks(c *gin.Context) {
+	if h.weaviateStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "error": "weaviate_not_configured"})
+		return
+	}
+
+	limit := 10
+	offset := 0
+	if l, err := strconv.Atoi(c.Query("limit")); err == nil && l > 0 {
+		limit = l
+	}
+	if o, err := strconv.Atoi(c.Query("offset")); err == nil && o >= 0 {
+		offset = o
+	}
+
+	tasks, total, err := h.weaviateStore.ListMIRARCATasks(c.Request.Context(), limit, offset)
+	if err != nil {
+		h.logger.Error("failed to list mira rca tasks", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": "weaviate_list_failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "total": total, "items": tasks})
+}
+
+// HandleSearchTasks handles GET /api/v1/rca_analyze/search?q=<query>&mode=<semantic|hybrid|keyword>&limit=&offset=
+func (h *MIRARCAAsyncHandler) HandleSearchTasks(c *gin.Context) {
+	if h.weaviateStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "error": "weaviate_not_configured"})
+		return
+	}
+
+	q := strings.TrimSpace(c.Query("q"))
+	if q == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "empty_query"})
+		return
+	}
+
+	mode := strings.ToLower(strings.TrimSpace(c.Query("mode")))
+	if mode == "" {
+		mode = "hybrid"
+	}
+
+	limit := 10
+	offset := 0
+	if l, err := strconv.Atoi(c.Query("limit")); err == nil && l > 0 {
+		limit = l
+	}
+	if o, err := strconv.Atoi(c.Query("offset")); err == nil && o >= 0 {
+		offset = o
+	}
+
+	items, total, err := h.weaviateStore.SearchMIRARCATasks(c.Request.Context(), q, mode, limit, offset)
+	if err != nil {
+		h.logger.Error("mira rca search failed", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "error": "weaviate_search_failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "total": total, "items": items})
+}
+
 // processTask processes a MIRA task in the background with chunk-level progress tracking.
 func (h *MIRARCAAsyncHandler) processTask(taskID string, rcaData *models.RCAResponse) {
 	task, err := h.getTaskStatus(taskID)
@@ -317,7 +387,47 @@ func (h *MIRARCAAsyncHandler) processTask(taskID string, rcaData *models.RCAResp
 
 	// Mark task as completed
 	completedAt := time.Now()
-	task, _ = h.getTaskStatus(taskID) // Refresh task to get latest progress
+
+	// Preserve critical fields before attempting Valkey refresh
+	originalStartedAt := task.StartedAt
+	originalProgress := task.Progress
+
+	// Attempt to refresh task from Valkey to get latest progress, but handle failures safely
+	if refreshedTask, err := h.getTaskStatus(taskID); err != nil {
+		h.logger.Warn("Failed to refresh task from Valkey, using current task state",
+			"task_id", taskID, "error", err)
+		// Keep using the current task object
+	} else {
+		// Use refreshed task but preserve critical fields if they're missing
+		task = refreshedTask
+		if task.StartedAt == nil {
+			h.logger.Warn("Refreshed task missing StartedAt, preserving original", "task_id", taskID)
+			task.StartedAt = originalStartedAt
+		}
+		if task.Progress == nil {
+			h.logger.Warn("Refreshed task missing Progress, preserving original", "task_id", taskID)
+			task.Progress = originalProgress
+		}
+	}
+
+	// Defensive check before dereferencing StartedAt
+	var generationTimeMs int64
+	if task.StartedAt != nil {
+		generationTimeMs = completedAt.Sub(*task.StartedAt).Milliseconds()
+	} else {
+		h.logger.Error("Task StartedAt is nil, cannot calculate generation time", "task_id", taskID)
+		generationTimeMs = 0
+	}
+
+	// Defensive check for Progress
+	var totalChunks int
+	if task.Progress != nil {
+		totalChunks = task.Progress.TotalChunks
+	} else {
+		h.logger.Warn("Task Progress is nil, using default totalChunks", "task_id", taskID)
+		totalChunks = 0
+	}
+
 	task.CompletedAt = &completedAt
 	task.Status = "completed"
 	task.Result = map[string]interface{}{
@@ -327,8 +437,8 @@ func (h *MIRARCAAsyncHandler) processTask(taskID string, rcaData *models.RCAResp
 		"provider":         h.config.Provider,
 		"model":            h.getModelName(),
 		"generatedAt":      completedAt.Format(time.RFC3339),
-		"generationTimeMs": completedAt.Sub(*task.StartedAt).Milliseconds(),
-		"totalChunks":      task.Progress.TotalChunks,
+		"generationTimeMs": generationTimeMs,
+		"totalChunks":      totalChunks,
 	}
 
 	if err := h.saveTaskStatus(task); err != nil {
@@ -536,6 +646,7 @@ func (h *MIRARCAAsyncHandler) getModelName() string {
 func (h *MIRARCAAsyncHandler) convertToWeaviateTask(task *MIRARCATaskStatus) *weavstore.MIRARCATask {
 	weavTask := &weavstore.MIRARCATask{
 		TaskID:      task.TaskID,
+		Name:        task.Name,
 		Status:      task.Status,
 		RCAData:     make(map[string]interface{}),
 		Result:      task.Result,
