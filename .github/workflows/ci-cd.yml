@@ -62,7 +62,7 @@ jobs:
           fi
 
       - name: Upload test artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: test-artifacts
           path: |
@@ -92,7 +92,7 @@ jobs:
           $HOME/go/bin/govulncheck ./... | tee govulncheck.txt
 
       - name: Upload govulncheck report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: govulncheck-report
           path: govulncheck.txt
@@ -183,7 +183,7 @@ jobs:
 
       - name: Upload docs artifacts
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: docs-build-artifacts
           path: docs/_build/
