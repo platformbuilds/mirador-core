@@ -110,6 +110,54 @@ paths:
         '200':
           description: OK
 
+  /api/v1/mira/ask:
+    post:
+      summary: MIRA conversational endpoint (Phase-1 read-only)
+      description: |
+        Minimal Phase-1 conversational endpoint that accepts a message and returns a deterministic reply. Supports streaming (SSE events) when `options.stream=true`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                conversationId:
+                  type: string
+                message:
+                  type: string
+                options:
+                  type: object
+                  properties:
+                    stream:
+                      type: boolean
+            examples:
+              nonStream:
+                summary: Non-streaming request
+                value:
+                  message: "How is checkout doing?"
+                  options: { stream: false }
+              stream:
+                summary: Streaming request
+                value:
+                  message: "Is anything failing right now?"
+                  options: { stream: true }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversationId:
+                    type: string
+                  capabilityId:
+                    type: string
+                  result:
+                    type: object
+      x-mirador-note: "Phase-1 read-only: only startTime/endTime API fields allowed on public RCA/correlate APIs (this is a chat endpoint)."
+
   # RCA endpoints (v1) - migrated to unified
   /api/v1/unified/service-graph:
     post:

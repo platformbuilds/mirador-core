@@ -18,6 +18,8 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/bootstrap"
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/logging"
+	"github.com/platformbuilds/mirador-core/internal/mira/orchestrator"
+	"github.com/platformbuilds/mirador-core/internal/mira/session"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/internal/rca"
@@ -49,6 +51,8 @@ type Server struct {
 	httpServer                  *http.Server
 	tracerProvider              *tracing.TracerProvider
 	weaviateClient              *wv.Client
+	miraSessionStore            session.SessionStore
+	miraOrchestrator            *orchestrator.Orchestrator
 }
 
 func NewServer(
@@ -111,6 +115,13 @@ func NewServer(
 		log.Info("Metrics metadata components disabled - creating stub implementations for API compatibility")
 		server.metricsMetadataIndexer = services.NewStubMetricsMetadataIndexer(log)
 		server.metricsMetadataSynchronizer = services.NewStubMetricsMetadataSynchronizer(log)
+	}
+
+	// Initialize MIRA components (Phase-1: conversational AI)
+	if cfg.MIRA.Enabled {
+		server.miraSessionStore = session.NewStore(30 * time.Minute)
+		server.miraOrchestrator = orchestrator.New()
+		log.Info("Initialized MIRA conversational components", "sessionTTL", "30m")
 	}
 
 	server.setupMiddleware()
@@ -309,6 +320,14 @@ func (s *Server) setupRoutes() {
 			// Human-friendly KPI search endpoint (natural language)
 			v1.POST("/kpi/search", kpiHandler.SearchKPIs)
 		}
+	}
+
+	// MIRA conversational endpoint (chat)
+	if s.config.MIRA.Enabled {
+		// Lightweight read-only chat endpoint for Phase-1
+		miraHandler := handlers.NewMiraHandler(s.miraSessionStore, s.miraOrchestrator)
+		v1.POST("/mira/ask", miraHandler.MiraAsk)
+		s.logger.Info("Registered MIRA conversational endpoint /api/v1/mira/ask (read-only)")
 	}
 
 	// Unified Query Engine (Phase 1.5: Unified API Implementation)
