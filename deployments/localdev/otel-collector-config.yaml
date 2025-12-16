@@ -5,6 +5,13 @@ receivers:
         endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: macbook-osx-local
+          scrape_interval: 10s
+          static_configs:
+            - targets: ["host.docker.internal:9100"] # Scrape the Macbook OS metrics exporter
 
 connectors:
   spanmetrics:
@@ -121,6 +128,11 @@ service:
 
     metrics/servicegraph:
       receivers: [servicegraph]
+      processors: []
+      exporters: [prometheusremotewrite, debug]
+
+    metrics/macbook:
+      receivers: [prometheus]
       processors: []
       exporters: [prometheusremotewrite, debug]
 
