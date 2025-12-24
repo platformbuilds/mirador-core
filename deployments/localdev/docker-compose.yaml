@@ -10,12 +10,6 @@ services:
       - "8428:8428"   # Expose for external access
     volumes:
       - vmdata:/victoria-metrics-data
-    # Increase search limits so lookups that match many timeseries don't fail
-    # with the default 30k unique timeseries cap. For high-cardinality datasets
-    # (e.g. heavy synthetic telemetry in localdev) increase this to a larger
-    # value. Note: raising this increases memory/search cost for VictoriaMetrics
-    # and may require more host resources. If you still hit limits, increase
-    # further or narrow down queries.
     command:
       - --storageDataPath=/victoria-metrics-data
       - --search.maxUniqueTimeseries=500000
@@ -74,6 +68,32 @@ services:
       retries: 10
 
   # ──────────────────────────────────────────────
+  # OpenTelemetry eBPF Instrumentation (OBI) Agent
+  # ──────────────────────────────────────────────
+  obi:
+    image: docker.io/otel/ebpf-instrument:main
+    pull_policy: if_not_present
+    container_name: obi
+    privileged: true
+    pid: "host"
+    depends_on:
+      otel-collector:
+        condition: service_started
+    environment:
+      # Instrument selection: set to your *container internal* service ports
+      # Examples: "8010,8080,8443" or ranges like "8080-8999"
+      OTEL_EBPF_OPEN_PORT: "8010,8080,8443"
+
+      # Export traces to your Collector (OTLP/gRPC)
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/json"
+
+      # Optional: print spans locally while validating
+      OTEL_EBPF_TRACE_PRINTER: "text"
+    networks:
+      - mirador-net
+
+  # ──────────────────────────────────────────────
   # Valkey (single-node Redis alternative)
   # ──────────────────────────────────────────────
   valkey:
@@ -104,25 +124,10 @@ services:
     restart: unless-stopped
     environment:
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
-      # Use Weaviate's built-in text2vec-transformers vectorizer for automatic
-      # embedding generation. NOTE: the Weaviate image must include this module
-      # (official images >= 1.x typically do) *and* you need a transformer
-      # inference backend available to serve the model if not using the
-      # built-in lightweight inference. For localdev, you can keep this as
-      # "none" if you don't want embeddings auto-generated.
       DEFAULT_VECTORIZER_MODULE: "text2vec-transformers"
-      # Enable the transformers module in Weaviate runtime. This must match
-      # the actual available modules in the image (text2vec-transformers) and
-      # points to the inference API service below.
       ENABLE_MODULES: "text2vec-transformers"
       TRANSFORMERS_INFERENCE_API: "http://text2vec-transformers:8080"
       TRANSFORMERS_INFERENCE_MODEL: "sentence-transformers/all-MiniLM-L6-v2"
-      # Transformer inference service (optional). If you run a local model
-      # server (e.g., huggingface/transformers-inference or text2vec compatible
-      # API), point Weaviate at it here. Keep commented or set to a local URL
-      # when available.
-      # TRANSFORMERS_INFERENCE_API: "http://transformers:8080"
-      # TRANSFORMERS_INFERENCE_MODEL: "sentence-transformers/all-MiniLM-L6-v2"
       QUERY_DEFAULTS_LIMIT: "25"
       PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
       CLUSTER_GOSSIP_BIND_PORT: "7100"
@@ -139,18 +144,7 @@ services:
     networks:
       - mirador-net
 
-  # ──────────────────────────────────────────────
-  # Ollama (Local AI Model Server for MIRA)
-  # ──────────────────────────────────────────────
-  # NOTE: If you run Ollama natively on your host (macOS), you can
-  #  - remove/comment this service block to avoid running the container, and
-  #  - set mirador-core's OLLAMA_ENDPOINT to http://host.docker.internal:11434/api/generate
-  #    (when mirador-core runs in Docker) or http://localhost:11434/api/generate (when mirador-core runs natively).
   ollama:
-    # The Ollama container runs by default in localdev. Previously this service
-    # lived under a separate profile so native host installs could be preferred;
-    # we now ship the containerized Ollama as the default dev experience so
-    # docker compose up will bring up Ollama automatically.
     image: ollama/ollama:latest
     pull_policy: if_not_present
     container_name: ollama
@@ -167,8 +161,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-    # Optimized for Docker CPU: Using llama3.2:1b (740MB, fast inference without GPU)
-    # Auto-pull model on first start:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -177,19 +169,14 @@ services:
         ollama pull llama3.2:3b
         wait
 
-  # Optional: local transformer inference server for Weaviate's text2vec-transformers.
-  # This provides an ONNX-optimized sentence-transformers model suitable for
-  # CPU-based local development. The image is optimized for AMD64 (AVX2) and
-  # ARM64 and uses ONNX runtime for efficient inference.
   text2vec-transformers:
     image: cr.weaviate.io/semitechnologies/transformers-inference:sentence-transformers-all-MiniLM-L6-v2-onnx
     pull_policy: if_not_present
     container_name: text2vec-transformers
     ports:
-      - "8081:8080" # expose host:container for testing (internal weaviate calls use the container name)
+      - "8081:8080"
     restart: unless-stopped
     environment:
-      # Model served by this backend. Keep in sync with TRANSFORMERS_INFERENCE_MODEL
       - MODEL_ID=sentence-transformers/all-MiniLM-L6-v2
       - LOG_LEVEL=info
     healthcheck:
@@ -200,15 +187,10 @@ services:
     networks:
       - mirador-net
 
-  # ──────────────────────────────────────────────
-  # MIRADOR CORE (Main Application)
-  # ──────────────────────────────────────────────
   mirador-core:
     build:
       context: ../..
       dockerfile: Dockerfile
-    # If you prefer to pull a published image, comment the above build block and use:
-    # image: platformbuilds/mirador-core:v2.1.3
     container_name: mirador-core
     restart: unless-stopped
     depends_on:
@@ -216,8 +198,6 @@ services:
         condition: service_healthy
       weaviate:
         condition: service_healthy
-      # Note: Ollama is optional and not required by default. If you need the
-      # containerized Ollama, start with `docker compose --profile ollama up -d`
       victoriametrics:
         condition: service_started
       victorialogs:
@@ -227,42 +207,25 @@ services:
     ports:
       - "8010:8010"
     environment:
-      # App basics
       - PORT=8010
       - LOG_LEVEL=debug
       - ENVIRONMENT=development
       - CONFIG_PATH=/configs/config.development.yaml
       - AUTH_ENABLED=true
-
-      # Upload limits
       - BULK_UPLOAD_MAX_BYTES=5242880
-
-      # Weaviate (DEV)
       - WEAVIATE_HOST=weaviate
       - WEAVIATE_PORT=8080
       - WEAVIATE_SCHEME=http
       - WEAVIATE_ENABLED=true
       - WEAVIATE_USE_OFFICIAL=false
-
-      # VictoriaMetrics endpoints
       - VM_ENDPOINTS=http://victoriametrics:8428
       - VL_ENDPOINTS=http://victorialogs:9428
       - VT_ENDPOINTS=http://victoriatraces:10428
-
-      # Valkey (Redis-compatible)
       - VALKEY_CACHE_NODES=valkey:6379
       - CACHE_TTL=300
-
-      # Stage-01 RCA/Correlation API enforcement (AGENTS.md §3.1)
       - MIRADOR_ENGINE_STRICT_TIMEWINDOW_PAYLOAD=true
-
-      # MIRA (AI-powered RCA explanations)
       - MIRA_ENABLED=true
       - MIRA_PROVIDER=ollama
-      # Default to the containerized Ollama service so mirador-core inside
-      # Compose reaches the Ollama container by service name. If you prefer to
-      # reach a native host Ollama, set OLLAMA_ENDPOINT in your environment to
-      # "http://host.docker.internal:11434/api/generate" (macOS/Docker Desktop).
       - OLLAMA_ENDPOINT=${OLLAMA_ENDPOINT:-http://ollama:11434/api/generate}
     healthcheck:
       test: ["CMD", "/mirador-core", "healthcheck"]
@@ -275,9 +238,6 @@ services:
     networks:
       - mirador-net
 
-# ──────────────────────────────────────────────
-# VOLUMES
-# ──────────────────────────────────────────────
 volumes:
   vmdata: {}
   vldata: {}
@@ -287,9 +247,6 @@ volumes:
   bleve-data: {}
   ollama-data: {}
 
-# ──────────────────────────────────────────────
-# NETWORKS
-# ──────────────────────────────────────────────
 networks:
   mirador-net:
     driver: bridge
