@@ -67,6 +67,13 @@ type KPIDefinition struct {
 	Examples        []map[string]any `json:"examples"`
 	Sparkline       map[string]any   `json:"sparkline"`
 	Visibility      string           `json:"visibility"`
+	Description     string           `json:"description"`
+	DataType        string           `json:"dataType"`
+	DataSourceID    string           `json:"dataSourceId"`
+	KPIDatastoreID  string           `json:"kpiDatastoreId"`
+	RefreshInterval int              `json:"refreshInterval"`
+	IsShared        bool             `json:"isShared"`
+	UserID          string           `json:"userId"`
 	CreatedAt       time.Time        `json:"createdAt"`
 	UpdatedAt       time.Time        `json:"updatedAt"`
 }

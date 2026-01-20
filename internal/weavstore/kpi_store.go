@@ -2,6 +2,7 @@ package weavstore
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -159,6 +160,13 @@ func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *KPIDefiniti
 		"examples":        k.Examples,
 		"sparkline":       k.Sparkline,
 		"visibility":      k.Visibility,
+		"description":     k.Description,
+		"dataType":        k.DataType,
+		"dataSourceId":    k.DataSourceID,
+		"kpiDatastoreId":  k.KPIDatastoreID,
+		"refreshInterval": k.RefreshInterval,
+		"isShared":        k.IsShared,
+		"userId":          k.UserID,
 		"createdAt":       k.CreatedAt.Format(time.RFC3339Nano),
 		"updatedAt":       k.UpdatedAt.Format(time.RFC3339Nano),
 		// content is a concatenation of human-friendly fields that are
@@ -260,6 +268,15 @@ func kpiEqual(a, b *KPIDefinition) bool {
 		return false
 	}
 	if a.Visibility != b.Visibility {
+		return false
+	}
+	if a.Description != b.Description || a.DataType != b.DataType {
+		return false
+	}
+	if a.DataSourceID != b.DataSourceID || a.KPIDatastoreID != b.KPIDatastoreID {
+		return false
+	}
+	if a.RefreshInterval != b.RefreshInterval || a.IsShared != b.IsShared || a.UserID != b.UserID {
 		return false
 	}
 	// Compare tags (order-sensitive). If you require order-insensitive compare,
@@ -667,6 +684,21 @@ func parseBasicProps(props map[string]any, k *KPIDefinition) {
 	if v, ok := props["visibility"].(string); ok {
 		k.Visibility = v
 	}
+	if v, ok := props["description"].(string); ok {
+		k.Description = v
+	}
+	if v, ok := props["dataType"].(string); ok {
+		k.DataType = v
+	}
+	if v, ok := props["dataSourceId"].(string); ok {
+		k.DataSourceID = v
+	}
+	if v, ok := props["kpiDatastoreId"].(string); ok {
+		k.KPIDatastoreID = v
+	}
+	if v, ok := props["userId"].(string); ok {
+		k.UserID = v
+	}
 }
 
 // parseMetadataProps extracts metadata properties (domain, service, component)
@@ -682,6 +714,14 @@ func parseMetadataProps(props map[string]any, k *KPIDefinition) {
 	}
 	if v, ok := props["retryAllowed"].(bool); ok {
 		k.RetryAllowed = v
+	}
+	if v, ok := props["refreshInterval"].(float64); ok {
+		k.RefreshInterval = int(v)
+	} else if v, ok := props["refreshInterval"].(int); ok {
+		k.RefreshInterval = v
+	}
+	if v, ok := props["isShared"].(bool); ok {
+		k.IsShared = v
 	}
 }
 
@@ -764,12 +804,15 @@ func kpiContent(k *KPIDefinition) string {
 	if k == nil {
 		return ""
 	}
-	parts := make([]string, 0, 6)
+	parts := make([]string, 0, 7)
 	if k.Name != "" {
 		parts = append(parts, k.Name)
 	}
 	if k.Definition != "" {
 		parts = append(parts, k.Definition)
+	}
+	if k.Description != "" {
+		parts = append(parts, k.Description)
 	}
 	if k.Formula != "" {
 		parts = append(parts, k.Formula)
@@ -843,6 +886,13 @@ func (s *WeaviateKPIStore) ensureKPIDefinitionClass(ctx context.Context) error {
 			{Name: "examples", DataType: []string{"text"}},
 			{Name: "sparkline", DataType: []string{"text"}},
 			{Name: "visibility", DataType: []string{"string"}},
+			{Name: "description", DataType: []string{"text"}},
+			{Name: "dataType", DataType: []string{"string"}},
+			{Name: "dataSourceId", DataType: []string{"string"}},
+			{Name: "kpiDatastoreId", DataType: []string{"string"}},
+			{Name: "refreshInterval", DataType: []string{"int"}},
+			{Name: "isShared", DataType: []string{"boolean"}},
+			{Name: "userId", DataType: []string{"string"}},
 			{Name: "createdAt", DataType: []string{"date"}},
 			{Name: "updatedAt", DataType: []string{"date"}},
 		},
@@ -1220,36 +1270,44 @@ func excerpt(text, q string) string {
 	return snippet
 }
 
-// thresholdsToProps converts Threshold slice into the Weaviate nested
-// property representation expected by the KPIDefinition class schema.
-func thresholdsToProps(ths []Threshold) []map[string]any {
+// thresholdsToProps converts Threshold slice into a JSON string for Weaviate TEXT property.
+// The Weaviate schema defines thresholds as a TEXT field, so we must serialize the array to JSON.
+func thresholdsToProps(ths []Threshold) string {
 	if len(ths) == 0 {
-		return nil
+		return ""
 	}
-	out := make([]map[string]any, 0, len(ths))
-	for _, t := range ths {
-		m := map[string]any{
-			"operator": t.Operator,
-			"value":    t.Value,
-			"severity": t.Level,
-			"message":  t.Description,
-		}
-		out = append(out, m)
+	// Convert to JSON string
+	data, err := json.Marshal(ths)
+	if err != nil {
+		// Log error but don't fail the entire operation
+		return ""
 	}
-	return out
+	return string(data)
 }
 
-// propsToThresholds converts a raw thresholds property (from Weaviate) into
-// []Threshold. The raw value can be []map[string]any, []interface{}, or
-// other types depending on the SDK decoding.
+// propsToThresholds converts a raw thresholds property (from Weaviate TEXT field) into []Threshold.
+// The Weaviate schema stores thresholds as a JSON string in a TEXT property.
 func propsToThresholds(raw any) []Threshold {
 	if raw == nil {
 		return nil
 	}
-	// Prefer []map[string]any if present
+
+	// First, try to parse as a JSON string (expected format)
+	if str, ok := raw.(string); ok && str != "" {
+		var thresholds []Threshold
+		if err := json.Unmarshal([]byte(str), &thresholds); err == nil {
+			return thresholds
+		}
+		// If JSON unmarshal fails, return empty array
+		return nil
+	}
+
+	// Fallback: handle legacy format where thresholds might be stored as []map[string]any
+	// This supports backward compatibility during migration
 	if arr, ok := raw.([]map[string]any); ok {
 		return convertFromMapArray(arr)
 	}
+
 	// Handle []any / []interface{} where each element is a map
 	if arr, ok := raw.([]any); ok {
 		out := make([]Threshold, 0, len(arr))
@@ -1269,6 +1327,7 @@ func propsToThresholds(raw any) []Threshold {
 		}
 		return out
 	}
+
 	return nil
 }
 

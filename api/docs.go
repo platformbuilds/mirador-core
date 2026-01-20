@@ -206,62 +206,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/mira/rca_analyze": {
-            "post": {
-                "description": "Translates technical RCA output into non-technical narrative using AI (MIRA - Mirador Intelligent Research Assistant). Supports multiple providers: OpenAI, Anthropic, vLLM, Ollama. Responses are cached for cost optimization.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "mira"
-                ],
-                "summary": "Generate non-technical RCA explanation",
-                "parameters": [
-                    {
-                        "description": "RCA response payload from /api/v1/unified/rca",
-                        "name": "rcaData",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_api_handlers.MIRARCARequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "status: success, data: {explanation, tokensUsed, provider, model, generatedAt, cached, generationTimeMs}",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "status: error, error: invalid_json_payload | invalid_rca_data",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "429": {
-                        "description": "status: error, error: rate_limit_exceeded",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "status: error, error: toon_conversion_failed | prompt_rendering_failed | mira_generation_failed",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        }
+        /* /api/v1/mira paths removed from generated docs */
     },
     "definitions": {
         "github_com_platformbuilds_mirador-core_internal_models.EvidenceRefDTO": {

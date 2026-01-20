@@ -8,6 +8,11 @@ Key endpoints:
 - `POST /api/v1/mira/rca_analyze_async` — submit async task (returns `taskId`)
 - `GET  /api/v1/mira/rca_analyze/{taskId}` — poll async task status/result
 
+Note: MIRA functionality is provided by an external microservice. Mirador Core
+may proxy `/api/v1/mira/*` to the configured external MIRA service when the
+`MIRA_SERVICE_URL` environment variable is set. Alternatively clients can call
+the external MIRA service directly.
+
 This document describes architecture, API contracts, async flow, config knobs, examples, integration points, and operational troubleshooting.
 
 ---

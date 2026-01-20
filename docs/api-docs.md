@@ -1,13 +1,12 @@
-# API Reference — Quick Guide (KPIs, Failures, Correlation, RCA, MIRA)
+# API Reference — Quick Guide (KPIs, Failures, Correlation, RCA)
 
 This document collects canonical request/response examples and API contracts for primary Mirador Core flows developers will use while building the UI and integrations.
 
 Canonical artifacts (single source of truth):
-- OpenAPI / Swagger: `api/openapi.json`, `api/openapi.yaml`, `api/swagger.json`, `api/swagger.yaml` (contains full schemas and examples used below).
+- OpenAPI / Swagger: `api/openapi.yaml` (primary spec).
 - Runtime handlers and DTOs: `internal/api/server.go`, `internal/api/handlers/` and `internal/models/`, `internal/rca/`.
-- Feature docs: `docs/rca-analyze-mira-ai.md`.
 
-Usage note: the OpenAPI spec (`api/openapi.json`) includes inline examples for many endpoints — consult that file for detailed schemas.
+Usage note: the OpenAPI spec (`api/openapi.yaml`) contains current examples and schemas.
 
 ---
 
@@ -16,7 +15,6 @@ Usage note: the OpenAPI spec (`api/openapi.json`) includes inline examples for m
 - Failures
 - Unified Correlation
 - Unified RCA
-- MIRA RCA Analyze (async + task polling)
 
 ---
 

@@ -188,6 +188,7 @@ func (ri *RCAIncident) String() string {
 // TemplateBasedSummary generates a template-based summary for an RCAStep.
 // This is deterministic and not AI-generated.
 // If diagnostics are provided and contain significant issues, the summary may include notes about reduced accuracy.
+// Phase 5: Enhanced to optionally include KPI description when available for richer narratives.
 func TemplateBasedSummary(step *RCAStep, impactService string, diagnostics ...*RCADiagnostics) string {
 	var baseSummary string
 
@@ -234,4 +235,20 @@ func TemplateBasedSummary(step *RCAStep, impactService string, diagnostics ...*R
 	}
 
 	return baseSummary
+}
+
+// EnhanceNarrativeWithKPIDescription enriches a narrative string with KPI description context.
+// This is a Phase 5 utility for incorporating KPIDefinition.Description into RCA narratives.
+// Returns the original narrative if description is empty, otherwise appends description.
+func EnhanceNarrativeWithKPIDescription(baseNarrative string, kpiDescription string) string {
+	if kpiDescription == "" {
+		return baseNarrative
+	}
+	// Append description as context (max 200 chars to avoid excessive verbosity)
+	const maxDescLen = 200
+	desc := kpiDescription
+	if len(desc) > maxDescLen {
+		desc = desc[:maxDescLen] + "..."
+	}
+	return fmt.Sprintf("%s Context: %s", baseNarrative, desc)
 }

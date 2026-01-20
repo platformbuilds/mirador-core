@@ -1,15 +1,106 @@
 {
   "info": {
-    "name": "MIRADOR-CORE API",
-    "description": "Mirador Core is a comprehensive observability and analytics platform that provides KPI definitions, metrics, logs, traces, and correlation analysis for monitoring and analyzing system metrics. Authentication and authorization are handled externally.",
+    "name": "MIRADOR-CORE API (code-first)",
+    "description": "This OpenAPI document is generated from the code-first route registrations\nin internal/api/server.go. It lists only endpoints actually registered by\nthe server bootstrap (health, metrics, docs, swagger, /api/v1/* groups\nfor RCA, KPI definitions, Unified and UQL).\n",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "System",
+      "name": "Untagged",
       "item": [
         {
-          "name": "Health check",
+          "name": "Root redirect to Swagger UI",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [],
+              "query": []
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Swagger UI entry",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/swagger/index.html",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "swagger",
+                "index.html"
+              ],
+              "query": []
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "OpenAPI YAML",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/openapi.yaml",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "api",
+                "openapi.yaml"
+              ],
+              "query": []
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "OpenAPI JSON",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/openapi.json",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "api",
+                "openapi.json"
+              ],
+              "query": []
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Prometheus metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/metrics",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "metrics"
+              ],
+              "query": []
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Public health check",
           "request": {
             "method": "GET",
             "header": [],
@@ -22,10 +113,10 @@
                 "health"
               ],
               "query": []
-            {
-              "name": "RBAC (REMOVED)",
-              "description": "RBAC and role-based endpoints were removed from Mirador Core in v9.0.0. Authentication and authorization are now handled externally by API gateways, identity providers, or service mesh. These examples are kept for historical reference only.",
-              "item": []
+            }
+          },
+          "response": []
+        },
         {
           "name": "Readiness check",
           "request": {
@@ -64,78 +155,59 @@
           "response": []
         },
         {
-          "name": "Prometheus metrics",
+          "name": "Prometheus metrics (v1 group)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/metrics",
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/metrics",
               "host": [
                 "{{scheme}}://{{host}}:{{port}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "metrics"
               ],
               "query": []
             }
           },
           "response": []
-        }
-      ]
-    },
-    {
-      "name": "System",
-      "item": [
+        },
         {
-          "name": "Health check",
+          "name": "API-v1 health",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/health",
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/health",
               "host": [
                 "{{scheme}}://{{host}}:{{port}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "health"
               ],
               "query": []
             }
           },
           "response": []
-        }
-      ]
-    },
-    {
-      "name": "Api Keys (REMOVED)",
-      "description": "API key endpoints were removed from Mirador Core in v9.0.0. API keys should be managed externally by your identity provider or API gateway. These examples are kept for historical reference only.",
-      "item": [],
+        },
         {
-          "name": "List API keys",
+          "name": "API-v1 readiness",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/apikeys",
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/ready",
               "host": [
                 "{{scheme}}://{{host}}:{{port}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "auth",
-                "apikeys"
+                "ready"
               ],
               "query": []
             }
@@ -143,73 +215,41 @@
           "response": []
         },
         {
-          "name": "Generate API key",
+          "name": "API-v1 microservices status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/microservices/status",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "microservices",
+                "status"
+              ],
+              "query": []
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Build / retrieve service-graph for RCA",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/apikeys",
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/unified/service-graph",
               "host": [
                 "{{scheme}}://{{host}}:{{port}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "auth",
-                "apikeys"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Revoke API key",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/apikeys/{{keyId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "apikeys",
-                "{{keyId}}"
+                "unified",
+                "service-graph"
               ],
               "query": []
             }
@@ -217,770 +257,10 @@
           "response": []
         },
         {
-          "name": "Get API key limits",
+          "name": "List KPI definitions",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/apikey-limits",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "apikey-limits"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update API key limits",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/apikey-limits",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "apikey-limits"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get API key configuration",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/apikey-config",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "apikey-config"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-        {
-          "name": "Get roles",
-      },
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/roles",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "roles"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get user roles",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/users/{{userId}}/roles",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "users",
-                "{{userId}}",
-                "roles"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get permissions",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/permissions",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "permissions"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create permission",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/permissions",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "permissions"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update permission",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/permissions/{{permissionId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "permissions",
-                "{{permissionId}}"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete permission",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/permissions/{{permissionId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "permissions",
-                "{{permissionId}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get groups",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/groups",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "groups"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create group",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/groups",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "groups"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update group",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/groups/{{groupName}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "groups",
-                "{{groupName}}"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete group",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/groups/{{groupName}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "groups",
-                "{{groupName}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Add users to group",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/groups/{{groupName}}/users",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "groups",
-                "{{groupName}}",
-                "users"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Remove users from group",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/groups/{{groupName}}/users",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "groups",
-                "{{groupName}}",
-                "users"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get group members",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/groups/{{groupName}}/members",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "groups",
-                "{{groupName}}",
-                "members"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get role bindings",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/role-bindings",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "role-bindings"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create role binding",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/role-bindings",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "role-bindings"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update role binding",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/role-bindings/{{bindingId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "role-bindings",
-                "{{bindingId}}"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete role binding",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/role-bindings/{{bindingId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "role-bindings",
-                "{{bindingId}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Kpi Definitions",
-      "item": [
-        {
-          "name": "Get KPI definitions",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/kpi/defs",
               "host": [
@@ -994,11 +274,6 @@
               ],
               "query": [
                 {
-                  "key": "tenant_id",
-                  "value": "",
-                  "description": "Tenant ID (optional, defaults to request context)"
-                },
-                {
                   "key": "tags",
                   "value": "",
                   "description": "Filter by tags (comma-separated)"
@@ -1006,12 +281,57 @@
                 {
                   "key": "limit",
                   "value": "",
-                  "description": "Maximum number of results"
+                  "description": "Maximum number of results (default 10, max 10000)"
                 },
                 {
                   "key": "offset",
                   "value": "",
                   "description": "Pagination offset"
+                },
+                {
+                  "key": "kind",
+                  "value": "",
+                  "description": "Filter by kind"
+                },
+                {
+                  "key": "layer",
+                  "value": "",
+                  "description": "Filter by layer"
+                },
+                {
+                  "key": "signalType",
+                  "value": "",
+                  "description": "Filter by signal type"
+                },
+                {
+                  "key": "classifier",
+                  "value": "",
+                  "description": "Filter by classifier"
+                },
+                {
+                  "key": "datastore",
+                  "value": "",
+                  "description": "Filter by datastore"
+                },
+                {
+                  "key": "sentiment",
+                  "value": "",
+                  "description": "Filter by sentiment"
+                },
+                {
+                  "key": "domain",
+                  "value": "",
+                  "description": "Filter by domain"
+                },
+                {
+                  "key": "serviceFamily",
+                  "value": "",
+                  "description": "Filter by service family"
+                },
+                {
+                  "key": "componentType",
+                  "value": "",
+                  "description": "Filter by component type"
                 }
               ]
             }
@@ -1022,18 +342,7 @@
           "name": "Create or update KPI definition",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/kpi/defs",
               "host": [
@@ -1060,21 +369,115 @@
           "response": []
         },
         {
-          "name": "Delete KPI definition",
+          "name": "Bulk ingest KPI definitions (JSON)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/kpi/defs/bulk-json",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "kpi",
+                "defs",
+                "bulk-json"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search KPI definitions",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/kpi/search",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "kpi",
+                "search"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk ingest KPI definitions (CSV)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/kpi/defs/bulk-csv",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "kpi",
+                "defs",
+                "bulk-csv"
+              ],
+              "query": []
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get KPI definition by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/kpi/defs/{{id}}",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "kpi",
+                "defs",
+                "{{id}}"
+              ],
+              "query": []
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete KPI definition by id",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/kpi/defs/{{id}}",
               "host": [
@@ -1091,174 +494,7 @@
                 {
                   "key": "confirm",
                   "value": "{{confirm}}",
-                  "description": "Confirmation flag"
-                }
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Metrics",
-      "item": [
-        {
-          "name": "Execute metrics query",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/metrics/query",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "metrics",
-                "query"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Execute metrics range query",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/metrics/query_range",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "metrics",
-                "query_range"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get metric names",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/metrics/names",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "metrics",
-                "names"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get metric series",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/metrics/series",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "metrics",
-                "series"
-              ],
-              "query": [
-                {
-                  "key": "match[]",
-                  "value": "",
-                  "description": "Series selectors"
-                },
-                {
-                  "key": "start",
-                  "value": "",
-                  "description": "Start time"
-                },
-                {
-                  "key": "end",
-                  "value": "",
-                  "description": "End time"
+                  "description": "Confirmation flag (1, true, or yes). Delete will be rejected unless this query parameter is provided."
                 }
               ]
             }
@@ -1266,2511 +502,10 @@
           "response": []
         },
         {
-          "name": "Get labels",
+          "name": "Unified query",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/metrics/labels",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "metrics",
-                "labels"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get label values",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/metrics/label/{{name}}/values",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "metrics",
-                "label",
-                "{{name}}",
-                "values"
-              ],
-              "query": [
-                {
-                  "key": "start",
-                  "value": "",
-                  "description": "Start time"
-                },
-                {
-                  "key": "end",
-                  "value": "",
-                  "description": "End time"
-                },
-                {
-                  "key": "match[]",
-                  "value": "",
-                  "description": "Series selectors"
-                }
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Logs",
-      "item": [
-        {
-          "name": "Execute logs query",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/logs/query",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "logs",
-                "query"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get log streams",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/logs/streams",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "logs",
-                "streams"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get log fields",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/logs/fields",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "logs",
-                "fields"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Export logs",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/logs/export",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "logs",
-                "export"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Store log event",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/logs/store",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "logs",
-                "store"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get logs histogram",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/logs/histogram",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "logs",
-                "histogram"
-              ],
-              "query": [
-                {
-                  "key": "query",
-                  "value": "",
-                  "description": "LogsQL query"
-                },
-                {
-                  "key": "start",
-                  "value": "",
-                  "description": "Start time"
-                },
-                {
-                  "key": "end",
-                  "value": "",
-                  "description": "End time"
-                },
-                {
-                  "key": "step",
-                  "value": "",
-                  "description": "Histogram step"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get logs facets",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/logs/facets",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "logs",
-                "facets"
-              ],
-              "query": [
-                {
-                  "key": "query",
-                  "value": "",
-                  "description": "LogsQL query"
-                },
-                {
-                  "key": "start",
-                  "value": "",
-                  "description": "Start time"
-                },
-                {
-                  "key": "end",
-                  "value": "",
-                  "description": "End time"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Search logs",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/logs/search",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "logs",
-                "search"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Tail logs",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/logs/tail",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "logs",
-                "tail"
-              ],
-              "query": [
-                {
-                  "key": "query",
-                  "value": "",
-                  "description": "LogsQL query"
-                }
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Traces",
-      "item": [
-        {
-          "name": "Get services",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/traces/services",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "traces",
-                "services"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get service operations",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/traces/services/{{service}}/operations",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "traces",
-                "services",
-                "{{service}}",
-                "operations"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get trace",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/traces/{{traceId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "traces",
-                "{{traceId}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get trace flamegraph",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/traces/{{traceId}}/flamegraph",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "traces",
-                "{{traceId}}",
-                "flamegraph"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Search traces",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/traces/search",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "traces",
-                "search"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Search flamegraphs",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/traces/flamegraph/search",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "traces",
-                "flamegraph",
-                "search"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Rca",
-      "item": [
-        {
-          "name": "Get active correlations",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rca/correlations",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rca",
-                "correlations"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Start investigation",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rca/investigate",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rca",
-                "investigate"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get failure patterns",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rca/patterns",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rca",
-                "patterns"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get service graph",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rca/service-graph",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rca",
-                "service-graph"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Store correlation",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rca/store",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rca",
-                "store"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Config",
-      "item": [
-        {
-          "name": "Get data sources",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/config/datasources",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "config",
-                "datasources"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Add data source",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/config/datasources",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "config",
-                "datasources"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get integrations",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/config/integrations",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "config",
-                "integrations"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get user preferences",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/config/user-preferences",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "config",
-                "user-preferences"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create user preferences",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/config/user-preferences",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "config",
-                "user-preferences"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update user preferences",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/config/user-preferences",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "config",
-                "user-preferences"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete user preferences",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/config/user-preferences",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "config",
-                "user-preferences"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get feature flags",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/config/features",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "config",
-                "features"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update feature flags",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/config/features",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "config",
-                "features"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Reset feature flags",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/config/features",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "config",
-                "features"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get gRPC endpoints",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/config/grpc/endpoints",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "config",
-                "grpc",
-                "endpoints"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update gRPC endpoints",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/config/grpc/endpoints",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "config",
-                "grpc",
-                "endpoints"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Reset gRPC endpoints",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/config/grpc/endpoints",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "config",
-                "grpc",
-                "endpoints"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        }
-      ]
-        {
-          "name": "Get audit events",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/audit",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "audit"
-              ],
-              "query": [
-                {
-                  "key": "subjectId",
-                  "value": "",
-                  "description": "Filter by subject ID"
-                },
-                {
-                  "key": "action",
-                  "value": "",
-                  "description": "Filter by action"
-                },
-                {
-                  "key": "start",
-                  "value": "",
-                  "description": "Start time"
-                },
-                {
-                  "key": "end",
-                  "value": "",
-                  "description": "End time"
-                },
-                {
-                  "key": "limit",
-                  "value": "",
-                  "description": "Maximum number of results"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get audit event",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/audit/{{eventId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "audit",
-                "{{eventId}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get audit summary",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/audit/summary",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "audit",
-                "summary"
-              ],
-              "query": [
-                {
-                  "key": "start",
-                  "value": "",
-                  "description": "Start time"
-                },
-                {
-                  "key": "end",
-                  "value": "",
-                  "description": "End time"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get audit events by subject",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/rbac/audit/subject/{{subjectId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "rbac",
-                "audit",
-                "subject",
-                "{{subjectId}}"
-              ],
-              "query": [
-                {
-                  "key": "start",
-                  "value": "",
-                  "description": "Start time"
-                },
-                {
-                  "key": "end",
-                  "value": "",
-                  "description": "End time"
-                },
-                {
-                  "key": "limit",
-                  "value": "",
-                  "description": "Maximum number of results"
-                }
-              ]
-            }
-          },
-          "response": []
-    },
-    {
-      "name": "Tenants",
-      "item": [
-        {
-          "name": "List tenants",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/tenants",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "tenants"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "",
-                  "description": "Maximum number of results"
-                },
-                {
-                  "key": "offset",
-                  "value": "",
-                  "description": "Pagination offset"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create tenant",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/tenants",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "tenants"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get tenant",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/tenants/{{tenantId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "tenants",
-                "{{tenantId}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update tenant",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/tenants/{{tenantId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "tenants",
-                "{{tenantId}}"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete tenant",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/tenants/{{tenantId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "tenants",
-                "{{tenantId}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "List tenant users",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/tenants/{{tenantId}}/users",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "tenants",
-                "{{tenantId}}",
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "",
-                  "description": "Maximum number of results"
-                },
-                {
-                  "key": "offset",
-                  "value": "",
-                  "description": "Pagination offset"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create tenant user",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/tenants/{{tenantId}}/users",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "tenants",
-                "{{tenantId}}",
-                "users"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get tenant user",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/tenants/{{tenantId}}/users/{{userId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "tenants",
-                "{{tenantId}}",
-                "users",
-                "{{userId}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update tenant user",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/tenants/{{tenantId}}/users/{{userId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "tenants",
-                "{{tenantId}}",
-                "users",
-                "{{userId}}"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete tenant user",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/tenants/{{tenantId}}/users/{{userId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "tenants",
-                "{{tenantId}}",
-                "users",
-                "{{userId}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Users",
-      "item": [
-        {
-          "name": "List users",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/users",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "",
-                  "description": "Maximum number of results"
-                },
-                {
-                  "key": "offset",
-                  "value": "",
-                  "description": "Pagination offset"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create user",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/users",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get user",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/users/{{id}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "{{id}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update user",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/users/{{id}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "{{id}}"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete user",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/users/{{id}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "{{id}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Auth Users",
-      "item": [
-        {
-          "name": "Create MiradorAuth",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/users",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "users"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get MiradorAuth",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/users/{{userId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "users",
-                "{{userId}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update MiradorAuth",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/users/{{userId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "users",
-                "{{userId}}"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete MiradorAuth",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/users/{{userId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "users",
-                "{{userId}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Auth Config",
-      "item": [
-        {
-          "name": "Create AuthConfig",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/config",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "config"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get AuthConfig",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/config/{{tenantId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "config",
-                "{{tenantId}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update AuthConfig",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/config/{{tenantId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "config",
-                "{{tenantId}}"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete AuthConfig",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/auth/config/{{tenantId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "config",
-                "{{tenantId}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Websockets",
-      "item": [
-        {
-          "name": "Metrics WebSocket stream",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/ws/metrics",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "ws",
-                "metrics"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Alerts WebSocket stream",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/ws/alerts",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "ws",
-                "alerts"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Unified Query",
-      "item": [
-        {
-          "name": "Execute unified query",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/unified/query",
               "host": [
@@ -3797,21 +532,10 @@
           "response": []
         },
         {
-          "name": "Execute unified correlation",
+          "name": "Unified correlation",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/unified/correlation",
               "host": [
@@ -3838,21 +562,165 @@
           "response": []
         },
         {
-          "name": "Get unified query metadata",
+          "name": "Detect component failures in a time range",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/unified/failures/detect",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "unified",
+                "failures",
+                "detect"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Correlate transaction failures",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/unified/failures/correlate",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "unified",
+                "failures",
+                "correlate"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List all failure records from Weaviate storage",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/unified/failures/list",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "unified",
+                "failures",
+                "list"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get full failure record details including verbose output",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/unified/failures/get",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "unified",
+                "failures",
+                "get"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a failure record from storage",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/unified/failures/delete",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "unified",
+                "failures",
+                "delete"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unified query metadata",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/unified/metadata",
               "host": [
@@ -3870,21 +738,10 @@
           "response": []
         },
         {
-          "name": "Unified query engine health",
+          "name": "Unified engine health",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/unified/health",
               "host": [
@@ -3905,18 +762,7 @@
           "name": "Unified search",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/unified/search",
               "host": [
@@ -3943,21 +789,10 @@
           "response": []
         },
         {
-          "name": "Unified query statistics",
+          "name": "Unified engine stats",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/unified/stats",
               "host": [
@@ -3973,28 +808,42 @@
             }
           },
           "response": []
-        }
-      ]
-    },
-    {
-      "name": "Uql",
-      "item": [
+        },
         {
-          "name": "Execute UQL query",
+          "name": "Compute RCA using Unified engine (POST)",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
+            "header": [],
+            "url": {
+              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/unified/rca",
+              "host": [
+                "{{scheme}}://{{host}}:{{port}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "unified",
+                "rca"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
               }
-            ],
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "UQL query",
+          "request": {
+            "method": "POST",
+            "header": [],
             "url": {
               "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/uql/query",
               "host": [
@@ -4021,21 +870,10 @@
           "response": []
         },
         {
-          "name": "Validate UQL query",
+          "name": "UQL validation",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/uql/validate",
               "host": [
@@ -4062,21 +900,10 @@
           "response": []
         },
         {
-          "name": "Explain UQL query",
+          "name": "UQL explain",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/uql/explain",
               "host": [
@@ -4087,273 +914,6 @@
                 "v1",
                 "uql",
                 "explain"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Metrics Metadata",
-      "item": [
-        {
-          "name": "Search metrics metadata",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/metrics/search",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "metrics",
-                "search"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Sync metrics metadata",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/metrics/sync",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "metrics",
-                "sync"
-              ],
-              "query": []
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"example\": \"Replace with actual request data\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Metrics metadata health",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/metrics/health",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "metrics",
-                "health"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Metrics Sync",
-      "item": [
-        {
-          "name": "Start sync for tenant",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/metrics/sync/{{tenantId}}",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "metrics",
-                "sync",
-                "{{tenantId}}"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get sync state",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/metrics/sync/{{tenantId}}/state",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "metrics",
-                "sync",
-                "{{tenantId}}",
-                "state"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get sync status",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/metrics/sync/{{tenantId}}/status",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "metrics",
-                "sync",
-                "{{tenantId}}",
-                "status"
-              ],
-              "query": []
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update sync config",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-API-Key",
-                "value": "{{apiKey}}",
-                "type": "text"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{bearerToken}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{scheme}}://{{host}}:{{port}}/api/v1/metrics/sync/config",
-              "host": [
-                "{{scheme}}://{{host}}:{{port}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "metrics",
-                "sync",
-                "config"
               ],
               "query": []
             },

@@ -18,8 +18,7 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/bootstrap"
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/logging"
-	"github.com/platformbuilds/mirador-core/internal/mira/orchestrator"
-	"github.com/platformbuilds/mirador-core/internal/mira/session"
+
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/internal/rca"
@@ -51,8 +50,6 @@ type Server struct {
 	httpServer                  *http.Server
 	tracerProvider              *tracing.TracerProvider
 	weaviateClient              *wv.Client
-	miraSessionStore            session.SessionStore
-	miraOrchestrator            *orchestrator.Orchestrator
 }
 
 func NewServer(
@@ -117,12 +114,9 @@ func NewServer(
 		server.metricsMetadataSynchronizer = services.NewStubMetricsMetadataSynchronizer(log)
 	}
 
-	// Initialize MIRA components (Phase-1: conversational AI)
-	if cfg.MIRA.Enabled {
-		server.miraSessionStore = session.NewStore(30 * time.Minute)
-		server.miraOrchestrator = orchestrator.New()
-		log.Info("Initialized MIRA conversational components", "sessionTTL", "30m")
-	}
+	// MIRA functionality has been migrated to an external service; Mirador Core
+	// exposes a lightweight proxy (if configured) but does not initialize an
+	// embedded MIRA implementation.
 
 	server.setupMiddleware()
 	server.setupRoutes()
@@ -241,6 +235,8 @@ func (s *Server) setupRoutes() {
 	})
 	// API v1 group
 	v1 := s.router.Group("/api/v1")
+
+	// MIRA API removed from Mirador Core; no proxy or embedded routes registered.
 	v1.GET("/health", healthHandler.HealthCheck)
 	v1.GET("/ready", healthHandler.ReadinessCheck)
 	v1.GET("/microservices/status", healthHandler.MicroservicesStatus)
@@ -322,13 +318,8 @@ func (s *Server) setupRoutes() {
 		}
 	}
 
-	// MIRA conversational endpoint (chat)
-	if s.config.MIRA.Enabled {
-		// Lightweight read-only chat endpoint for Phase-1
-		miraHandler := handlers.NewMiraHandler(s.miraSessionStore, s.miraOrchestrator)
-		v1.POST("/mira/ask", miraHandler.MiraAsk)
-		s.logger.Info("Registered MIRA conversational endpoint /api/v1/mira/ask (read-only)")
-	}
+	// If an external MIRA service is configured, proxy registration happens
+	// earlier during server setup; no embedded conversational handler is registered here.
 
 	// Unified Query Engine (Phase 1.5: Unified API Implementation)
 	if s.config.UnifiedQuery.Enabled {
@@ -377,21 +368,10 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 	rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
 	rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints, s.config.Engine, s.kpiRepo)
 
-	// Create MIRA handler for AI-powered RCA explanations (if enabled)
-	var miraHandler *handlers.MIRARCAHandler
-	var miraServiceForAsync services.MIRAService // Store for async handler
-	if s.config.MIRA.Enabled {
-		miraService, err := services.NewMIRAService(s.config.MIRA, s.logger, s.cache)
-		if err != nil {
-			s.logger.Warn("Failed to initialize MIRA service", "error", err)
-		} else {
-			// Wrap with caching layer
-			cachedMIRAService := services.NewCachedMIRAService(miraService, s.config.MIRA.Cache, s.cache, s.logger)
-			miraHandler = handlers.NewMIRARCAHandler(cachedMIRAService, s.config.MIRA, s.logger)
-			miraServiceForAsync = cachedMIRAService // Store for async handler
-			s.logger.Info("MIRA service initialized", "provider", s.config.MIRA.Provider, "model", miraService.GetModelName())
-		}
-	}
+	// MIRA RCA explanation behaviour has been migrated to an external service.
+	// Mirador Core does not initialize an embedded MIRA engine here; if an
+	// external MIRA endpoint is configured the proxy registered during server
+	// setup will forward requests.
 
 	// Register unified query routes
 	unifiedGroup := router.Group("/unified")
@@ -425,43 +405,7 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 		uqlGroup.POST("/explain", unifiedHandler.HandleUQLExplain)
 	}
 
-	// Register MIRA routes (AI-powered RCA explanations)
-	if miraHandler != nil {
-		miraGroup := router.Group("/mira")
-		// Apply MIRA-specific rate limiting (stricter than default)
-		miraGroup.Use(middleware.MIRARateLimiter(s.cache, s.config.MIRA.RateLimit))
-		{
-			// Sync API (blocks until completion, may timeout for large RCA)
-			miraGroup.POST("/rca_analyze", miraHandler.HandleMIRARCAAnalyze)
-
-			// Async API with dual persistence: Valkey (hot cache) + Weaviate (long-term storage)
-			if miraServiceForAsync != nil {
-				// Initialize Weaviate MIRA RCA store if Weaviate is enabled
-				var mirarcaStore *weavstore.WeaviateMIRARCAStore
-				if s.weaviateClient != nil {
-					mirarcaStore = weavstore.NewWeaviateMIRARCAStore(s.weaviateClient, zap.L())
-					s.logger.Info("MIRA RCA Weaviate store initialized for long-term task persistence")
-				}
-
-				miraAsyncHandler := handlers.NewMIRARCAAsyncHandler(miraServiceForAsync, s.config.MIRA, s.cache, mirarcaStore, s.logger)
-				miraGroup.POST("/rca_analyze_async", miraAsyncHandler.HandleMIRARCAAnalyzeAsync)
-				miraGroup.GET("/rca_analyze/:taskId", miraAsyncHandler.HandleGetTaskStatus)
-
-				// Also expose list/search endpoints at top-level: /api/v1/rca_analyze/list and /api/v1/rca_analyze/search
-				router.GET("/rca_analyze/list", miraAsyncHandler.HandleListTasks)
-				router.GET("/rca_analyze/search", miraAsyncHandler.HandleSearchTasks)
-			}
-		}
-		storageBackends := "valkey"
-		if s.weaviateClient != nil {
-			storageBackends = "valkey+weaviate"
-		}
-		s.logger.Info("MIRA routes registered with rate limiting",
-			"enabled", s.config.MIRA.RateLimit.Enabled,
-			"requests_per_minute", s.config.MIRA.RateLimit.RequestsPerMinute,
-			"async_api", "enabled",
-			"task_storage", storageBackends)
-	}
+	// No embedded MIRA routes are registered; proxy handles /api/v1/mira/* when configured.
 
 	s.logger.Info("Unified query engine initialized and routes registered")
 }

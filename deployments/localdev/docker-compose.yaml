@@ -12,7 +12,11 @@ services:
       - vmdata:/victoria-metrics-data
     command:
       - --storageDataPath=/victoria-metrics-data
-      - --search.maxUniqueTimeseries=500000
+      # Resource limits: https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#resource-usage-limits
+      - --search.maxUniqueTimeseries=2000000  # Increased from 500k to handle more series (requires more memory)
+      - --search.maxQueryDuration=1m          # Limit query duration to prevent runaway queries
+      - --memory.allowedPercent=90            # Use up to 90% of container memory before throttling
+      - --search.maxSeries=2000000                  # Increase various search limits to handle larger datasets
     networks:
       - mirador-net
 
@@ -39,6 +43,10 @@ services:
       - vtdata:/victoria-traces-data
     command:
       - --storageDataPath=/victoria-traces-data
+    environment:
+      - VT_INSTANCE_ENTRYPOINT=http://127.0.0.1:10428
+      - MCP_SERVER_MODE=sse
+      - MCP_LISTEN_ADDR=0.0.0.0:8081
     networks:
       - mirador-net
 
@@ -144,31 +152,6 @@ services:
     networks:
       - mirador-net
 
-  ollama:
-    image: ollama/ollama:latest
-    pull_policy: if_not_present
-    container_name: ollama
-    ports:
-      - "11434:11434"
-    restart: unless-stopped
-    volumes:
-      - ollama-data:/root/.ollama
-    networks:
-      - mirador-net
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        ollama serve &
-        sleep 5
-        ollama pull llama3.2:3b
-        wait
-
   text2vec-transformers:
     image: cr.weaviate.io/semitechnologies/transformers-inference:sentence-transformers-all-MiniLM-L6-v2-onnx
     pull_policy: if_not_present
@@ -245,7 +228,6 @@ volumes:
   weavdata: {}
   valkeydata: {}
   bleve-data: {}
-  ollama-data: {}
 
 networks:
   mirador-net:
