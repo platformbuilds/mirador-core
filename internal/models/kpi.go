@@ -51,8 +51,13 @@ type KPIDefinition struct {
 	BusinessImpact string `json:"businessImpact,omitempty"`
 	// EmotionalImpact is an optional short severity/emotive hint for narrative generation.
 	EmotionalImpact string `json:"emotionalImpact,omitempty"`
-	// Examples contains example values/contexts; stored as arbitrary JSON objects.
-	Examples []map[string]interface{} `json:"examples,omitempty"`
+	// Examples contains example usage scenarios or context for this KPI.
+	// BUG FIX (2026-01-20): Changed from []map[string]interface{} to string to match:
+	//   - Weaviate schema definition (DataType: "text")
+	//   - mirador-ui payload format (sends examples as a string)
+	// Previously, JSON unmarshaling succeeded but Weaviate serialization failed with 422 error:
+	//   "invalid text property 'examples': not a string, but []interface{}"
+	Examples string `json:"examples,omitempty"`
 	// AggregationWindowHint suggests a preferred aggregation window (e.g. "1m", "5m").
 	AggregationWindowHint string `json:"aggregationWindowHint,omitempty"`
 	// DimensionsHint lists key dimensions expected on this KPI (e.g. ["service.name", "orgId"]).

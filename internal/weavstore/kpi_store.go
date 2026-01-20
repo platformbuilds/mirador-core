@@ -772,12 +772,9 @@ func parseCollectionProps(props map[string]any, k *KPIDefinition) {
 			}
 		}
 	}
-	if v, ok := props["examples"].([]any); ok {
-		for _, ex := range v {
-			if m, ok := ex.(map[string]any); ok {
-				k.Examples = append(k.Examples, m)
-			}
-		}
+	// BUG FIX (2026-01-20): Examples is now a string field, not an array.
+	if v, ok := props["examples"].(string); ok {
+		k.Examples = v
 	}
 	if raw, ok := props["thresholds"]; ok {
 		k.Thresholds = propsToThresholds(raw)
@@ -826,11 +823,9 @@ func kpiContent(k *KPIDefinition) string {
 	if k.EmotionalImpact != "" {
 		parts = append(parts, k.EmotionalImpact)
 	}
-	// Convert examples to compact string representations
-	for _, ex := range k.Examples {
-		if ex != nil {
-			parts = append(parts, fmt.Sprintf("%v", ex))
-		}
+	// BUG FIX (2026-01-20): Examples is now a plain string, not an array.
+	if k.Examples != "" {
+		parts = append(parts, k.Examples)
 	}
 	return strings.Join(parts, " ")
 }
@@ -1035,12 +1030,9 @@ func (s *WeaviateKPIStore) ListKPIs(ctx context.Context, req *KPIListRequest) ([
 			if v, ok := props["emotionalImpact"].(string); ok {
 				k.EmotionalImpact = v
 			}
-			if v, ok := props["examples"].([]any); ok {
-				for _, ex := range v {
-					if m, ok := ex.(map[string]any); ok {
-						k.Examples = append(k.Examples, m)
-					}
-				}
+			// BUG FIX (2026-01-20): Examples is now a string field, not an array.
+			if v, ok := props["examples"].(string); ok {
+				k.Examples = v
 			}
 			if v, ok := props["sparkline"].(map[string]any); ok {
 				k.Sparkline = v

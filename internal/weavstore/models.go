@@ -38,44 +38,46 @@ type FailureRecord struct {
 // KPIDefinition represents a KPI definition in Weaviate.
 // This is a local copy to avoid direct model imports (depguard compliance).
 type KPIDefinition struct {
-	ID              string           `json:"id"`
-	Name            string           `json:"name"`
-	Kind            string           `json:"kind"`
-	Namespace       string           `json:"namespace"`
-	Source          string           `json:"source"`
-	SourceID        string           `json:"sourceId"`
-	Unit            string           `json:"unit"`
-	Format          string           `json:"format"`
-	Query           map[string]any   `json:"query"`
-	Layer           string           `json:"layer"`
-	SignalType      string           `json:"signalType"`
-	Classifier      string           `json:"classifier"`
-	Datastore       string           `json:"datastore"`
-	QueryType       string           `json:"queryType"`
-	Formula         string           `json:"formula"`
-	Thresholds      []Threshold      `json:"thresholds"`
-	Tags            []string         `json:"tags"`
-	Definition      string           `json:"definition"`
-	Sentiment       string           `json:"sentiment"`
-	Category        string           `json:"category"`
-	RetryAllowed    bool             `json:"retryAllowed"`
-	Domain          string           `json:"domain"`
-	ServiceFamily   string           `json:"serviceFamily"`
-	ComponentType   string           `json:"componentType"`
-	BusinessImpact  string           `json:"businessImpact"`
-	EmotionalImpact string           `json:"emotionalImpact"`
-	Examples        []map[string]any `json:"examples"`
-	Sparkline       map[string]any   `json:"sparkline"`
-	Visibility      string           `json:"visibility"`
-	Description     string           `json:"description"`
-	DataType        string           `json:"dataType"`
-	DataSourceID    string           `json:"dataSourceId"`
-	KPIDatastoreID  string           `json:"kpiDatastoreId"`
-	RefreshInterval int              `json:"refreshInterval"`
-	IsShared        bool             `json:"isShared"`
-	UserID          string           `json:"userId"`
-	CreatedAt       time.Time        `json:"createdAt"`
-	UpdatedAt       time.Time        `json:"updatedAt"`
+	ID              string         `json:"id"`
+	Name            string         `json:"name"`
+	Kind            string         `json:"kind"`
+	Namespace       string         `json:"namespace"`
+	Source          string         `json:"source"`
+	SourceID        string         `json:"sourceId"`
+	Unit            string         `json:"unit"`
+	Format          string         `json:"format"`
+	Query           map[string]any `json:"query"`
+	Layer           string         `json:"layer"`
+	SignalType      string         `json:"signalType"`
+	Classifier      string         `json:"classifier"`
+	Datastore       string         `json:"datastore"`
+	QueryType       string         `json:"queryType"`
+	Formula         string         `json:"formula"`
+	Thresholds      []Threshold    `json:"thresholds"`
+	Tags            []string       `json:"tags"`
+	Definition      string         `json:"definition"`
+	Sentiment       string         `json:"sentiment"`
+	Category        string         `json:"category"`
+	RetryAllowed    bool           `json:"retryAllowed"`
+	Domain          string         `json:"domain"`
+	ServiceFamily   string         `json:"serviceFamily"`
+	ComponentType   string         `json:"componentType"`
+	BusinessImpact  string         `json:"businessImpact"`
+	EmotionalImpact string         `json:"emotionalImpact"`
+	// BUG FIX (2026-01-20): Changed from []map[string]any to string to match
+	// Weaviate schema (DataType: "text") and mirador-ui payload format.
+	Examples        string         `json:"examples"`
+	Sparkline       map[string]any `json:"sparkline"`
+	Visibility      string         `json:"visibility"`
+	Description     string         `json:"description"`
+	DataType        string         `json:"dataType"`
+	DataSourceID    string         `json:"dataSourceId"`
+	KPIDatastoreID  string         `json:"kpiDatastoreId"`
+	RefreshInterval int            `json:"refreshInterval"`
+	IsShared        bool           `json:"isShared"`
+	UserID          string         `json:"userId"`
+	CreatedAt       time.Time      `json:"createdAt"`
+	UpdatedAt       time.Time      `json:"updatedAt"`
 }
 
 // Threshold represents a threshold configuration for a KPI.

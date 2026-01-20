@@ -39,7 +39,7 @@ func TestKPIDefinition_NewFieldsSerialization(t *testing.T) {
 		ComponentType:   "springboot",
 		BusinessImpact:  "High impact on customer experience",
 		EmotionalImpact: "Critical",
-		Examples:        []map[string]interface{}{{"value": 42, "timestamp": "2025-01-20T00:00:00Z"}},
+		Examples:        "Example: When transaction count exceeds 100/sec and error rate > 5%",
 		Sparkline:       map[string]interface{}{"type": "line", "points": []int{1, 2, 3}},
 		Visibility:      "org",
 		// New fields from mirador-ui integration

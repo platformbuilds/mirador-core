@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -324,7 +323,6 @@ func (h *KPIHandler) BulkIngestCSV(c *gin.Context) {
 		summary.Total++
 
 		k := &models.KPIDefinition{}
-		parseExamplesError := false
 		for ci, cell := range row {
 			if ci >= len(headers) {
 				continue
@@ -385,24 +383,12 @@ func (h *KPIHandler) BulkIngestCSV(c *gin.Context) {
 					k.RetryAllowed = false
 				}
 			case "examples":
+				// BUG FIX (2026-01-20): Examples is now a string field, not an array.
+				// This matches the Weaviate schema (text type) and mirador-ui format.
 				if val != "" {
-					var ex []map[string]interface{}
-					if err := json.Unmarshal([]byte(val), &ex); err != nil {
-						// examples column JSON parse failed; record as a parse error for this row
-						summary.Failures = append(summary.Failures, BulkFailure{Row: rowIndex, Message: "invalid examples JSON"})
-						parseExamplesError = true
-						// break out of the column loop; outer loop will skip validation/upsert
-						break
-					}
-					k.Examples = ex
+					k.Examples = val
 				}
 			}
-		}
-
-		// If examples parsing failed for this row, it is already recorded as a failure
-		// and should not be validated or upserted.
-		if parseExamplesError {
-			continue
 		}
 
 		// Validate

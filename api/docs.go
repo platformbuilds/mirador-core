@@ -307,7 +307,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "examples": {
-                    "description": "Examples contains example values/contexts; stored as arbitrary JSON objects.",
+                    "description": "Examples contains example usage scenarios or context for this KPI (plain text string).",
                     "type": "array",
                     "items": {
                         "type": "object",
