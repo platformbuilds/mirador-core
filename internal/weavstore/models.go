@@ -76,8 +76,10 @@ type KPIDefinition struct {
 	RefreshInterval int            `json:"refreshInterval"`
 	IsShared        bool           `json:"isShared"`
 	UserID          string         `json:"userId"`
-	CreatedAt       time.Time      `json:"createdAt"`
-	UpdatedAt       time.Time      `json:"updatedAt"`
+	// Dashboard references the dashboard UUID associated with this KPI
+	Dashboard string    `json:"dashboard"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // Threshold represents a threshold configuration for a KPI.

@@ -224,6 +224,7 @@ paths:
                     description: "Total payment processing errors impacting revenue"
                     dataType: "timeseries"
                     dataSourceId: "550e8400-e29b-41d4-a716-446655440000"
+                    dashboard: "123e4567-e89b-52d3-a456-426614174000"
                     refreshInterval: 60
                     isShared: true
                     userId: "a3bb189e-8bf9-3888-9912-ace4e6543002"
@@ -277,6 +278,7 @@ paths:
                     description: "Tracks total API gateway errors aggregated per minute, critical indicator of service health"
                     dataType: "timeseries"
                     dataSourceId: "550e8400-e29b-41d4-a716-446655440000"
+                    dashboard: "123e4567-e89b-52d3-a456-426614174000"
                     kpiDatastoreId: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
                     refreshInterval: 60
                     isShared: true
@@ -300,6 +302,7 @@ paths:
                     formula: "max_over_time(node_network_latency_ms[5m])"
                     description: "Maximum network latency observed over a 5-minute window for infrastructure monitoring"
                     dataType: "timeseries"
+                    dashboard: "123e4567-e89b-52d3-a456-426614174000"
                     refreshInterval: 300
               queryObjectExample:
                 summary: Valid cause KPI using a structured query object
@@ -321,6 +324,7 @@ paths:
                       metric: "node_network_latency_ms"
                       window: "5m"
                     dataType: "timeseries"
+                    dashboard: "123e4567-e89b-52d3-a456-426614174000"
                     isShared: false
       responses:
         '200':
@@ -590,6 +594,7 @@ paths:
                       description: "Critical SLA metric for payment gateway performance monitoring"
                       dataType: "timeseries"
                       dataSourceId: "550e8400-e29b-41d4-a716-446655440000"
+                      dashboard: "123e4567-e89b-52d3-a456-426614174000"
                       refreshInterval: 60
                       isShared: true
                       userId: "a3bb189e-8bf9-3888-9912-ace4e6543002"
@@ -667,6 +672,7 @@ paths:
                 description: "Comprehensive metric tracking all HTTP 5xx errors from API gateway"
                 dataType: "timeseries"
                 dataSourceId: "550e8400-e29b-41d4-a716-446655440000"
+                dashboard: "123e4567-e89b-52d3-a456-426614174000"
                 kpiDatastoreId: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
                 refreshInterval: 60
                 isShared: true
@@ -1981,6 +1987,7 @@ components:
         - layer
         - signalType
         - sentiment
+        - dashboard
       description: |
         Complete KPI definition schema. Validation rules:
         - Impact KPIs: Must have businessImpact OR definition
@@ -2154,6 +2161,13 @@ components:
             Links this KPI to the originating data source (e.g., specific Prometheus instance, log aggregator).
             Currently stored but not validated against registry (future enhancement).
           example: "550e8400-e29b-41d4-a716-446655440000"
+        dashboard:
+          type: string
+          format: uuid
+          description: |
+            UUIDv5 identifier of the dashboard associated with this KPI.
+            This field is mandatory and must be a UUID version 5 (RFC4122).
+          example: "123e4567-e89b-52d3-a456-426614174000"
         kpiDatastoreId:
           type: string
           format: uuid

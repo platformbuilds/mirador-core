@@ -235,6 +235,15 @@ func ValidateKPIDefinition(cfg *config.Config, k *models.KPIDefinition) error {
 		}
 	}
 
+	// 14. Dashboard validation (mandatory, UUIDv5)
+	if strings.TrimSpace(k.Dashboard) == "" {
+		ve.add("dashboard", "dashboard is required and must be a UUIDv5")
+	} else {
+		if !isValidUUIDv5(k.Dashboard) {
+			ve.add("dashboard", "dashboard must be a valid UUIDv5")
+		}
+	}
+
 	if ve.isEmpty() {
 		return nil
 	}
@@ -262,6 +271,16 @@ func isValidUUID(s string) bool {
 		}
 	}
 	return true
+}
+
+// isValidUUIDv5 checks both UUID format and that the version nibble == '5'.
+func isValidUUIDv5(s string) bool {
+	if !isValidUUID(s) {
+		return false
+	}
+	// UUID version is the first nibble of the 3rd group (position 14)
+	// e.g. xxxxxxxx-xxxx-5xxx-....
+	return s[14] == '5'
 }
 
 // isHexDigit checks if a byte is a valid hexadecimal digit (0-9, a-f, A-F)

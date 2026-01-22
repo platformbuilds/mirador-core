@@ -163,6 +163,7 @@ func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *KPIDefiniti
 		"description":     k.Description,
 		"dataType":        k.DataType,
 		"dataSourceId":    k.DataSourceID,
+		"dashboard":       k.Dashboard,
 		"kpiDatastoreId":  k.KPIDatastoreID,
 		"refreshInterval": k.RefreshInterval,
 		"isShared":        k.IsShared,
@@ -274,6 +275,9 @@ func kpiEqual(a, b *KPIDefinition) bool {
 		return false
 	}
 	if a.DataSourceID != b.DataSourceID || a.KPIDatastoreID != b.KPIDatastoreID {
+		return false
+	}
+	if a.Dashboard != b.Dashboard {
 		return false
 	}
 	if a.RefreshInterval != b.RefreshInterval || a.IsShared != b.IsShared || a.UserID != b.UserID {
@@ -693,6 +697,9 @@ func parseBasicProps(props map[string]any, k *KPIDefinition) {
 	if v, ok := props["dataSourceId"].(string); ok {
 		k.DataSourceID = v
 	}
+	if v, ok := props["dashboard"].(string); ok {
+		k.Dashboard = v
+	}
 	if v, ok := props["kpiDatastoreId"].(string); ok {
 		k.KPIDatastoreID = v
 	}
@@ -787,6 +794,9 @@ func parseTimestamps(props map[string]any, k *KPIDefinition) {
 		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
 			k.CreatedAt = t
 		}
+	}
+	if v, ok := props["dashboard"].(string); ok {
+		k.Dashboard = v
 	}
 	if v, ok := props["updatedAt"].(string); ok {
 		if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
@@ -884,6 +894,7 @@ func (s *WeaviateKPIStore) ensureKPIDefinitionClass(ctx context.Context) error {
 			{Name: "description", DataType: []string{"text"}},
 			{Name: "dataType", DataType: []string{"string"}},
 			{Name: "dataSourceId", DataType: []string{"string"}},
+			{Name: "dashboard", DataType: []string{"string"}},
 			{Name: "kpiDatastoreId", DataType: []string{"string"}},
 			{Name: "refreshInterval", DataType: []string{"int"}},
 			{Name: "isShared", DataType: []string{"boolean"}},

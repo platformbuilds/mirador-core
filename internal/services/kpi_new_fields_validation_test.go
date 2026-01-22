@@ -66,6 +66,7 @@ func TestValidateKPIDefinition_DataType(t *testing.T) {
 				Classifier: "latency",
 				Formula:    "test_metric",
 				DataType:   tt.dataType,
+				Dashboard:  "123e4567-e89b-52d3-a456-426614174000",
 			}
 
 			err := ValidateKPIDefinition(cfg, kpi)
@@ -133,6 +134,7 @@ func TestValidateKPIDefinition_RefreshInterval(t *testing.T) {
 				Classifier:      "latency",
 				Formula:         "test_metric",
 				RefreshInterval: tt.refreshInterval,
+				Dashboard:       "123e4567-e89b-52d3-a456-426614174000",
 			}
 
 			err := ValidateKPIDefinition(cfg, kpi)
@@ -223,6 +225,7 @@ func TestValidateKPIDefinition_UserID(t *testing.T) {
 				Classifier: "latency",
 				Formula:    "test_metric",
 				UserID:     tt.userID,
+				Dashboard:  "123e4567-e89b-52d3-a456-426614174000",
 			}
 
 			err := ValidateKPIDefinition(cfg, kpi)
@@ -285,6 +288,7 @@ func TestValidateKPIDefinition_DataSourceID(t *testing.T) {
 				Classifier:   "latency",
 				Formula:      "test_metric",
 				DataSourceID: tt.dataSourceID,
+				Dashboard:    "123e4567-e89b-52d3-a456-426614174000",
 			}
 
 			err := ValidateKPIDefinition(cfg, kpi)
@@ -341,6 +345,7 @@ func TestValidateKPIDefinition_KPIDatastoreID(t *testing.T) {
 				Classifier:     "latency",
 				Formula:        "test_metric",
 				KPIDatastoreID: tt.kpiDatastoreID,
+				Dashboard:      "123e4567-e89b-52d3-a456-426614174000",
 			}
 
 			err := ValidateKPIDefinition(cfg, kpi)
@@ -418,6 +423,7 @@ func TestValidateKPIDefinition_CrossFieldDataType(t *testing.T) {
 				Classifier: "latency",
 				Formula:    "test_metric",
 				DataType:   tt.dataType,
+				Dashboard:  "123e4567-e89b-52d3-a456-426614174000",
 			}
 
 			err := ValidateKPIDefinition(cfg, kpi)
@@ -455,6 +461,7 @@ func TestValidateKPIDefinition_AllNewFieldsTogether(t *testing.T) {
 		RefreshInterval: 60,
 		IsShared:        true,
 		UserID:          "abcdef12-3456-7890-abcd-ef1234567890",
+		Dashboard:       "123e4567-e89b-52d3-a456-426614174000",
 	}
 
 	err := ValidateKPIDefinition(cfg, validKPI)
@@ -475,6 +482,7 @@ func TestValidateKPIDefinition_AllNewFieldsTogether(t *testing.T) {
 		KPIDatastoreID:  "also-not-a-uuid",     // Invalid
 		RefreshInterval: -10,                   // Invalid
 		UserID:          "definitely-not-uuid", // Invalid
+		Dashboard:       "123e4567-e89b-52d3-a456-426614174000",
 	}
 
 	err = ValidateKPIDefinition(cfg, invalidKPI)

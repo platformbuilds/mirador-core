@@ -101,6 +101,7 @@ func TestPOST_CreateKPI_WithNewFields_Phase6(t *testing.T) {
 		RefreshInterval: 60,
 		IsShared:        true,
 		UserID:          "550e8400-e29b-41d4-a716-446655440003",
+		Dashboard:       "123e4567-e89b-52d3-a456-426614174000",
 	}
 
 	payload := map[string]interface{}{
@@ -178,6 +179,7 @@ func TestPOST_UpdateKPI_WithNewFields_Phase6(t *testing.T) {
 		RefreshInterval: 120,
 		IsShared:        true,
 		UserID:          "550e8400-e29b-41d4-a716-446655440013",
+		Dashboard:       "123e4567-e89b-52d3-a456-426614174000",
 	}
 
 	payload := map[string]interface{}{
@@ -234,6 +236,7 @@ func TestGET_KPIById_ReturnsNewFields_Phase6(t *testing.T) {
 		RefreshInterval: 90,
 		IsShared:        true,
 		UserID:          "550e8400-e29b-41d4-a716-446655440023",
+		Dashboard:       "123e4567-e89b-52d3-a456-426614174000",
 	}
 
 	_, _, err := repo.CreateKPI(context.Background(), kpi)
@@ -282,6 +285,7 @@ func TestGET_ListKPIs_IncludesNewFields_Phase6(t *testing.T) {
 		DataType:        "gauge",
 		RefreshInterval: 30,
 		IsShared:        false,
+		Dashboard:       "123e4567-e89b-52d3-a456-426614174000",
 	}
 
 	kpi2 := &models.KPIDefinition{
@@ -301,6 +305,7 @@ func TestGET_ListKPIs_IncludesNewFields_Phase6(t *testing.T) {
 		RefreshInterval: 60,
 		IsShared:        true,
 		UserID:          "550e8400-e29b-41d4-a716-446655440033",
+		Dashboard:       "123e4567-e89b-52d3-a456-426614174000",
 	}
 
 	_, _, err := repo.CreateKPI(context.Background(), kpi1)
@@ -415,6 +420,7 @@ func TestBackwardCompat_CreateKPIWithoutNewFields_Phase6(t *testing.T) {
 		Sentiment:  "negative",
 		Definition: "Old-style KPI for backward compatibility test",
 		// New fields intentionally omitted (will have zero values)
+		Dashboard: "123e4567-e89b-52d3-a456-426614174000",
 	}
 
 	oldPayload := map[string]interface{}{
@@ -505,6 +511,7 @@ func TestBackwardCompat_MixedKPIList_Phase6(t *testing.T) {
 		DataType:        "timeseries",
 		RefreshInterval: 60,
 		IsShared:        true,
+		Dashboard:       "123e4567-e89b-52d3-a456-426614174000",
 	}
 
 	_, _, err := repo.CreateKPI(context.Background(), legacyKPI)

@@ -75,7 +75,10 @@ type KPIDefinition struct {
 	// IsShared indicates whether the KPI is shared across users/teams.
 	IsShared bool `json:"isShared,omitempty"`
 	// UserID identifies the owner/creator of this KPI (UUID).
-	UserID    string    `json:"userId,omitempty"`
+	UserID string `json:"userId,omitempty"`
+	// Dashboard references the dashboard this KPI is associated with. It
+	// must be provided as a UUID (expected to be UUIDv5 in validation).
+	Dashboard string    `json:"dashboard,omitempty"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
