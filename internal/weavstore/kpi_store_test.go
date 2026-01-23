@@ -11,12 +11,14 @@ func TestThresholdsConversionRoundTrip(t *testing.T) {
 		{Level: "critical", Operator: "gt", Value: 20.0, Description: "critical"},
 	}
 
-	props := thresholdsToProps(in)
-	if props == nil || len(props) != len(in) {
-		t.Fatalf("expected props length %d got %d", len(in), len(props))
+	// thresholdsToProps now returns a JSON string
+	jsonStr := thresholdsToProps(in)
+	if jsonStr == "" {
+		t.Fatal("expected non-empty JSON string")
 	}
 
-	out := propsToThresholds(props)
+	// propsToThresholds expects a string (JSON)
+	out := propsToThresholds(jsonStr)
 	if !reflect.DeepEqual(in, out) {
 		t.Fatalf("roundtrip mismatch:\nexpected: %+v\nactual:   %+v", in, out)
 	}

@@ -54,7 +54,10 @@ type CauseCandidate struct {
 	// identifiers for clients that relied on the raw id.
 	KPIUUID string `json:"kpiUuid,omitempty"`
 	// KPIFormula contains the KPI formula or query string when available.
-	KPIFormula     string            `json:"kpiFormula,omitempty"`
+	KPIFormula string `json:"kpiFormula,omitempty"`
+	// Description provides detailed explanation of the KPI for narrative generation.
+	// Populated from KPIDefinition.Description when available (Phase 5 integration).
+	Description    string            `json:"description,omitempty"`
 	Service        string            `json:"service,omitempty"`
 	SuspicionScore float64           `json:"suspicion_score"`
 	Reasons        []string          `json:"reasons,omitempty"`

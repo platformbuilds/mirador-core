@@ -186,8 +186,104 @@ func ValidateKPIDefinition(cfg *config.Config, k *models.KPIDefinition) error {
 		}
 	}
 
+	// 9. DataType validation (mirador-ui integration field)
+	if k.DataType != "" {
+		dt := strings.ToLower(strings.TrimSpace(k.DataType))
+		if dt != "timeseries" && dt != "value" && dt != "categorical" {
+			ve.add("dataType", "if present, dataType must be one of: timeseries, value, categorical")
+		}
+
+		// Cross-field validation: DataType alignment with SignalType
+		// Metrics are typically timeseries, logs/traces may be categorical or value
+		// This is a soft recommendation, not a hard constraint, but we can warn about
+		// common mismatches
+		if dt == "categorical" && sig == "metrics" {
+			// This is unusual but not invalid - allow with note in documentation
+			// For now, no error added
+		}
+		if dt == "timeseries" && sig == "business" {
+			// Business KPIs can be timeseries (e.g., revenue over time)
+			// No error - this is valid
+		}
+	}
+
+	// 10. RefreshInterval validation
+	if k.RefreshInterval != 0 {
+		if k.RefreshInterval <= 0 {
+			ve.add("refreshInterval", "if present, refreshInterval must be greater than 0 (seconds)")
+		}
+	}
+
+	// 11. UserID validation (UUID format)
+	if k.UserID != "" {
+		if !isValidUUID(k.UserID) {
+			ve.add("userId", "if present, userId must be a valid UUID format")
+		}
+	}
+
+	// 12. DataSourceID validation (UUID format)
+	if k.DataSourceID != "" {
+		if !isValidUUID(k.DataSourceID) {
+			ve.add("dataSourceId", "if present, dataSourceId must be a valid UUID format")
+		}
+	}
+
+	// 13. KPIDatastoreID validation (UUID format)
+	if k.KPIDatastoreID != "" {
+		if !isValidUUID(k.KPIDatastoreID) {
+			ve.add("kpiDatastoreId", "if present, kpiDatastoreId must be a valid UUID format")
+		}
+	}
+
+	// 14. Dashboard validation (mandatory, UUIDv5)
+	if strings.TrimSpace(k.Dashboard) == "" {
+		ve.add("dashboard", "dashboard is required and must be a UUIDv5")
+	} else {
+		if !isValidUUIDv5(k.Dashboard) {
+			ve.add("dashboard", "dashboard must be a valid UUIDv5")
+		}
+	}
+
 	if ve.isEmpty() {
 		return nil
 	}
 	return &ve
+}
+
+// isValidUUID checks if a string matches UUID format (RFC 4122).
+// Supports both standard UUID formats: 8-4-4-4-12 hex digits.
+func isValidUUID(s string) bool {
+	if len(s) != 36 {
+		return false
+	}
+	// UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+	// Positions 8, 13, 18, 23 must be hyphens
+	if s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-' {
+		return false
+	}
+	// All other positions must be hex digits
+	for i, c := range s {
+		if i == 8 || i == 13 || i == 18 || i == 23 {
+			continue
+		}
+		if !isHexDigit(byte(c)) {
+			return false
+		}
+	}
+	return true
+}
+
+// isValidUUIDv5 checks both UUID format and that the version nibble == '5'.
+func isValidUUIDv5(s string) bool {
+	if !isValidUUID(s) {
+		return false
+	}
+	// UUID version is the first nibble of the 3rd group (position 14)
+	// e.g. xxxxxxxx-xxxx-5xxx-....
+	return s[14] == '5'
+}
+
+// isHexDigit checks if a byte is a valid hexadecimal digit (0-9, a-f, A-F)
+func isHexDigit(c byte) bool {
+	return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
 }

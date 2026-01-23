@@ -50,86 +50,9 @@ Cross-platform note (Apple Silicon, ARM64, x86_64): All localdev images are mult
 
 MIRADOR-CORE is a pure observability engine that assumes external authentication and authorization. All requests are processed without internal auth checks - security should be handled by external proxies, API gateways, or service mesh.
 
-**NEW: MIRA AI-Powered RCA Explanations**
+**MIRA removed from localdev**
 
-The localdev setup includes a containerized Ollama model server for AI-powered
-RCA explanations (MIRA — Mirador Intelligent Research Assistant). The Ollama
-container is now started by default as part of the localdev compose stack so
-`docker compose up` will bring up the model service automatically.
-- **Auto-setup**: Model pulls automatically on first start (may take 3-5 minutes)
-- **Endpoint**: `POST /api/v1/mira/rca_analyze`
-
-```bash
-cd public/mirador-core/deployments/localdev
-# Build locally for native arch and start (includes Ollama)
-docker compose -f mirador-core-docker-compose.yaml up -d --build
-```
-
-- MIRADOR-CORE: http://localhost:8010
-- Health: http://localhost:8010/health
-- Ollama: http://localhost:11434 (model server)
-
-
-If you'd rather run Ollama natively on macOS (sometimes faster on Apple
-Silicon), you can skip the bundled Docker service and run Ollama on the host.
-
-Native macOS quick steps (optional):
-
-```bash
-# Install via Homebrew (preferred if available)
-brew install ollama
-
-# OR use the official installer script
-curl -fsSL https://ollama.ai/install.sh | sh
-
-# Start the Ollama model server (runs on port 11434 by default)
-ollama serve &
-
-# Pull a model you want to use (example: llama3.2:3b — fast and small)
-ollama pull llama3.2:3b
-
-# Verify the server
-curl http://localhost:11434/api/version
-```
-
-How to run MIRADOR-CORE with native Ollama running on the same host (optional):
-
-- If you run `mirador-core` on the host (not inside Docker), set
-  `OLLAMA_ENDPOINT=http://localhost:11434/api/generate`.
-- If you run `mirador-core` inside Docker/Compose but keep Ollama native on the host,
-  set `OLLAMA_ENDPOINT=http://host.docker.internal:11434/api/generate` (Docker Desktop / Rancher
-  Desktop provide `host.docker.internal`).
-
-If you choose native Ollama you may prevent the compose file from starting the
-containerized Ollama by commenting out its service block in the compose file or
-starting the set of services you need without `ollama`, e.g.
-
-```bash
-docker compose up mirador-core weaviate valkey ...
-```
-
-**Testing MIRA:**
-
-```bash
-# 1. Get RCA data first
-RCA_RESPONSE=$(curl -s -X POST http://localhost:8010/api/v1/unified/rca \
-  -H "Content-Type: application/json" \
-  -d '{"startTime":"2025-12-03T07:30:00Z","endTime":"2025-12-03T08:30:00Z"}')
-
-# 2. Get AI explanation
-curl -X POST http://localhost:8010/api/v1/mira/rca_analyze \
-  -H "Content-Type: application/json" \
-  -d "{\"rcaData\": $RCA_RESPONSE}" | jq .
-```
-
-**Model Information:**
-- **llama3.1:8b**: Excellent quality on M1 Pro 16GB (~ 2-4 seconds per explanation)
-- **Memory**: ~5-6GB RAM usage (comfortable for 16GB system)
-- **Quality**: High-quality explanations, production-ready for self-hosted deployments
-
-For cloud-based production, switch to OpenAI (gpt-4) or Anthropic (claude-3-5-sonnet) in production config.
-
-Tip: The `mirador-core` service is configured to `build` locally, which produces a native binary for your host (arm64 on Apple Silicon, amd64 on Intel/AMD). If you prefer to pull a published image instead, comment out the `build:` block and set `image: platformbuilds/mirador-core:<multi-arch-tag>`. On Linux, if `host.docker.internal` doesn't resolve, uncomment `extra_hosts: ["host.docker.internal:host-gateway"]` in the compose file.
+The localdev compose no longer includes MIRA endpoints inside Mirador Core. If you need an AI explanation service, run a standalone MIRA microservice and configure your environment to call it directly.
 
 ## 4) Generate Synthetic OTEL Data (telemetrygen)
 

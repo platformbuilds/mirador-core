@@ -177,8 +177,8 @@ func TestBulkIngestJSON_HappyPath(t *testing.T) {
 	h, mr := setupHandlerForTest()
 
 	// two valid KPI items
-	a := &models.KPIDefinition{Name: "kpi-a", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "something broke"}
-	b := &models.KPIDefinition{Name: "kpi-b", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "something else"}
+	a := &models.KPIDefinition{Name: "kpi-a", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "something broke", Dashboard: "123e4567-e89b-52d3-a456-426614174000"}
+	b := &models.KPIDefinition{Name: "kpi-b", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "something else", Dashboard: "123e4567-e89b-52d3-a456-426614174000"}
 
 	payload := map[string]any{"items": []*models.KPIDefinition{a, b}}
 	body, _ := json.Marshal(payload)
@@ -211,8 +211,8 @@ func TestBulkIngestJSON_WithInvalidItem(t *testing.T) {
 	h, mr := setupHandlerForTest()
 
 	// one valid, one invalid (missing name)
-	a := &models.KPIDefinition{Name: "kpi-a", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "ok"}
-	b := &models.KPIDefinition{Layer: "cause", SignalType: "metrics", Sentiment: "negative"} // missing name and classifier for cause
+	a := &models.KPIDefinition{Name: "kpi-a", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "ok", Dashboard: "123e4567-e89b-52d3-a456-426614174000"}
+	b := &models.KPIDefinition{Layer: "cause", SignalType: "metrics", Sentiment: "negative", Dashboard: "123e4567-e89b-52d3-a456-426614174000"} // missing name and classifier for cause
 
 	payload := map[string]any{"items": []*models.KPIDefinition{a, b}}
 	body, _ := json.Marshal(payload)
@@ -247,9 +247,9 @@ func TestBulkIngestCSV_Minimal(t *testing.T) {
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
 	part, _ := mw.CreateFormFile("file", "kpis.csv")
-	csvData := "name,layer,signalType,sentiment,definition\n" +
-		"csv-kpi,impact,metrics,negative,definition one\n" +
-		",cause,metrics,negative,missing name row\n"
+	csvData := "name,layer,signalType,sentiment,definition,dashboard\n" +
+		"csv-kpi,impact,metrics,negative,definition one,123e4567-e89b-52d3-a456-426614174000\n" +
+		",cause,metrics,negative,missing name row,123e4567-e89b-52d3-a456-426614174000\n"
 	io.Copy(part, strings.NewReader(csvData))
 	mw.Close()
 
@@ -284,9 +284,9 @@ func TestBulkIngestCSV_TagsAndExamples(t *testing.T) {
 	mw := multipart.NewWriter(&buf)
 	part, _ := mw.CreateFormFile("file", "kpis.csv")
 	// header with mixed/uppercase to test case-insensitivity and an unknown column (FooColumn)
-	csvData := "Name,Layer,SignalType,Sentiment,Tags,FooColumn,Examples,Definition\n" +
-		"csv-kpi,impact,metrics,negative,\"a,b;c\",ignored,\"[{\"\"example\"\":true}]\",an example definition\n" +
-		"csv-kpi-2,impact,metrics,negative,tag1,ignored,invalid-json,another definition\n"
+	csvData := "Name,Layer,SignalType,Sentiment,Tags,FooColumn,Examples,Definition,Dashboard\n" +
+		"csv-kpi,impact,metrics,negative,\"a,b;c\",ignored,\"[{\"\"example\"\":true}]\",an example definition,123e4567-e89b-52d3-a456-426614174000\n" +
+		"csv-kpi-2,impact,metrics,negative,tag1,ignored,invalid-json,another definition,123e4567-e89b-52d3-a456-426614174000\n"
 	io.Copy(part, strings.NewReader(csvData))
 	mw.Close()
 
@@ -337,8 +337,8 @@ func TestBulkIngestJSON_DetGeneratedIDs(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	h, mr := setupHandlerForTest()
 
-	a := &models.KPIDefinition{Name: "kpi-a", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "something"}
-	b := &models.KPIDefinition{Name: "kpi-b", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "something else"}
+	a := &models.KPIDefinition{Name: "kpi-a", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "something", Dashboard: "123e4567-e89b-52d3-a456-426614174000"}
+	b := &models.KPIDefinition{Name: "kpi-b", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "something else", Dashboard: "123e4567-e89b-52d3-a456-426614174000"}
 
 	payload := map[string]any{"items": []*models.KPIDefinition{a, b}}
 	body, _ := json.Marshal(payload)
@@ -379,9 +379,9 @@ func TestBulkIngestJSON_MultipleFailures(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	h, mr := setupHandlerForTest()
 
-	a := &models.KPIDefinition{Name: "kpi-a", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "ok"}
-	b := &models.KPIDefinition{Layer: "cause", SignalType: "metrics", Sentiment: "negative"} // missing name and classifier
-	c := &models.KPIDefinition{Name: "kpi-c", Layer: "impact"}                               // missing signalType & sentiment
+	a := &models.KPIDefinition{Name: "kpi-a", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "ok", Dashboard: "123e4567-e89b-52d3-a456-426614174000"}
+	b := &models.KPIDefinition{Layer: "cause", SignalType: "metrics", Sentiment: "negative", Dashboard: "123e4567-e89b-52d3-a456-426614174000"} // missing name and classifier
+	c := &models.KPIDefinition{Name: "kpi-c", Layer: "impact", Dashboard: "123e4567-e89b-52d3-a456-426614174000"}                               // missing signalType & sentiment
 
 	payload := map[string]any{"items": []*models.KPIDefinition{a, b, c}}
 	body, _ := json.Marshal(payload)
