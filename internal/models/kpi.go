@@ -51,14 +51,36 @@ type KPIDefinition struct {
 	BusinessImpact string `json:"businessImpact,omitempty"`
 	// EmotionalImpact is an optional short severity/emotive hint for narrative generation.
 	EmotionalImpact string `json:"emotionalImpact,omitempty"`
-	// Examples contains example values/contexts; stored as arbitrary JSON objects.
-	Examples []map[string]interface{} `json:"examples,omitempty"`
+	// Examples contains example usage scenarios or context for this KPI.
+	// BUG FIX (2026-01-20): Changed from []map[string]interface{} to string to match:
+	//   - Weaviate schema definition (DataType: "text")
+	//   - mirador-ui payload format (sends examples as a string)
+	// Previously, JSON unmarshaling succeeded but Weaviate serialization failed with 422 error:
+	//   "invalid text property 'examples': not a string, but []interface{}"
+	Examples string `json:"examples,omitempty"`
 	// AggregationWindowHint suggests a preferred aggregation window (e.g. "1m", "5m").
 	AggregationWindowHint string `json:"aggregationWindowHint,omitempty"`
 	// DimensionsHint lists key dimensions expected on this KPI (e.g. ["service.name", "orgId"]).
-	DimensionsHint []string  `json:"dimensionsHint,omitempty"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
+	DimensionsHint []string `json:"dimensionsHint,omitempty"`
+	// Description provides a detailed explanation of the KPI (mirador-ui field).
+	Description string `json:"description,omitempty"`
+	// DataType indicates the KPI data type (timeseries, value, categorical).
+	DataType string `json:"dataType,omitempty"`
+	// DataSourceID references the data source for this KPI (UUID).
+	DataSourceID string `json:"dataSourceId,omitempty"`
+	// KPIDatastoreID references the KPI datastore (UUID).
+	KPIDatastoreID string `json:"kpiDatastoreId,omitempty"`
+	// RefreshInterval specifies how often the KPI should be refreshed (in seconds).
+	RefreshInterval int `json:"refreshInterval,omitempty"`
+	// IsShared indicates whether the KPI is shared across users/teams.
+	IsShared bool `json:"isShared,omitempty"`
+	// UserID identifies the owner/creator of this KPI (UUID).
+	UserID string `json:"userId,omitempty"`
+	// Dashboard references the dashboard this KPI is associated with. It
+	// must be provided as a UUID (expected to be UUIDv5 in validation).
+	Dashboard string    `json:"dashboard,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // KPIDefinitionRequest represents a request to create/update a KPI definition

@@ -529,6 +529,7 @@ func (ce *CorrelationEngineImpl) Correlate(ctx context.Context, tr models.TimeRa
 			KPI:            candKPI.Name,
 			KPIUUID:        candKPI.ID,
 			KPIFormula:     candKPI.Formula,
+			Description:    candKPI.Description, // Phase 5: Populate description for narrative generation
 			Service:        "",
 			SuspicionScore: 0.0,
 			Reasons:        []string{},

@@ -37,6 +37,11 @@ func GenerateDeterministicKPIID(k *models.KPIDefinition) (string, error) {
 		canonical = fmt.Sprintf("KPIDefinition|source=%s|sourceId=%s", norm(k.Source), norm(k.SourceID))
 	} else if norm(k.Namespace) != "" {
 		canonical = fmt.Sprintf("KPIDefinition|namespace=%s|name=%s", norm(k.Namespace), norm(k.Name))
+	} else if norm(k.DataSourceID) != "" {
+		// New: include datasource as a canonical key when present. Use the
+		// DataSourceID field (mapped from JSON `dataSourceId`). This allows
+		// deterministic IDs to be derived from an external datasource UUID.
+		canonical = fmt.Sprintf("KPIDefinition|datasource=%s|name=%s", norm(k.DataSourceID), norm(k.Name))
 	} else {
 		canonical = fmt.Sprintf("KPIDefinition|name=%s", norm(k.Name))
 	}

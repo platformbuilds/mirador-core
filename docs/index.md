@@ -1,23 +1,26 @@
 # Mirador Core — Documentation
 
-Welcome to the Mirador Core documentation. This site has been simplified to focus on the four core topics that drive the project: Unified Query, KPI, Correlation, and RCA. These pages are short, practical, and intended to give readers a concise, usable reference.
+Welcome to the Mirador Core documentation. This documentation provides a comprehensive guide for using Mirador Core's observability platform, with a focus on the four interconnected components: KPIs, Failures, Correlation, and RCA.
 
 ```{toctree}
 :maxdepth: 2
-:caption: Contents:
+:caption: User Guide:
 
-unified-query
-kpi
-correlation
-rca
-rca-analyze-mira-ai
-api-docs
+kpi-failures-correlation-rca-user-guide
 ```
 
 ## Who this is for
 
-- Platform engineers maintaining Mirador Core
-- Developers integrating with Mirador's Unified Query API
-- Observability engineers who configure KPI discovery and RCA pipelines
+- **API Consumers**: Developers integrating with Mirador Core's REST APIs
+- **Platform Engineers**: Teams deploying and configuring Mirador Core
+- **Observability Engineers**: Users implementing KPI-driven monitoring and RCA
+- **Integration Engineers**: Building observability solutions with Mirador Core
+
+## Quick Links
+
+- **[Complete User Guide](kpi-failures-correlation-rca-user-guide.md)**: Comprehensive guide covering KPIs, Failures, Correlation, and RCA
+- **[API Documentation](kpi-failures-correlation-rca-user-guide.md#api-reference)**: Complete REST API documentation
+- **[Deployment Guide](kpi-failures-correlation-rca-user-guide.md#configuration--deployment)**: Configuration and deployment instructions
+- **[Troubleshooting](kpi-failures-correlation-rca-user-guide.md#troubleshooting)**: Common issues and solutions
 
 ---
