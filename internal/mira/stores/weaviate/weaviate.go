@@ -2,14 +2,20 @@ package weaviate
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
+	"errors"
 	"time"
 
 	wv "github.com/weaviate/weaviate-go-client/v5/weaviate"
 	"go.uber.org/zap"
 
 	"github.com/platformbuilds/mirador-core/internal/mira/session"
+)
+
+var (
+	// ErrWeaviateClientNil indicates that the Weaviate client is nil
+	ErrWeaviateClientNil = errors.New("weaviate client is nil")
+	// ErrLoggerNil indicates that the logger is nil
+	ErrLoggerNil = errors.New("logger is nil")
 )
 
 // Store implements session.SessionStore using Weaviate as the backend.
@@ -29,13 +35,14 @@ type Store struct {
 //   - className: Weaviate class name to use (e.g., "MIRASession")
 func New(client *wv.Client, logger *zap.Logger, ttl time.Duration, className string) (*Store, error) {
 	if client == nil {
-		return nil, fmt.Errorf("weaviate client is nil")
+		return nil, ErrWeaviateClientNil
 	}
 	if logger == nil {
-		return nil, fmt.Errorf("logger is nil")
+		return nil, ErrLoggerNil
 	}
+	const defaultTTL = 30 * time.Minute
 	if ttl <= 0 {
-		ttl = 30 * time.Minute
+		ttl = defaultTTL
 	}
 	if className == "" {
 		className = "MIRASession"
@@ -111,69 +118,4 @@ func (s *Store) CleanupExpired(ctx context.Context) (int, error) {
 	// Phase-2 stub: return 0, nil (no cleanup yet)
 	// Phase-2: Delete from Weaviate where (now - updatedAt) > ttl
 	return 0, nil
-}
-
-// sessionRecord is the internal representation for Weaviate storage.
-// This struct is used to serialize/deserialize session data to/from Weaviate.
-type sessionRecord struct {
-	ID               string                   `json:"id"`
-	Scope            string                   `json:"scope"`
-	LastHealth       map[string]interface{}   `json:"lastHealth,omitempty"`
-	LastFailures     []map[string]interface{} `json:"lastFailures,omitempty"`
-	LastRCA          map[string]interface{}   `json:"lastRca,omitempty"`
-	PendingMutations []map[string]interface{} `json:"pendingMutations,omitempty"`
-	UpdatedAt        time.Time                `json:"updatedAt"`
-	TTLSeconds       int64                    `json:"ttlSeconds"`
-	ExpiresAt        time.Time                `json:"expiresAt"`
-}
-
-// toSessionRecord converts a SessionData to a sessionRecord for Weaviate storage.
-func (s *Store) toSessionRecord(id string, sd *session.SessionData) *sessionRecord {
-	expiresAt := sd.UpdatedAt.Add(s.ttl)
-	return &sessionRecord{
-		ID:               id,
-		Scope:            sd.Scope,
-		LastHealth:       sd.LastHealth,
-		LastFailures:     sd.LastFailures,
-		LastRCA:          sd.LastRCA,
-		PendingMutations: sd.PendingMutations,
-		UpdatedAt:        sd.UpdatedAt,
-		TTLSeconds:       int64(s.ttl.Seconds()),
-		ExpiresAt:        expiresAt,
-	}
-}
-
-// fromSessionRecord converts a sessionRecord (from Weaviate) to a SessionData.
-func (s *Store) fromSessionRecord(rec *sessionRecord) session.SessionData {
-	return session.SessionData{
-		Scope:            rec.Scope,
-		LastHealth:       rec.LastHealth,
-		LastFailures:     rec.LastFailures,
-		LastRCA:          rec.LastRCA,
-		PendingMutations: rec.PendingMutations,
-		UpdatedAt:        rec.UpdatedAt,
-	}
-}
-
-// isExpired checks if a record is expired.
-func (s *Store) isExpired(rec *sessionRecord) bool {
-	return time.Now().After(rec.ExpiresAt)
-}
-
-// Helper to marshal SessionData to JSON string for storage.
-func marshalSessionData(sd *session.SessionData) (string, error) {
-	b, err := json.Marshal(sd)
-	if err != nil {
-		return "", fmt.Errorf("marshal session data: %w", err)
-	}
-	return string(b), nil
-}
-
-// Helper to unmarshal JSON string to SessionData.
-func unmarshalSessionData(jsonStr string) (*session.SessionData, error) {
-	var sd session.SessionData
-	if err := json.Unmarshal([]byte(jsonStr), &sd); err != nil {
-		return nil, fmt.Errorf("unmarshal session data: %w", err)
-	}
-	return &sd, nil
 }

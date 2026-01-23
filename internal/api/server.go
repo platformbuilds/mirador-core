@@ -368,7 +368,7 @@ func (s *Server) setupUnifiedQueryEngine(router *gin.RouterGroup, rcaEngineForEn
 	rcaServiceGraph := services.NewServiceGraphService(s.vmServices.Metrics, s.logger)
 	rcaHandler := handlers.NewRCAHandler(s.vmServices.Logs, rcaServiceGraph, s.cache, s.logger, rcaEngineForEndpoints, s.config.Engine, s.kpiRepo)
 
-	// MIRA RCA explanation behaviour has been migrated to an external service.
+	// MIRA RCA explanation behavior has been migrated to an external service.
 	// Mirador Core does not initialize an embedded MIRA engine here; if an
 	// external MIRA endpoint is configured the proxy registered during server
 	// setup will forward requests.

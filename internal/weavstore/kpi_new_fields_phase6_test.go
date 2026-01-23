@@ -354,8 +354,8 @@ func TestRoundTripSerialization_NewFields_Phase6(t *testing.T) {
 
 // Helper function to copy a KPIDefinition for test isolation
 func copyKPI(kpi *KPIDefinition) *KPIDefinition {
-	copy := *kpi
-	return &copy
+	copied := *kpi
+	return &copied
 }
 
 // Helper function to build properties map (simulates CreateOrUpdateKPI logic)

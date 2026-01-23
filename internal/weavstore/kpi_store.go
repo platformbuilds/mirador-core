@@ -64,7 +64,7 @@ type KPISearchResult struct {
 }
 
 // NewWeaviateKPIStore constructs a new KPI store.
-func NewWeaviateKPIStore(client *wv.Client, logger *zap.Logger, vectorizerProvider string, vectorizerModel string, vectorizerUseGPU bool) *WeaviateKPIStore {
+func NewWeaviateKPIStore(client *wv.Client, logger *zap.Logger, vectorizerProvider, vectorizerModel string, vectorizerUseGPU bool) *WeaviateKPIStore {
 	return &WeaviateKPIStore{client: client, logger: logger, vectorizerProvider: vectorizerProvider, vectorizerModel: vectorizerModel, vectorizerUseGPU: vectorizerUseGPU}
 }
 
@@ -88,6 +88,9 @@ var (
 	// when the schema is not yet present in the runtime.
 	ErrKPIDefinitionClassMissing = errors.New("weaviate: KPIDefinition class not found")
 
+	// ErrCreateConflictUpdateFailed indicates create conflict where update also failed
+	ErrCreateConflictUpdateFailed = errors.New("create conflict: update also failed")
+
 	// maxKPIListLimit is the maximum limit for listing KPIs in a single query
 	maxKPIListLimit = 10000
 )
@@ -96,6 +99,11 @@ var (
 const (
 	kpiClassOld = "KPIDefinition"  // legacy runtime class
 	kpiClassNew = "Kpi_definition" // new runtime class (preferred for new writes)
+
+	// Magic number constants for KPI operations
+	defaultPropsCapacity = 7   // initial capacity for kpiContent parts slice
+	excerptMaxLength     = 140 // max length for excerpt before truncation
+	excerptContextChars  = 40  // characters before and after match in excerpt
 )
 
 // makeObjectID returns a deterministic object id for the provided id.
@@ -109,6 +117,8 @@ func makeObjectID(id string) string {
 
 // CreateOrUpdateKPI creates a KPI if missing, updates if present. It returns
 // the KPI model, a status string ("created","updated","no-change"), and an error.
+//
+//nolint:gocyclo // Complex due to race condition handling and multi-class fallback logic
 func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *KPIDefinition) (*KPIDefinition, string, error) {
 	if k == nil {
 		return nil, "", ErrKPIIsNil
@@ -205,7 +215,7 @@ func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *KPIDefiniti
 		if err := s.client.Data().Updater().WithClassName(targetClass).WithID(targetID).WithProperties(props).Do(ctx); err != nil {
 			return nil, "", err
 		}
-		return k, "updated", nil
+		return k, statusUpdated, nil
 	}
 
 	// Not found -> create. If create fails because the object already exists,
@@ -220,22 +230,18 @@ func (s *WeaviateKPIStore) CreateOrUpdateKPI(ctx context.Context, k *KPIDefiniti
 			// Try an update in the new class first, then fall back to the legacy
 			// class if that fails. Capture the last error to report if both
 			// update attempts fail.
-			var lastErr error
-			if err2 := s.client.Data().Updater().WithClassName(kpiClassNew).WithID(objID).WithProperties(props).Do(ctx); err2 == nil {
-				return k, "updated", nil
-			} else {
-				lastErr = err2
+			if updateErr := s.client.Data().Updater().WithClassName(kpiClassNew).WithID(objID).WithProperties(props).Do(ctx); updateErr == nil {
+				return k, statusUpdated, nil
 			}
-			if err3 := s.client.Data().Updater().WithClassName(kpiClassOld).WithID(objID).WithProperties(props).Do(ctx); err3 == nil {
-				return k, "updated", nil
-			} else {
-				lastErr = err3
+			if updateErr := s.client.Data().Updater().WithClassName(kpiClassOld).WithID(objID).WithProperties(props).Do(ctx); updateErr == nil {
+				return k, statusUpdated, nil
 			}
-			return nil, "", fmt.Errorf("create conflict: update also failed: %v (create err: %v)", lastErr, err)
+			// Both update attempts failed
+			return nil, "", fmt.Errorf("%w (create err: %v)", ErrCreateConflictUpdateFailed, err)
 		}
 		return nil, "", err
 	}
-	return k, "created", nil
+	return k, statusCreated, nil
 }
 
 // kpiEqual compares two KPIDefinition objects field-by-field. It is intentionally
@@ -583,7 +589,7 @@ func (s *WeaviateKPIStore) GetKPI(ctx context.Context, id string) (*KPIDefinitio
 // or the deterministic v5 object ids.
 // getKPIWithObjectID returns the actual Weaviate object id (o.ID), the parsed
 // KPIDefinition and the runtime class that the object was found in (className).
-func (s *WeaviateKPIStore) getKPIWithObjectID(ctx context.Context, id string) (string, *KPIDefinition, string, error) {
+func (s *WeaviateKPIStore) getKPIWithObjectID(ctx context.Context, id string) (objectID string, kpi *KPIDefinition, className string, err error) {
 	if id == "" {
 		return "", nil, "", nil
 	}
@@ -654,6 +660,8 @@ func parsePropsToKPI(props map[string]any, id string) *KPIDefinition {
 }
 
 // parseBasicProps extracts basic string properties
+//
+//nolint:gocyclo // Property parsing from Weaviate requires many field mappings
 func parseBasicProps(props map[string]any, k *KPIDefinition) {
 	if v, ok := props["name"].(string); ok {
 		k.Name = v
@@ -722,9 +730,10 @@ func parseMetadataProps(props map[string]any, k *KPIDefinition) {
 	if v, ok := props["retryAllowed"].(bool); ok {
 		k.RetryAllowed = v
 	}
-	if v, ok := props["refreshInterval"].(float64); ok {
+	switch v := props["refreshInterval"].(type) {
+	case float64:
 		k.RefreshInterval = int(v)
-	} else if v, ok := props["refreshInterval"].(int); ok {
+	case int:
 		k.RefreshInterval = v
 	}
 	if v, ok := props["isShared"].(bool); ok {
@@ -811,7 +820,7 @@ func kpiContent(k *KPIDefinition) string {
 	if k == nil {
 		return ""
 	}
-	parts := make([]string, 0, 7)
+	parts := make([]string, 0, defaultPropsCapacity)
 	if k.Name != "" {
 		parts = append(parts, k.Name)
 	}
@@ -1147,6 +1156,8 @@ func (s *WeaviateKPIStore) SearchKPIs(ctx context.Context, req *KPISearchRequest
 // keywordSearch is a simple in-memory search for the provided query. This
 // is a fallback that scans KPIs returned by ListKPIs and scores them by
 // basic substring matches against name/definition/content.
+//
+//nolint:gocyclo // Complex due to multi-field scoring and matching logic
 func (s *WeaviateKPIStore) keywordSearch(ctx context.Context, req *KPISearchRequest) ([]*KPISearchResult, int64, error) {
 	// Fetch a large page of KPIs for in-memory ranking. This is a best-effort
 	// fallback and not intended for very large catalogs; we'll rely on
@@ -1250,16 +1261,16 @@ func excerpt(text, q string) string {
 	}
 	li := strings.Index(strings.ToLower(text), strings.ToLower(q))
 	if li == -1 {
-		if len(text) > 140 {
-			return text[:140] + "..."
+		if len(text) > excerptMaxLength {
+			return text[:excerptMaxLength] + "..."
 		}
 		return text
 	}
-	start := li - 40
+	start := li - excerptContextChars
 	if start < 0 {
 		start = 0
 	}
-	end := li + len(q) + 40
+	end := li + len(q) + excerptContextChars
 	if end > len(text) {
 		end = len(text)
 	}
@@ -1268,7 +1279,7 @@ func excerpt(text, q string) string {
 		snippet = "..." + snippet
 	}
 	if end < len(text) {
-		snippet = snippet + "..."
+		snippet += "..."
 	}
 	return snippet
 }
@@ -1371,6 +1382,8 @@ func mapToThreshold(m map[string]any) Threshold {
 // The weaviate SDK does not expose a typed error for this case, so we use
 // conservative substring checks. This helper centralizes detection for tests
 // and repo-level logic.
+//
+//nolint:gocyclo // Complex due to comprehensive error string pattern matching for robustness
 func isKPIDefinitionClassMissingErr(err error) bool {
 	if err == nil {
 		return false

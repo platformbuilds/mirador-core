@@ -543,7 +543,7 @@ func (s *WeaviateMIRARCAStore) ListMIRARCATasks(ctx context.Context, limit, offs
 // For now this uses a keyword-based fallback by retrieving a large page and
 // filtering client-side. In future, if vector/nearText is configured, this
 // should use a proper GraphQL nearText/nearVector query.
-func (s *WeaviateMIRARCAStore) SearchMIRARCATasks(ctx context.Context, query string, mode string, limit, offset int) ([]*MIRARCATask, int64, error) {
+func (s *WeaviateMIRARCAStore) SearchMIRARCATasks(ctx context.Context, query, mode string, limit, offset int) ([]*MIRARCATask, int64, error) {
 	query = strings.TrimSpace(strings.ToLower(query))
 	if query == "" {
 		return []*MIRARCATask{}, 0, nil

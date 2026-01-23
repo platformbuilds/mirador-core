@@ -7,6 +7,13 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/mira/intent"
 )
 
+const (
+	// Mock orchestrator constants for test data
+	mockLatencyMS     = 120
+	mockRequestsTotal = 1234
+	mockErrorsTotal   = 12
+)
+
 type Orchestrator struct{}
 
 func New() *Orchestrator { return &Orchestrator{} }
@@ -44,7 +51,7 @@ func (o *Orchestrator) mockHealth(ir intent.IntentResult) (map[string]interface{
 		"state":     "healthy",
 		"details": map[string]interface{}{
 			"errors":     0,
-			"latency_ms": 120,
+			"latency_ms": mockLatencyMS,
 		},
 	}, nil
 }
@@ -82,8 +89,8 @@ func (o *Orchestrator) mockKpiSearch(ir intent.IntentResult) (map[string]interfa
 		"type":  "kpis",
 		"query": q,
 		"results": []map[string]interface{}{
-			{"kpiId": "kpi-1", "name": "http_requests_total", "value": 1234},
-			{"kpiId": "kpi-2", "name": "http_errors_total", "value": 12},
+			{"kpiId": "kpi-1", "name": "http_requests_total", "value": mockRequestsTotal},
+			{"kpiId": "kpi-2", "name": "http_errors_total", "value": mockErrorsTotal},
 		},
 	}, nil
 }
