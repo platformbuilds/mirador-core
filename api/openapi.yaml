@@ -24,9 +24,36 @@ servers:
         description: "Server port"
         default: "8010"
 
+tags:
+  - name: KPIs
+    description: |
+      KPI (Key Performance Indicator) management endpoints for defining, searching, 
+      and managing metrics that drive correlation and RCA analysis. KPIs are the 
+      foundation of observability in Mirador Core.
+  - name: Failures
+    description: |
+      Failure detection and correlation endpoints for identifying component failures, 
+      tracking incidents, and analyzing failure patterns across services. Failures 
+      feed into RCA analysis.
+  - name: Correlation
+    description: |
+      Statistical correlation analysis endpoints that discover relationships between 
+      KPIs using Pearson, Spearman, cross-correlation, and partial correlation methods. 
+      Correlation results drive RCA causal chains.
+  - name: RCA
+    description: |
+      Root Cause Analysis endpoints that combine correlation results with 5-WHY methodology 
+      to produce human-readable explanations of incident root causes with statistical evidence.
+  - name: Internal
+    description: |
+      Internal system endpoints including health checks, metrics, API documentation, 
+      and operational endpoints for monitoring and managing Mirador Core.
+
 paths:
   /:
     get:
+      tags:
+        - Internal
       summary: Root redirect to Swagger UI
       responses:
         '302':
@@ -34,6 +61,8 @@ paths:
 
   /swagger/index.html:
     get:
+      tags:
+        - Internal
       summary: Swagger UI entry
       responses:
         '200':
@@ -41,6 +70,8 @@ paths:
 
   /api/openapi.yaml:
     get:
+      tags:
+        - Internal
       summary: OpenAPI YAML
       responses:
         '200':
@@ -48,6 +79,8 @@ paths:
 
   /api/openapi.json:
     get:
+      tags:
+        - Internal
       summary: OpenAPI JSON
       responses:
         '200':
@@ -55,6 +88,8 @@ paths:
 
   /metrics:
     get:
+      tags:
+        - Internal
       summary: Prometheus metrics
       responses:
         '200':
@@ -62,6 +97,8 @@ paths:
 
   /health:
     get:
+      tags:
+        - Internal
       summary: Public health check
       responses:
         '200':
@@ -69,6 +106,8 @@ paths:
 
   /ready:
     get:
+      tags:
+        - Internal
       summary: Readiness check
       responses:
         '200':
@@ -76,6 +115,8 @@ paths:
 
   /microservices/status:
     get:
+      tags:
+        - Internal
       summary: Microservices status
       responses:
         '200':
@@ -84,6 +125,8 @@ paths:
   # API v1 group
   /api/v1/metrics:
     get:
+      tags:
+        - Internal
       summary: Prometheus metrics (v1 group)
       responses:
         '200':
@@ -91,6 +134,8 @@ paths:
 
   /api/v1/health:
     get:
+      tags:
+        - Internal
       summary: API-v1 health
       responses:
         '200':
@@ -98,6 +143,8 @@ paths:
 
   /api/v1/ready:
     get:
+      tags:
+        - Internal
       summary: API-v1 readiness
       responses:
         '200':
@@ -105,6 +152,8 @@ paths:
 
   /api/v1/microservices/status:
     get:
+      tags:
+        - Internal
       summary: API-v1 microservices status
       responses:
         '200':
@@ -113,7 +162,9 @@ paths:
   # RCA endpoints (v1) - migrated to unified
   /api/v1/unified/service-graph:
     post:
-      summary: Build / retrieve service-graph for RCA
+      tags:
+        - Internal
+      summary: Build / retrieve service-graph for RCA (DEPRECATED - being retired)
       responses:
         '200':
           description: OK
@@ -121,6 +172,8 @@ paths:
   # KPI definition APIs (v1)
   /api/v1/kpi/defs:
     get:
+      tags:
+        - KPIs
       summary: List KPI definitions
       parameters:
         - name: tags
@@ -235,6 +288,8 @@ paths:
         '500':
           description: Internal Server Error
     post:
+      tags:
+        - KPIs
       summary: Create or update KPI definition
       requestBody:
         description: |
@@ -391,6 +446,8 @@ paths:
 
   /api/v1/kpi/defs/bulk-json:
     post:
+      tags:
+        - KPIs
       summary: Bulk ingest KPI definitions (JSON)
       requestBody:
         description: 'Bulk JSON payload containing an array of KPI definition objects.'
@@ -468,6 +525,8 @@ paths:
 
   /api/v1/kpi/search:
     post:
+      tags:
+        - KPIs
       summary: Search KPI definitions
       description: "Search the KPI catalog using a natural language query. Supports optional filters and mode (semantic|keyword|hybrid)."
       requestBody:
@@ -605,6 +664,8 @@ paths:
 
   /api/v1/kpi/defs/bulk-csv:
     post:
+      tags:
+        - KPIs
       summary: Bulk ingest KPI definitions (CSV)
       description: |
         Upload KPIs via CSV file. First row must contain headers.
@@ -645,6 +706,8 @@ paths:
 
   /api/v1/kpi/defs/{id}:
     get:
+      tags:
+        - KPIs
       summary: Get KPI definition by id
       parameters:
         - name: id
@@ -693,6 +756,8 @@ paths:
         '500':
           description: Internal Server Error
     delete:
+      tags:
+        - KPIs
       summary: Delete KPI definition by id
       parameters:
         - name: id
@@ -746,6 +811,8 @@ paths:
   # Unified query engine (v1)  
   /api/v1/unified/query:
     post:
+      tags:
+        - Internal
       summary: Unified query
       requestBody:
         description: |
@@ -794,6 +861,8 @@ paths:
 
   /api/v1/unified/correlation:
     post:
+      tags:
+        - Correlation
       summary: Unified correlation
       requestBody:
         description: |
@@ -816,6 +885,8 @@ paths:
 
   /api/v1/unified/failures/detect:
     post:
+      tags:
+        - Failures
       summary: Detect component failures in a time range
       description: |
         Detects component failures using error signals (spans with error tag = true) and 
@@ -1070,6 +1141,8 @@ paths:
 
   /api/v1/unified/failures/correlate:
     post:
+      tags:
+        - Failures
       summary: Correlate transaction failures
       description: |
         Correlates failures for specific transaction IDs within a time window.
@@ -1134,6 +1207,8 @@ paths:
 
   /api/v1/unified/failures/list:
     post:
+      tags:
+        - Failures
       summary: List all failure records from Weaviate storage
       description: |
         Returns a paginated list of all stored failure records with minimal information:
@@ -1271,6 +1346,8 @@ paths:
 
   /api/v1/unified/failures/get:
     post:
+      tags:
+        - Failures
       summary: Get full failure record details including verbose output
       description: |
         Retrieves a complete failure record by failure_id, including all raw error signals,
@@ -1416,6 +1493,8 @@ paths:
 
   /api/v1/unified/failures/delete:
     post:
+      tags:
+        - Failures
       summary: Delete a failure record from storage
       description: |
         Deletes a failure record from Weaviate storage by its failure_id.
@@ -1467,6 +1546,8 @@ paths:
 
   /api/v1/unified/metadata:
     get:
+      tags:
+        - Internal
       summary: Unified query metadata
       responses:
         '200':
@@ -1474,6 +1555,8 @@ paths:
 
   /api/v1/unified/health:
     get:
+      tags:
+        - Internal
       summary: Unified engine health
       responses:
         '200':
@@ -1481,6 +1564,8 @@ paths:
 
   /api/v1/unified/search:
     post:
+      tags:
+        - Internal
       summary: Unified search
       requestBody:
         description: Search accepts a UnifiedQuery or wrapped UnifiedQueryRequest (same shapes as /query).
@@ -1505,6 +1590,8 @@ paths:
 
   /api/v1/unified/stats:
     get:
+      tags:
+        - Internal
       summary: Unified engine stats
       responses:
         '200':
@@ -1512,6 +1599,8 @@ paths:
 
   /api/v1/unified/rca:
     post:
+      tags:
+        - RCA
       summary: Compute RCA using Unified engine (POST)
       requestBody:
         description: |
@@ -1535,6 +1624,8 @@ paths:
   # UQL endpoints (v1)
   /api/v1/uql/query:
     post:
+      tags:
+        - Internal
       summary: UQL query
       requestBody:
         description: |
@@ -1583,6 +1674,8 @@ paths:
 
   /api/v1/uql/validate:
     post:
+      tags:
+        - Internal
       summary: UQL validation
       requestBody:
         description: |
@@ -1605,6 +1698,8 @@ paths:
 
   /api/v1/uql/explain:
     post:
+      tags:
+        - Internal
       summary: UQL explain
       requestBody:
         description: |
