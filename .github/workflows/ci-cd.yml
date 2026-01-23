@@ -3,6 +3,8 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ main, master, develop, v9.0.0, 'release/**' ]
+    tags:
+      - 'v*'        # Trigger on version tags like v1.0.0
     # Removed paths-ignore to ensure documentation changes trigger builds
   pull_request:
     branches: [ '**' ]
@@ -193,7 +195,7 @@ jobs:
   deploy:
     name: Build and Push Docker Images
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     needs: [ci, security]
     steps:
       - name: Checkout
@@ -223,7 +225,10 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix={{branch}}-,enable=${{ !startsWith(github.ref, 'refs/tags/') }}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker images
