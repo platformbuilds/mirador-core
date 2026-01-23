@@ -322,7 +322,7 @@ func TestBulkIngestCSV_TagsAndExamples(t *testing.T) {
 	if len(mr.upserted[0].Examples) == 0 {
 		t.Fatalf("expected examples for first row")
 	}
-	
+
 	// After BUG FIX (2026-01-20): Examples field is now a string, so both rows succeed.
 	// Second row's "invalid-json" is just a valid string value, not parsed/validated as JSON.
 	if len(mr.upserted[1].Examples) == 0 {
