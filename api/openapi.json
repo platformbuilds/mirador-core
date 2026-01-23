@@ -29,9 +29,34 @@
       }
     }
   ],
+  "tags": [
+    {
+      "name": "KPIs",
+      "description": "KPI (Key Performance Indicator) management endpoints for defining, searching, \nand managing metrics that drive correlation and RCA analysis. KPIs are the \nfoundation of observability in Mirador Core.\n"
+    },
+    {
+      "name": "Failures",
+      "description": "Failure detection and correlation endpoints for identifying component failures, \ntracking incidents, and analyzing failure patterns across services. Failures \nfeed into RCA analysis.\n"
+    },
+    {
+      "name": "Correlation",
+      "description": "Statistical correlation analysis endpoints that discover relationships between \nKPIs using Pearson, Spearman, cross-correlation, and partial correlation methods. \nCorrelation results drive RCA causal chains.\n"
+    },
+    {
+      "name": "RCA",
+      "description": "Root Cause Analysis endpoints that combine correlation results with 5-WHY methodology \nto produce human-readable explanations of incident root causes with statistical evidence.\n"
+    },
+    {
+      "name": "Internal",
+      "description": "Internal system endpoints including health checks, metrics, API documentation, \nand operational endpoints for monitoring and managing Mirador Core.\n"
+    }
+  ],
   "paths": {
     "/": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "Root redirect to Swagger UI",
         "responses": {
           "302": {
@@ -42,6 +67,9 @@
     },
     "/swagger/index.html": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "Swagger UI entry",
         "responses": {
           "200": {
@@ -52,6 +80,9 @@
     },
     "/api/openapi.yaml": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "OpenAPI YAML",
         "responses": {
           "200": {
@@ -62,6 +93,9 @@
     },
     "/api/openapi.json": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "OpenAPI JSON",
         "responses": {
           "200": {
@@ -72,6 +106,9 @@
     },
     "/metrics": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "Prometheus metrics",
         "responses": {
           "200": {
@@ -82,6 +119,9 @@
     },
     "/health": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "Public health check",
         "responses": {
           "200": {
@@ -92,6 +132,9 @@
     },
     "/ready": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "Readiness check",
         "responses": {
           "200": {
@@ -102,6 +145,9 @@
     },
     "/microservices/status": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "Microservices status",
         "responses": {
           "200": {
@@ -112,6 +158,9 @@
     },
     "/api/v1/metrics": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "Prometheus metrics (v1 group)",
         "responses": {
           "200": {
@@ -122,6 +171,9 @@
     },
     "/api/v1/health": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "API-v1 health",
         "responses": {
           "200": {
@@ -132,6 +184,9 @@
     },
     "/api/v1/ready": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "API-v1 readiness",
         "responses": {
           "200": {
@@ -142,6 +197,9 @@
     },
     "/api/v1/microservices/status": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "API-v1 microservices status",
         "responses": {
           "200": {
@@ -152,7 +210,10 @@
     },
     "/api/v1/unified/service-graph": {
       "post": {
-        "summary": "Build / retrieve service-graph for RCA",
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Build / retrieve service-graph for RCA (DEPRECATED - being retired)",
         "responses": {
           "200": {
             "description": "OK"
@@ -162,6 +223,9 @@
     },
     "/api/v1/kpi/defs": {
       "get": {
+        "tags": [
+          "KPIs"
+        ],
         "summary": "List KPI definitions",
         "parameters": [
           {
@@ -326,6 +390,7 @@
                       "description": "Total payment processing errors impacting revenue",
                       "dataType": "timeseries",
                       "dataSourceId": "550e8400-e29b-41d4-a716-446655440000",
+                      "dashboard": "123e4567-e89b-52d3-a456-426614174000",
                       "refreshInterval": 60,
                       "isShared": true,
                       "userId": "a3bb189e-8bf9-3888-9912-ace4e6543002"
@@ -346,6 +411,9 @@
         }
       },
       "post": {
+        "tags": [
+          "KPIs"
+        ],
         "summary": "Create or update KPI definition",
         "requestBody": {
           "description": "KPI definition to create or update. Wrap the KPI object in { \"kpiDefinition\": { ... } }.\n\nNotes:\n- `query` (if present) must be a JSON object (NOT a string). Example: {\"metric\":\"api_latency\",\"window\":\"5m\"}.\n- `formula` (if present) must be a string containing the raw query/formula.\n- For data-backed KPIs (e.g. layer = `cause` and signalType = metrics/traces/logs), at least one of `query` (object) or `formula` (string) must be provided. Impact/business KPIs may omit both.\n",
@@ -396,6 +464,7 @@
                       "description": "Tracks total API gateway errors aggregated per minute, critical indicator of service health",
                       "dataType": "timeseries",
                       "dataSourceId": "550e8400-e29b-41d4-a716-446655440000",
+                      "dashboard": "123e4567-e89b-52d3-a456-426614174000",
                       "kpiDatastoreId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
                       "refreshInterval": 60,
                       "isShared": true,
@@ -422,6 +491,7 @@
                       "formula": "max_over_time(node_network_latency_ms[5m])",
                       "description": "Maximum network latency observed over a 5-minute window for infrastructure monitoring",
                       "dataType": "timeseries",
+                      "dashboard": "123e4567-e89b-52d3-a456-426614174000",
                       "refreshInterval": 300
                     }
                   }
@@ -447,6 +517,7 @@
                         "window": "5m"
                       },
                       "dataType": "timeseries",
+                      "dashboard": "123e4567-e89b-52d3-a456-426614174000",
                       "isShared": false
                     }
                   }
@@ -561,6 +632,9 @@
     },
     "/api/v1/kpi/defs/bulk-json": {
       "post": {
+        "tags": [
+          "KPIs"
+        ],
         "summary": "Bulk ingest KPI definitions (JSON)",
         "requestBody": {
           "description": "Bulk JSON payload containing an array of KPI definition objects.",
@@ -683,6 +757,9 @@
     },
     "/api/v1/kpi/search": {
       "post": {
+        "tags": [
+          "KPIs"
+        ],
         "summary": "Search KPI definitions",
         "description": "Search the KPI catalog using a natural language query. Supports optional filters and mode (semantic|keyword|hybrid).",
         "requestBody": {
@@ -866,6 +943,7 @@
                         "description": "Critical SLA metric for payment gateway performance monitoring",
                         "dataType": "timeseries",
                         "dataSourceId": "550e8400-e29b-41d4-a716-446655440000",
+                        "dashboard": "123e4567-e89b-52d3-a456-426614174000",
                         "refreshInterval": 60,
                         "isShared": true,
                         "userId": "a3bb189e-8bf9-3888-9912-ace4e6543002"
@@ -887,6 +965,9 @@
     },
     "/api/v1/kpi/defs/bulk-csv": {
       "post": {
+        "tags": [
+          "KPIs"
+        ],
         "summary": "Bulk ingest KPI definitions (CSV)",
         "description": "Upload KPIs via CSV file. First row must contain headers.\n\nSupported columns (all optional except 'name'):\n- id, name (REQUIRED), namespace, source, sourceId/source_id\n- kind, layer, signalType/signal_type, classifier\n- queryType/query_type, datastore, formula, definition\n- tags (comma/semicolon separated), sentiment, domain\n- serviceFamily/service_family, componentType/component_type\n- retryAllowed/retry_allowed (boolean: true/1/yes)\n- examples (JSON array as string)\n\nNote: Column names are case-insensitive. Underscores and hyphens are interchangeable.\n",
         "requestBody": {
@@ -930,6 +1011,9 @@
     },
     "/api/v1/kpi/defs/{id}": {
       "get": {
+        "tags": [
+          "KPIs"
+        ],
         "summary": "Get KPI definition by id",
         "parameters": [
           {
@@ -965,6 +1049,7 @@
                   "description": "Comprehensive metric tracking all HTTP 5xx errors from API gateway",
                   "dataType": "timeseries",
                   "dataSourceId": "550e8400-e29b-41d4-a716-446655440000",
+                  "dashboard": "123e4567-e89b-52d3-a456-426614174000",
                   "kpiDatastoreId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
                   "refreshInterval": 60,
                   "isShared": true,
@@ -1000,6 +1085,9 @@
         }
       },
       "delete": {
+        "tags": [
+          "KPIs"
+        ],
         "summary": "Delete KPI definition by id",
         "parameters": [
           {
@@ -1082,6 +1170,9 @@
     },
     "/api/v1/unified/query": {
       "post": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "Unified query",
         "requestBody": {
           "description": "Unified query accepts either a wrapped object { \"query\": { ... } }\n(UnifiedQueryRequest) or a direct UnifiedQuery object. Use snake_case\nfor UnifiedQuery timestamps (`start_time` / `end_time`).\n",
@@ -1150,6 +1241,9 @@
     },
     "/api/v1/unified/correlation": {
       "post": {
+        "tags": [
+          "Correlation"
+        ],
         "summary": "Unified correlation",
         "requestBody": {
           "description": "Correlation endpoint supports two shapes:\n - Preferred canonical TimeWindowRequest: { \"startTime\", \"endTime\" } (camelCase)\n",
@@ -1180,6 +1274,9 @@
     },
     "/api/v1/unified/failures/detect": {
       "post": {
+        "tags": [
+          "Failures"
+        ],
         "summary": "Detect component failures in a time range",
         "description": "Detects component failures using error signals (spans with error tag = true) and \nanomaly metrics (iforest_is_anomaly = true) within a specified time window. \nReturns summarized results with service+component breakdowns, failure IDs, UUIDs, \nand metrics summaries. Automatically persists failures to Weaviate storage.\n",
         "requestBody": {
@@ -1559,6 +1656,9 @@
     },
     "/api/v1/unified/failures/correlate": {
       "post": {
+        "tags": [
+          "Failures"
+        ],
         "summary": "Correlate transaction failures",
         "description": "Correlates failures for specific transaction IDs within a time window.\nReturns failures affecting the specified transactions with correlation details.\n",
         "requestBody": {
@@ -1658,6 +1758,9 @@
     },
     "/api/v1/unified/failures/list": {
       "post": {
+        "tags": [
+          "Failures"
+        ],
         "summary": "List all failure records from Weaviate storage",
         "description": "Returns a paginated list of all stored failure records with minimal information:\nfailure_id, summary (services, components, detector version, confidence, counts),\nand timestamps. Full details can be retrieved via /failures/get endpoint.\n",
         "requestBody": {
@@ -1851,6 +1954,9 @@
     },
     "/api/v1/unified/failures/get": {
       "post": {
+        "tags": [
+          "Failures"
+        ],
         "summary": "Get full failure record details including verbose output",
         "description": "Retrieves a complete failure record by failure_id, including all raw error signals,\nraw anomaly signals, and complete metadata. Returns verbose, unprocessed data \nsuitable for detailed investigation and RCA.\n",
         "requestBody": {
@@ -2064,6 +2170,9 @@
     },
     "/api/v1/unified/failures/delete": {
       "post": {
+        "tags": [
+          "Failures"
+        ],
         "summary": "Delete a failure record from storage",
         "description": "Deletes a failure record from Weaviate storage by its failure_id.\nOnce deleted, the record cannot be retrieved.\n",
         "requestBody": {
@@ -2139,6 +2248,9 @@
     },
     "/api/v1/unified/metadata": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "Unified query metadata",
         "responses": {
           "200": {
@@ -2149,6 +2261,9 @@
     },
     "/api/v1/unified/health": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "Unified engine health",
         "responses": {
           "200": {
@@ -2159,6 +2274,9 @@
     },
     "/api/v1/unified/search": {
       "post": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "Unified search",
         "requestBody": {
           "description": "Search accepts a UnifiedQuery or wrapped UnifiedQueryRequest (same shapes as /query).",
@@ -2194,6 +2312,9 @@
     },
     "/api/v1/unified/stats": {
       "get": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "Unified engine stats",
         "responses": {
           "200": {
@@ -2204,6 +2325,9 @@
     },
     "/api/v1/unified/rca": {
       "post": {
+        "tags": [
+          "RCA"
+        ],
         "summary": "Compute RCA using Unified engine (POST)",
         "requestBody": {
           "description": "RCA endpoint expects the canonical time-window payload: { \"startTime\", \"endTime\" }.\nFor compatibility, legacy RCA shapes are still accepted by handlers but the public contract is time-window-only.\n",
@@ -2234,6 +2358,9 @@
     },
     "/api/v1/uql/query": {
       "post": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "UQL query",
         "requestBody": {
           "description": "Execute a Unified Query Language (UQL) query. The handler expects a wrapped\npayload { \"query\": { ... } } where the inner object follows the\nUnifiedQuery shape (id, type, query, start_time/end_time, parameters, etc.).\n",
@@ -2301,6 +2428,9 @@
     },
     "/api/v1/uql/validate": {
       "post": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "UQL validation",
         "requestBody": {
           "description": "Validate the syntax of a UQL query string. Supply a small object with a\ntop-level `query` string field. The endpoint will return whether the\nquery is syntactically valid without executing it.\n",
@@ -2330,6 +2460,9 @@
     },
     "/api/v1/uql/explain": {
       "post": {
+        "tags": [
+          "Internal"
+        ],
         "summary": "UQL explain",
         "requestBody": {
           "description": "Return a (simplified) execution plan for a UQL query. Supply a wrapped\nrequest { \"query\": { ... } } where the inner query contains the UQL string\nand optional metadata (id, type, time-range) used to produce the plan.\n",
@@ -2855,7 +2988,8 @@
           "name",
           "layer",
           "signalType",
-          "sentiment"
+          "sentiment",
+          "dashboard"
         ],
         "description": "Complete KPI definition schema. Validation rules:\n- Impact KPIs: Must have businessImpact OR definition\n- Cause KPIs: Must have classifier\n- Non-impact KPIs: Must have formula OR query\n- VictoriaMetrics datastore: Requires queryType (MetricsQL or PromQL)\n- query field must be a JSON object if present\n- formula field must be a string if present\n",
         "properties": {
@@ -3081,6 +3215,12 @@
             "format": "uuid",
             "description": "UUID reference to a data source configuration registry.\nLinks this KPI to the originating data source (e.g., specific Prometheus instance, log aggregator).\nCurrently stored but not validated against registry (future enhancement).\n",
             "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "dashboard": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUIDv5 identifier of the dashboard associated with this KPI.\nThis field is mandatory and must be a UUID version 5 (RFC4122).\n",
+            "example": "123e4567-e89b-52d3-a456-426614174000"
           },
           "kpiDatastoreId": {
             "type": "string",
