@@ -248,8 +248,8 @@ func TestBulkIngestCSV_Minimal(t *testing.T) {
 	mw := multipart.NewWriter(&buf)
 	part, _ := mw.CreateFormFile("file", "kpis.csv")
 	csvData := "name,layer,signalType,sentiment,definition,dashboard\n" +
-		"csv-kpi,impact,metrics,negative,definition one,123e4567-e89b-52d3-a456-426614174000\n" +
-		",cause,metrics,negative,missing name row,123e4567-e89b-52d3-a456-426614174000\n"
+		"csv-kpi,impact,metrics,negative,definition one,123e4567-e89b-52d3-5456-426614174000\n" +
+		",cause,metrics,negative,missing name row,123e4567-e89b-52d3-5456-426614174000\n"
 	io.Copy(part, strings.NewReader(csvData))
 	mw.Close()
 
@@ -285,8 +285,8 @@ func TestBulkIngestCSV_TagsAndExamples(t *testing.T) {
 	part, _ := mw.CreateFormFile("file", "kpis.csv")
 	// header with mixed/uppercase to test case-insensitivity and an unknown column (FooColumn)
 	csvData := "Name,Layer,SignalType,Sentiment,Tags,FooColumn,Examples,Definition,Dashboard\n" +
-		"csv-kpi,impact,metrics,negative,\"a,b;c\",ignored,\"[{\"\"example\"\":true}]\",an example definition,123e4567-e89b-52d3-a456-426614174000\n" +
-		"csv-kpi-2,impact,metrics,negative,tag1,ignored,invalid-json,another definition,123e4567-e89b-52d3-a456-426614174000\n"
+		"csv-kpi,impact,metrics,negative,\"a,b;c\",ignored,\"[{\"\"example\"\":true}]\",an example definition,123e4567-e89b-52d3-5456-426614174000\n" +
+		"csv-kpi-2,impact,metrics,negative,tag1,ignored,invalid-json,another definition,123e4567-e89b-52d3-5456-426614174000\n"
 	io.Copy(part, strings.NewReader(csvData))
 	mw.Close()
 
@@ -305,31 +305,33 @@ func TestBulkIngestCSV_TagsAndExamples(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &summary); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if summary.SuccessCount != 1 || summary.FailureCount != 1 || summary.Total != 2 {
+	// After BUG FIX (2026-01-20): Examples is now a string field, not validated as JSON.
+	// Both rows should succeed since "invalid-json" is a valid string value.
+	if summary.SuccessCount != 2 || summary.FailureCount != 0 || summary.Total != 2 {
 		t.Fatalf("unexpected summary: %+v", summary)
 	}
-	if len(mr.upserted) != 1 {
-		t.Fatalf("expected 1 upserted, got %d", len(mr.upserted))
+	if len(mr.upserted) != 2 {
+		t.Fatalf("expected 2 upserted, got %d", len(mr.upserted))
 	}
 
 	// Validate tags for first row - should be split into parts by comma/semicolon
 	if len(mr.upserted[0].Tags) == 0 {
 		t.Fatalf("expected tags on first row, got none")
 	}
-	// Validate examples: first row had valid JSON, second had invalid JSON and should be a failure
+	// Validate examples: both rows should have examples as string values (no JSON validation)
 	if len(mr.upserted[0].Examples) == 0 {
 		t.Fatalf("expected examples for first row")
 	}
-	if len(mr.upserted) != 1 {
-		t.Fatalf("expected only one upserted entry due to invalid examples in second row, got %d", len(mr.upserted))
+	
+	// After BUG FIX (2026-01-20): Examples field is now a string, so both rows succeed.
+	// Second row's "invalid-json" is just a valid string value, not parsed/validated as JSON.
+	if len(mr.upserted[1].Examples) == 0 {
+		t.Fatalf("expected examples for second row")
 	}
 
-	// Assert failure points to second CSV row
-	if len(summary.Failures) != 1 {
-		t.Fatalf("expected 1 failure, got %d", len(summary.Failures))
-	}
-	if summary.Failures[0].Row != 3 {
-		t.Fatalf("expected failure row 3 (header=1, data rows=2,3), got %d", summary.Failures[0].Row)
+	// Assert no failures since examples is now a string field
+	if len(summary.Failures) != 0 {
+		t.Fatalf("expected 0 failures, got %d: %+v", len(summary.Failures), summary.Failures)
 	}
 }
 
@@ -570,8 +572,8 @@ func TestBulkIngestJSON_UpsertErrorDoesNotStopBatch(t *testing.T) {
 	cfg := &config.Config{}
 	h := &KPIHandler{repo: mr, cache: nil, logger: l, cfg: cfg}
 
-	a := &models.KPIDefinition{Name: "bad", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "fail this"}
-	b := &models.KPIDefinition{Name: "good", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "ok"}
+	a := &models.KPIDefinition{Name: "bad", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "fail this", Dashboard: "123e4567-e89b-52d3-5456-426614174000"}
+	b := &models.KPIDefinition{Name: "good", Layer: "impact", SignalType: "metrics", Sentiment: "negative", Definition: "ok", Dashboard: "123e4567-e89b-52d3-5456-426614174000"}
 	payload := map[string]any{"items": []*models.KPIDefinition{a, b}}
 	body, _ := json.Marshal(payload)
 

@@ -388,6 +388,8 @@ func (h *KPIHandler) BulkIngestCSV(c *gin.Context) {
 				if val != "" {
 					k.Examples = val
 				}
+			case "dashboard":
+				k.Dashboard = val
 			}
 		}
 
