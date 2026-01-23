@@ -76,9 +76,11 @@ type RateLimitConfig struct {
 
 // GetMIRAConfig returns the MIRA configuration from the main Config struct.
 // Returns default configuration if MIRA section is not present.
+// NOTE: MIRA is now a standalone microservice, so this always returns defaults.
 func (c *Config) GetMIRAConfig() MIRAConfig {
-	// Return MIRA config if present, otherwise return defaults
-	return c.MIRA
+	// MIRA config has been removed from the main Config struct.
+	// Return default configuration for backward compatibility.
+	return DefaultMIRAConfig()
 }
 
 // DefaultMIRAConfig returns sensible defaults for MIRA configuration.
