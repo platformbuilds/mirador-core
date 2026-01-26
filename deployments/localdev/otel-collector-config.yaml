@@ -128,7 +128,7 @@ service:
 
     metrics/servicegraph:
       receivers: [servicegraph]
-      processors: []
+      processors: [isolationforest]
       exporters: [prometheusremotewrite, debug]
 
     metrics/macbook:
