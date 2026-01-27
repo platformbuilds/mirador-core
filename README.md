@@ -363,3 +363,5 @@ Apache License 2.0 - See [LICENSE](LICENSE) for details.
 - **Issues**: [GitHub Issues](https://github.com/platformbuilds/mirador-core/issues)
 - **Documentation**: [ReadTheDocs](https://mirador-core.readthedocs.io/)
 - **API Reference**: [Swagger UI](http://localhost:8010/swagger/)
+
+# End
