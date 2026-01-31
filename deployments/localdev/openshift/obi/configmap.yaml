@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-ebpf-instrument-config
+  namespace: mirador-observability
+  labels:
+    app.kubernetes.io/name: otel-ebpf-instrument
+    app.kubernetes.io/component: instrumentation
+    app.kubernetes.io/part-of: mirador
+data:
+  # Ports to instrument - comma-separated list or ranges
+  # OBI instruments ALL processes on the node listening on these ports
+  # regardless of namespace. Use range 1-65535 to capture all ports.
+  OTEL_EBPF_OPEN_PORT: "1-65535"
+  
+  # OTLP exporter protocol
+  OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+  
+  # Optional: Enable trace printing for debugging (set to "text" or "json")
+  # OTEL_EBPF_TRACE_PRINTER: "text"
+  
+  # Service name override (optional - auto-detected by default)
+  # OTEL_SERVICE_NAME: "my-service"
+  
+  # Log level for the agent
+  OTEL_LOG_LEVEL: "info"

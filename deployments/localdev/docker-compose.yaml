@@ -13,10 +13,10 @@ services:
     command:
       - --storageDataPath=/victoria-metrics-data
       # Resource limits: https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#resource-usage-limits
-      - --search.maxUniqueTimeseries=2000000  # Increased from 500k to handle more series (requires more memory)
-      - --search.maxQueryDuration=1m          # Limit query duration to prevent runaway queries
-      - --memory.allowedPercent=90            # Use up to 90% of container memory before throttling
-      - --search.maxSeries=2000000                  # Increase various search limits to handle larger datasets
+      - --search.maxUniqueTimeseries=10000000  # Increased to 10M to handle large series count (8.3M+ observed)
+      - --search.maxQueryDuration=2m           # Limit query duration to prevent runaway queries
+      - --memory.allowedPercent=90             # Use up to 90% of container memory before throttling
+      - --search.maxSeries=10000000            # Increase to 10M to handle larger datasets
     networks:
       - mirador-net
 
@@ -79,7 +79,7 @@ services:
   # OpenTelemetry eBPF Instrumentation (OBI) Agent
   # ──────────────────────────────────────────────
   obi:
-    image: docker.io/otel/ebpf-instrument:main
+    image: docker.io/otel/ebpf-instrument:latest
     pull_policy: if_not_present
     container_name: obi
     privileged: true

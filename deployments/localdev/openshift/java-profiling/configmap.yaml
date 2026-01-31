@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jfr-converter-config
+  namespace: java-profiling
+  labels:
+    app.kubernetes.io/name: jfr-converter
+data:
+  # JFR input directory (where Java apps write JFR files)
+  JFR_INPUT_DIR: "/var/log/jfr"
+  
+  # JSON output directory (OTel Collector reads from here)
+  JFR_OUTPUT_DIR: "/var/log/jfr-json"
+  
+  # Poll interval in seconds
+  POLL_INTERVAL: "5"
+  
+  # JFR sample interval in milliseconds (for time estimation)
+  # JDK default is 10ms for ExecutionSample
+  SAMPLE_INTERVAL_MS: "10"

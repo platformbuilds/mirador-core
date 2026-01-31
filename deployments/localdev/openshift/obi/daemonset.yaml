@@ -1,0 +1,147 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: otel-ebpf-instrument
+  namespace: mirador-observability
+  labels:
+    app.kubernetes.io/name: otel-ebpf-instrument
+    app.kubernetes.io/component: instrumentation
+    app.kubernetes.io/part-of: mirador
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: otel-ebpf-instrument
+      app.kubernetes.io/component: instrumentation
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: otel-ebpf-instrument
+        app.kubernetes.io/component: instrumentation
+        app.kubernetes.io/part-of: mirador
+    spec:
+      serviceAccountName: otel-ebpf-instrument
+      hostPID: true
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: otel-ebpf-instrument
+          image: docker.io/otel/ebpf-instrument:main
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+            runAsUser: 0
+            capabilities:
+              add:
+                - SYS_ADMIN
+                - SYS_PTRACE
+                - SYS_RESOURCE
+                - NET_ADMIN
+                - NET_RAW
+                - PERFMON
+                - BPF
+          env:
+            # Ports to instrument
+            - name: OTEL_EBPF_OPEN_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: otel-ebpf-instrument-config
+                  key: OTEL_EBPF_OPEN_PORT
+            
+            # OTLP endpoint - points to otel-collector service
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.mirador-observability.svc.cluster.local:4318"
+            
+            # OTLP protocol
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              valueFrom:
+                configMapKeyRef:
+                  name: otel-ebpf-instrument-config
+                  key: OTEL_EXPORTER_OTLP_PROTOCOL
+            
+            # Log level
+            - name: OTEL_LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: otel-ebpf-instrument-config
+                  key: OTEL_LOG_LEVEL
+            
+            # Node information for resource attributes
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: K8S_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            
+            # Resource attributes
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "k8s.node.name=$(K8S_NODE_NAME),k8s.pod.name=$(K8S_POD_NAME),k8s.namespace.name=$(K8S_NAMESPACE)"
+          
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          
+          volumeMounts:
+            # Required for eBPF - access to kernel debug filesystem
+            - name: sys-kernel-debug
+              mountPath: /sys/kernel/debug
+              readOnly: false
+            # Required for eBPF - access to BPF filesystem
+            - name: sys-fs-bpf
+              mountPath: /sys/fs/bpf
+              readOnly: false
+            # Required for container runtime socket (CRI-O on OpenShift)
+            - name: crio-socket
+              mountPath: /var/run/crio/crio.sock
+              readOnly: true
+            # Required for reading container information
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            # Required for cgroup access
+            - name: sys-fs-cgroup
+              mountPath: /sys/fs/cgroup
+              readOnly: true
+      
+      tolerations:
+        # Allow scheduling on all nodes including control plane
+        - operator: Exists
+          effect: NoSchedule
+        - operator: Exists
+          effect: NoExecute
+      
+      volumes:
+        - name: sys-kernel-debug
+          hostPath:
+            path: /sys/kernel/debug
+            type: Directory
+        - name: sys-fs-bpf
+          hostPath:
+            path: /sys/fs/bpf
+            type: DirectoryOrCreate
+        - name: crio-socket
+          hostPath:
+            path: /var/run/crio/crio.sock
+            type: Socket
+        - name: proc
+          hostPath:
+            path: /proc
+            type: Directory
+        - name: sys-fs-cgroup
+          hostPath:
+            path: /sys/fs/cgroup
+            type: Directory

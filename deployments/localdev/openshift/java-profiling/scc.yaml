@@ -1,0 +1,37 @@
+# SecurityContextConstraints for JFR Converter
+# Requires hostPath access to read/write JFR files
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: jfr-converter-scc
+  labels:
+    app.kubernetes.io/name: jfr-converter
+allowHostDirVolumePlugin: true
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegeEscalation: false
+allowPrivilegedContainer: false
+allowedCapabilities: []
+defaultAddCapabilities: []
+fsGroup:
+  type: RunAsAny
+priority: null
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - ALL
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
+users:
+  - system:serviceaccount:java-profiling:jfr-converter
+volumes:
+  - configMap
+  - emptyDir
+  - hostPath
+  - projected
+  - secret

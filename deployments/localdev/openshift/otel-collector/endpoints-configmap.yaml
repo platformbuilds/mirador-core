@@ -1,0 +1,23 @@
+# ConfigMap for backend endpoint configuration
+# Update these values to match your VictoriaMetrics/VictoriaLogs/VictoriaTraces deployment
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-endpoints
+  namespace: mirador-observability
+  labels:
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/component: collector
+    app.kubernetes.io/part-of: mirador
+data:
+  # VictoriaMetrics endpoint for remote write
+  # Example: http://victoriametrics.mirador-observability.svc.cluster.local:8428
+  victoriametrics: "http://192.168.80.173:8428"
+  
+  # VictoriaLogs endpoint for log ingestion
+  # Example: http://victorialogs.mirador-observability.svc.cluster.local:9428
+  victorialogs: "http://192.168.80.173:9428"
+  
+  # VictoriaTraces endpoint for trace ingestion
+  # Example: http://victoriatraces.mirador-observability.svc.cluster.local:10428
+  victoriatraces: "http://192.168.80.174:10428"

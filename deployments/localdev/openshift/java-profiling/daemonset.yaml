@@ -1,0 +1,102 @@
+# JFR to JSON Converter DaemonSet
+# Reads JFR files from nodes and converts to JSON for OTel Collector
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: jfr-converter
+  namespace: java-profiling
+  labels:
+    app.kubernetes.io/name: jfr-converter
+    app.kubernetes.io/component: profiling
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jfr-converter
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jfr-converter
+        app.kubernetes.io/component: profiling
+    spec:
+      serviceAccountName: jfr-converter
+      hostPID: false
+      hostNetwork: false
+      
+      # Tolerate all taints to run on all nodes
+      tolerations:
+        - operator: Exists
+      
+      containers:
+        - name: jfr-converter
+          # Build from jfrconverter/ directory
+          image: your-registry/jfrconverter:latest
+          imagePullPolicy: IfNotPresent
+          
+          args:
+            - --input-dir=/var/log/jfr
+            - --output-dir=/var/log/jfr-json
+            - --poll-interval=5s
+            - --workers=2
+          
+          env:
+            # Service name (default, can be overridden per-file if detected)
+            - name: SERVICE_NAME
+              value: "java-app"
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: K8S_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            # Sample interval in milliseconds (JDK default is 10ms)
+            - name: SAMPLE_INTERVAL_MS
+              value: "10"
+          
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          
+          volumeMounts:
+            # Read JFR files from all pods on this node
+            - name: jfr-input
+              mountPath: /var/log/jfr
+              readOnly: true
+            # Write JSON files for OTel Collector to read
+            - name: jfr-output
+              mountPath: /var/log/jfr-json
+              readOnly: false
+          
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      
+      volumes:
+        # JFR files written by Java apps
+        - name: jfr-input
+          hostPath:
+            path: /var/log/jfr
+            type: DirectoryOrCreate
+        # JSON output for OTel Collector
+        - name: jfr-output
+          hostPath:
+            path: /var/log/jfr-json
+            type: DirectoryOrCreate

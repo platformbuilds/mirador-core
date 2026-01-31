@@ -1,0 +1,16 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: otel-ebpf-instrument
+  labels:
+    app.kubernetes.io/name: otel-ebpf-instrument
+    app.kubernetes.io/component: instrumentation
+    app.kubernetes.io/part-of: mirador
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: otel-ebpf-instrument
+subjects:
+  - kind: ServiceAccount
+    name: otel-ebpf-instrument
+    namespace: mirador-observability

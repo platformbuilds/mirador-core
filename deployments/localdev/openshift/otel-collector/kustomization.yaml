@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: otel-collector
+
+namespace: mirador-observability
+
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/part-of: mirador
+      app.kubernetes.io/managed-by: kustomize
+
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - clusterrole.yaml
+  - clusterrolebinding.yaml
+  - scc.yaml
+  - configmap.yaml
+  - endpoints-configmap.yaml
+  - daemonset.yaml
+  - service.yaml
+  # Uncomment if using Prometheus Operator
+  # - servicemonitor.yaml
+
+commonLabels:
+  app.kubernetes.io/version: "0.137.0"
+
+images:
+  - name: otel/opentelemetry-collector-contrib
+    newTag: "0.137.0"

@@ -1,0 +1,470 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: mirador-observability
+  labels:
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/component: collector
+    app.kubernetes.io/part-of: mirador
+data:
+  config.yaml: |
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+      # Collect container logs from node filesystem (no app changes needed)
+      filelog:
+        include:
+          - /var/log/pods/*/*/*.log
+        exclude:
+          # Exclude collector's own logs to prevent loops
+          - /var/log/pods/mirador-observability_otel-collector*/**/*.log
+        start_at: end
+        include_file_path: true
+        include_file_name: false
+        operators:
+          # Parse CRI-O/containerd log format
+          - type: router
+            id: get_format
+            routes:
+              - output: parser_docker
+                expr: 'body matches "^\\{"'
+              - output: parser_crio
+                expr: 'body matches "^[^ Z]+ "'
+              - output: parser_containerd
+                expr: 'body matches "^[^ Z]+Z"'
+          
+          # Docker JSON format
+          - type: json_parser
+            id: parser_docker
+            output: extract_metadata
+            timestamp:
+              parse_from: attributes.time
+              layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+          
+          # CRI-O format
+          - type: regex_parser
+            id: parser_crio
+            regex: '^(?P<time>[^ Z]+) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'
+            output: extract_metadata
+            timestamp:
+              parse_from: attributes.time
+              layout: '%Y-%m-%dT%H:%M:%S.%L%j'
+          
+          # Containerd format
+          - type: regex_parser
+            id: parser_containerd
+            regex: '^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'
+            output: extract_metadata
+            timestamp:
+              parse_from: attributes.time
+              layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+          
+          # Extract K8s metadata from file path
+          - type: regex_parser
+            id: extract_metadata
+            regex: '^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9\-]+)\/(?P<container_name>[^\._]+)\/(?P<restart_count>\d+)\.log$'
+            parse_from: attributes["log.file.path"]
+            cache:
+              size: 128
+          
+          # Move parsed fields to resource attributes
+          - type: move
+            from: attributes.namespace
+            to: resource["k8s.namespace.name"]
+          - type: move
+            from: attributes.pod_name
+            to: resource["k8s.pod.name"]
+          - type: move
+            from: attributes.uid
+            to: resource["k8s.pod.uid"]
+          - type: move
+            from: attributes.container_name
+            to: resource["k8s.container.name"]
+          - type: move
+            from: attributes.restart_count
+            to: resource["k8s.container.restart_count"]
+          
+          # Move log body
+          - type: move
+            from: attributes.log
+            to: body
+          
+          # Move stream to attributes
+          - type: move
+            from: attributes.stream
+            to: attributes["log.iostream"]
+          
+          # Optional: Filter to keep only stdout logs (drop stderr)
+          # Uncomment the next 3 lines to enable
+          # - type: filter
+          #   expr: 'attributes["log.iostream"] == "stderr"'
+          
+          # Parse Spring Boot Logback format with Micrometer Tracing
+          # Format: 2026-01-28 16:46:53.296 DEBUG [app-name, traceId, spanId, exported] threadId -- [threadName] loggerName: message
+          - type: regex_parser
+            id: parser_springboot
+            if: 'body matches "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3}"'
+            regex: '^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+(?P<level>\w+)\s+\[(?P<app_name>[^,\]]*),?\s*(?P<trace_id>[^,\]]*),?\s*(?P<span_id>[^,\]]*),?\s*(?P<trace_exported>[^\]]*)\]\s+(?P<thread_id>\d+)\s+--\s+\[(?P<thread_name>[^\]]+)\]\s+(?P<logger>[^:]+):\s*(?P<message>.*)'
+            parse_from: body
+            on_error: send
+          
+          # Map log level to severity number
+          - type: severity_parser
+            if: 'attributes.level != nil'
+            parse_from: attributes.level
+            mapping:
+              trace: TRACE
+              debug: DEBUG
+              info: INFO
+              warn: WARN
+              error: ERROR
+              fatal: FATAL
+          
+          # Move trace context to standard OTel attributes
+          - type: move
+            if: 'attributes.trace_id != nil and attributes.trace_id != ""'
+            from: attributes.trace_id
+            to: attributes["trace_id"]
+          
+          - type: move
+            if: 'attributes.span_id != nil and attributes.span_id != ""'
+            from: attributes.span_id
+            to: attributes["span_id"]
+          
+          # Move other Spring Boot fields to attributes
+          - type: move
+            if: 'attributes.app_name != nil'
+            from: attributes.app_name
+            to: resource["service.name"]
+          
+          - type: move
+            if: 'attributes.logger != nil'
+            from: attributes.logger
+            to: attributes["logger.name"]
+          
+          - type: move
+            if: 'attributes.thread_name != nil'
+            from: attributes.thread_name
+            to: attributes["thread.name"]
+          
+          - type: move
+            if: 'attributes.thread_id != nil'
+            from: attributes.thread_id
+            to: attributes["thread.id"]
+          
+          # Replace body with just the message
+          - type: move
+            if: 'attributes.message != nil'
+            from: attributes.message
+            to: body
+          
+          # Clean up temporary attributes
+          - type: remove
+            if: 'attributes.level != nil'
+            field: attributes.level
+          - type: remove
+            if: 'attributes.timestamp != nil'
+            field: attributes.timestamp
+          - type: remove
+            if: 'attributes.trace_exported != nil'
+            field: attributes.trace_exported
+
+      # JFR Profile Data Reader
+      # Reads JFR events converted to JSON by the JFR-to-JSON sidecar
+      filelog/jfr:
+        include:
+          - /var/log/jfr-json/*.json
+          - /var/log/jfr-json/**/*.json
+        exclude: []
+        start_at: end
+        include_file_path: true
+        operators:
+          # Parse JSON lines (each line is a JFR event)
+          - type: json_parser
+            id: jfr_json_parser
+            parse_from: body
+            on_error: send
+          
+          # Set profile-specific resource attributes
+          - type: add
+            field: resource["telemetry.type"]
+            value: "profile"
+          
+          - type: add
+            field: attributes["profile.format"]
+            value: "jfr"
+          
+          # Move service name to resource
+          - type: move
+            if: 'attributes.serviceName != nil'
+            from: attributes.serviceName
+            to: resource["service.name"]
+          
+          # Move K8s metadata
+          - type: move
+            if: 'attributes.k8s_pod_name != nil'
+            from: attributes.k8s_pod_name
+            to: resource["k8s.pod.name"]
+          
+          - type: move
+            if: 'attributes.k8s_namespace != nil'
+            from: attributes.k8s_namespace
+            to: resource["k8s.namespace.name"]
+          
+          - type: move
+            if: 'attributes.k8s_container_name != nil'
+            from: attributes.k8s_container_name
+            to: resource["k8s.container.name"]
+          
+          # Extract JFR event type
+          - type: move
+            if: 'attributes.eventType != nil'
+            from: attributes.eventType
+            to: attributes["jfr.event.type"]
+          
+          # Extract profile type (cpu, allocation, lock, gc)
+          - type: move
+            if: 'attributes.profileType != nil'
+            from: attributes.profileType
+            to: attributes["profile.type"]
+          
+          # Extract thread info
+          - type: move
+            if: 'attributes.threadName != nil'
+            from: attributes.threadName
+            to: attributes["thread.name"]
+          
+          - type: move
+            if: 'attributes.threadId != nil'
+            from: attributes.threadId
+            to: attributes["thread.id"]
+          
+          # Extract top function (hottest frame)
+          - type: move
+            if: 'attributes.topFunction != nil'
+            from: attributes.topFunction
+            to: attributes["profile.top_function"]
+          
+          - type: move
+            if: 'attributes.topClass != nil'
+            from: attributes.topClass
+            to: attributes["profile.top_class"]
+          
+          - type: move
+            if: 'attributes.topMethod != nil'
+            from: attributes.topMethod
+            to: attributes["profile.top_method"]
+          
+          # Stack trace kept in body for querying
+          - type: move
+            if: 'attributes.stackPath != nil'
+            from: attributes.stackPath
+            to: attributes["profile.stack_path"]
+          
+          # Sample weight (1 for CPU samples, bytes for allocation)
+          - type: move
+            if: 'attributes.sampleWeight != nil'
+            from: attributes.sampleWeight
+            to: attributes["profile.sample_weight"]
+          
+          # Duration for method profiling (if available)
+          - type: move
+            if: 'attributes.durationNs != nil'
+            from: attributes.durationNs
+            to: attributes["profile.duration_ns"]
+          
+          # Self time percentage (calculated by converter)
+          - type: move
+            if: 'attributes.selfTimePercent != nil'
+            from: attributes.selfTimePercent
+            to: attributes["profile.self_time_percent"]
+          
+          # Stack trace JSON (for flame graph construction)
+          - type: move
+            if: 'attributes.stackTrace != nil'
+            from: attributes.stackTrace
+            to: body
+
+      # Kubernetes cluster metrics via kubeletstats
+      kubeletstats:
+        collection_interval: 30s
+        auth_type: serviceAccount
+        endpoint: "https://${env:K8S_NODE_NAME}:10250"
+        insecure_skip_verify: true
+        metric_groups:
+          - node
+          - pod
+          - container
+
+      # Host metrics from each node
+      hostmetrics:
+        collection_interval: 30s
+        scrapers:
+          cpu:
+          memory:
+          disk:
+          filesystem:
+          network:
+          load:
+
+    connectors:
+      spanmetrics:
+        namespace: traces.span.metrics
+        resource_metrics_key_attributes:
+          - service.name
+          - telemetry.sdk.language
+          - telemetry.sdk.name
+        metrics_flush_interval: 15s
+
+      servicegraph:
+        store:
+          ttl: 60s
+          max_items: 1000000
+        metrics_flush_interval: 1s
+
+    processors:
+      batch:
+        send_batch_size: 1024
+        timeout: 2s
+
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 1024
+        spike_limit_mib: 512
+
+      resource:
+        attributes:
+          - key: service.namespace
+            action: upsert
+            value: openshift
+
+      # Kubernetes attributes processor to enrich telemetry
+      k8sattributes:
+        auth_type: serviceAccount
+        passthrough: false
+        filter:
+          node_from_env_var: K8S_NODE_NAME
+        extract:
+          metadata:
+            - k8s.pod.name
+            - k8s.pod.uid
+            - k8s.deployment.name
+            - k8s.namespace.name
+            - k8s.node.name
+            - k8s.pod.start_time
+          labels:
+            - tag_name: app.label.component
+              key: app.kubernetes.io/component
+              from: pod
+        pod_association:
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.ip
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.uid
+          - sources:
+              - from: connection
+
+      # Isolation Forest processor for anomaly detection
+      isolationforest:
+        forest_size: 150
+        subsample_size: 512
+        contamination_rate: 0.05
+        threshold: 0.0
+        mode: enrich
+        training_window: 15s
+        update_frequency: 30s
+        min_samples: 50
+        score_attribute: iforest_anomaly_score
+        classification_attribute: iforest_is_anomaly
+        features:
+          traces: [duration]
+          metrics: [value]
+          logs: [severity_number]
+        performance:
+          max_memory_mb: 512
+          batch_size: 100
+          parallel_workers: 8
+
+    exporters:
+      # VictoriaMetrics for metrics
+      prometheusremotewrite:
+        endpoint: ${env:VM_ENDPOINT}/api/v1/write
+        tls:
+          insecure: true
+
+      # VictoriaLogs for logs
+      otlphttp/logs:
+        logs_endpoint: ${env:VL_ENDPOINT}/insert/opentelemetry/v1/logs
+        tls:
+          insecure: true
+
+      # VictoriaTraces for traces
+      otlphttp/traces:
+        traces_endpoint: ${env:VT_ENDPOINT}/insert/opentelemetry/v1/traces
+        tls:
+          insecure: true
+
+      debug:
+        verbosity: basic
+
+    service:
+      extensions: [health_check]
+      telemetry:
+        logs:
+          level: info
+        metrics:
+          address: 0.0.0.0:8888
+
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, k8sattributes, resource, batch]
+          exporters: [otlphttp/traces]
+
+        traces/spanmetrics:
+          receivers: [otlp]
+          processors: [memory_limiter, resource]
+          exporters: [spanmetrics]
+
+        traces/servicegraph:
+          receivers: [otlp]
+          processors: [resource]
+          exporters: [servicegraph]
+
+        metrics:
+          receivers: [otlp, hostmetrics, kubeletstats]
+          processors: [memory_limiter, k8sattributes, resource, isolationforest, batch]
+          exporters: [prometheusremotewrite]
+
+        metrics/spanmetrics:
+          receivers: [spanmetrics]
+          processors: [memory_limiter, resource, isolationforest]
+          exporters: [prometheusremotewrite]
+
+        metrics/servicegraph:
+          receivers: [servicegraph]
+          processors: [isolationforest]
+          exporters: [prometheusremotewrite]
+
+        logs:
+          receivers: [otlp, filelog]
+          processors: [memory_limiter, k8sattributes, resource, batch]
+          exporters: [otlphttp/logs]
+
+        # JFR Profile logs pipeline
+        logs/profiles:
+          receivers: [filelog/jfr]
+          processors: [memory_limiter, k8sattributes, resource, batch]
+          exporters: [otlphttp/logs]

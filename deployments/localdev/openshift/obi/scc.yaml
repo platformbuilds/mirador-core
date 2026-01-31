@@ -1,0 +1,49 @@
+# OpenShift Security Context Constraints for the OTel eBPF Instrumentation Agent
+# This SCC allows the agent to run with privileged access for eBPF tracing
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: otel-ebpf-instrument-scc
+  labels:
+    app.kubernetes.io/name: otel-ebpf-instrument
+    app.kubernetes.io/component: instrumentation
+    app.kubernetes.io/part-of: mirador
+# eBPF instrumentation requires privileged access
+allowPrivilegedContainer: true
+allowPrivilegeEscalation: true
+# Required for eBPF to trace host processes
+allowHostPID: true
+allowHostIPC: false
+allowHostNetwork: true
+allowHostPorts: false
+allowHostDirVolumePlugin: true
+allowedCapabilities:
+  - SYS_ADMIN
+  - SYS_PTRACE
+  - SYS_RESOURCE
+  - NET_ADMIN
+  - NET_RAW
+  - PERFMON
+  - BPF
+defaultAddCapabilities: null
+requiredDropCapabilities: null
+fsGroup:
+  type: RunAsAny
+priority: null
+readOnlyRootFilesystem: false
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+supplementalGroups:
+  type: RunAsAny
+users:
+  - system:serviceaccount:mirador-observability:otel-ebpf-instrument
+volumes:
+  - configMap
+  - downwardAPI
+  - emptyDir
+  - hostPath
+  - persistentVolumeClaim
+  - projected
+  - secret

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mirador-observability
+  labels:
+    app.kubernetes.io/name: mirador-observability
+    app.kubernetes.io/part-of: mirador

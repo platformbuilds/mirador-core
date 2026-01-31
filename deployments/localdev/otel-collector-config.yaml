@@ -35,9 +35,6 @@ connectors:
 exporters:
   prometheusremotewrite:
     endpoint: http://victoriametrics:8428/api/v1/write
-
-  otlphttp/logs:
-    logs_endpoint: http://victoriologs:9428/insert/opentelemetry/v1/logs
   
   elasticsearch:
     endpoint: http://victorialogs:9428/insert/elasticsearch
@@ -139,4 +136,4 @@ service:
     logs:
       receivers: [otlp]
       processors: [memory_limiter, resource]
-      exporters: [otlphttp/logs, elasticsearch]
+      exporters: [elasticsearch]
