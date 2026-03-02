@@ -55,7 +55,7 @@ grep -q "type FailureComponent" internal/models/correlation_query.go && check "F
 echo ""
 echo "5️⃣  Running unit tests..."
 TEST_OUTPUT=$(go test -v ./internal/services -run "Failure|Grouping|Mapping" -timeout 30s 2>&1)
-echo "$TEST_OUTPUT" | grep -q "ok.*github.com/platformbuilds/mirador-core/internal/services" && check "All correlation engine tests pass"
+echo "$TEST_OUTPUT" | grep -q "ok.*github.com/mirastacklabs-ai/mirador-core/internal/services" && check "All correlation engine tests pass"
 
 # 6. Check documentation
 echo ""

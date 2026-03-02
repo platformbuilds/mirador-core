@@ -1,7 +1,7 @@
 project = 'MIRADOR-CORE'
-copyright_str = '2025, PlatformBuilds Global Private Limited'
-author = 'PlatformBuilds Team'
-release = '9.0.0'
+copyright_str = '2026, MIRASTACK LABS PRIVATE LIMITED'
+author = 'MIRASTACK Team'
+release = '10.0.0'
 
 # Set copyright using the string variable
 copyright = copyright_str

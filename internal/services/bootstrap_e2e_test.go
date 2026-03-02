@@ -21,7 +21,7 @@ func TestBootstrap_Validation_E2E(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Parse response and verify default tenant, user, roles
-	// Example: expect tenant 'PLATFORMBUILDS', user 'aarvee', roles ['global_admin', 'tenant_admin', 'tenant_editor', 'tenant_guest']
+	// Example: expect tenant 'MIRASTACKLABS', user 'aarvee', roles ['global_admin', 'tenant_admin', 'tenant_editor', 'tenant_guest']
 	// (Assume response is JSON with these fields)
 	// respBody, _ := io.ReadAll(resp.Body)
 	// var result struct {
@@ -30,7 +30,7 @@ func TestBootstrap_Validation_E2E(t *testing.T) {
 	//     Roles []string
 	// }
 	// json.Unmarshal(respBody, &result)
-	// assert.Equal(t, "PLATFORMBUILDS", result.Tenant)
+	// assert.Equal(t, "MIRASTACKLABS", result.Tenant)
 	// assert.Equal(t, "aarvee", result.User)
 	// assert.ElementsMatch(t, []string{"global_admin", "tenant_admin", "tenant_editor", "tenant_guest"}, result.Roles)
 

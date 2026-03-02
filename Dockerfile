@@ -33,7 +33,7 @@ ARG COMMIT_HASH
 ENV CGO_ENABLED=0
 RUN go build \
     -a -installsuffix cgo \
-    -ldflags="-w -s -X main.version=${VERSION} -X main.buildTime=${BUILD_TIME} -X main.commitHash=${COMMIT_HASH} -X github.com/platformbuilds/mirador-core/internal/version.Version=${VERSION} -X github.com/platformbuilds/mirador-core/internal/version.CommitHash=${COMMIT_HASH} -X github.com/platformbuilds/mirador-core/internal/version.BuildTime=${BUILD_TIME}" \
+    -ldflags="-w -s -X main.version=${VERSION} -X main.buildTime=${BUILD_TIME} -X main.commitHash=${COMMIT_HASH} -X github.com/mirastacklabs-ai/mirador-core/internal/version.Version=${VERSION} -X github.com/mirastacklabs-ai/mirador-core/internal/version.CommitHash=${COMMIT_HASH} -X github.com/mirastacklabs-ai/mirador-core/internal/version.BuildTime=${BUILD_TIME}" \
     -o mirador-core cmd/server/main.go
 
 # Final stage - lightweight runtime image based on Alpine so we can

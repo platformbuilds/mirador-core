@@ -20,7 +20,7 @@ COMMIT_HASH:=$(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 LDFLAGS=-w -s -X main.version=$(VERSION) -X main.buildTime=$(BUILD_TIME) -X main.commitHash=$(COMMIT_HASH)
 
 # Container image settings
-REGISTRY?=platformbuilds
+REGISTRY?=mirastacklabs-ai
 IMAGE_NAME?=$(BINARY_NAME)
 IMAGE=$(REGISTRY)/$(IMAGE_NAME)
 DOCKER_PLATFORMS?=linux/amd64,linux/arm64

@@ -28,7 +28,7 @@ if [ -n "$MC_TAG" ]; then
   cat > "$override_file" <<EOF
 services:
   mirador-core:
-    image: platformbuilds/mirador-core:${MC_TAG}
+    image: mirastacklabs-ai/mirador-core:${MC_TAG}
 EOF
   docker compose -f "$here/docker-compose.yaml" -f "$override_file" up -d
 else
