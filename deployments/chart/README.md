@@ -398,10 +398,10 @@ Build and push a multi-arch image from this repo using Docker Buildx:
 
 ```bash
 # Set registry/org and version as needed
-make dockerx-push REGISTRY=mirastacklabs-ai IMAGE_NAME=mirador-core VERSION=v2.1.3
+make dockerx-push REGISTRY=mirastacklabs-ai IMAGE_NAME=mirador-core VERSION=v10.0.0
 
 # Verify manifest includes both amd64 and arm64
-docker buildx imagetools inspect mirastacklabs-ai/mirador-core:v2.1.3
+docker buildx imagetools inspect mirastacklabs-ai/mirador-core:v10.0.0
 ```
 
 Then set the chart values to reference that tag:
@@ -409,6 +409,6 @@ Then set the chart values to reference that tag:
 ```yaml
 image:
   repository: mirastacklabs-ai/mirador-core
-  tag: v2.1.3 # multi-arch manifest
+  tag: v10.0.0 # multi-arch manifest
   pullPolicy: IfNotPresent
 ```

@@ -2,7 +2,7 @@ name: Documentation Build & Deploy
 
 on:
   push:
-    branches: [main, master, v9.0.0]
+    branches: [main, master, v10.0.0]
     paths:
       - 'docs/**'
       - 'README.md'
@@ -10,7 +10,7 @@ on:
       - 'api/swagger.yaml'
       - '.readthedocs.yaml'
   pull_request:
-    branches: [main, master, v9.0.0]
+    branches: [main, master, v10.0.0]
     paths:
       - 'docs/**'
       - 'README.md'
@@ -87,7 +87,7 @@ jobs:
           echo "- **Status**: ✅ Build successful" >> $GITHUB_STEP_SUMMARY
           echo "- **Python Version**: $(python --version)" >> $GITHUB_STEP_SUMMARY  
           echo "- **Sphinx Version**: $(python -m sphinx --version)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Project**: MIRADOR-CORE v9.0.0" >> $GITHUB_STEP_SUMMARY
+          echo "- **Project**: MIRADOR-CORE v10.0.0" >> $GITHUB_STEP_SUMMARY
           if [ -f docs/_build/html/index.html ]; then
             echo "- **Main Documentation**: Generated ✅" >> $GITHUB_STEP_SUMMARY
           fi
@@ -104,7 +104,7 @@ jobs:
     steps:
       - name: Trigger ReadTheDocs Build
         run: |
-          echo "🔔 Triggering ReadTheDocs build for MIRADOR-CORE v9.0.0"
+          echo "🔔 Triggering ReadTheDocs build for MIRADOR-CORE v10.0.0"
           
           # Method 1: Generic webhook (if configured)
           if [ -n "${{ secrets.RTD_WEBHOOK_URL }}" ] && [ -n "${{ secrets.RTD_TOKEN }}" ]; then
@@ -138,5 +138,5 @@ jobs:
           echo "## 📖 ReadTheDocs Integration Status" >> $GITHUB_STEP_SUMMARY
           echo "- **Trigger**: Documentation build trigger executed" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch**: main (latest)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Configuration**: .readthedocs.yaml updated to v9.0.0" >> $GITHUB_STEP_SUMMARY
+          echo "- **Configuration**: .readthedocs.yaml updated to v10.0.0" >> $GITHUB_STEP_SUMMARY
           echo "- **Next Steps**: Check ReadTheDocs dashboard for build status" >> $GITHUB_STEP_SUMMARY

@@ -126,9 +126,9 @@ docker compose -f docker-compose.yaml down
 ### Multi-Arch Build Notes (Docker Desktop / Rancher Desktop)
 - Loading a single multi-arch image into the local Docker daemon is not supported (`--load` cannot import manifest lists).
 - To test locally:
-  - Build per-arch images and load: `make dockerx-build-local-multi VERSION=v2.1.3` → tags `...:v2.1.3-amd64` and `...:v2.1.3-arm64`.
-  - Or publish a real multi-arch tag to a registry: `make dockerx-push VERSION=v2.1.3` and use that tag in compose/Helm.
-  - Or export an OCI archive without pushing: `make dockerx-build VERSION=v2.1.3` → `build/mirador-core-v2.1.3.oci`.
+  - Build per-arch images and load: `make dockerx-build-local-multi VERSION=v10.0.0` → tags `...:v10.0.0-amd64` and `...:v10.0.0-arm64`.
+  - Or publish a real multi-arch tag to a registry: `make dockerx-push VERSION=v10.0.0` and use that tag in compose/Helm.
+  - Or export an OCI archive without pushing: `make dockerx-build VERSION=v10.0.0` → `build/mirador-core-v10.0.0.oci`.
 
   ## Weaviate vectorizer (text2vec-transformers)
 
