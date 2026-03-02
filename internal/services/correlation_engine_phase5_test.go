@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

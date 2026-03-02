@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // noopValkeyCache provides an in-memory, process-local fallback that satisfies

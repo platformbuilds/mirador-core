@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/cache"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // RuntimeFeatureFlags represents the runtime-togglable feature flags

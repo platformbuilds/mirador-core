@@ -112,7 +112,7 @@ The local development stack provides:
 
 ```bash
 # Add the MIRADOR Helm repository
-helm repo add mirador https://platformbuilds.github.io/mirador-core
+helm repo add mirador https://mirastacklabs-ai.github.io/mirador-core
 helm repo update
 
 # Install with production configuration
@@ -139,7 +139,7 @@ docker run -d \
   -e VM_ENDPOINTS="vm-cluster:8481" \
   -e VL_ENDPOINTS="vl-cluster:9428" \
   -e VT_ENDPOINTS="vt-cluster:10428" \
-  platformbuilds/mirador-core:v9.0.0
+  mirastacklabs-ai/mirador-core:v9.0.0
 ```
 
 ## Configuration

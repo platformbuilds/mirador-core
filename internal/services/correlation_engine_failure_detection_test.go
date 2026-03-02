@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/config"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 type mockMetricsService struct {

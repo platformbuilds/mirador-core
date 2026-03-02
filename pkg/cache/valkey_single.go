@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/monitoring"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/monitoring"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 	valkey "github.com/valkey-io/valkey-go"
 	"github.com/valkey-io/valkey-go/valkeycompat"
 )

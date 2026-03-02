@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 func TestNoopValkey_BasicOps(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // TestUQLQueryErrorHandling tests comprehensive error handling for UQL queries

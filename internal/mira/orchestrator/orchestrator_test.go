@@ -3,7 +3,7 @@ package orchestrator
 import (
 	"testing"
 
-	"github.com/platformbuilds/mirador-core/internal/mira/intent"
+	"github.com/mirastacklabs-ai/mirador-core/internal/mira/intent"
 )
 
 func TestOrchestrator_HandleIntent_Health(t *testing.T) {

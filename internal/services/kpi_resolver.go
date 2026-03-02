@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/platformbuilds/mirador-core/internal/logging"
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/internal/rca"
-	"github.com/platformbuilds/mirador-core/internal/repo"
-	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/logging"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/rca"
+	"github.com/mirastacklabs-ai/mirador-core/internal/repo"
+	corelogger "github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // KPIResolver resolves KPI definitions and maps them into RCA signal representations.

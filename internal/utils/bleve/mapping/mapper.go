@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // DocumentMapper defines the interface for mapping Mirador data models to indexable documents

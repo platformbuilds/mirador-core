@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
 
-	"github.com/platformbuilds/mirador-core/internal/version"
+	"github.com/mirastacklabs-ai/mirador-core/internal/version"
 )
 
 // resolveOpenAPIPath returns a readable path to openapi.yaml by checking common

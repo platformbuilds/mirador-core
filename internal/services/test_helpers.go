@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
 )
 
 // IntegrationTestFramework provides a comprehensive testing framework for unified query engine

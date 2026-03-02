@@ -10,9 +10,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 
-	"github.com/platformbuilds/mirador-core/internal/logging"
-	"github.com/platformbuilds/mirador-core/internal/models"
-	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/logging"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	corelogger "github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 type WebSocketHandler struct {

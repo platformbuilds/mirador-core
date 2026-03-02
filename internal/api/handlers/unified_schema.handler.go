@@ -8,11 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gofrs/uuid/v5"
 
-	models "github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/internal/repo"
-	"github.com/platformbuilds/mirador-core/internal/services"
-	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	models "github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/repo"
+	"github.com/mirastacklabs-ai/mirador-core/internal/services"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/cache"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // UnifiedSchemaHandler provides a unified API for all schema types and KPIs.

@@ -8,10 +8,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	miraintent "github.com/platformbuilds/mirador-core/internal/mira/intent"
-	miraorch "github.com/platformbuilds/mirador-core/internal/mira/orchestrator"
-	mirasess "github.com/platformbuilds/mirador-core/internal/mira/session"
-	mirasum "github.com/platformbuilds/mirador-core/internal/mira/summariser"
+	miraintent "github.com/mirastacklabs-ai/mirador-core/internal/mira/intent"
+	miraorch "github.com/mirastacklabs-ai/mirador-core/internal/mira/orchestrator"
+	mirasess "github.com/mirastacklabs-ai/mirador-core/internal/mira/session"
+	mirasum "github.com/mirastacklabs-ai/mirador-core/internal/mira/summariser"
 )
 
 // MiraRequest shapes the incoming JSON

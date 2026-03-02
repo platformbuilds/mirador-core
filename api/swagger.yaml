@@ -1,6 +1,6 @@
 basePath: /api/v1
 definitions:
-  github_com_platformbuilds_mirador-core_internal_models.EvidenceRefDTO:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.EvidenceRefDTO:
     properties:
       details:
         type: string
@@ -9,7 +9,7 @@ definitions:
       type:
         type: string
     type: object
-  github_com_platformbuilds_mirador-core_internal_models.IncidentContextDTO:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.IncidentContextDTO:
     properties:
       id:
         type: string
@@ -34,7 +34,7 @@ definitions:
       timeStart:
         type: string
     type: object
-  github_com_platformbuilds_mirador-core_internal_models.KPIDefinition:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.KPIDefinition:
     properties:
       aggregationWindowHint:
         description: AggregationWindowHint suggests a preferred aggregation window
@@ -149,7 +149,7 @@ definitions:
       thresholds:
         description: JSON thresholds array
         items:
-          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.Threshold'
+          $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.Threshold'
         type: array
       unit:
         type: string
@@ -159,23 +159,23 @@ definitions:
         description: '"private", "team", "org"'
         type: string
     type: object
-  github_com_platformbuilds_mirador-core_internal_models.KPIDefinitionRequest:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.KPIDefinitionRequest:
     properties:
       kpiDefinition:
-        $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIDefinition'
+        $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.KPIDefinition'
     type: object
-  github_com_platformbuilds_mirador-core_internal_models.KPIListResponse:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.KPIListResponse:
     properties:
       kpiDefinitions:
         items:
-          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIDefinition'
+          $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.KPIDefinition'
         type: array
       nextOffset:
         type: integer
       total:
         type: integer
     type: object
-  github_com_platformbuilds_mirador-core_internal_models.RCAChainDTO:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.RCAChainDTO:
     properties:
       durationHops:
         description: DurationHops number of steps
@@ -194,10 +194,10 @@ definitions:
       steps:
         description: Steps in the chain from impact to root cause
         items:
-          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAStepDTO'
+          $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.RCAStepDTO'
         type: array
     type: object
-  github_com_platformbuilds_mirador-core_internal_models.RCADiagnosticsDTO:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.RCADiagnosticsDTO:
     properties:
       dimensionDetectionStatus:
         additionalProperties:
@@ -227,16 +227,16 @@ definitions:
           type: string
         type: array
     type: object
-  github_com_platformbuilds_mirador-core_internal_models.RCAIncidentDTO:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.RCAIncidentDTO:
     properties:
       chains:
         description: Chains are all candidate RCA chains
         items:
-          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAChainDTO'
+          $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.RCAChainDTO'
         type: array
       diagnostics:
         allOf:
-        - $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCADiagnosticsDTO'
+        - $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.RCADiagnosticsDTO'
         description: Diagnostics contains warnings about missing labels, dimension
           detection, IsolationForest tuning, etc.
       generatedAt:
@@ -244,7 +244,7 @@ definitions:
         type: string
       impact:
         allOf:
-        - $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.IncidentContextDTO'
+        - $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.IncidentContextDTO'
         description: Impact is the incident context
       notes:
         description: Notes are optional observations
@@ -253,23 +253,23 @@ definitions:
         type: array
       rootCause:
         allOf:
-        - $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAStepDTO'
+        - $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.RCAStepDTO'
         description: RootCause is the selected root cause step
       score:
         description: Score is the overall confidence (0..1)
         type: number
       timeRings:
         allOf:
-        - $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.TimeRingsDTO'
+        - $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRingsDTO'
         description: |-
           TimeRings describes the time ring definitions and per-chain computed ranges
           relative to the incident peak time. This is optional and may be empty.
     type: object
-  github_com_platformbuilds_mirador-core_internal_models.RCAResponse:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.RCAResponse:
     properties:
       data:
         allOf:
-        - $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAIncidentDTO'
+        - $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.RCAIncidentDTO'
         description: Data contains the RCAIncidentDTO if successful
       error:
         description: Error message if status is "error"
@@ -281,7 +281,7 @@ definitions:
         description: Timestamp when the response was generated
         type: string
     type: object
-  github_com_platformbuilds_mirador-core_internal_models.RCAStepDTO:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.RCAStepDTO:
     properties:
       component:
         description: Component name (resolved from KPI if applicable, otherwise component
@@ -300,7 +300,7 @@ definitions:
       evidence:
         description: Evidence references
         items:
-          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.EvidenceRefDTO'
+          $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.EvidenceRefDTO'
         type: array
       kpiFormula:
         description: KPIFormula is the query formula of the KPI if Service/Component
@@ -337,7 +337,7 @@ definitions:
         description: Why index in the chain (1 = most user-facing)
         type: integer
     type: object
-  github_com_platformbuilds_mirador-core_internal_models.Threshold:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.Threshold:
     properties:
       color:
         description: Display color
@@ -355,14 +355,14 @@ definitions:
         description: Threshold value
         type: number
     type: object
-  github_com_platformbuilds_mirador-core_internal_models.TimeRangeDTO:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRangeDTO:
     properties:
       endTime:
         type: string
       startTime:
         type: string
     type: object
-  github_com_platformbuilds_mirador-core_internal_models.TimeRingDefinitionDTO:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRingDefinitionDTO:
     properties:
       description:
         type: string
@@ -371,18 +371,18 @@ definitions:
       label:
         type: string
     type: object
-  github_com_platformbuilds_mirador-core_internal_models.TimeRingsDTO:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRingsDTO:
     properties:
       definitions:
         additionalProperties:
-          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.TimeRingDefinitionDTO'
+          $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRingDefinitionDTO'
         type: object
       perChain:
         items:
-          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.TimeRingsPerChainDTO'
+          $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRingsPerChainDTO'
         type: array
     type: object
-  github_com_platformbuilds_mirador-core_internal_models.TimeRingsPerChainDTO:
+  github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRingsPerChainDTO:
     properties:
       chainRank:
         type: integer
@@ -390,7 +390,7 @@ definitions:
         type: string
       rings:
         additionalProperties:
-          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.TimeRangeDTO'
+          $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRangeDTO'
         type: object
       windowEnd:
         type: string
@@ -400,7 +400,7 @@ definitions:
   internal_api_handlers.MIRARCARequest:
     properties:
       rcaData:
-        $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAResponse'
+        $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.RCAResponse'
     required:
     - rcaData
     type: object
@@ -410,9 +410,9 @@ externalDocs:
 host: localhost:8010
 info:
   contact:
-    email: support@platformbuilds.org
+    email: support@mirastacklabs-ai.org
     name: Platform Builds Team
-    url: https://github.com/platformbuilds/mirador-core
+    url: https://github.com/mirastacklabs-ai/mirador-core
   description: Mirador Core is a comprehensive observability and analytics platform
     that provides KPI definitions and unified queries for monitoring and analyzing
     system metrics.
@@ -454,7 +454,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIListResponse'
+            $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.KPIListResponse'
         "400":
           description: 'error: invalid query parameters'
           schema:
@@ -481,7 +481,7 @@ paths:
         name: kpi
         required: true
         schema:
-          $ref: '#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIDefinitionRequest'
+          $ref: '#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.KPIDefinitionRequest'
       produces:
       - application/json
       responses:

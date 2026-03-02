@@ -3,8 +3,8 @@ package rca
 import (
 	"fmt"
 
-	"github.com/platformbuilds/mirador-core/internal/logging"
-	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/logging"
+	corelogger "github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // DimensionAlignmentScorer computes alignment scores for candidates based on extra dimensions.

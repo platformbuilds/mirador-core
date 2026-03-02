@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/logging"
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/internal/rca"
-	"github.com/platformbuilds/mirador-core/internal/services"
+	"github.com/mirastacklabs-ai/mirador-core/internal/logging"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/rca"
+	"github.com/mirastacklabs-ai/mirador-core/internal/services"
 )
 
 // correlationAnomalyProvider adapts services.CorrelationEngine to the

@@ -1,7 +1,7 @@
 package logging
 
 import (
-	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
+	corelogger "github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 
 	"go.uber.org/zap"
 )

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/platformbuilds/mirador-core/internal/logging"
-	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/logging"
+	corelogger "github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // CandidateCauseOptions configures the candidate cause computation.

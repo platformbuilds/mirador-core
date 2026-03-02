@@ -8,7 +8,7 @@ import (
 	wv "github.com/weaviate/weaviate-go-client/v5/weaviate"
 	"go.uber.org/zap"
 
-	"github.com/platformbuilds/mirador-core/internal/mira/session"
+	"github.com/mirastacklabs-ai/mirador-core/internal/mira/session"
 )
 
 var (

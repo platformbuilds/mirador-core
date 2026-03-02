@@ -14,14 +14,14 @@ import (
 	"github.com/gofrs/uuid/v5"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/logging"
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/internal/monitoring"
-	"github.com/platformbuilds/mirador-core/internal/repo"
-	"github.com/platformbuilds/mirador-core/internal/tracing"
-	"github.com/platformbuilds/mirador-core/pkg/cache"
-	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/config"
+	"github.com/mirastacklabs-ai/mirador-core/internal/logging"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/monitoring"
+	"github.com/mirastacklabs-ai/mirador-core/internal/repo"
+	"github.com/mirastacklabs-ai/mirador-core/internal/tracing"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/cache"
+	corelogger "github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // containsString helper for slice membership checks

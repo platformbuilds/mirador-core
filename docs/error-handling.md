@@ -35,7 +35,7 @@ All errors in MIRADOR-CORE are categorized using the `Category` type. Each categ
 Use the provided constructor functions for type-safe error creation:
 
 ```go
-import "github.com/platformbuilds/mirador-core/pkg/errors"
+import "github.com/mirastacklabs-ai/mirador-core/pkg/errors"
 
 // Validation errors
 err := errors.InvalidField("startTime", "must be before endTime")
@@ -91,7 +91,7 @@ The `pkg/errors` package provides Gin-specific helpers:
 ```go
 import (
     "github.com/gin-gonic/gin"
-    "github.com/platformbuilds/mirador-core/pkg/errors"
+    "github.com/mirastacklabs-ai/mirador-core/pkg/errors"
 )
 
 func GetKPI(c *gin.Context) {
@@ -207,7 +207,7 @@ Use standard Go error handling with `errors.Is` and `errors.As`:
 ```go
 import (
     "errors"
-    apperrs "github.com/platformbuilds/mirador-core/pkg/errors"
+    apperrs "github.com/mirastacklabs-ai/mirador-core/pkg/errors"
 )
 
 // Check error type

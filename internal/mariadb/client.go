@@ -14,7 +14,7 @@ import (
 	_ "github.com/go-sql-driver/mysql" // MySQL/MariaDB driver
 	"go.uber.org/zap"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/mirastacklabs-ai/mirador-core/internal/config"
 )
 
 // Static errors for err113 compliance

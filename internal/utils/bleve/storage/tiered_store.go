@@ -9,8 +9,8 @@ import (
 
 	store "github.com/blevesearch/upsidedown_store_api"
 
-	"github.com/platformbuilds/mirador-core/internal/monitoring"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/monitoring"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // TieredStore implements a two-tiered storage strategy:

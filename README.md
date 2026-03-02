@@ -2,10 +2,10 @@
 
 **Advanced Observability Platform Backend** - Unified REST API Service for Metrics, Logs, and Traces
 
-[![Version](https://img.shields.io/badge/version-v9.0.0-blue.svg)](https://github.com/platformbuilds/mirador-core/releases/tag/v9.0.0)
+[![Version](https://img.shields.io/badge/version-v9.0.0-blue.svg)](https://github.com/mirastacklabs-ai/mirador-core/releases/tag/v9.0.0)
 [![Go Version](https://img.shields.io/badge/go-1.24+-00ADD8.svg)](https://golang.org)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
-[![GitHub CI](https://github.com/platformbuilds/mirador-core/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/platformbuilds/mirador-core/actions/workflows/ci.yml)
+[![GitHub CI](https://github.com/mirastacklabs-ai/mirador-core/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mirastacklabs-ai/mirador-core/actions/workflows/ci.yml)
 [![Documentation](https://img.shields.io/badge/docs-readthedocs-blue.svg)](https://mirador-core.readthedocs.io/)
 
 ## Overview
@@ -154,7 +154,7 @@ mirador-core/
 1. **Start Development Environment**
 ```bash
 # Clone and start all services
-git clone https://github.com/platformbuilds/mirador-core
+git clone https://github.com/mirastacklabs-ai/mirador-core
 cd mirador-core
 
 # Start the local development stack
@@ -244,7 +244,7 @@ make build
 
 # Or with Docker
 make docker-build
-docker run -p 8010:8010 platformbuilds/mirador-core:latest
+docker run -p 8010:8010 mirastacklabs-ai/mirador-core:latest
 ```
 
 ## Configuration
@@ -402,7 +402,7 @@ Apache License 2.0 - See [LICENSE](LICENSE) for details.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/platformbuilds/mirador-core/issues)
+- **Issues**: [GitHub Issues](https://github.com/mirastacklabs-ai/mirador-core/issues)
 - **Documentation**: [ReadTheDocs](https://mirador-core.readthedocs.io/)
 - **API Reference**: [Swagger UI](http://localhost:8010/swagger/)
 

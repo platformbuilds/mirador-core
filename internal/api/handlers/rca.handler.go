@@ -13,14 +13,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/logging"
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/internal/rca"
-	"github.com/platformbuilds/mirador-core/internal/repo"
-	"github.com/platformbuilds/mirador-core/internal/services"
-	"github.com/platformbuilds/mirador-core/pkg/cache"
-	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/config"
+	"github.com/mirastacklabs-ai/mirador-core/internal/logging"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/rca"
+	"github.com/mirastacklabs-ai/mirador-core/internal/repo"
+	"github.com/mirastacklabs-ai/mirador-core/internal/services"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/cache"
+	corelogger "github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // RCAHandler handles RCA HTTP endpoints.

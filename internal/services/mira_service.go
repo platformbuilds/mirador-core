@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/logging"
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/cache"
+	"github.com/mirastacklabs-ai/mirador-core/internal/config"
+	"github.com/mirastacklabs-ai/mirador-core/internal/logging"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/cache"
 )
 
 // MIRAService defines the interface for MIRA-powered RCA explanation generation.

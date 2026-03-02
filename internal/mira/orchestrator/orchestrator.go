@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/mira/intent"
+	"github.com/mirastacklabs-ai/mirador-core/internal/mira/intent"
 )
 
 const (

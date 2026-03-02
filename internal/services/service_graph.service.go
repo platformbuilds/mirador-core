@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/logging"
-	"github.com/platformbuilds/mirador-core/internal/models"
-	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/logging"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	corelogger "github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 type metricsQuerier interface {

@@ -123,7 +123,7 @@ Update your Mirador Core client or SDK:
 
 ```bash
 # Go
-go get github.com/platformbuilds/mirador-core-go-client
+go get github.com/mirastacklabs-ai/mirador-core-go-client
 
 # Python
 pip install mirador-core-client
@@ -807,7 +807,7 @@ curl https://mirador-core/api/v1/unified/metadata
 
 - **Documentation**: https://miradorstack.readthedocs.io/
 - **API Reference**: [OpenAPI Specification](../api/openapi.yaml)
-- **Community**: https://github.com/platformbuilds/mirador-core/discussions
+- **Community**: https://github.com/mirastacklabs-ai/mirador-core/discussions
 - **Support**: Open an issue on GitHub
 
 ## Weaviate KPI Management

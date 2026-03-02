@@ -1,4 +1,4 @@
-module github.com/platformbuilds/mirador-core
+module github.com/mirastacklabs-ai/mirador-core
 
 go 1.24.10
 

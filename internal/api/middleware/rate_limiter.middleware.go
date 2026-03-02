@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/platformbuilds/mirador-core/pkg/cache"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/cache"
 )
 
 // RateLimiter implements rate limiting using Valkey cluster

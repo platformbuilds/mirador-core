@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
 )
 
 // QueryObjectPool provides object pooling for frequently allocated query structures

@@ -8,11 +8,11 @@ import (
 
 	"github.com/blevesearch/bleve/v2"
 
-	"github.com/platformbuilds/mirador-core/internal/logging"
-	"github.com/platformbuilds/mirador-core/internal/models"
-	bleveUtils "github.com/platformbuilds/mirador-core/internal/utils/bleve"
-	"github.com/platformbuilds/mirador-core/internal/utils/bleve/mapping"
-	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/logging"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	bleveUtils "github.com/mirastacklabs-ai/mirador-core/internal/utils/bleve"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils/bleve/mapping"
+	corelogger "github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // MetricsMetadataIndexer provides functionality to index metrics metadata in Bleve

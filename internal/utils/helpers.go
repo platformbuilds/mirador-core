@@ -10,7 +10,7 @@ import (
 
 	"github.com/gofrs/uuid/v5"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
 )
 
 // GenerateSessionID creates a secure session identifier

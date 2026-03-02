@@ -99,7 +99,7 @@ Each component builds upon the previous:
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/platformbuilds/mirador-core
+git clone https://github.com/mirastacklabs-ai/mirador-core
 cd mirador-core
 
 # 2. Start all services
@@ -2045,7 +2045,7 @@ curl http://localhost:8010/metrics | grep mirador
 ```
 
 **Support:**
-- GitHub Issues: https://github.com/platformbuilds/mirador-core/issues
+- GitHub Issues: https://github.com/mirastacklabs-ai/mirador-core/issues
 - Documentation: http://localhost:8010/swagger/index.html
 
 ---

@@ -12,12 +12,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/platformbuilds/mirador-core/internal/logging"
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/internal/services"
-	"github.com/platformbuilds/mirador-core/internal/utils"
-	lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
-	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/logging"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/services"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils"
+	lq "github.com/mirastacklabs-ai/mirador-core/internal/utils/lucene"
+	corelogger "github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // LogsHandler provides D3-friendly APIs (histogram, facets, search, tail)

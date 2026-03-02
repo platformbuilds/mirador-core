@@ -69,10 +69,10 @@ The main CI pipeline includes documentation validation:
 1. Go to [ReadTheDocs](https://readthedocs.org/)
 2. Sign in with GitHub
 3. Click "Import a Project"
-4. Connect repository: `platformbuilds/mirador-core`
+4. Connect repository: `mirastacklabs-ai/mirador-core`
 5. Configure:
    - **Name**: Mirador Core
-   - **Repository**: `https://github.com/platformbuilds/mirador-core`
+   - **Repository**: `https://github.com/mirastacklabs-ai/mirador-core`
    - **Default Branch**: `v9.0.0`
    - **Python Version**: 3.11
    - **Requirements File**: `docs/requirements.txt`

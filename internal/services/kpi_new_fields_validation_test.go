@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
 )
 
 // TestValidateKPIDefinition_DataType tests DataType field validation (P3-T1-S1)

@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/platformbuilds/mirador-core/internal/utils/bleve/mapping"
-	"github.com/platformbuilds/mirador-core/internal/utils/bleve/storage"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils/bleve/mapping"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils/bleve/storage"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 func setupTestShardManager(t *testing.T, numShards int) (*ShardManager, func()) {

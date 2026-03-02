@@ -158,7 +158,7 @@ All integration tests compile successfully:
 
 ```bash
 $ go test -c ./internal/api/...
-?   github.com/platformbuilds/mirador-core/internal/api/websocket [no test files]
+?   github.com/mirastacklabs-ai/mirador-core/internal/api/websocket [no test files]
 # Success - all test packages compile
 ```
 

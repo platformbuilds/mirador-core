@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/logging"
-	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/logging"
+	corelogger "github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // AnomalyEventConfig holds configuration for anomaly event mapping.

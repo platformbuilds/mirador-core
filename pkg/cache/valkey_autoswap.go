@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // autoSwapCache wraps a ValkeyCluster implementation and can swap from a

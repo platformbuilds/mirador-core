@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/monitoring"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/monitoring"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // ClusterCoordinator manages coordination between distributed Bleve nodes

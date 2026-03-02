@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/config"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
 )
 
 // FieldError represents a single validation problem for a field

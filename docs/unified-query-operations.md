@@ -874,7 +874,7 @@ Perform zero-downtime updates:
 # Update to new version
 kubectl set image deployment/mirador-core \
   -n mirador-system \
-  mirador-core=platformbuilds/mirador-core
+  mirador-core=mirastacklabs-ai/mirador-core
 
 # Monitor rollout
 kubectl rollout status deployment/mirador-core -n mirador-system
@@ -962,7 +962,7 @@ Regular security scans:
 
 ```bash
 # Scan container images
-trivy image platformbuilds/mirador-core
+trivy image mirastacklabs-ai/mirador-core
 
 # Scan Kubernetes manifests
 kubectl scan deployment/mirador-core -n mirador-system
@@ -987,5 +987,5 @@ This operations guide provides the foundation for running a production-ready uni
 
 For additional support:
 - **Documentation**: https://miradorstack.readthedocs.io/
-- **Community**: https://github.com/platformbuilds/mirador-core/discussions
+- **Community**: https://github.com/mirastacklabs-ai/mirador-core/discussions
 - **Professional Services**: Contact the Mirador team for enterprise support

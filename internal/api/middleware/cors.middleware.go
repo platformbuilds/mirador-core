@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/mirastacklabs-ai/mirador-core/internal/config"
 )
 
 // CORSMiddleware handles Cross-Origin Resource Sharing for MIRADOR-UI communication

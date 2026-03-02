@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // UQLTranslator translates UQL queries to engine-specific query languages

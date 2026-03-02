@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
 )
 
 // kpiToSchemaDefinition converts a KPIDefinition into a SchemaDefinition.

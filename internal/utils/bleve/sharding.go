@@ -12,10 +12,10 @@ import (
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/search"
 
-	"github.com/platformbuilds/mirador-core/internal/monitoring"
-	"github.com/platformbuilds/mirador-core/internal/utils/bleve/mapping"
-	"github.com/platformbuilds/mirador-core/internal/utils/bleve/storage"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/monitoring"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils/bleve/mapping"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils/bleve/storage"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // ShardManager manages a collection of Bleve indexes distributed across shards

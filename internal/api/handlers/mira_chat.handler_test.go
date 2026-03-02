@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	miraorch "github.com/platformbuilds/mirador-core/internal/mira/orchestrator"
-	mirasess "github.com/platformbuilds/mirador-core/internal/mira/session"
+	miraorch "github.com/mirastacklabs-ai/mirador-core/internal/mira/orchestrator"
+	mirasess "github.com/mirastacklabs-ai/mirador-core/internal/mira/session"
 )
 
 func TestMiraAskHandler_NonStream(t *testing.T) {

@@ -5,11 +5,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/mariadb"
-	"github.com/platformbuilds/mirador-core/internal/services"
-	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/config"
+	"github.com/mirastacklabs-ai/mirador-core/internal/mariadb"
+	"github.com/mirastacklabs-ai/mirador-core/internal/services"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/cache"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // Covers auth-off branch and openapi.json route

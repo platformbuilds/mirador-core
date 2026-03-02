@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 
-	"github.com/platformbuilds/mirador-core/internal/rca"
+	"github.com/mirastacklabs-ai/mirador-core/internal/rca"
 )
 
 // RCAEngine is the interface for root cause analysis computation.

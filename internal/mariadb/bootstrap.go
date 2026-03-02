@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/mirastacklabs-ai/mirador-core/internal/config"
 )
 
 // BootstrapConfig controls the bootstrapping behavior.

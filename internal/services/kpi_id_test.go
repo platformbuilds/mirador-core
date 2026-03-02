@@ -3,7 +3,7 @@ package services
 import (
 	"testing"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
 )
 
 func TestGenerateDeterministicKPIID_SameSourceSourceID(t *testing.T) {

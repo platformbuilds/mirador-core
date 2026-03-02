@@ -68,9 +68,9 @@ linters:
       rules:
         Main:
           deny:
-            - pkg: "github.com/platformbuilds/mirador-core/pkg/logger"
+            - pkg: "github.com/mirastacklabs-ai/mirador-core/pkg/logger"
               desc: "Logger should not be imported from pkg; use internal/logging instead"
-            - pkg: "github.com/platformbuilds/mirador-core/internal/models"
+            - pkg: "github.com/mirastacklabs-ai/mirador-core/internal/models"
               desc: "Models should not be imported directly in certain packages"
     govet:
       enable:
@@ -444,7 +444,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/platformbuilds/mirador-core
+        - github.com/mirastacklabs-ai/mirador-core
   exclusions:
     generated: lax
     paths:

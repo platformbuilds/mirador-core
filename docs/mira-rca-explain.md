@@ -680,6 +680,6 @@ promptTemplate: |
 ## Support & Feedback
 
 For issues or questions:
-- GitHub Issues: [platformbuilds/mirador-core/issues](https://github.com/platformbuilds/mirador-core/issues)
-- Email: support@platformbuilds.org
+- GitHub Issues: [mirastacklabs-ai/mirador-core/issues](https://github.com/mirastacklabs-ai/mirador-core/issues)
+- Email: support@mirastacklabs-ai.org
 - Documentation: [mirador-core.readthedocs.io](https://mirador-core.readthedocs.io)

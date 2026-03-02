@@ -6,7 +6,7 @@ import (
 
 	"github.com/gofrs/uuid/v5"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
 )
 
 // KPIIDNamespace is the constant namespace UUID used to generate deterministic KPI IDs.

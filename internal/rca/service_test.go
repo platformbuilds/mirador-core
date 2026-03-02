@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // TestCandidateCauseService_Integration tests end-to-end flow.

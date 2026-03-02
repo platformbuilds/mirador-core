@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/internal/repo"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/repo"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // DataSeeder handles seeding default data into Weaviate

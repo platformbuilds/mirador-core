@@ -12,14 +12,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/api"
-	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/logging"
-	"github.com/platformbuilds/mirador-core/internal/mariadb"
-	"github.com/platformbuilds/mirador-core/internal/repo"
-	"github.com/platformbuilds/mirador-core/internal/services"
-	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/api"
+	"github.com/mirastacklabs-ai/mirador-core/internal/config"
+	"github.com/mirastacklabs-ai/mirador-core/internal/logging"
+	"github.com/mirastacklabs-ai/mirador-core/internal/mariadb"
+	"github.com/mirastacklabs-ai/mirador-core/internal/repo"
+	"github.com/mirastacklabs-ai/mirador-core/internal/services"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/cache"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // @title Mirador Core API
@@ -28,8 +28,8 @@ import (
 // @termsOfService http://swagger.io/terms/
 
 // @contact.name Platform Builds Team
-// @contact.url https://github.com/platformbuilds/mirador-core
-// @contact.email support@platformbuilds.org
+// @contact.url https://github.com/mirastacklabs-ai/mirador-core
+// @contact.email support@mirastacklabs-ai.org
 
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html

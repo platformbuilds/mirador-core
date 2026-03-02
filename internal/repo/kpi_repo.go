@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/internal/monitoring"
-	"github.com/platformbuilds/mirador-core/internal/utils/bleve"
-	"github.com/platformbuilds/mirador-core/internal/weavstore"
-	"github.com/platformbuilds/mirador-core/pkg/cache"
+	"github.com/mirastacklabs-ai/mirador-core/internal/config"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/monitoring"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils/bleve"
+	"github.com/mirastacklabs-ai/mirador-core/internal/weavstore"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/cache"
 
 	"go.uber.org/zap"
 )

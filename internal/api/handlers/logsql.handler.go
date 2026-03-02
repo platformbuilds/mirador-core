@@ -11,16 +11,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/metrics"
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/internal/monitoring"
-	"github.com/platformbuilds/mirador-core/internal/services"
-	"github.com/platformbuilds/mirador-core/internal/utils"
-	lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
-	"github.com/platformbuilds/mirador-core/internal/utils/search"
-	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/config"
+	"github.com/mirastacklabs-ai/mirador-core/internal/metrics"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/monitoring"
+	"github.com/mirastacklabs-ai/mirador-core/internal/services"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils"
+	lq "github.com/mirastacklabs-ai/mirador-core/internal/utils/lucene"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils/search"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/cache"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 type LogsQLHandler struct {

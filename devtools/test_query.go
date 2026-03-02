@@ -5,7 +5,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/platformbuilds/mirador-core/internal/utils"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils"
 )
 
 func main() {

@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/platformbuilds/mirador-core/internal/utils/bleve"
-	"github.com/platformbuilds/mirador-core/internal/weavstore"
-	"github.com/platformbuilds/mirador-core/pkg/cache"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils/bleve"
+	"github.com/mirastacklabs-ai/mirador-core/internal/weavstore"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/cache"
 )
 
 // Minimal mocks to exercise behavior of DeleteKPI paths in unit tests.

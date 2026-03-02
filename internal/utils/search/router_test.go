@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/cache"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 func TestSearchRouter_RunABTest(t *testing.T) {

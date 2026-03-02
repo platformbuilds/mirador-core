@@ -12,9 +12,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/internal/utils"
-	lq "github.com/platformbuilds/mirador-core/internal/utils/lucene"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils"
+	lq "github.com/mirastacklabs-ai/mirador-core/internal/utils/lucene"
 )
 
 // GET /api/v1/logs/tail (upgrades to WS)

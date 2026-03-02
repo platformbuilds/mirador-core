@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/mirastacklabs-ai/mirador-core/internal/config"
 )
 
 func TestNewBootstrap(t *testing.T) {

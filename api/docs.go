@@ -12,8 +12,8 @@ const docTemplate = `{
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "Platform Builds Team",
-            "url": "https://github.com/platformbuilds/mirador-core",
-            "email": "support@platformbuilds.org"
+            "url": "https://github.com/mirastacklabs-ai/mirador-core",
+            "email": "support@mirastacklabs-ai.org"
         },
         "license": {
             "name": "Apache 2.0",
@@ -68,7 +68,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIListResponse"
+                            "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.KPIListResponse"
                         }
                     },
                     "400": {
@@ -110,7 +110,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIDefinitionRequest"
+                            "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.KPIDefinitionRequest"
                         }
                     }
                 ],
@@ -209,7 +209,7 @@ const docTemplate = `{
         /* /api/v1/mira paths removed from generated docs */
     },
     "definitions": {
-        "github_com_platformbuilds_mirador-core_internal_models.EvidenceRefDTO": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.EvidenceRefDTO": {
             "type": "object",
             "properties": {
                 "details": {
@@ -223,7 +223,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_platformbuilds_mirador-core_internal_models.IncidentContextDTO": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.IncidentContextDTO": {
             "type": "object",
             "properties": {
                 "id": {
@@ -257,7 +257,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_platformbuilds_mirador-core_internal_models.KPIDefinition": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.KPIDefinition": {
             "type": "object",
             "properties": {
                 "aggregationWindowHint": {
@@ -387,7 +387,7 @@ const docTemplate = `{
                     "description": "JSON thresholds array",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.Threshold"
+                        "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.Threshold"
                     }
                 },
                 "unit": {
@@ -402,21 +402,21 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_platformbuilds_mirador-core_internal_models.KPIDefinitionRequest": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.KPIDefinitionRequest": {
             "type": "object",
             "properties": {
                 "kpiDefinition": {
-                    "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIDefinition"
+                    "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.KPIDefinition"
                 }
             }
         },
-        "github_com_platformbuilds_mirador-core_internal_models.KPIListResponse": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.KPIListResponse": {
             "type": "object",
             "properties": {
                 "kpiDefinitions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.KPIDefinition"
+                        "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.KPIDefinition"
                     }
                 },
                 "nextOffset": {
@@ -427,7 +427,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_platformbuilds_mirador-core_internal_models.RCAChainDTO": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.RCAChainDTO": {
             "type": "object",
             "properties": {
                 "durationHops": {
@@ -453,12 +453,12 @@ const docTemplate = `{
                     "description": "Steps in the chain from impact to root cause",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAStepDTO"
+                        "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.RCAStepDTO"
                     }
                 }
             }
         },
-        "github_com_platformbuilds_mirador-core_internal_models.RCADiagnosticsDTO": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.RCADiagnosticsDTO": {
             "type": "object",
             "properties": {
                 "dimensionDetectionStatus": {
@@ -498,21 +498,21 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_platformbuilds_mirador-core_internal_models.RCAIncidentDTO": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.RCAIncidentDTO": {
             "type": "object",
             "properties": {
                 "chains": {
                     "description": "Chains are all candidate RCA chains",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAChainDTO"
+                        "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.RCAChainDTO"
                     }
                 },
                 "diagnostics": {
                     "description": "Diagnostics contains warnings about missing labels, dimension detection, IsolationForest tuning, etc.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCADiagnosticsDTO"
+                            "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.RCADiagnosticsDTO"
                         }
                     ]
                 },
@@ -524,7 +524,7 @@ const docTemplate = `{
                     "description": "Impact is the incident context",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.IncidentContextDTO"
+                            "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.IncidentContextDTO"
                         }
                     ]
                 },
@@ -539,7 +539,7 @@ const docTemplate = `{
                     "description": "RootCause is the selected root cause step",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAStepDTO"
+                            "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.RCAStepDTO"
                         }
                     ]
                 },
@@ -551,20 +551,20 @@ const docTemplate = `{
                     "description": "TimeRings describes the time ring definitions and per-chain computed ranges\nrelative to the incident peak time. This is optional and may be empty.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.TimeRingsDTO"
+                            "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRingsDTO"
                         }
                     ]
                 }
             }
         },
-        "github_com_platformbuilds_mirador-core_internal_models.RCAResponse": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.RCAResponse": {
             "type": "object",
             "properties": {
                 "data": {
                     "description": "Data contains the RCAIncidentDTO if successful",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAIncidentDTO"
+                            "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.RCAIncidentDTO"
                         }
                     ]
                 },
@@ -582,7 +582,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_platformbuilds_mirador-core_internal_models.RCAStepDTO": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.RCAStepDTO": {
             "type": "object",
             "properties": {
                 "component": {
@@ -605,7 +605,7 @@ const docTemplate = `{
                     "description": "Evidence references",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.EvidenceRefDTO"
+                        "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.EvidenceRefDTO"
                     }
                 },
                 "kpiFormula": {
@@ -650,7 +650,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_platformbuilds_mirador-core_internal_models.Threshold": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.Threshold": {
             "type": "object",
             "properties": {
                 "color": {
@@ -675,7 +675,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_platformbuilds_mirador-core_internal_models.TimeRangeDTO": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRangeDTO": {
             "type": "object",
             "properties": {
                 "endTime": {
@@ -686,7 +686,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_platformbuilds_mirador-core_internal_models.TimeRingDefinitionDTO": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRingDefinitionDTO": {
             "type": "object",
             "properties": {
                 "description": {
@@ -700,24 +700,24 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_platformbuilds_mirador-core_internal_models.TimeRingsDTO": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRingsDTO": {
             "type": "object",
             "properties": {
                 "definitions": {
                     "type": "object",
                     "additionalProperties": {
-                        "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.TimeRingDefinitionDTO"
+                        "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRingDefinitionDTO"
                     }
                 },
                 "perChain": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.TimeRingsPerChainDTO"
+                        "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRingsPerChainDTO"
                     }
                 }
             }
         },
-        "github_com_platformbuilds_mirador-core_internal_models.TimeRingsPerChainDTO": {
+        "github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRingsPerChainDTO": {
             "type": "object",
             "properties": {
                 "chainRank": {
@@ -729,7 +729,7 @@ const docTemplate = `{
                 "rings": {
                     "type": "object",
                     "additionalProperties": {
-                        "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.TimeRangeDTO"
+                        "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.TimeRangeDTO"
                     }
                 },
                 "windowEnd": {
@@ -747,7 +747,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "rcaData": {
-                    "$ref": "#/definitions/github_com_platformbuilds_mirador-core_internal_models.RCAResponse"
+                    "$ref": "#/definitions/github_com_mirastacklabs-ai_mirador-core_internal_models.RCAResponse"
                 }
             }
         }

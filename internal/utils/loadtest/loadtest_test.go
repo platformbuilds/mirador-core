@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/utils/search"
-	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils/search"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/cache"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // TestLoadTestBasic tests the basic load testing functionality

@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/internal/utils/bleve"
-	"github.com/platformbuilds/mirador-core/internal/utils/lucene"
-	"github.com/platformbuilds/mirador-core/pkg/cache"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils/bleve"
+	"github.com/mirastacklabs-ai/mirador-core/internal/utils/lucene"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/cache"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // TraceFilters represents extracted filters for Jaeger HTTP API.

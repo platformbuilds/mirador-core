@@ -3,8 +3,8 @@ package services
 import (
 	"testing"
 
-	"github.com/platformbuilds/mirador-core/internal/models"
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/internal/models"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // BenchmarkUQLQueryParsing benchmarks UQL query parsing performance

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/platformbuilds/mirador-core/pkg/logger"
+	"github.com/mirastacklabs-ai/mirador-core/pkg/logger"
 )
 
 // CollectOptions configures the behavior of anomaly collection.

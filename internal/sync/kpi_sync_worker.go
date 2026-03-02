@@ -9,9 +9,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/platformbuilds/mirador-core/internal/config"
-	"github.com/platformbuilds/mirador-core/internal/mariadb"
-	"github.com/platformbuilds/mirador-core/internal/weavstore"
+	"github.com/mirastacklabs-ai/mirador-core/internal/config"
+	"github.com/mirastacklabs-ai/mirador-core/internal/mariadb"
+	"github.com/mirastacklabs-ai/mirador-core/internal/weavstore"
 )
 
 // KPISyncWorker synchronizes KPIs from MariaDB to Weaviate.
