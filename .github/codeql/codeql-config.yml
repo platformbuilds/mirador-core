@@ -1,0 +1,25 @@
+# CodeQL Configuration for MIRADOR-CORE
+# This file configures CodeQL analysis to reduce false positives
+
+name: "MIRADOR-CORE CodeQL Config"
+
+# Specify queries to run
+queries:
+  - uses: security-extended
+
+# Path filters
+paths-ignore:
+  - '**/testdata/**'
+  - '**/test_fixtures.go'
+  - '**/*_test.go'
+
+# Query filters to suppress known false positives
+query-filters:
+  # Exclude OpenTelemetry SDK environment variable access warnings
+  # The OTEL SDK reads standard environment variables for configuration
+  # (OTEL_SPAN_LINK_COUNT, OTEL_SPAN_EVENT_COUNT, OTEL_BATCH_SPAN_*, etc.)
+  # This is expected behavior, not a security vulnerability
+  - exclude:
+      tags contain:
+        - "otel"
+        - "opentelemetry"

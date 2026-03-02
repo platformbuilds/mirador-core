@@ -3,7 +3,7 @@ package config
 const (
 	// Service information
 	ServiceName    = "mirador-core"
-	ServiceVersion = "v10.0.0"
+	ServiceVersion = "v10.0.1"
 	APIVersion     = "v1"
 
 	// Default timeouts (milliseconds)

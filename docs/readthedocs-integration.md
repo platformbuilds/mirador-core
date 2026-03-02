@@ -73,7 +73,7 @@ The main CI pipeline includes documentation validation:
 5. Configure:
    - **Name**: Mirador Core
    - **Repository**: `https://github.com/mirastacklabs-ai/mirador-core`
-   - **Default Branch**: `v10.0.0`
+   - **Default Branch**: `v10.0.1`
    - **Python Version**: 3.11
    - **Requirements File**: `docs/requirements.txt`
    - **Configuration File**: `.readthedocs.yaml`
@@ -99,7 +99,7 @@ If webhooks aren't configured, ReadTheDocs can be set to:
 
 - **Main Documentation**: https://miradorstack.readthedocs.io/
 - **API Documentation**: https://mirador-core.github.io/api/
-- **Version-specific**: https://miradorstack.readthedocs.io/en/v10.0.0/
+- **Version-specific**: https://miradorstack.readthedocs.io/en/v10.0.1/
 
 ## Local Development
 
@@ -148,7 +148,7 @@ This script validates:
 ## Version Management
 
 ReadTheDocs supports multiple versions:
-- **Latest**: Points to default branch (`v10.0.0`)
+- **Latest**: Points to default branch (`v10.0.1`)
 - **Stable**: Can be configured to point to releases
 - **Tags**: Automatic versions for git tags
 

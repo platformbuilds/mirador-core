@@ -119,7 +119,7 @@ helm repo update
 helm install mirador-core mirador/mirador-core \
   --namespace mirador-system \
   --create-namespace \
-  --set image.tag=v10.0.0 \
+  --set image.tag=v10.0.1 \
   --set vm.endpoints="vm-cluster:8481" \
   --set vl.endpoints="vl-cluster:9428" \
   --set vt.endpoints="vt-cluster:10428" \
@@ -139,7 +139,7 @@ docker run -d \
   -e VM_ENDPOINTS="vm-cluster:8481" \
   -e VL_ENDPOINTS="vl-cluster:9428" \
   -e VT_ENDPOINTS="vt-cluster:10428" \
-  mirastacklabs-ai/mirador-core:v10.0.0
+  mirastacklabs-ai/mirador-core:v10.0.1
 ```
 
 ## Configuration

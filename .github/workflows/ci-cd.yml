@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, master, develop, v10.0.0, 'release/**' ]
+    branches: [ main, master, develop, v10.0.1, 'release/**' ]
     tags:
       - 'v*'        # Trigger on version tags like v1.0.0
     # Removed paths-ignore to ensure documentation changes trigger builds
@@ -136,8 +136,8 @@ jobs:
     name: Documentation & ReadTheDocs
     runs-on: ubuntu-latest
     if: |
-      (github.event_name == 'push' && contains(fromJSON('["main", "master", "v10.0.0"]'), github.ref_name)) ||
-      (github.event_name == 'pull_request' && contains(fromJSON('["main", "master", "v10.0.0"]'), github.base_ref)) ||
+      (github.event_name == 'push' && contains(fromJSON('["main", "master", "v10.0.1"]'), github.ref_name)) ||
+      (github.event_name == 'pull_request' && contains(fromJSON('["main", "master", "v10.0.1"]'), github.base_ref)) ||
       contains(github.event.head_commit.message, '[docs]') ||
       contains(github.event.pull_request.title, '[docs]')
     steps:

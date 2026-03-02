@@ -57,7 +57,7 @@ func (h *HealthHandler) HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":    "healthy",
 		"service":   "mirador-core",
-		"version":   "v10.0.0",
+		"version":   "v10.0.1",
 		"timestamp": time.Now().Format(time.RFC3339),
 	})
 }
@@ -90,7 +90,7 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 		resp := gin.H{
 			"status":    status,
 			"service":   "mirador-core",
-			"version":   "v10.0.0",
+			"version":   "v10.0.1",
 			"timestamp": time.Now().Format(time.RFC3339),
 		}
 		if valkeyErr != nil {
@@ -131,7 +131,7 @@ func (h *HealthHandler) ReadinessCheck(c *gin.Context) {
 	response := gin.H{
 		"status":    status,
 		"service":   "mirador-core",
-		"version":   "v10.0.0",
+		"version":   "v10.0.1",
 		"checks":    checks,
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
@@ -207,7 +207,7 @@ func (h *HealthHandler) MicroservicesStatus(c *gin.Context) {
 	c.JSON(httpStatus, gin.H{
 		"status":    status,
 		"service":   "mirador-core",
-		"version":   "v10.0.0",
+		"version":   "v10.0.1",
 		"checks":    checks,
 		"timestamp": time.Now().Format(time.RFC3339),
 	})

@@ -2,7 +2,7 @@
 
 **Advanced Observability Platform Backend** - Unified REST API Service for Metrics, Logs, and Traces
 
-[![Version](https://img.shields.io/badge/version-v10.0.0-blue.svg)](https://github.com/mirastacklabs-ai/mirador-core/releases/tag/v10.0.0)
+[![Version](https://img.shields.io/badge/version-v10.0.1-blue.svg)](https://github.com/mirastacklabs-ai/mirador-core/releases/tag/v10.0.1)
 [![Go Version](https://img.shields.io/badge/go-1.24+-00ADD8.svg)](https://golang.org)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![GitHub CI](https://github.com/mirastacklabs-ai/mirador-core/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mirastacklabs-ai/mirador-core/actions/workflows/ci.yml)
