@@ -18,12 +18,14 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/bootstrap"
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/logging"
+	"github.com/platformbuilds/mirador-core/internal/mariadb"
 
 	"github.com/platformbuilds/mirador-core/internal/models"
 	"github.com/platformbuilds/mirador-core/internal/monitoring"
 	"github.com/platformbuilds/mirador-core/internal/rca"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
+	"github.com/platformbuilds/mirador-core/internal/sync"
 	"github.com/platformbuilds/mirador-core/internal/tracing"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve"
 	"github.com/platformbuilds/mirador-core/internal/utils/bleve/mapping"
@@ -50,6 +52,12 @@ type Server struct {
 	httpServer                  *http.Server
 	tracerProvider              *tracing.TracerProvider
 	weaviateClient              *wv.Client
+
+	// MariaDB integration (read-only tenant data)
+	mariaDBClient     *mariadb.Client
+	mariaDBDataSource *mariadb.DataSourceRepo
+	mariaDBKPI        *mariadb.KPIRepo
+	kpiSyncWorker     *sync.KPISyncWorker
 }
 
 func NewServer(
@@ -58,6 +66,7 @@ func NewServer(
 	valkeyCache cache.ValkeyCluster,
 	vmServices *services.VictoriaMetricsServices,
 	schemaRepo repo.SchemaStore,
+	mariaDBClient *mariadb.Client,
 ) *Server {
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -73,6 +82,25 @@ func NewServer(
 		vmServices:     vmServices,
 		schemaRepo:     schemaRepo,
 		router:         router,
+		mariaDBClient:  mariaDBClient,
+	}
+
+	// Initialize MariaDB repos if client is available
+	if mariaDBClient != nil && mariaDBClient.IsEnabled() {
+		zapLogger := logging.ExtractZapLogger(log)
+		server.mariaDBDataSource = mariadb.NewDataSourceRepo(mariaDBClient, zapLogger)
+		server.mariaDBKPI = mariadb.NewKPIRepo(mariaDBClient, zapLogger)
+		log.Info("MariaDB repos initialized for data sources and KPIs")
+
+		// Refresh Victoria* service endpoints from MariaDB data sources
+		if server.mariaDBDataSource != nil && mariaDBClient.IsConnected() {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			if err := vmServices.RefreshFromMariaDB(ctx, server.mariaDBDataSource, log); err != nil {
+				log.Warn("Failed to refresh Victoria endpoints from MariaDB; using config.yaml fallback",
+					"error", err)
+			}
+			cancel()
+		}
 	}
 
 	// Initialize subsystems using helper methods to keep NewServer simple and
@@ -86,6 +114,22 @@ func NewServer(
 	// Bootstrap telemetry via the repo layer (keeps models out of bootstrap)
 	if err := bootstrap.BootstrapTelemetryStandards(context.Background(), &cfg.Engine, server.kpiRepo, server.internalLogger); err != nil {
 		log.Warn("failed to bootstrap telemetry standards", "error", err)
+	}
+
+	// Initialize KPI sync worker (MariaDB → Weaviate) if both are available
+	if server.mariaDBKPI != nil && kpiStore != nil && cfg.MariaDB.Sync.Enabled {
+		server.kpiSyncWorker = sync.NewKPISyncWorker(
+			server.mariaDBKPI,
+			kpiStore,
+			cfg.MariaDB.Sync,
+			zapLogger,
+		)
+		// Start sync worker in background
+		go server.kpiSyncWorker.Start(context.Background())
+		log.Info("KPI sync worker started",
+			"interval", cfg.MariaDB.Sync.Interval.String(),
+			"batch_size", cfg.MariaDB.Sync.BatchSize,
+		)
 	}
 
 	// Create search router
@@ -221,8 +265,8 @@ func (s *Server) setupMiddleware() {
 }
 
 func (s *Server) setupRoutes() {
-	// Create health handler instance
-	healthHandler := handlers.NewHealthHandlerWithCache(s.vmServices, s.cache, s.logger)
+	// Create health handler instance with MariaDB support
+	healthHandler := handlers.NewHealthHandlerWithMariaDB(s.vmServices, s.cache, s.mariaDBClient, s.logger)
 
 	// Public health endpoints - now using handler instance methods
 	s.router.GET("/health", healthHandler.HealthCheck)
@@ -449,9 +493,27 @@ func (s *Server) Start(ctx context.Context) error {
 		s.logger.Info("Shutting down MIRADOR-CORE gracefully")
 	}
 
-	// Graceful shutdown
+	return s.gracefulShutdown()
+}
+
+// gracefulShutdown handles the cleanup of all server components.
+func (s *Server) gracefulShutdown() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	// Stop KPI sync worker
+	if s.kpiSyncWorker != nil {
+		s.logger.Info("Stopping KPI sync worker")
+		s.kpiSyncWorker.Stop()
+	}
+
+	// Close MariaDB client
+	if s.mariaDBClient != nil {
+		s.logger.Info("Closing MariaDB connection")
+		if err := s.mariaDBClient.Close(); err != nil {
+			s.logger.Error("Failed to close MariaDB connection", "error", err)
+		}
+	}
 
 	// Stop metrics metadata synchronizer
 	if s.metricsMetadataSynchronizer != nil {

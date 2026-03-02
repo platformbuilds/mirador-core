@@ -9,15 +9,17 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/platformbuilds/mirador-core/internal/logging"
+	"github.com/platformbuilds/mirador-core/internal/mariadb"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
 
 type HealthHandler struct {
-	vmServices *services.VictoriaMetricsServices
-	cache      cache.ValkeyCluster // may be nil for legacy behavior
-	logger     logging.Logger
+	vmServices    *services.VictoriaMetricsServices
+	cache         cache.ValkeyCluster // may be nil for legacy behavior
+	mariaDBClient *mariadb.Client     // may be nil if not enabled
+	logger        logging.Logger
 }
 
 // NewHealthHandlerWithCache constructs a HealthHandler with explicit cache dependency.
@@ -26,6 +28,16 @@ func NewHealthHandlerWithCache(vmServices *services.VictoriaMetricsServices, c c
 		vmServices: vmServices,
 		cache:      c,
 		logger:     logging.FromCoreLogger(logger),
+	}
+}
+
+// NewHealthHandlerWithMariaDB constructs a HealthHandler with cache and MariaDB dependencies.
+func NewHealthHandlerWithMariaDB(vmServices *services.VictoriaMetricsServices, c cache.ValkeyCluster, mariaDBClient *mariadb.Client, logger corelogger.Logger) *HealthHandler {
+	return &HealthHandler{
+		vmServices:    vmServices,
+		cache:         c,
+		mariaDBClient: mariaDBClient,
+		logger:        logging.FromCoreLogger(logger),
 	}
 }
 
@@ -164,6 +176,27 @@ func (h *HealthHandler) MicroservicesStatus(c *gin.Context) {
 		}
 	} else {
 		checks["victoria_traces"] = map[string]interface{}{"status": "healthy"}
+	}
+
+	// Check MariaDB connectivity (config database)
+	if h.mariaDBClient != nil && h.mariaDBClient.IsEnabled() {
+		health := h.mariaDBClient.HealthCheck(ctx)
+		if health.Connected {
+			checks["mariadb"] = map[string]interface{}{
+				"status":   "healthy",
+				"host":     health.Host,
+				"database": health.Database,
+			}
+		} else {
+			checks["mariadb"] = map[string]interface{}{
+				"status":   "unhealthy",
+				"host":     health.Host,
+				"database": health.Database,
+				"error":    health.Error,
+			}
+			// MariaDB unhealthy doesn't fail the overall status;
+			// graceful degradation is allowed per architecture decision
+		}
 	}
 
 	httpStatus := http.StatusOK

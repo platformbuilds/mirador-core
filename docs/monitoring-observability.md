@@ -66,6 +66,63 @@ Mirador Core  implements comprehensive monitoring and observability capabilities
 |-------------|------|-------------|--------|
 | `mirador_core_errors_total` | Counter | General application errors | `component` |
 
+### MariaDB Integration Metrics
+
+When MariaDB integration is enabled, the following metrics are available:
+
+| Metric Name | Type | Description | Labels |
+|-------------|------|-------------|--------|
+| `mirador_core_mariadb_connected` | Gauge | MariaDB connection status (1=connected, 0=disconnected) | `database` |
+| `mirador_core_mariadb_queries_total` | Counter | Total MariaDB queries | `table`, `operation`, `status` |
+| `mirador_core_mariadb_query_duration_seconds` | Histogram | Duration of MariaDB queries | `table`, `operation` |
+| `mirador_core_kpi_sync_operations_total` | Counter | KPI sync operations | `status` (success/failure) |
+| `mirador_core_kpi_sync_duration_seconds` | Histogram | Duration of KPI sync operations | |
+| `mirador_core_kpi_sync_items_total` | Counter | Number of KPIs synced | `operation` (create/update) |
+
+### MariaDB Health Check
+
+The `/api/v1/health` endpoint includes MariaDB status:
+
+```bash
+curl http://localhost:8010/api/v1/health | jq '.components.mariadb'
+```
+
+Response:
+```json
+{
+  "enabled": true,
+  "connected": true,
+  "host": "mariadb.example.com",
+  "database": "tenant_acme"
+}
+```
+
+### MariaDB Alerts
+
+Add these alerts for MariaDB monitoring:
+
+```yaml
+# MariaDB connection alert
+- alert: MariaDBConnectionLost
+  expr: mirador_core_mariadb_connected == 0
+  for: 1m
+  labels:
+    severity: warning
+  annotations:
+    summary: "MariaDB connection lost"
+    description: "MariaDB connection has been down for more than 1 minute"
+
+# KPI sync failure alert
+- alert: KPISyncFailure
+  expr: rate(mirador_core_kpi_sync_operations_total{status="failure"}[5m]) > 0
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "KPI sync failures detected"
+    description: "KPI sync to Weaviate is experiencing failures"
+```
+
 ## Distributed Tracing
 
 ### Trace Structure

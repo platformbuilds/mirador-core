@@ -361,68 +361,407 @@ func overrideWithEnvVars(v *viper.Viper) {
 
 /* ------------------------------- validation ------------------------------ */
 
+// ValidationError represents a configuration validation error with context.
+type ValidationError struct {
+	Field   string
+	Value   interface{}
+	Message string
+}
+
+func (e ValidationError) Error() string {
+	return fmt.Sprintf("config validation failed for '%s': %s", e.Field, e.Message)
+}
+
+// ValidationErrors collects multiple validation errors.
+type ValidationErrors []ValidationError
+
+func (e ValidationErrors) Error() string {
+	if len(e) == 0 {
+		return ""
+	}
+	if len(e) == 1 {
+		return e[0].Error()
+	}
+	var msgs []string
+	for _, err := range e {
+		msgs = append(msgs, err.Error())
+	}
+	return fmt.Sprintf("config validation failed with %d errors: %s", len(e), strings.Join(msgs, "; "))
+}
+
 func validateConfig(cfg *Config) error {
-	// Metrics must have at least one source: either legacy single-source
-	// config or at least one item in metrics_sources list where endpoints
-	// exist or discovery is enabled.
-	hasPrimary := len(cfg.Database.VictoriaMetrics.Endpoints) > 0 || cfg.Database.VictoriaMetrics.Discovery.Enabled
-	hasMulti := false
-	if len(cfg.Database.MetricsSources) > 0 {
-		for _, s := range cfg.Database.MetricsSources {
-			if len(s.Endpoints) > 0 || s.Discovery.Enabled {
-				hasMulti = true
-				break
-			}
-		}
-	}
-	if !hasPrimary && !hasMulti {
-		return fmt.Errorf("at least one VictoriaMetrics source is required (set database.victoria_metrics or database.metrics_sources)")
-	}
-	// Logs: require at least one source from primary or logs_sources
-	hasLogsPrimary := len(cfg.Database.VictoriaLogs.Endpoints) > 0 || cfg.Database.VictoriaLogs.Discovery.Enabled
-	hasLogsMulti := false
-	if len(cfg.Database.LogsSources) > 0 {
-		for _, s := range cfg.Database.LogsSources {
-			if len(s.Endpoints) > 0 || s.Discovery.Enabled {
-				hasLogsMulti = true
-				break
-			}
-		}
-	}
-	if !hasLogsPrimary && !hasLogsMulti {
-		return fmt.Errorf("at least one VictoriaLogs source is required (set database.victoria_logs or database.logs_sources)")
-	}
-	if len(cfg.Cache.Nodes) == 0 {
-		return fmt.Errorf("at least one Valkey cluster cache node is required")
-	}
+	var errs ValidationErrors
 
-	if cfg.GRPC.RCAEngine.Endpoint == "" {
-		return fmt.Errorf("RCA-ENGINE gRPC endpoint is required")
-	}
-	if cfg.GRPC.AlertEngine.Endpoint == "" {
-		return fmt.Errorf("ALERT-ENGINE gRPC endpoint is required")
-	}
-
+	// Server validations
 	if cfg.Port < 1 || cfg.Port > 65535 {
-		return fmt.Errorf("invalid port number: %d", cfg.Port)
+		errs = append(errs, ValidationError{
+			Field:   "port",
+			Value:   cfg.Port,
+			Message: fmt.Sprintf("must be between 1 and 65535, got %d", cfg.Port),
+		})
 	}
 
 	validLog := []string{"debug", "info", "warn", "error", "fatal"}
 	if !contains(validLog, cfg.LogLevel) {
-		return fmt.Errorf("invalid log level: %s", cfg.LogLevel)
+		errs = append(errs, ValidationError{
+			Field:   "log_level",
+			Value:   cfg.LogLevel,
+			Message: fmt.Sprintf("must be one of %v", validLog),
+		})
 	}
 
 	validEnv := []string{"development", "staging", "production", "test"}
 	if !contains(validEnv, cfg.Environment) {
-		return fmt.Errorf("invalid environment: %s", cfg.Environment)
+		errs = append(errs, ValidationError{
+			Field:   "environment",
+			Value:   cfg.Environment,
+			Message: fmt.Sprintf("must be one of %v", validEnv),
+		})
 	}
 
+	// Database validations
+	errs = append(errs, validateDatabaseConfig(&cfg.Database)...)
+
+	// Cache validations
+	if len(cfg.Cache.Nodes) == 0 {
+		errs = append(errs, ValidationError{
+			Field:   "cache.nodes",
+			Message: "at least one Valkey cache node is required",
+		})
+	}
 	if cfg.Cache.TTL < 1 {
-		return fmt.Errorf("cache TTL must be at least 1 second")
+		errs = append(errs, ValidationError{
+			Field:   "cache.ttl",
+			Value:   cfg.Cache.TTL,
+			Message: "must be at least 1 second",
+		})
 	}
 
+	// gRPC validations
+	if cfg.GRPC.RCAEngine.Endpoint == "" {
+		errs = append(errs, ValidationError{
+			Field:   "grpc.rca_engine.endpoint",
+			Message: "RCA-ENGINE gRPC endpoint is required",
+		})
+	}
+	if cfg.GRPC.AlertEngine.Endpoint == "" {
+		errs = append(errs, ValidationError{
+			Field:   "grpc.alert_engine.endpoint",
+			Message: "ALERT-ENGINE gRPC endpoint is required",
+		})
+	}
 	if cfg.GRPC.RCAEngine.CorrelationThreshold < 0 || cfg.GRPC.RCAEngine.CorrelationThreshold > 1 {
-		return fmt.Errorf("RCA correlation threshold must be between 0 and 1")
+		errs = append(errs, ValidationError{
+			Field:   "grpc.rca_engine.correlation_threshold",
+			Value:   cfg.GRPC.RCAEngine.CorrelationThreshold,
+			Message: "must be between 0 and 1",
+		})
+	}
+
+	// MariaDB validations
+	errs = append(errs, validateMariaDBConfig(&cfg.MariaDB)...)
+
+	// Engine validations
+	errs = append(errs, validateEngineConfig(&cfg.Engine)...)
+
+	// WebSocket validations
+	errs = append(errs, validateWebSocketConfig(&cfg.WebSocket)...)
+
+	// Weaviate validations
+	errs = append(errs, validateWeaviateConfig(&cfg.Weaviate)...)
+
+	if len(errs) > 0 {
+		return errs
 	}
 	return nil
+}
+
+func validateDatabaseConfig(db *DatabaseConfig) ValidationErrors {
+	var errs ValidationErrors
+
+	// Metrics must have at least one source
+	hasPrimary := len(db.VictoriaMetrics.Endpoints) > 0 || db.VictoriaMetrics.Discovery.Enabled
+	hasMulti := false
+	for _, s := range db.MetricsSources {
+		if len(s.Endpoints) > 0 || s.Discovery.Enabled {
+			hasMulti = true
+			break
+		}
+	}
+	if !hasPrimary && !hasMulti {
+		errs = append(errs, ValidationError{
+			Field:   "database.victoria_metrics",
+			Message: "at least one VictoriaMetrics source is required",
+		})
+	}
+
+	// Logs must have at least one source
+	hasLogsPrimary := len(db.VictoriaLogs.Endpoints) > 0 || db.VictoriaLogs.Discovery.Enabled
+	hasLogsMulti := false
+	for _, s := range db.LogsSources {
+		if len(s.Endpoints) > 0 || s.Discovery.Enabled {
+			hasLogsMulti = true
+			break
+		}
+	}
+	if !hasLogsPrimary && !hasLogsMulti {
+		errs = append(errs, ValidationError{
+			Field:   "database.victoria_logs",
+			Message: "at least one VictoriaLogs source is required",
+		})
+	}
+
+	// Validate timeout values
+	if db.VictoriaMetrics.Timeout < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "database.victoria_metrics.timeout",
+			Value:   db.VictoriaMetrics.Timeout,
+			Message: "timeout must be non-negative",
+		})
+	}
+	if db.VictoriaLogs.Timeout < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "database.victoria_logs.timeout",
+			Value:   db.VictoriaLogs.Timeout,
+			Message: "timeout must be non-negative",
+		})
+	}
+
+	return errs
+}
+
+func validateMariaDBConfig(m *MariaDBConfig) ValidationErrors {
+	var errs ValidationErrors
+
+	if !m.Enabled {
+		return errs // Skip validation if disabled
+	}
+
+	if m.Host == "" {
+		errs = append(errs, ValidationError{
+			Field:   "mariadb.host",
+			Message: "host is required when MariaDB is enabled",
+		})
+	}
+	if m.Port < 1 || m.Port > 65535 {
+		errs = append(errs, ValidationError{
+			Field:   "mariadb.port",
+			Value:   m.Port,
+			Message: "must be between 1 and 65535",
+		})
+	}
+	if m.Database == "" {
+		errs = append(errs, ValidationError{
+			Field:   "mariadb.database",
+			Message: "database name is required when MariaDB is enabled",
+		})
+	}
+	if m.Username == "" {
+		errs = append(errs, ValidationError{
+			Field:   "mariadb.username",
+			Message: "username is required when MariaDB is enabled",
+		})
+	}
+	if m.MaxOpenConns < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "mariadb.max_open_conns",
+			Value:   m.MaxOpenConns,
+			Message: "must be non-negative",
+		})
+	}
+	if m.MaxIdleConns < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "mariadb.max_idle_conns",
+			Value:   m.MaxIdleConns,
+			Message: "must be non-negative",
+		})
+	}
+	if m.MaxIdleConns > m.MaxOpenConns && m.MaxOpenConns > 0 {
+		errs = append(errs, ValidationError{
+			Field:   "mariadb.max_idle_conns",
+			Value:   m.MaxIdleConns,
+			Message: "cannot exceed max_open_conns",
+		})
+	}
+	if m.ConnMaxLifetime < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "mariadb.conn_max_lifetime",
+			Value:   m.ConnMaxLifetime,
+			Message: "must be non-negative",
+		})
+	}
+
+	// Sync validations
+	if m.Sync.Enabled && m.Sync.Interval < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "mariadb.sync.interval",
+			Value:   m.Sync.Interval,
+			Message: "must be non-negative",
+		})
+	}
+	if m.Sync.Enabled && m.Sync.BatchSize < 1 {
+		errs = append(errs, ValidationError{
+			Field:   "mariadb.sync.batch_size",
+			Value:   m.Sync.BatchSize,
+			Message: "must be at least 1",
+		})
+	}
+
+	return errs
+}
+
+func validateEngineConfig(e *EngineConfig) ValidationErrors {
+	var errs ValidationErrors
+
+	if e.MinWindow < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "engine.min_window",
+			Value:   e.MinWindow,
+			Message: "must be non-negative",
+		})
+	}
+	if e.MaxWindow < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "engine.max_window",
+			Value:   e.MaxWindow,
+			Message: "must be non-negative",
+		})
+	}
+	if e.MaxWindow > 0 && e.MinWindow > e.MaxWindow {
+		errs = append(errs, ValidationError{
+			Field:   "engine.min_window",
+			Value:   e.MinWindow,
+			Message: "cannot exceed max_window",
+		})
+	}
+	if e.DefaultGraphHops < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "engine.default_graph_hops",
+			Value:   e.DefaultGraphHops,
+			Message: "must be non-negative",
+		})
+	}
+	if e.DefaultMaxWhys < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "engine.default_max_whys",
+			Value:   e.DefaultMaxWhys,
+			Message: "must be non-negative",
+		})
+	}
+	if e.MinCorrelation < 0 || e.MinCorrelation > 1 {
+		errs = append(errs, ValidationError{
+			Field:   "engine.min_correlation",
+			Value:   e.MinCorrelation,
+			Message: "must be between 0 and 1",
+		})
+	}
+	if e.MinAnomalyScore < 0 || e.MinAnomalyScore > 1 {
+		errs = append(errs, ValidationError{
+			Field:   "engine.min_anomaly_score",
+			Value:   e.MinAnomalyScore,
+			Message: "must be between 0 and 1",
+		})
+	}
+	if e.DefaultQueryLimit < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "engine.default_query_limit",
+			Value:   e.DefaultQueryLimit,
+			Message: "must be non-negative",
+		})
+	}
+
+	// Bucket validations
+	if e.Buckets.CoreWindowSize < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "engine.buckets.core_window_size",
+			Value:   e.Buckets.CoreWindowSize,
+			Message: "must be non-negative",
+		})
+	}
+	if e.Buckets.PreRings < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "engine.buckets.pre_rings",
+			Value:   e.Buckets.PreRings,
+			Message: "must be non-negative",
+		})
+	}
+	if e.Buckets.PostRings < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "engine.buckets.post_rings",
+			Value:   e.Buckets.PostRings,
+			Message: "must be non-negative",
+		})
+	}
+
+	return errs
+}
+
+func validateWebSocketConfig(ws *WebSocketConfig) ValidationErrors {
+	var errs ValidationErrors
+
+	if !ws.Enabled {
+		return errs
+	}
+
+	if ws.MaxConnections < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "websocket.max_connections",
+			Value:   ws.MaxConnections,
+			Message: "must be non-negative",
+		})
+	}
+	if ws.ReadBufferSize < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "websocket.read_buffer_size",
+			Value:   ws.ReadBufferSize,
+			Message: "must be non-negative",
+		})
+	}
+	if ws.WriteBufferSize < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "websocket.write_buffer_size",
+			Value:   ws.WriteBufferSize,
+			Message: "must be non-negative",
+		})
+	}
+	if ws.PingInterval < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "websocket.ping_interval",
+			Value:   ws.PingInterval,
+			Message: "must be non-negative",
+		})
+	}
+	if ws.MaxMessageSize < 0 {
+		errs = append(errs, ValidationError{
+			Field:   "websocket.max_message_size",
+			Value:   ws.MaxMessageSize,
+			Message: "must be non-negative",
+		})
+	}
+
+	return errs
+}
+
+func validateWeaviateConfig(w *WeaviateConfig) ValidationErrors {
+	var errs ValidationErrors
+
+	if !w.Enabled {
+		return errs
+	}
+
+	if w.Host == "" {
+		errs = append(errs, ValidationError{
+			Field:   "weaviate.host",
+			Message: "host is required when Weaviate is enabled",
+		})
+	}
+	if w.Port < 0 || w.Port > 65535 {
+		errs = append(errs, ValidationError{
+			Field:   "weaviate.port",
+			Value:   w.Port,
+			Message: "must be between 0 and 65535",
+		})
+	}
+
+	return errs
 }

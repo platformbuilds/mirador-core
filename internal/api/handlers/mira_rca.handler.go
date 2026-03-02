@@ -308,7 +308,7 @@ func (h *MIRARCAHandler) GenerateChunkedExplanation(ctx context.Context, rca *mo
 		if len(truncatedResponse) > 600 {
 			truncatedResponse = truncatedResponse[:600] + "..."
 		}
-		conversationContext.WriteString(fmt.Sprintf("\n[Part %d]: %s\n", i+1, truncatedResponse))
+		fmt.Fprintf(&conversationContext, "\n[Part %d]: %s\n", i+1, truncatedResponse)
 
 		h.logger.Debug("Chunk processed",
 			"chunk_number", i+1,
@@ -361,7 +361,7 @@ func (h *MIRARCAHandler) synthesizeFinalReport(ctx context.Context, chunkExplana
 
 	promptBuilder.WriteString("=== ANALYSIS PARTS ===\\n\\n")
 	for i, explanation := range chunkExplanations {
-		promptBuilder.WriteString(fmt.Sprintf("## Part %d:\\n%s\\n\\n", i+1, explanation))
+		fmt.Fprintf(&promptBuilder, "## Part %d:\\n%s\\n\\n", i+1, explanation)
 	}
 
 	promptBuilder.WriteString("\\n=== YOUR TASK ===\\n\\n")
@@ -410,7 +410,7 @@ func (h *MIRARCAHandler) synthesizeFinalReport(ctx context.Context, chunkExplana
 			if len(truncated) > maxCharsPerChunk {
 				truncated = truncated[:maxCharsPerChunk] + "... [truncated for token limit]"
 			}
-			truncatedBuilder.WriteString(fmt.Sprintf("Part %d: %s\\n\\n", i+1, truncated))
+			fmt.Fprintf(&truncatedBuilder, "Part %d: %s\\n\\n", i+1, truncated)
 		}
 
 		truncatedBuilder.WriteString("Create a comprehensive report preserving ALL details mentioned above.\\n")
@@ -564,7 +564,7 @@ func (h *MIRARCAHandler) buildChunkPrompt(basePrompt string, chunk map[string]in
 		promptBuilder.WriteString("- Explain EACH step thoroughly with business context\n")
 		promptBuilder.WriteString("- Use plain language but preserve all technical details\n\n")
 	} else {
-		promptBuilder.WriteString(fmt.Sprintf("\nPart %d/%d - Continue detailed analysis\n", chunkNum, totalChunks))
+		fmt.Fprintf(&promptBuilder, "\nPart %d/%d - Continue detailed analysis\n", chunkNum, totalChunks)
 		if previousContext != "" {
 			// Truncate previous context to max 500 chars (increased from 200 for better continuity)
 			truncatedContext := previousContext
@@ -594,11 +594,11 @@ func (h *MIRARCAHandler) buildChunkPrompt(basePrompt string, chunk map[string]in
 		// Serialize only essential fields
 		if impact, ok := chunk["impact"]; ok {
 			impactJSON, _ := json.Marshal(impact)
-			promptBuilder.WriteString(fmt.Sprintf("IMPACT DATA:\n%s\n\n", impactJSON))
+			fmt.Fprintf(&promptBuilder, "IMPACT DATA:\n%s\n\n", impactJSON)
 		}
 		if rootCause, ok := chunk["rootCause"]; ok {
 			rcJSON, _ := json.Marshal(rootCause)
-			promptBuilder.WriteString(fmt.Sprintf("ROOT CAUSE DATA:\n%s\n\n", rcJSON))
+			fmt.Fprintf(&promptBuilder, "ROOT CAUSE DATA:\n%s\n\n", rcJSON)
 		}
 
 		promptBuilder.WriteString("REQUIRED OUTPUT - Provide detailed explanation covering:\n")
@@ -610,14 +610,14 @@ func (h *MIRARCAHandler) buildChunkPrompt(basePrompt string, chunk map[string]in
 
 	case "chains":
 		chainRange := chunk["chainRange"].(string)
-		promptBuilder.WriteString(fmt.Sprintf("=== CAUSAL CHAINS ANALYSIS (%s) ===\n\n", chainRange))
+		fmt.Fprintf(&promptBuilder, "=== CAUSAL CHAINS ANALYSIS (%s) ===\n\n", chainRange)
 		promptBuilder.WriteString("Context: Each chain shows the causal progression from user impact (whyIndex=1) to technical root cause (whyIndex=5).\n")
 		promptBuilder.WriteString("Ring context indicates temporal relationship to the incident peak time.\n\n")
 
 		if chains, ok := chunk["chains"]; ok {
 			// Use compact JSON without indentation to save tokens
 			chainsJSON, _ := json.Marshal(chains)
-			promptBuilder.WriteString(fmt.Sprintf("CHAIN DATA:\n%s\n\n", chainsJSON))
+			fmt.Fprintf(&promptBuilder, "CHAIN DATA:\n%s\n\n", chainsJSON)
 		}
 
 		promptBuilder.WriteString("REQUIRED OUTPUT - For EACH chain, provide detailed explanation:\n")
@@ -649,14 +649,14 @@ func (h *MIRARCAHandler) stitchExplanations(explanations []string, totalChunks i
 		if i == 0 {
 			final.WriteString("## Impact and Root Cause Overview\n\n")
 		} else {
-			final.WriteString(fmt.Sprintf("\n\n## Causal Chain Analysis - Part %d\n\n", i))
+			fmt.Fprintf(&final, "\n\n## Causal Chain Analysis - Part %d\n\n", i)
 		}
 		final.WriteString(explanation)
 	}
 
 	final.WriteString("\n\n---\n")
 	final.WriteString("## Technical Notes\n\n")
-	final.WriteString(fmt.Sprintf("- This comprehensive analysis was generated from %d data segments\n", totalChunks))
+	fmt.Fprintf(&final, "- This comprehensive analysis was generated from %d data segments\n", totalChunks)
 	final.WriteString("- All service names, KPI metrics, and correlation data have been preserved for full technical transparency\n")
 	final.WriteString("- Temporal context (time rings) indicates when each anomaly occurred relative to the incident peak\n")
 

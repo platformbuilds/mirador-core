@@ -10,6 +10,7 @@ type Config struct {
 	Database     DatabaseConfig     `mapstructure:"database" yaml:"database"`
 	GRPC         GRPCConfig         `mapstructure:"grpc" yaml:"grpc"`
 	Cache        CacheConfig        `mapstructure:"cache" yaml:"cache"`
+	MariaDB      MariaDBConfig      `mapstructure:"mariadb" yaml:"mariadb"`
 	CORS         CORSConfig         `mapstructure:"cors" yaml:"cors"`
 	Integrations IntegrationsConfig `mapstructure:"integrations" yaml:"integrations"`
 	WebSocket    WebSocketConfig    `mapstructure:"websocket" yaml:"websocket"`
@@ -192,6 +193,44 @@ type CacheConfig struct {
 	TTL      int      `mapstructure:"ttl" yaml:"ttl"` // seconds
 	Password string   `mapstructure:"password" yaml:"password"`
 	DB       int      `mapstructure:"db" yaml:"db"`
+}
+
+// MariaDBConfig handles MariaDB connection for reading data sources and KPIs.
+// mirador-core has READ-ONLY access to the same MariaDB used by mirador-ui.
+// Each mirador-core deployment is tenant-specific (one database per tenant).
+type MariaDBConfig struct {
+	Enabled         bool          `mapstructure:"enabled" yaml:"enabled"`
+	Host            string        `mapstructure:"host" yaml:"host"`
+	Port            int           `mapstructure:"port" yaml:"port"`
+	Database        string        `mapstructure:"database" yaml:"database"` // Tenant-specific database name
+	Username        string        `mapstructure:"username" yaml:"username"`
+	Password        string        `mapstructure:"password" yaml:"password"`
+	MaxOpenConns    int           `mapstructure:"max_open_conns" yaml:"max_open_conns"`
+	MaxIdleConns    int           `mapstructure:"max_idle_conns" yaml:"max_idle_conns"`
+	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime" yaml:"conn_max_lifetime"`
+	Sync            MariaDBSyncConfig      `mapstructure:"sync" yaml:"sync"`
+	Bootstrap       MariaDBBootstrapConfig `mapstructure:"bootstrap" yaml:"bootstrap"`
+}
+
+// MariaDBSyncConfig controls the background KPI sync from MariaDB to Weaviate.
+type MariaDBSyncConfig struct {
+	Enabled   bool          `mapstructure:"enabled" yaml:"enabled"`
+	Interval  time.Duration `mapstructure:"interval" yaml:"interval"`   // How often to sync
+	BatchSize int           `mapstructure:"batch_size" yaml:"batch_size"` // KPIs per batch
+}
+
+// MariaDBBootstrapConfig controls the bootstrapping behavior for backward compatibility.
+// When enabled, mirador-core will create tables and sync data sources from config.yaml
+// to MariaDB on startup, ensuring existing users can migrate seamlessly.
+type MariaDBBootstrapConfig struct {
+	// Enabled controls whether bootstrapping runs on startup
+	Enabled bool `mapstructure:"enabled" yaml:"enabled"`
+	// CreateTablesIfMissing creates data_sources and kpis tables if they don't exist
+	CreateTablesIfMissing bool `mapstructure:"create_tables_if_missing" yaml:"create_tables_if_missing"`
+	// SyncDataSourcesFromConfig syncs data sources from config.yaml to MariaDB
+	// If a data source URL already exists in MariaDB, it's validated and skipped
+	// If a data source URL doesn't exist, it's created in MariaDB
+	SyncDataSourcesFromConfig bool `mapstructure:"sync_datasources_from_config" yaml:"sync_datasources_from_config"`
 }
 
 // CORSConfig handles Cross-Origin Resource Sharing

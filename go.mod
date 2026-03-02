@@ -3,10 +3,10 @@ module github.com/platformbuilds/mirador-core
 go 1.24.10
 
 require (
-	github.com/alpkeskin/gotoon v0.1.1
 	github.com/blevesearch/bleve/v2 v2.5.5
 	github.com/blevesearch/upsidedown_store_api v1.0.2
 	github.com/gin-gonic/gin v1.11.0
+	github.com/go-sql-driver/mysql v1.9.3
 	github.com/gofrs/uuid/v5 v5.4.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
@@ -31,6 +31,7 @@ require (
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/RoaringBitmap/roaring/v2 v2.4.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect

@@ -214,6 +214,62 @@ datasources:
       enabled: true
 ```
 
+### MariaDB Configuration (Tenant Data Integration)
+
+MIRADOR-CORE can connect to a MariaDB database to read tenant-specific data sources and KPIs. This enables shared configuration with mirador-ui.
+
+> **Note**: For detailed MariaDB integration documentation, see [MariaDB Integration](mariadb-integration.md).
+
+```yaml
+mariadb:
+  enabled: true
+  host: "mariadb.example.com"
+  port: 3306
+  database: "tenant_acme"          # Tenant-specific database
+  username: "mirador_core_rw"      # Read-write user for bootstrap
+  password: ""                     # Set via MARIADB_PASSWORD env var
+  
+  # Connection pool settings
+  max_open_conns: 10
+  max_idle_conns: 5
+  conn_max_lifetime: 5m
+  
+  # Bootstrap settings (one-time setup)
+  bootstrap:
+    enabled: true                  # Enable automatic bootstrap
+    create_tables_if_missing: true # Create tables on first run
+    sync_datasources_from_config: true  # Sync config.yaml to MariaDB
+  
+  # KPI sync to Weaviate
+  sync:
+    enabled: true
+    interval: 5m                   # How often to sync KPIs
+    batch_size: 100                # Batch size for sync operations
+```
+
+**Environment Variables:**
+- `MARIADB_ENABLED`
+- `MARIADB_HOST`
+- `MARIADB_PORT`
+- `MARIADB_DATABASE`
+- `MARIADB_USERNAME`
+- `MARIADB_PASSWORD`
+- `MARIADB_MAX_OPEN_CONNS`
+- `MARIADB_MAX_IDLE_CONNS`
+- `MARIADB_CONN_MAX_LIFETIME`
+- `MARIADB_BOOTSTRAP_ENABLED`
+- `MARIADB_BOOTSTRAP_CREATE_TABLES`
+- `MARIADB_BOOTSTRAP_SYNC_DATASOURCES`
+- `MARIADB_SYNC_ENABLED`
+- `MARIADB_SYNC_INTERVAL`
+- `MARIADB_SYNC_BATCH_SIZE`
+
+**Key Features:**
+- **Bootstrap**: Automatic table creation and config.yaml sync on startup
+- **Graceful degradation**: Falls back to config.yaml if MariaDB unavailable
+- **Auto-reconnect**: Automatically reconnects on connection loss
+- **KPI sync**: Background worker syncs KPIs to Weaviate
+
 ## Feature Flags
 
 ```yaml

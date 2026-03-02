@@ -14,6 +14,8 @@ import (
 
 	"github.com/platformbuilds/mirador-core/internal/api"
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/logging"
+	"github.com/platformbuilds/mirador-core/internal/mariadb"
 	"github.com/platformbuilds/mirador-core/internal/repo"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
@@ -140,13 +142,50 @@ func main() {
 		logger.Fatal("Failed to initialize VictoriaMetrics services", "error", err)
 	}
 
+	// Initialize MariaDB client (read-only access to tenant data)
+	var mariaDBClient *mariadb.Client
+	if cfg.MariaDB.Enabled {
+		zapLogger := logging.ExtractZapLogger(logger)
+		mariaDBClient, err = mariadb.NewClient(&cfg.MariaDB, zapLogger)
+		if err != nil {
+			// Log error but don't fail startup - graceful degradation
+			logger.Error("Failed to initialize MariaDB client", "error", err)
+		} else if mariaDBClient.IsConnected() {
+			logger.Info("MariaDB client initialized",
+				"host", cfg.MariaDB.Host,
+				"database", cfg.MariaDB.Database,
+			)
+
+			// Run bootstrap if enabled (creates tables, syncs data sources from config.yaml)
+			if cfg.MariaDB.Bootstrap.Enabled {
+				bootstrap := mariadb.NewBootstrap(mariaDBClient, cfg, zapLogger, mariadb.BootstrapConfig{
+					CreateTablesIfMissing:     cfg.MariaDB.Bootstrap.CreateTablesIfMissing,
+					SyncDataSourcesFromConfig: cfg.MariaDB.Bootstrap.SyncDataSourcesFromConfig,
+				})
+				if err := bootstrap.Run(context.Background()); err != nil {
+					logger.Error("MariaDB bootstrap failed", "error", err)
+					// Continue anyway - bootstrap failure shouldn't prevent startup
+				} else {
+					logger.Info("MariaDB bootstrap completed successfully")
+				}
+			}
+		} else {
+			logger.Warn("MariaDB client created but not connected; will retry on first use",
+				"host", cfg.MariaDB.Host,
+				"database", cfg.MariaDB.Database,
+			)
+		}
+	} else {
+		logger.Info("MariaDB client disabled; using config.yaml static endpoints")
+	}
+
 	// Initialize schema store (Weaviate)
 	var schemaStore repo.SchemaStore
 
 	// No legacy DB fallback; expect Weaviate
 
 	// Initialize API server
-	apiServer := api.NewServer(cfg, logger, valkeyCache, vmServices, schemaStore)
+	apiServer := api.NewServer(cfg, logger, valkeyCache, vmServices, schemaStore, mariaDBClient)
 
 	// Setup graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())

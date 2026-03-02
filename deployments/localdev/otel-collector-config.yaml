@@ -13,6 +13,18 @@ receivers:
           static_configs:
             - targets: ["host.docker.internal:9100"] # Scrape the Macbook OS metrics exporter
 
+  # Read example eBPF profiler logs produced by Telegen and forward as logs
+  filelog:
+    include:
+      - /var/log/mirador/exampleLogs/JavaEbpfProfiler.log
+    start_at: beginning
+    include_file_name: false
+    include_file_path: false
+    encoding: utf-8
+    operators:
+      - type: json_parser
+        parse_from: body
+
 connectors:
   spanmetrics:
     namespace: traces.span.metrics
@@ -39,13 +51,18 @@ exporters:
   elasticsearch:
     endpoint: http://victorialogs:9428/insert/elasticsearch
     headers:
-      VL-Msg-Field: Body
+      VL-Msg-Field: body.text
 
   otlphttp/traces:
     traces_endpoint: http://victoriatraces:10428/insert/opentelemetry/v1/traces
 
   debug:
     verbosity: detailed
+
+  otlphttp/logs:
+    logs_endpoint: ${env:VL_ENDPOINT}/insert/opentelemetry/v1/logs
+    tls:
+      insecure: true
 
 processors:
   batch:
@@ -137,3 +154,8 @@ service:
       receivers: [otlp]
       processors: [memory_limiter, resource]
       exporters: [elasticsearch]
+
+    logs/profiler:
+      receivers: [filelog]
+      processors: [memory_limiter, resource]
+      exporters: [otlphttp/logs]

@@ -15,6 +15,7 @@ import (
 	"github.com/platformbuilds/mirador-core/internal/config"
 	"github.com/platformbuilds/mirador-core/internal/discovery"
 	"github.com/platformbuilds/mirador-core/internal/logging"
+	"github.com/platformbuilds/mirador-core/internal/mariadb"
 	"github.com/platformbuilds/mirador-core/internal/models"
 	corelogger "github.com/platformbuilds/mirador-core/pkg/logger"
 )
@@ -1004,4 +1005,51 @@ func (s *VictoriaTracesService) ReplaceEndpoints(eps []string) {
 	s.current = 0
 	s.mu.Unlock()
 	s.logger.Info("VictoriaTraces endpoints updated", "count", len(eps))
+}
+
+// RefreshFromMariaDB updates the VictoriaMetrics/Logs/Traces endpoints
+// from MariaDB data sources. This allows dynamic configuration from the
+// tenant-specific database instead of relying on static config.yaml.
+//
+// Returns an error if MariaDB is unavailable or no data sources are found.
+// Callers should handle this gracefully as MariaDB is optional.
+func (s *VictoriaMetricsServices) RefreshFromMariaDB(ctx context.Context, dsRepo *mariadb.DataSourceRepo, logger corelogger.Logger) error {
+	if dsRepo == nil {
+		return errors.New("victoria_services: MariaDB DataSourceRepo is nil")
+	}
+
+	// Refresh metrics endpoints (prometheus type in MariaDB)
+	metricsEndpoints, err := dsRepo.GetMetricsEndpoints(ctx)
+	if err != nil {
+		logger.Warn("Failed to get metrics endpoints from MariaDB; keeping current config",
+			"error", err)
+	} else if len(metricsEndpoints) > 0 && s.Metrics != nil {
+		s.Metrics.ReplaceEndpoints(metricsEndpoints)
+		logger.Info("Refreshed metrics endpoints from MariaDB",
+			"count", len(metricsEndpoints))
+	}
+
+	// Refresh logs endpoints (victorialogs type in MariaDB)
+	logsEndpoints, err := dsRepo.GetLogsEndpoints(ctx)
+	if err != nil {
+		logger.Warn("Failed to get logs endpoints from MariaDB; keeping current config",
+			"error", err)
+	} else if len(logsEndpoints) > 0 && s.Logs != nil {
+		s.Logs.ReplaceEndpoints(logsEndpoints)
+		logger.Info("Refreshed logs endpoints from MariaDB",
+			"count", len(logsEndpoints))
+	}
+
+	// Refresh traces endpoints (victoriatraces type in MariaDB)
+	tracesEndpoints, err := dsRepo.GetTracesEndpoints(ctx)
+	if err != nil {
+		logger.Warn("Failed to get traces endpoints from MariaDB; keeping current config",
+			"error", err)
+	} else if len(tracesEndpoints) > 0 && s.Traces != nil {
+		s.Traces.ReplaceEndpoints(tracesEndpoints)
+		logger.Info("Refreshed traces endpoints from MariaDB",
+			"count", len(tracesEndpoints))
+	}
+
+	return nil
 }

@@ -65,8 +65,11 @@ services:
     ports:
       - "4317:4317"   # OTLP gRPC receiver
       - "4318:4318"   # OTLP HTTP receiver
+    environment:
+      - VL_ENDPOINT=http://victorialogs:9428
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+      - ../../dev/telegen/exampleLogs:/var/log/mirador/exampleLogs:ro
     networks:
       - mirador-net
     healthcheck:

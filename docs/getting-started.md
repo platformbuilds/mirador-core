@@ -182,6 +182,31 @@ export VT_ENDPOINTS="vt-cluster:10428"
 # Authentication and authorization should be handled by external proxies, API gateways, or service mesh
 ```
 
+### Optional: MariaDB Integration
+
+If using mirador-ui for configuration management, enable MariaDB integration to automatically read data sources and KPIs:
+
+```yaml
+# config.yaml - MariaDB integration
+mariadb:
+  enabled: true
+  host: "mariadb.example.com"
+  port: 3306
+  database: "tenant_acme"
+  username: "mirador_core_ro"
+  password: ""  # Set via MARIADB_PASSWORD env var
+  sync:
+    enabled: true
+    interval: 5m
+```
+
+```bash
+# Set password via environment variable
+export MARIADB_PASSWORD='your-secure-password'
+```
+
+See [MariaDB Integration](mariadb-integration.md) for detailed setup instructions.
+
 ## First API Call
 
 Once MIRADOR-CORE is running, try your first API call:
@@ -208,4 +233,5 @@ curl -X POST http://localhost:8010/api/v1/unified/query \
 
 - [OpenAPI Specification](../api/openapi.yaml) - Learn about all available endpoints
 - [Configuration](configuration.md) - Detailed configuration options
+- [MariaDB Integration](mariadb-integration.md) - Shared configuration with mirador-ui
 - [Deployment](deployment.md) - Production deployment guides

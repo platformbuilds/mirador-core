@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/mariadb"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
@@ -23,7 +24,7 @@ func TestServer_OpenAPI_AndRootRedirect(t *testing.T) {
 	}
 	cch := cache.NewNoopValkeyCache(log)
 
-	s := NewServer(cfg, log, cch, vms, nil)
+	s := NewServer(cfg, log, cch, vms, nil, (*mariadb.Client)(nil))
 	ts := httptest.NewServer(s.router)
 	defer ts.Close()
 

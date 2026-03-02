@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/platformbuilds/mirador-core/internal/config"
+	"github.com/platformbuilds/mirador-core/internal/mariadb"
 	"github.com/platformbuilds/mirador-core/internal/services"
 	"github.com/platformbuilds/mirador-core/pkg/cache"
 	"github.com/platformbuilds/mirador-core/pkg/logger"
@@ -21,7 +22,7 @@ func TestServer_Start_And_Handler(t *testing.T) {
 		Traces:  services.NewVictoriaTracesService(config.VictoriaTracesConfig{}, log),
 	}
 
-	s := NewServer(cfg, log, cch, vms, nil)
+	s := NewServer(cfg, log, cch, vms, nil, (*mariadb.Client)(nil))
 
 	// call Handler() to cover that method
 	if s.Handler() == nil {
@@ -54,7 +55,7 @@ func TestServer_Start_Fails(t *testing.T) {
 		Traces:  services.NewVictoriaTracesService(config.VictoriaTracesConfig{}, log),
 	}
 
-	s := NewServer(cfg, log, cch, vms, nil)
+	s := NewServer(cfg, log, cch, vms, nil, (*mariadb.Client)(nil))
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 	// Expect immediate error due to invalid port

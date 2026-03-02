@@ -196,6 +196,102 @@ kubectl exec -it deployment/mirador-core -- ./bin/migrate up
 kubectl exec -it deployment/mirador-core -- ./bin/migrate status
 ```
 
+### MariaDB (Tenant Data Integration)
+
+MIRADOR-CORE can optionally connect to a MariaDB instance (shared with mirador-ui) to read tenant data sources and KPIs. See [MariaDB Integration](mariadb-integration.md) for full documentation.
+
+#### Kubernetes Deployment with MariaDB
+
+```yaml
+# values.yaml - MariaDB configuration
+config:
+  mariadb:
+    enabled: true
+    host: "mariadb.database.svc.cluster.local"
+    port: 3306
+    database: "tenant_acme"
+    username: "mirador_core_rw"  # Read-write for bootstrap
+    bootstrap:
+      enabled: true
+      create_tables_if_missing: true
+      sync_datasources_from_config: true
+    sync:
+      enabled: true
+      interval: "5m"
+
+# Secrets for MariaDB credentials
+secrets:
+  mariadb:
+    password: ""  # Set via kubectl create secret
+```
+
+#### Creating MariaDB Secrets
+
+```bash
+# Create the MariaDB password secret
+kubectl create secret generic mirador-core-mariadb \
+  --namespace mirador-prod \
+  --from-literal=password='your-secure-password'
+```
+
+#### Helm Values Example
+
+```yaml
+# prod-values.yaml with MariaDB
+config:
+  mariadb:
+    enabled: true
+    host: "mariadb-primary.database.svc"
+    port: 3306
+    database: "tenant_production"
+    username: "mirador_core_rw"  # Read-write for bootstrap
+    max_open_conns: 20
+    max_idle_conns: 10
+    conn_max_lifetime: "10m"
+    bootstrap:
+      enabled: true                      # Enable automatic setup
+      create_tables_if_missing: true     # Create tables on first run
+      sync_datasources_from_config: true # Sync config.yaml to MariaDB
+    sync:
+      enabled: true
+      interval: "5m"
+      batch_size: 100
+
+env:
+  - name: MARIADB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: mirador-core-mariadb
+        key: password
+```
+
+#### Post-Bootstrap Read-Only Configuration
+
+After initial bootstrap completes, you can switch to a read-only user:
+
+```yaml
+# prod-values-readonly.yaml - After bootstrap
+config:
+  mariadb:
+    enabled: true
+    host: "mariadb-replica.database.svc"  # Read replica
+    username: "mirador_core_ro"           # Read-only user
+    bootstrap:
+      enabled: false  # Disable after initial sync
+```
+
+#### Read Replica Configuration
+
+For high availability, connect to a MariaDB read replica:
+
+```yaml
+config:
+  mariadb:
+    enabled: true
+    host: "mariadb-replica.database.svc"  # Read replica
+    # ... other settings
+```
+
 ## Monitoring and Observability
 
 ### Prometheus Metrics

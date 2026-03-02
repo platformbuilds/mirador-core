@@ -88,6 +88,38 @@ cache:
   password: "" # Set via environment variable
   db: 0
 
+# MariaDB Configuration (Read-Only Access)
+# mirador-core connects to MariaDB to read data sources and KPIs.
+# This is the same MariaDB used by mirador-ui, but with read-only credentials.
+# Each mirador-core deployment is tenant-specific (database per tenant).
+mariadb:
+  enabled: true
+  host: "localhost"
+  port: 3306
+  database: "tenant_default"  # Tenant-specific database name
+  username: "mirador_core_ro"
+  password: ""  # Set via MARIADB_READONLY_PASSWORD environment variable
+  max_open_conns: 10
+  max_idle_conns: 5
+  conn_max_lifetime: 5m
+  # Sync configuration for background KPI sync (MariaDB → Weaviate)
+  sync:
+    enabled: true
+    interval: 5m  # How often to sync KPIs to Weaviate
+    batch_size: 100  # Number of KPIs to sync per batch
+  # Bootstrap configuration for backward compatibility
+  # When enabled, mirador-core will create tables and sync data sources
+  # from config.yaml to MariaDB on startup. This ensures existing users
+  # can migrate to MariaDB-backed configuration seamlessly.
+  bootstrap:
+    enabled: true
+    # Create data_sources and kpis tables if they don't exist
+    create_tables_if_missing: true
+    # Sync data sources from config.yaml to MariaDB
+    # - If URL exists in MariaDB: validate and skip
+    # - If URL doesn't exist: create the data source
+    sync_datasources_from_config: true
+
 # Cross-Origin Resource Sharing
 cors:
   allowed_origins:

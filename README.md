@@ -3,7 +3,7 @@
 **Advanced Observability Platform Backend** - Unified REST API Service for Metrics, Logs, and Traces
 
 [![Version](https://img.shields.io/badge/version-v9.0.0-blue.svg)](https://github.com/platformbuilds/mirador-core/releases/tag/v9.0.0)
-[![Go Version](https://img.shields.io/badge/go-1.21+-00ADD8.svg)](https://golang.org)
+[![Go Version](https://img.shields.io/badge/go-1.24+-00ADD8.svg)](https://golang.org)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![GitHub CI](https://github.com/platformbuilds/mirador-core/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/platformbuilds/mirador-core/actions/workflows/ci.yml)
 [![Documentation](https://img.shields.io/badge/docs-readthedocs-blue.svg)](https://mirador-core.readthedocs.io/)
@@ -110,13 +110,55 @@ MIRADOR-CORE implements a layered architecture with clear separation of concerns
 - **Cache Layer**: Distributed caching with Valkey cluster for sub-millisecond responses
 - **MIRA Integration**: External AI service for natural language RCA explanations
 
+### Project Structure
+
+```
+mirador-core/
+├── api/                    # API specifications (OpenAPI, Postman)
+├── cmd/server/             # Application entry point
+├── configs/                # Configuration files (YAML)
+├── deployments/            # Docker, Kubernetes, Helm charts
+├── docs/                   # Documentation and runbooks
+├── devtools/               # Development utilities and scripts
+├── internal/               # Private application code
+│   ├── api/                # HTTP handlers and middleware
+│   ├── bootstrap/          # Startup data initialization
+│   ├── config/             # Configuration loading and validation
+│   ├── mariadb/            # MariaDB client (read-only KPI source)
+│   ├── metrics/            # Prometheus metrics definitions
+│   ├── mira/               # MIRA AI integration
+│   ├── models/             # Domain models and DTOs
+│   ├── monitoring/         # Observability instrumentation
+│   ├── rca/                # Root cause analysis engine
+│   ├── repo/               # Data repositories (Weaviate)
+│   ├── services/           # Business logic engines
+│   ├── sync/               # MariaDB-to-Weaviate sync
+│   └── weavstore/          # Weaviate vector store client
+├── pkg/                    # Public reusable packages
+│   ├── cache/              # Caching abstractions
+│   ├── errors/             # Unified error types
+│   └── logger/             # Structured logging
+└── hack/                   # Development and testing scripts
+```
+
 
 
 ## Quick Start
 
 ### Prerequisites
-- **Go 1.21+**: For building from source
+- **Go 1.24+**: For building from source
 - **Docker**: For containerized development and testing
+
+### Local Development
+
+1. **Start Development Environment**
+```bash
+# Clone and start all services
+git clone https://github.com/platformbuilds/mirador-core
+cd mirador-core
+
+# Start the local development stack
+make localdev-up
 
 # Seed sample KPIs (optional)
 make localdev-seed-data
