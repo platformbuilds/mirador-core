@@ -79,32 +79,6 @@ services:
       retries: 10
 
   # ──────────────────────────────────────────────
-  # OpenTelemetry eBPF Instrumentation (OBI) Agent
-  # ──────────────────────────────────────────────
-  obi:
-    image: docker.io/otel/ebpf-instrument:latest
-    pull_policy: if_not_present
-    container_name: obi
-    privileged: true
-    pid: "host"
-    depends_on:
-      otel-collector:
-        condition: service_started
-    environment:
-      # Instrument selection: set to your *container internal* service ports
-      # Examples: "8010,8080,8443" or ranges like "8080-8999"
-      OTEL_EBPF_OPEN_PORT: "8010,8080,8443"
-
-      # Export traces to your Collector (OTLP/gRPC)
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
-      OTEL_EXPORTER_OTLP_PROTOCOL: "http/json"
-
-      # Optional: print spans locally while validating
-      OTEL_EBPF_TRACE_PRINTER: "text"
-    networks:
-      - mirador-net
-
-  # ──────────────────────────────────────────────
   # Valkey (single-node Redis alternative)
   # ──────────────────────────────────────────────
   valkey:
