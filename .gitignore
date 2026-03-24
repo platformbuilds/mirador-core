@@ -67,3 +67,6 @@ deployments/localdev/e2e-report.txt
 
 # Development files (local only)
 dev/
+
+# Python Cache
+__pycache__/
